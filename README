@@ -1,0 +1,10 @@
+tensor library
+	- covariant and contravariant indexes
+	- compressed symmetric and antisymmetric storage
+	- lots of compile time and template driven stuff
+
+taken from my relativity project, working it into a C++ verison of my hydrodynamics project
+
+* note: uses "Exception" which is in another project of mine. working out the details.
+
+requires C++11	
