@@ -64,11 +64,11 @@ struct Grid {
 
 	struct iterator {
 		Grid *parent;
-		DerefType index;
+		DerefType index, min, max;
 		
 		iterator() : parent(NULL) {}
-		iterator(Grid *parent_) : parent(parent_) {}
-		iterator(const iterator &iter) : parent(iter.parent), index(iter.index) {}
+		iterator(Grid *parent_, DerefType min_, DerefType max_) : parent(parent_), min(min_), max(max_) {}
+		iterator(const iterator &iter) : parent(iter.parent), index(iter.index), min(iter.min), max(iter.max) {}
 		
 		bool operator==(const iterator &b) const { return index == b.index; }
 		bool operator!=(const iterator &b) const { return index != b.index; }
@@ -76,7 +76,7 @@ struct Grid {
 		iterator &operator++() {
 			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
 				++index(i);
-				if (index(i) < parent->size(i)) break;
+				if (index(i) < max(i)) break;
 				if (i < rank-1) index(i) = 0;
 			}
 			return *this;
@@ -87,22 +87,21 @@ struct Grid {
 	};
 
 	iterator begin() {
-		iterator i(this);
-		return i;
+		return iterator(this, DerefType(), size);
 	}
 	iterator end() {
-		iterator i(this);
-		i.index(rank-1) = size(rank-1);
+		iterator i(this, DerefType(), size);
+		i.index(rank-1) = i.max(rank-1);
 		return i;
 	}
 	
 	struct const_iterator {
 		const Grid *parent;
-		DerefType index;
+		DerefType index, min, max;
 		
 		const_iterator() : parent(NULL) {}
-		const_iterator(const Grid *parent_) : parent(parent_) {}
-		const_iterator(const const_iterator &iter) : parent(iter.parent), index(iter.index) {}
+		const_iterator(const Grid *parent_, DerefType min_, DerefType max_) : parent(parent_), min(min_), max(max_) {}
+		const_iterator(const const_iterator &iter) : parent(iter.parent), index(iter.index), min(iter.min), max(iter.max) {}
 		
 		bool operator==(const const_iterator &b) const { return index == b.index; }
 		bool operator!=(const const_iterator &b) const { return index != b.index; }
@@ -110,7 +109,7 @@ struct Grid {
 		const_iterator &operator++() {
 			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
 				++index(i);
-				if (index(i) < parent->size(i)) break;
+				if (index(i) < max(i)) break;
 				if (i < rank-1) index(i) = 0;
 			}
 			return *this;
@@ -121,13 +120,45 @@ struct Grid {
 	};
 
 	const_iterator begin() const {
-		const_iterator i(this);
-		return i;
+		return const_iterator(this, DerefType(), size);
 	}
 	const_iterator end() const {
-		const_iterator i(this);
-		i.index(rank-1) = size(rank-1);
+		const_iterator i(this, DerefType(), size);
+		i.index(rank-1) = i.max(rank-1);
 		return i;
+	}
+
+	struct RangeObj {
+		Grid *parent;
+		DerefType min, max;
+
+		RangeObj(Grid *parent_, DerefType min_, DerefType max_) : parent(parent_), min(min_), max(max_) {
+		}
+
+		iterator begin() {
+			return iterator(parent, min, max);
+		}
+
+		iterator end() {
+			iterator i(parent);
+			i.index(rank-1) = i.max(rank-1);
+			return i;
+		}
+		
+		const_iterator begin() const {
+			return const_iterator(parent, min, max);
+		}
+
+		const_iterator end() const {
+			const_iterator i(parent);
+			i.index(rank-1) = i.max(rank-1);
+			return i;
+		}
+
+	};
+	
+	RangeObj range(DerefType min, DerefType max) {
+		return RangeObj(this, min, max);
 	}
 };
 

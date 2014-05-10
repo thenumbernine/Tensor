@@ -45,9 +45,9 @@ OutputType determinant33(const InputType &a) {
 	return a(0,0) * a(1,1) * a(2,2)
 		+ a(0,1) * a(1,2) * a(2,0)
 		+ a(0,2) * a(1,0) * a(2,1)
-		- a(2,0) * a(1,1) * a(0,2)
-		- a(2,1) * a(1,2) * a(0,0)
-		- a(2,2) * a(1,0) * a(0,1);
+		- a(0,2) * a(1,1) * a(2,0)
+		- a(0,1) * a(1,0) * a(2,2)
+		- a(0,0) * a(1,2) * a(2,1);
 }
 
 //this is where boost::bind would be helpful: for a generic dimension determinant function
@@ -110,6 +110,27 @@ struct InverseClass<Tensor<Real_, Lower<3>, Lower<3>>> {
 	typedef Tensor<Real, Upper<3>, Upper<3>> OutputType;
 	OutputType operator()(const InputType &a, const Real &det) const {
 		OutputType result;
+		Real invDet = Real(1) / det;
+		for (int j = 0; j < 3; ++j) {
+			int j1 = (j + 1) % 3;
+			int j2 = (j + 2) % 3;
+			for (int i = 0; i < 3; ++i) {
+				int i1 = (i + 1) % 3;
+				int i2 = (i + 2) % 3;
+				result(j,i) = invDet * (a(i1,j1) * a(i2,j2) - a(i2,j1) * a(i1,j2));
+			}
+		}
+		return result;
+	}
+};
+
+template<typename Real_>
+struct InverseClass<Tensor<Real_, Symmetric<Lower<3>, Lower<3>>>> {
+	typedef Real_ Real;
+	typedef Tensor<Real, Lower<3>, Lower<3>> InputType;
+	typedef Tensor<Real, Upper<3>, Upper<3>> OutputType;
+	OutputType operator()(const InputType &a, const Real &det) const {
+		OutputType result;
 		//symmetric, so only do Lower triangular
 		result(0,0) = det22(a(1,1), a(1,2), a(2,1), a(2,2)) / det;
 		result(1,0) = det22(a(1,2), a(1,0), a(2,2), a(2,0)) / det;
@@ -120,8 +141,6 @@ struct InverseClass<Tensor<Real_, Lower<3>, Lower<3>>> {
 		return result;
 	}
 };
-
-
 
 template<typename InputType>
 typename InverseClass<InputType>::OutputType inverse(const InputType &a, const typename InverseClass<InputType>::Real &det) {
