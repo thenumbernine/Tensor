@@ -10,6 +10,7 @@ struct RangeObj {
 	typedef Vector<int,rank> DerefType;
 	DerefType min, max;
 
+	RangeObj() {}
 	RangeObj(DerefType min_, DerefType max_) : min(min_), max(max_) {}
 
 	// iterators
@@ -18,7 +19,7 @@ struct RangeObj {
 		DerefType index, min, max;
 		
 		iterator()  {}
-		iterator(DerefType min_, DerefType max_) : min(min_), max(max_) {}
+		iterator(DerefType min_, DerefType max_) : index(min_), min(min_), max(max_) {}
 		iterator(const iterator &iter) : index(iter.index), min(iter.min), max(iter.max) {}
 		
 		bool operator==(const iterator &b) const { return index == b.index; }
