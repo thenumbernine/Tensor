@@ -3,6 +3,83 @@
 #include "TensorMath/Vector.h"
 #include <assert.h>
 
+//TODO move RangeObj iterator with Grid iterator
+template<int rank_>
+struct RangeObj {
+	enum { rank = rank_ };
+	typedef Vector<int,rank> DerefType;
+	DerefType min, max;
+
+	RangeObj(DerefType min_, DerefType max_) : min(min_), max(max_) {}
+
+	// iterators
+
+	struct iterator {
+		DerefType index, min, max;
+		
+		iterator()  {}
+		iterator(DerefType min_, DerefType max_) : min(min_), max(max_) {}
+		iterator(const iterator &iter) : index(iter.index), min(iter.min), max(iter.max) {}
+		
+		bool operator==(const iterator &b) const { return index == b.index; }
+		bool operator!=(const iterator &b) const { return index != b.index; }
+		
+		iterator &operator++() {
+			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
+				++index(i);
+				if (index(i) < max(i)) break;
+				if (i < rank-1) index(i) = min(i);
+			}
+			return *this;
+		}
+
+		DerefType &operator*() { return index; }
+		DerefType *operator->() { return &index; }
+	};
+
+	iterator begin() {
+		return iterator(min, max);
+	}
+	iterator end() {
+		iterator i(min, max);
+		i.index(rank-1) = i.max(rank-1);
+		return i;
+	}
+	
+	struct const_iterator {
+		DerefType index, min, max;
+		
+		const_iterator() {}
+		const_iterator(DerefType min_, DerefType max_) : min(min_), max(max_) {}
+		const_iterator(const const_iterator &iter) : index(iter.index), min(iter.min), max(iter.max) {}
+		
+		bool operator==(const const_iterator &b) const { return index == b.index; }
+		bool operator!=(const const_iterator &b) const { return index != b.index; }
+		
+		const_iterator &operator++() {
+			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
+				++index(i);
+				if (index(i) < max(i)) break;
+				if (i < rank-1) index(i) = min(i);
+			}
+			return *this;
+		}
+
+		const DerefType &operator*() const { return index; }
+		const DerefType *operator->() const { return &index; }
+	};
+
+	const_iterator begin() const {
+		return const_iterator(min, max);
+	}
+	const_iterator end() const {
+		const_iterator i(min, max);
+		i.index(rank-1) = i.max(rank-1);
+		return i;
+	}
+};
+
+
 //rank is templated, but dim is not as it varies per-rank
 //so this is dynamically-sized tensor
 template<typename Type_, int rank_>
@@ -126,39 +203,6 @@ struct Grid {
 		const_iterator i(this, DerefType(), size);
 		i.index(rank-1) = i.max(rank-1);
 		return i;
-	}
-
-	struct RangeObj {
-		Grid *parent;
-		DerefType min, max;
-
-		RangeObj(Grid *parent_, DerefType min_, DerefType max_) : parent(parent_), min(min_), max(max_) {
-		}
-
-		iterator begin() {
-			return iterator(parent, min, max);
-		}
-
-		iterator end() {
-			iterator i(parent);
-			i.index(rank-1) = i.max(rank-1);
-			return i;
-		}
-		
-		const_iterator begin() const {
-			return const_iterator(parent, min, max);
-		}
-
-		const_iterator end() const {
-			const_iterator i(parent);
-			i.index(rank-1) = i.max(rank-1);
-			return i;
-		}
-
-	};
-	
-	RangeObj range(DerefType min, DerefType max) {
-		return RangeObj(this, min, max);
 	}
 };
 

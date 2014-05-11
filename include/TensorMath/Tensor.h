@@ -1,5 +1,6 @@
 #pragma once
 
+#include "TensorMath/Meta.h"
 #include "TensorMath/TensorIndex.h"	//not because tensor.h needs it, but because anyone using tensor.h needs it
 
 /*
@@ -133,54 +134,25 @@ struct AssignSize {
 	};
 };
 
-template<int index, int end, typename Op>
-struct ForLoop {
-	static void exec(typename Op::Input &input) {
-		typedef typename Op::template Exec<index> Exec;
-		Exec::exec(input);
-		ForLoop<index+1,end,Op>::exec(input);
-	}
-};
+/*
+retrieves stats for a particular index of the tensor
+currently stores dim
 
-template<int end, typename Op>
-struct ForLoop<end, end, Op> {
-	static void exec(typename Op::Input &input) {
-	}
-};
-
-template<bool cond, typename A, typename B>
-struct If;
-
-template<typename A, typename B>
-struct If<true, A, B> {
-	typedef A Type;
-};
-
-template<typename A, typename B>
-struct If<false, A, B> {
-	typedef B Type;
-};
-
-
-template<int index, int rank>
-struct IndexStatGetDim {
-};
-
+how it works:
+if index <= TensorStats::Index::rank then 
+	use TensorStats::Index
+otherwise
+	perform the operation on
+		index - rank, TensorStats::InnerType
+*/
 template<int index, typename TensorStats>
 struct IndexStats {
-	/*
-	if index <= TensorStats::Index::rank then 
-		use TensorStats::Index::dim
-	otherwise
-		perform the operation on
-			index - rank, TensorStats::InnerType
-	*/
 	enum { 
-		dim = If<(index < TensorStats::Index::rank),
+		dim = If<index < TensorStats::Index::rank,
 			typename TensorStats::Index,
 			IndexStats<index - TensorStats::Index::rank, typename TensorStats::InnerType>
 		>::Type::dim
-	}; 
+	};
 };
 
 /*
@@ -259,10 +231,8 @@ struct Tensor {
 
 	DerefType size() const {
 		DerefType s;
-
-		//new way, per-element access
+		//metaprogram-driven
 		ForLoop<0, rank, AssignSize<Tensor>>::exec(s);
-		
 		return s;
 	};
 
