@@ -2,6 +2,7 @@
 
 #include "TensorMath/Vector.h"
 #include <assert.h>
+#include <algorithm>
 
 //TODO move RangeObj iterator with Grid iterator
 template<int rank_>
@@ -89,7 +90,9 @@ struct Grid {
 	enum { rank = rank_ };
 	typedef Vector<int,rank> DerefType;
 
-	Type *v;
+	typedef std::pair<DerefType, Type> value_type;	//doing like std::map and storing the index with the rest of the stuff.  that way I don't lose it to the iterator abstraction.
+
+	value_type *v;
 	DerefType size;
 	
 	//cached for quick access by dot with index vector
@@ -97,113 +100,59 @@ struct Grid {
 	DerefType step;
 
 	Grid(const DerefType &size_) : size(size_) {
-		v = new Type[size.volume()]();
+		v = new value_type[size.volume()]();
 		step(0) = 1;
 		for (int i = 1; i < rank; ++i) {
 			step(i) = step(i-1) * size(i-1);
 		}
+	
+		//the only place RangeObj::iterator is used: to initialize the std::pair.first of the value_type's
+		RangeObj<rank> range(DerefType(), size);
+		std::for_each(range.begin(), range.end(), [&](const DerefType &index) {
+			getValue(index).first = index;
+		});
 	}
 
 	~Grid() {
 		delete[] v;
 	}
 
-	Type &operator()(const DerefType &deref) { 
+	//typical access will be only for the value_type's sake
+	Type &operator()(const DerefType &deref) { return getValue(deref).second; }
+	const Type &operator()(const DerefType &deref) const { return getValue(deref).second; }
+
+	//but other folks (currently only our initialization of our indexes) will want the whole value
+	value_type &getValue(const DerefType &deref) { 
+#ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
-			assert(deref(i) >= 0 && deref(i) < size(i));
+			if (deref(i) < 0 || deref(i) >= size(i)) {
+				//why aren't callstacks recorded when exceptions are thrown?
+				std::cerr << "size is " << size << " but dereference is " << deref << std::endl;
+				assert(false);
+			}
 		}
+#endif
 		int flat_deref = DerefType::dot(deref, step);
 		assert(flat_deref >= 0 && flat_deref < size.volume());
 		return v[flat_deref];
 	}
-	const Type &operator()(const DerefType &deref) const { 
+	const value_type &getValue(const DerefType &deref) const { 
+#ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
-			assert(deref(i) >= 0 && deref(i) < size(i));
+			if (deref(i) < 0 || deref(i) >= size(i)) {
+				std::cerr << "size is " << size << " but dereference is " << deref << std::endl;
+				assert(false);
+			}
 		}
+#endif
 		int flat_deref = DerefType::dot(deref, step);
 		assert(flat_deref >= 0 && flat_deref < size.volume());
 		return v[flat_deref];
 	}
 
-	//offset + clamp
-	// because I wanted to write it concisely
-	//but didn't want to offset by an entire vector, then clamp an entire vector
-	Type &getOffset(DerefType deref, int dim, int offset) {
-		deref(dim) = clamp(deref(dim) + offset, 0, size(dim)-1);
-		return (*this)(deref);
-	}
-	const Type &getOffset(DerefType deref, int dim, int offset) const {
-		deref(dim) = clamp(deref(dim) + offset, 0, size(dim)-1);
-		return (*this)(deref);
-	}
-
-
-	// iterators
-
-	struct iterator {
-		Grid *parent;
-		DerefType index, min, max;
-		
-		iterator() : parent(NULL) {}
-		iterator(Grid *parent_, DerefType min_, DerefType max_) : parent(parent_), min(min_), max(max_) {}
-		iterator(const iterator &iter) : parent(iter.parent), index(iter.index), min(iter.min), max(iter.max) {}
-		
-		bool operator==(const iterator &b) const { return index == b.index; }
-		bool operator!=(const iterator &b) const { return index != b.index; }
-		
-		iterator &operator++() {
-			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
-				++index(i);
-				if (index(i) < max(i)) break;
-				if (i < rank-1) index(i) = 0;
-			}
-			return *this;
-		}
-
-		typename Grid::Type &operator*() const { return (*parent)(index); }
-		typename Grid::Type *operator->() const { return &((*parent)(index)); }
-	};
-
-	iterator begin() {
-		return iterator(this, DerefType(), size);
-	}
-	iterator end() {
-		iterator i(this, DerefType(), size);
-		i.index(rank-1) = i.max(rank-1);
-		return i;
-	}
-	
-	struct const_iterator {
-		const Grid *parent;
-		DerefType index, min, max;
-		
-		const_iterator() : parent(NULL) {}
-		const_iterator(const Grid *parent_, DerefType min_, DerefType max_) : parent(parent_), min(min_), max(max_) {}
-		const_iterator(const const_iterator &iter) : parent(iter.parent), index(iter.index), min(iter.min), max(iter.max) {}
-		
-		bool operator==(const const_iterator &b) const { return index == b.index; }
-		bool operator!=(const const_iterator &b) const { return index != b.index; }
-		
-		const_iterator &operator++() {
-			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
-				++index(i);
-				if (index(i) < max(i)) break;
-				if (i < rank-1) index(i) = 0;
-			}
-			return *this;
-		}
-
-		const typename Grid::Type &operator*() const { return (*parent)(index); }
-		const typename Grid::Type *operator->() const { return &((*parent)(index)); }
-	};
-
-	const_iterator begin() const {
-		return const_iterator(this, DerefType(), size);
-	}
-	const_iterator end() const {
-		const_iterator i(this, DerefType(), size);
-		i.index(rank-1) = i.max(rank-1);
-		return i;
-	}
+	value_type *begin() { return v; }
+	value_type *end() { return v + size.volume(); }
+	const value_type *begin() const { return v; }
+	const value_type *end() const { return v + size.volume(); }
 };
 
