@@ -11,7 +11,6 @@ struct RangeObj {
 	typedef Vector<int,rank> DerefType;
 	DerefType min, max;
 
-	RangeObj() {}
 	RangeObj(DerefType min_, DerefType max_) : min(min_), max(max_) {}
 
 	// iterators
@@ -25,7 +24,22 @@ struct RangeObj {
 		
 		bool operator==(const iterator &b) const { return index == b.index; }
 		bool operator!=(const iterator &b) const { return index != b.index; }
+	
+		int flatten() {
+			int flatIndex = 0;
+			for (int i = rank - 1; i <= 0; --i) {
+				flatIndex *= max(i) - min(i);
+				flatIndex += index(i) - min(i);
+			}
+			return flatIndex;
+		}
 		
+		int operator-(const iterator &i) {
+			return flatten() - i.flatten();
+		}
+
+		//poor man's way to do this
+
 		iterator &operator++() {
 			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
 				++index(i);
