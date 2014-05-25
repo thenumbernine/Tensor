@@ -101,12 +101,11 @@ struct RangeObj {
 template<typename Type_, int rank_>
 struct Grid {
 	typedef Type_ Type;
+	typedef Type value_type;
 	enum { rank = rank_ };
 	typedef Vector<int,rank> DerefType;
 
-	typedef std::pair<DerefType, Type> value_type;	//doing like std::map and storing the index with the rest of the stuff.  that way I don't lose it to the iterator abstraction.
-
-	value_type *v;
+	Type *v;
 	DerefType size;
 	
 	//cached for quick access by dot with index vector
@@ -114,29 +113,23 @@ struct Grid {
 	DerefType step;
 
 	Grid(const DerefType &size_) : size(size_) {
-		v = new value_type[size.volume()]();
+		v = new Type[size.volume()]();
 		step(0) = 1;
 		for (int i = 1; i < rank; ++i) {
 			step(i) = step(i-1) * size(i-1);
 		}
-	
-		//the only place RangeObj::iterator is used: to initialize the std::pair.first of the value_type's
-		RangeObj<rank> range(DerefType(), size);
-		std::for_each(range.begin(), range.end(), [&](const DerefType &index) {
-			getValue(index).first = index;
-		});
 	}
 
 	~Grid() {
 		delete[] v;
 	}
 
-	//typical access will be only for the value_type's sake
-	Type &operator()(const DerefType &deref) { return getValue(deref).second; }
-	const Type &operator()(const DerefType &deref) const { return getValue(deref).second; }
+	//typical access will be only for the Type's sake
+	Type &operator()(const DerefType &deref) { return getValue(deref); }
+	const Type &operator()(const DerefType &deref) const { return getValue(deref); }
 
 	//but other folks (currently only our initialization of our indexes) will want the whole value
-	value_type &getValue(const DerefType &deref) { 
+	Type &getValue(const DerefType &deref) { 
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
@@ -150,7 +143,7 @@ struct Grid {
 		assert(flat_deref >= 0 && flat_deref < size.volume());
 		return v[flat_deref];
 	}
-	const value_type &getValue(const DerefType &deref) const { 
+	const Type &getValue(const DerefType &deref) const { 
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
@@ -164,9 +157,9 @@ struct Grid {
 		return v[flat_deref];
 	}
 
-	value_type *begin() { return v; }
-	value_type *end() { return v + size.volume(); }
-	const value_type *begin() const { return v; }
-	const value_type *end() const { return v + size.volume(); }
+	Type *begin() { return v; }
+	Type *end() { return v + size.volume(); }
+	const Type *begin() const { return v; }
+	const Type *end() const { return v + size.volume(); }
 };
 
