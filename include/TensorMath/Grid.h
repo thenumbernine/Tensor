@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TensorMath/Vector.h"
+#include "Common/Exception.h"
 #include <assert.h>
 #include <algorithm>
 
@@ -133,8 +134,7 @@ struct Grid {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
-				//why aren't callstacks recorded when exceptions are thrown?
-				std::cerr << "size is " << size << " but dereference is " << deref << std::endl;
+				throw Exception() << "size is " << size << " but dereference is " << deref;
 				assert(false);
 			}
 		}
@@ -147,7 +147,7 @@ struct Grid {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
-				std::cerr << "size is " << size << " but dereference is " << deref << std::endl;
+				throw Exception() << "size is " << size << " but dereference is " << deref;
 				assert(false);
 			}
 		}
