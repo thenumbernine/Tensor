@@ -4,7 +4,7 @@ DISTS=$(patsubst %.o,%.out,$(OBJS))
 
 # TODO exceptions are in Common in GLApp .. put them somewhere more general?
 CC=clang++
-CFLAGS=-c -std=c++11 -Wall -I../include -I../../GLApp/include -O0 -mfix-and-continue -gdwarf-2
+CFLAGS=-c -std=c++11 -Wall -I../include -I../../Common/include -O0 -mfix-and-continue -gdwarf-2
 .PHONY: all
 
 LD=clang++
