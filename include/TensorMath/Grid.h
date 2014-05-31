@@ -134,7 +134,7 @@ struct Grid {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
-				throw Exception() << "size is " << size << " but dereference is " << deref;
+				throw Common::Exception() << "size is " << size << " but dereference is " << deref;
 				assert(false);
 			}
 		}
@@ -147,7 +147,7 @@ struct Grid {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
-				throw Exception() << "size is " << size << " but dereference is " << deref;
+				throw Common::Exception() << "size is " << size << " but dereference is " << deref;
 				assert(false);
 			}
 		}
