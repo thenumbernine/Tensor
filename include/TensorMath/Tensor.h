@@ -342,14 +342,23 @@ struct Tensor {
 			
 			bool operator==(const iterator &b) const { return writeIndex == b.writeIndex; }
 			bool operator!=(const iterator &b) const { return writeIndex != b.writeIndex; }
-		
+
+			//I could've for-loop'd this, but then I wouldn't have compile-time access to the write index size!
+			struct Increment {
+				typedef iterator& Input;
+				template<int i>
+				struct Exec {
+					static bool exec(Input iter) {
+						++iter.writeIndex(i);
+						if (iter.writeIndex(i) < WriteIndexInfo<i>::size) return true;
+						if (i < numNestings-1) iter.writeIndex(i) = 0;
+						return false;
+					}
+				};
+			};
+
 			iterator &operator++() {
-				//allow the last index to overflow for sake of comparing it to end
-				for (int i = 0; i < numNestings; ++i) {	
-					++writeIndex(i);
-					if (writeIndex(i) < parent->nestingSizes()(i)) break;
-					if (i < numNestings-1) writeIndex(i) = 0;
-				}
+				ForLoop<0,numNestings,Increment>::exec(*this);
 				return *this;
 			}
 
@@ -463,11 +472,11 @@ struct Tensor {
 	Tensor &operator/=(const Type &b) { body /= b; return *this; }
 
 	struct AssignSize {
-		typedef DerefType Input;
+		typedef DerefType& Input;
 
 		template<int index>
 		struct Exec {
-			static bool exec(Input &input) {
+			static bool exec(Input input) {
 				//now to make this nested type in Tensor ...
 				input(index) = IndexInfo<index>::dim;
 				return false;
@@ -485,23 +494,17 @@ struct Tensor {
 	//used with write iterator to determine sizes of nestings
 
 	struct AssignWriteSize {
-		typedef WriteDerefType Input;
+		typedef WriteDerefType& Input;
 
 		template<int writeIndex>
 		struct Exec {
-			static bool exec(Input &input) {
+			static bool exec(Input input) {
 				input(writeIndex) = WriteIndexInfo<writeIndex>::size;
 				return false;
 			}
 		};
 	};
 
-	WriteDerefType nestingSizes() const {
-		WriteDerefType s;
-		ForLoop<0, numNestings, AssignWriteSize>::exec(s);
-		return s;
-	};
-	
 	//equality
 
 	template<typename T>

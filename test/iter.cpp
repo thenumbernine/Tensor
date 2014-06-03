@@ -17,6 +17,20 @@ int main() {
 	TEST_EQ(Tensor<Real COMMA Symmetric<Upper<3> COMMA Upper<3>>>::numNestings, 1);
 	TEST_EQ(Tensor<Real COMMA Symmetric<Upper<3> COMMA Upper<3>>>::WriteIndexInfo<0>::size, 6);	//3*(3+1)/2
 
+	//write iterator test
+	{
+		Tensor<Real, Symmetric<Upper<2>, Upper<2>>> s([&](Vector<int,2> i){
+			return Real(i(0) + 2 * i(1));
+		});
+		TEST_EQ(s(0,0), 0);
+		TEST_EQ(s(0,1), 1);
+		TEST_EQ(s(1,1), 3);
+		
+		//would be '0' if write iter skipped a mem address present in the matrix
+		//would be '2' if write iter was traversing a non-symmetric matrix
+		TEST_EQ(s(1,0), 1);	
+	}
+
 	{
 		Tensor<Real, Upper<3>> a(1);
 		Tensor<Real, Lower<3>> b(2);
