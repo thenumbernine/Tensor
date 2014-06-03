@@ -509,16 +509,43 @@ struct Tensor {
 	operator BodyType&() { return body; }
 	operator const BodyType&() const { return body; }
 
-	//template<typename... Rest>
-	//IndexAccess<Tensor> operator()(Index first, Rest... rest) {
-	//	return IndexAccess<Tensor>(this, first, rest);
-	//}
+	//index assignment
+	//t(i,j) = t(j,i) etc
 
-	//keep it from getting to the base case () where it will interfere with the int and Vector<int> operator()'s
+	template<int offset, typename... Rest>
+	struct BuildIndex;
+	
+	template<int offset, typename... Rest>
+	struct BuildIndex<offset, Index, Rest...> {
+		static void exec(Vector<Index*, rank> &indexes, Index &next, Rest & ... rest) {
+			indexes(offset) = &next;
+			BuildIndex<offset+1, Rest...>::exec(indexes, rest...);
+		}
+	};
+
+	template<int offset>
+	struct BuildIndex<offset, Index> {
+		static void exec(Vector<Index*, rank> &indexes, Index &last) {
+			static_assert(offset == rank-1, "didn't provide enough arguments for dereference");
+			indexes(offset) = &last;
+		}
+	};
+
+	template<typename... Rest>
+	IndexAccess<Tensor> operator()(Index &first, Rest & ... rest) {
+		Vector<Index*, rank> indexes;
+		BuildIndex<0, Index, Rest...>::exec(indexes, first, rest...);
+		return IndexAccess<Tensor>(this, indexes);
+	}
+
+	//base case
 	IndexAccess<Tensor> operator()(Index &index) {
-		return IndexAccess<Tensor>(this, &index);
+		Vector<Index*, rank> indexes;
+		indexes(0) = &index;
+		return IndexAccess<Tensor>(this, indexes);
 	}
 };
+
 
 template<typename Type, typename... Args>
 std::ostream &operator<<(std::ostream &o, const Tensor<Type, Args...> &t) {

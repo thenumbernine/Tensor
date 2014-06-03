@@ -14,8 +14,7 @@ struct GenericSymmetricMatrix : public GenericDenseMatrix<Type_, dim_, ScalarTyp
 	typedef typename Parent::ScalarType ScalarType;
 	enum { size = Parent::size };
 
-	GenericSymmetricMatrix() : Parent() {}
-	GenericSymmetricMatrix(const Child &a) : Parent(a) {}
+	using Parent::Parent;
 
 	/*
 	math-index: i is the row, j is the column

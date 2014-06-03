@@ -72,8 +72,7 @@ struct GenericAntisymmetricMatrix : public GenericDenseMatrix<Type_, dim_, Scala
 	typedef AntisymmetricMatrixAccessor<Type_, Child> Accessor;
 	typedef AntisymmetricMatrixAccessorConst<Type_, Child> AccessorConst;
 
-	GenericAntisymmetricMatrix() : Parent() {}
-	GenericAntisymmetricMatrix(const Child &a) : Parent(a) {}
+	using Parent::Parent;
 	
 	//index access
 	Accessor operator()(int i, int j) {

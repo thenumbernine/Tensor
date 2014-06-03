@@ -13,9 +13,8 @@ struct GenericRank1 {
 	template<typename InnerType, typename ScalarType>
 	struct Body : public GenericVector<InnerType, dim, ScalarType, Body<InnerType, ScalarType>> {
 		typedef GenericVector<InnerType, dim, ScalarType, Body<InnerType, ScalarType>> Parent;
-		Body() : Parent() {}
-		Body(const Body &b) : Parent(b) {}
-		Body(const InnerType &t) : Parent(t) {}
+		
+		using Parent::Parent;
 
 		InnerType &operator()(const Vector<int,1> &deref) { return Parent::v[deref(0)]; }
 		const InnerType &operator()(const Vector<int,1> &deref) const { return Parent::v[deref(0)]; }

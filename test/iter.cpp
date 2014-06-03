@@ -29,13 +29,24 @@ int main() {
 
 		TEST_EQ(a, Tensor<Real COMMA Upper<3>>(2));
 
-		static_assert(std::is_same<Tensor<Real, Upper<3>, Upper<3>>::DerefType, Vector<int,2>>::value, "values aren't same");
+		//make sure 2D swizzling works
 		Index j;
-		Tensor<Real, Upper<3>, Upper<3>> m(
-		[&](Vector<int,2> i) -> Real {
-			return Real(i(0) == i(1));
-		});
-		//m(i,j) = m(j,i); 
+		Tensor<Real, Upper<3>, Upper<3>> m;
+		m(1,0) = 1;
+		ECHO(m);
+		m(i,j) = m(j,i);
+		TEST_EQ(m(0, 1), 1);	
+		ECHO(m);
+
+		//make sure 3D swizzling works
+		//this verifies the mapping between indexes in tensor assignment (since the 2D case is always a cycle of at most period 2, i.e. its own inverse)
+		Index k;
+		Tensor<Real, Upper<3>, Upper<3>, Upper<3>> s;
+		s(0,1,0) = 1;
+		ECHO(s);
+		s(i,j,k) = s(j,k,i);	//s(0,0,1) = s(0,1,0)
+		TEST_EQ(s(0,0,1), 1);
+		ECHO(s);
 	}
 }
 

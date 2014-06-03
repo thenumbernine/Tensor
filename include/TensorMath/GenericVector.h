@@ -1,7 +1,7 @@
 #pragma once
 
-#include <math.h>	//sqrt
 #include "TensorMath/GenericArray.h"
+#include <math.h>	//sqrt
 
 /*
 adds int-based indexing and vector-vector ops to the array ops
@@ -15,9 +15,16 @@ struct GenericVector : public GenericArray<Type_, size_, ScalarType_, Child> {
 	typedef typename Parent::ScalarType ScalarType;
 
 	//inherited constructors
+	//using Parent::Parent;
 	GenericVector() : Parent() {}
 	GenericVector(const Child &a) : Parent(a) {}
 	GenericVector(const Type &x) : Parent(x) {}
+
+	GenericVector(std::function<Type(int)> &f) {
+		for (int i = 0; i < size; ++i) {
+			Parent::v[i] = f(i);
+		}
+	}
 
 	//specific dimension initializers
 	GenericVector(const Type &x, const Type &y) {

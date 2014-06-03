@@ -15,12 +15,7 @@ struct Vector : public GenericVector<Type_, dim_, Type_, Vector<Type_, dim_> > {
 	typedef typename Parent::ScalarType ScalarType;
 
 	//inherited constructors
-	Vector() : Parent() {}
-	Vector(const Vector &a) : Parent(a) {}
-	Vector(const Type &x) : Parent(x) {}
-	Vector(const Type &x, const Type &y) : Parent(x,y) {}
-	Vector(const Type &x, const Type &y, const Type &z) : Parent(x,y,z) {}
-	Vector(const Type &x, const Type &y, const Type &z, const Type &w) : Parent(x,y,z,w) {}
+	using Parent::Parent;
 
 	template<typename Type2>
 	operator Vector<Type2,dim>() const {
