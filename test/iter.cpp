@@ -1,5 +1,5 @@
 #include "Tensor/Tensor.h"
-#include "defs.h"
+#include "Common/Test.h"
 #include <algorithm>
 
 using namespace Tensor;
@@ -44,19 +44,23 @@ int main() {
 		a(i) = b(i);
 
 		TEST_EQ(a, Tensor<Real COMMA Upper<3>>(2));
-
+	}
+	
+	{
 		//make sure 2D swizzling works
-		Index j;
+		Index i, j;
 		Tensor<Real, Upper<3>, Upper<3>> m;
 		m(1,0) = 1;
 		ECHO(m);
 		m(i,j) = m(j,i);
 		TEST_EQ(m(0, 1), 1);	
 		ECHO(m);
+	}
 
+	{
 		//make sure 3D swizzling works
 		//this verifies the mapping between indexes in tensor assignment (since the 2D case is always a cycle of at most period 2, i.e. its own inverse)
-		Index k;
+		Index i, j, k;
 		Tensor<Real, Upper<3>, Upper<3>, Upper<3>> s;
 		s(0,1,0) = 1;
 		ECHO(s);
@@ -64,5 +68,25 @@ int main() {
 		TEST_EQ(s(0,0,1), 1);
 		ECHO(s);
 	}
-}
 
+#if 0
+	{
+		//arithemetic operations
+		Index i,j;
+		Tensor<Real, Upper<3>> b, c;
+		Tensor<Real, Upper<3>, Lower<3>> a;
+
+		//outer product
+		a(i,j) = b(i) * c(j);
+
+		//exterior product
+		a(i,j) = b(i) * c(j) - b(j) * c(i);
+
+		//inner product?
+		Real dot = (b(i) * c(i))();
+
+		//matrix multiplication
+		c(i) = a(i,j) * b(j);
+	}
+#endif
+}

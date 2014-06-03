@@ -1,6 +1,6 @@
 #include "Tensor/Tensor.h"
 //#include "Tensor/Inverse.h"
-#include "defs.h"
+#include "Common/Test.h"
 #include <iostream>
 
 using namespace Tensor;
@@ -24,6 +24,7 @@ void test_tensors() {
 	typedef double Real;
 	typedef Tensor<Real,Upper<3>> Vector;
 	Vector v;
+	
 	TEST_EQ(v.rank, 1);
 	TEST_EQ(v.size(), 3);
 	std::cout << "v^i = " << v << std::endl;

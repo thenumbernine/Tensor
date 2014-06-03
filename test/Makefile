@@ -11,6 +11,12 @@ LD=clang++
 LDFLAGS=
 
 all: $(DISTS)
+	@for file in $(DISTS); \
+	do \
+		if ! $$file; then \
+			break; \
+		fi; \
+	done;
 
 %.o: %.cpp ../include/Tensor/*
 	$(CC) $(CFLAGS) -o $@ $<

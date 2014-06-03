@@ -1,5 +1,5 @@
 #include "Tensor/Tensor.h"
-#include "defs.h"
+#include "Common/Test.h"
 #include <typeinfo>
 #include <iostream>
 

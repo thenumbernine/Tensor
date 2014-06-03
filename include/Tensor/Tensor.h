@@ -33,11 +33,6 @@ struct TensorStats<ScalarType_, Index_, Args...> {
 	//vector indexes contribute 1's, matrix (sym & antisym) contribute 2, etc
 	enum { rank = Index::rank + InnerType::rank };		
 	
-	//nestings of the tensor.
-	//number of InnerTypes deep we can go
-	//if it has two vector indexes then this gets 2.  if it has one sym mat then its 1, etc.
-	enum { numNestings = 1 + InnerType::numNestings };	
-
 	typedef typename Index::template Body<typename InnerType::BodyType, ScalarType> BodyType;
 	
 		//inductive cases
@@ -91,7 +86,6 @@ struct TensorStats<ScalarType_, Index_> {
 	typedef Index_ Index;
 	typedef TensorStats<ScalarType> InnerType;
 	enum { rank = Index::rank };
-	enum { numNestings = 1 };
 	
 	typedef typename Index::template Body<ScalarType, ScalarType> BodyType;
 
@@ -138,7 +132,6 @@ template<typename ScalarType_>
 struct TensorStats<ScalarType_> {
 	typedef ScalarType_ ScalarType;
 	enum { rank = 0 };
-	enum { numNestings = 0 };
 
 	typedef ScalarType BodyType;
 
@@ -192,11 +185,11 @@ struct IndexStats {
 };
 
 template<int writeIndex, typename TensorStats>
-struct WriteIndexStats {
+struct WriteIndexInfo {
 	enum {
 		size = If<writeIndex == 0,
 			typename TensorStats::BodyType,
-			WriteIndexStats<writeIndex - 1, typename TensorStats::InnerType>
+			WriteIndexInfo<writeIndex - 1, typename TensorStats::InnerType>
 		>::Type::size
 	};
 };
@@ -215,15 +208,16 @@ examples:
 	matrix (contravariant matrix):		tensor<double,upper<3>,upper<3>>
 	metric tensor (symmetric covariant matrix):	tensor<double, symmetric<lower<3>, lower<3>>>
 */
-template<typename ScalarType_, typename... Args>
+template<typename ScalarType_, typename... Args_>
 struct Tensor {
 	typedef ScalarType_ Type;
+	typedef TypeVector<Args_...> Args;
 
 	//TensorStats metaprogram calculates rank
 	//it pulls individual entries from the index args
 	//I could have the index args themselves do the calculation
 	// but that would mean making base-case specializations for each index class 
-	typedef TensorStats<ScalarType_, Args...> TensorStats;
+	typedef TensorStats<ScalarType_, Args_...> TensorStats;
 	typedef typename TensorStats::BodyType BodyType;
 
 	//used to get information per-index of the tensor
@@ -238,13 +232,13 @@ struct Tensor {
 	typedef Vector<int,rank> DerefType;
 
 	//number of args deep
-	enum { numNestings = TensorStats::numNestings };
+	enum { numNestings = Args::size };
 
 	//pulls a specific arg to get info from it
 	// so Tensor<Real, Upper<2>, Symmetric<Upper<3>, Upper<3>>> can call ::WriteIndexInfo<0>::size to get 2,
 	//  or call ::WriteIndexInfo<1>::size to get 6 = n*(n+1)/2 for n=3
 	template<int writeIndex>
-	using WriteIndexInfo = WriteIndexStats<writeIndex, TensorStats>;
+	using WriteIndexInfo = ::Tensor::WriteIndexInfo<writeIndex, TensorStats>;
 		
 	typedef Vector<int,numNestings> WriteDerefType;
 
@@ -276,10 +270,9 @@ struct Tensor {
 		bool operator!=(const iterator &b) const { return index != b.index; }
 	
 		struct Increment {
-			typedef iterator& Input;
 			template<int i>
 			struct Exec {
-				static bool exec(Input iter) {
+				static bool exec(iterator &iter) {
 					++iter.index(i);
 					if (iter.index(i) < IndexInfo<i>::dim) return true;
 					if (i < rank-1) iter.index(i) = 0;
@@ -320,10 +313,9 @@ struct Tensor {
 		bool operator!=(const const_iterator &b) const { return index != b.index; }
 	
 		struct Increment {
-			typedef const_iterator& Input;
 			template<int i>
 			struct Exec {
-				static bool exec(Input iter) {
+				static bool exec(const_iterator &iter) {
 					++iter.index(i);
 					if (iter.index(i) < IndexInfo<i>::dim) return true;
 					if (i < rank-1) iter.index(i) = 0;
@@ -369,10 +361,9 @@ struct Tensor {
 
 			//I could've for-loop'd this, but then I wouldn't have compile-time access to the write index size!
 			struct Increment {
-				typedef iterator& Input;
 				template<int i>
 				struct Exec {
-					static bool exec(Input iter) {
+					static bool exec(iterator& iter) {
 						++iter.writeIndex(i);
 						if (iter.writeIndex(i) < WriteIndexInfo<i>::size) return true;
 						if (i < numNestings-1) iter.writeIndex(i) = 0;
@@ -493,11 +484,9 @@ struct Tensor {
 	Tensor &operator/=(const Type &b) { body /= b; return *this; }
 
 	struct AssignSize {
-		typedef DerefType& Input;
-
 		template<int index>
 		struct Exec {
-			static bool exec(Input input) {
+			static bool exec(DerefType& input) {
 				//now to make this nested type in Tensor ...
 				input(index) = IndexInfo<index>::dim;
 				return false;
