@@ -1,7 +1,9 @@
 #pragma once
 
 #include "TensorMath/Meta.h"
-#include "TensorMath/TensorIndex.h"	//not because tensor.h needs it, but because anyone using tensor.h needs it
+#include "TensorMath/IndexPlace.h"	//not because tensor.h needs it, but because anyone using tensor.h needs it
+#include "TensorMath/Index.h"
+#include <functional>
 
 /*
 new experimental template-driven tensor class
@@ -23,9 +25,16 @@ template<typename ScalarType_, typename Index_, typename... Args>
 struct TensorStats<ScalarType_, Index_, Args...> {
 	typedef ScalarType_ ScalarType;
 	typedef Index_ Index;
-	enum { rank = Index::rank + TensorStats<ScalarType, Args...>::rank };
-
 	typedef TensorStats<ScalarType, Args...> InnerType;
+	
+	//rank of the tensor.
+	//vector indexes contribute 1's, matrix (sym & antisym) contribute 2, etc
+	enum { rank = Index::rank + InnerType::rank };		
+	
+	//nestings of the tensor.
+	//number of InnerTypes deep we can go
+	//if it has two vector indexes then this gets 2.  if it has one sym mat then its 1, etc.
+	enum { numNestings = 1 + InnerType::numNestings };	
 
 	typedef typename Index::template Body<typename InnerType::BodyType, ScalarType> BodyType;
 	
@@ -49,15 +58,38 @@ struct TensorStats<ScalarType_, Index_, Args...> {
 		}
 		return InnerType::template get_const<totalRank, offset + Index::rank>(body(subderef), deref);
 	}
+
+	//convert a write index (sizes by nesting depth, index values form 0 to memory sizes)
+	// into read index (sized by rank, index values from 0 to index dimension)
+	template<
+		int totalRank,
+		int currentRank,
+		int numNestings, 
+		int currentNesting>
+	static void getReadIndexForWriteIndex(
+		Vector<int, totalRank> &index,
+		const Vector<int, numNestings> &writeIndex)
+	{
+		Vector<int,Index::rank> subIndex = BodyType::getReadIndexForWriteIndex(writeIndex(currentNesting));
+		for (int i = 0; i < Index::rank; ++i) {
+			index(i + currentRank) = subIndex(i);
+		}
+		InnerType::template getReadIndexForWriteIndex<
+			totalRank,
+			currentRank + Index::rank, 
+			numNestings, 
+			currentNesting + 1>
+				(index, writeIndex);
+	}
 };
 
 template<typename ScalarType_, typename Index_>
 struct TensorStats<ScalarType_, Index_> {
 	typedef ScalarType_ ScalarType;
 	typedef Index_ Index;
-	enum { rank = Index::rank };
-
 	typedef TensorStats<ScalarType> InnerType;
+	enum { rank = Index::rank };
+	enum { numNestings = 1 };
 	
 	typedef typename Index::template Body<ScalarType, ScalarType> BodyType;
 
@@ -81,6 +113,21 @@ struct TensorStats<ScalarType_, Index_> {
 		}
 		return body(subderef);
 	}
+
+	template<
+		int totalRank,
+		int currentRank,
+		int numNestings, 
+		int currentNesting>
+	static void getReadIndexForWriteIndex(
+		Vector<int, totalRank> &index,
+		const Vector<int, numNestings> &writeIndex)
+	{
+		Vector<int,Index::rank> subIndex = BodyType::getReadIndexForWriteIndex(writeIndex(currentNesting));
+		for (int i = 0; i < Index::rank; ++i) {
+			index(i + currentRank) = subIndex(i);
+		}	
+	}
 };
 
 //appease the vararg specialization recursive reference
@@ -89,6 +136,7 @@ template<typename ScalarType_>
 struct TensorStats<ScalarType_> {
 	typedef ScalarType_ ScalarType;
 	enum { rank = 0 };
+	enum { numNestings = 0 };
 
 	typedef ScalarType BodyType;
 
@@ -115,6 +163,9 @@ struct TensorStats<ScalarType_> {
 	
 	template<int totalRank, int offset>
 	static const ScalarType &get_const(const BodyType &body, const Vector<int,totalRank> &deref) {}
+
+	template<int totalRank, int currentRank, int numNestings, int currentNesting>
+	static void getReadIndexForWriteIndex(Vector<int, totalRank> &index, const Vector<int, numNestings> &writeIndex) {}
 };
 
 //want to compile-time assign indexes
@@ -129,7 +180,20 @@ struct AssignSize {
 	struct Exec {
 		static void exec(Input &input) {
 			//now to make this nested type in Tensor ...
-			input(index) = Tensor::template Index<index>::dim;
+			input(index) = Tensor::template IndexInfo<index>::dim;
+		}
+	};
+};
+
+template<typename Tensor_>
+struct AssignWriteSize {
+	typedef Tensor_ Tensor;
+	typedef typename Tensor::WriteDerefType Input;
+
+	template<int writeIndex>
+	struct Exec {
+		static void exec(Input &input) {
+			input(writeIndex) = Tensor::template WriteIndexInfo<writeIndex>::size;
 		}
 	};
 };
@@ -152,6 +216,16 @@ struct IndexStats {
 			typename TensorStats::Index,
 			IndexStats<index - TensorStats::Index::rank, typename TensorStats::InnerType>
 		>::Type::dim
+	};
+};
+
+template<int writeIndex, typename TensorStats>
+struct WriteIndexStats {
+	enum {
+		size = If<writeIndex == 0,
+			typename TensorStats::BodyType,
+			WriteIndexStats<writeIndex - 1, typename TensorStats::InnerType>
+		>::Type::size
 	};
 };
 
@@ -182,77 +256,29 @@ struct Tensor {
 
 	//used to get information per-index of the tensor
 	// currently supports: dim
-	// so Tensor<Real, Upper<3>, Upper<3>> can call ::Index<0>::dim and ::Index<1>::dim to get 3's back
+	// so Tensor<Real, Upper<2>, Symmetric<Upper<3>, Upper<3>>> can call ::IndexInfo<0>::dim to get 2, 
+	//  or call ::IndexInfo<1>::dim or ::IndexInfo<2>::dim to get 3
 	template<int index>
-	using Index = ::IndexStats<index, TensorStats>;
+	using IndexInfo = ::IndexStats<index, TensorStats>;
 
 	enum { rank = TensorStats::rank };
 	
-	typedef Vector<int,rank> DerefType;
+	typedef ::Vector<int,rank> DerefType;
 
-	Tensor() {}
-	Tensor(const BodyType &body_) : body(body_) {}
-	Tensor(const Tensor &t) : body(t.body) {}
+	//number of args deep
+	enum { numNestings = TensorStats::numNestings };
+
+	//pulls a specific arg to get info from it
+	// so Tensor<Real, Upper<2>, Symmetric<Upper<3>, Upper<3>>> can call ::WriteIndexInfo<0>::size to get 2,
+	//  or call ::WriteIndexInfo<1>::size to get 6 = n*(n+1)/2 for n=3
+	template<int writeIndex>
+	using WriteIndexInfo = ::WriteIndexStats<writeIndex, TensorStats>;
+		
+	typedef ::Vector<int,numNestings> WriteDerefType;
+
 	
-	/*
-	Tensor<real, upper<3>> v;
-	v.body(0) will return of type real
-
-	Tensor<real, upper<3>, upper<4>> v;
-	v.body(0) will return of type upper<4>::body<real, real>
-	*/
-	BodyType body;
-
-	//no way to specify a typed list of arguments
-	// (solving that problem would give us arbitrary parameter constructors for vector classes)
-	//so here's the special case instances for up to N=4
-	typename TensorStats::InnerType::BodyType &operator()(int i) { return body(i); }
-	const typename TensorStats::InnerType::BodyType &operator()(int i) const { return body(i); }
-	//...and I haven't implemented these yet ...
-	Type &operator()(int i, int j) { return TensorStats::template get<2,0>(body, Vector<int,2>(i, j)); }
-	const Type &operator()(int i, int j) const { return TensorStats::template get_const<2,0>(body, Vector<int,2>(i, j)); }
-	Type &operator()(int i, int j, int k) { return TensorStats::template get<3,0>(body, Vector<int,3>(i, j, k)); }
-	const Type &operator()(int i, int j, int k) const { return TensorStats::template get_const<3,0>(body, Vector<int,3>(i, j, k)); }
-	Type &operator()(int i, int j, int k, int l) { return TensorStats::template get<4,0>(body, Vector<int,4>(i, j, k, l)); }
-	const Type &operator()(int i, int j, int k, int l) const { return TensorStats::template get_const<4,0>(body, Vector<int,4>(i, j, k, l)); }
+	//read iterator
 	
-	Type &operator()(const DerefType &deref) { return TensorStats::template get<rank,0>(body, deref); }
-	const Type &operator()(const DerefType &deref) const { return TensorStats::template get_const<rank,0>(body, deref); }
-
-	Tensor operator-() const { return Tensor(-body); }
-	Tensor operator+(const Tensor &b) const { return Tensor(body + b.body); }
-	Tensor operator-(const Tensor &b) const { return Tensor(body - b.body); }
-	Tensor operator*(const Type &b) const { return Tensor(body * b); }
-	Tensor operator/(const Type &b) const { return Tensor(body / b); }
-	Tensor &operator+=(const Tensor &b) { body += b.body; return *this; }
-	Tensor &operator-=(const Tensor &b) { body -= b.body; return *this; }
-	Tensor &operator*=(const Type &b) { body *= b; return *this; }
-	Tensor &operator/=(const Type &b) { body /= b; return *this; }
-
-	DerefType size() const {
-		DerefType s;
-		//metaprogram-driven
-		ForLoop<0, rank, AssignSize<Tensor>>::exec(s);
-		return s;
-	};
-
-	/*
-	casting-to-body operations
-	
-	these are currently used when someone dereferences a portion of the tensor like so:
-	Tensor<real, lower<dim>, lower<dim>> diff;
-	diff(i) = (cell[index+dxi(i)].w(j) - cell[index-dxi(i)].w(j)) / (2 * dx(i))
-	
-	this is kind of abusive of the whole class.
-	other options to retain this ability include wrapping returned tensor portions in tensor-like(-subclass?) accessors.
-	
-	the benefit of doing this is to allow assignments on tensors that have arbitrary rank.
-	if I were to remove this then I would need some sort of alternative to do just that.
-	this is where better iterators could come into play.
-	*/
-	operator BodyType&() { return body; }
-	operator const BodyType&() const { return body; }
-
 	//maybe I should put this in body
 	//and then use a sort of nested iterator so it doesn't cover redundant elements in symmetric indexes 
 	struct iterator {
@@ -327,6 +353,171 @@ struct Tensor {
 		return i;
 	}
 
+	//iterating across data members to be written
+
+	struct Write {
+		
+		struct iterator {
+			Tensor *parent;
+			
+			//this is an array as deep as the number of indexes that the tensor was built with
+			//each value of the array iterates from 0 to that nesting's type's ::size
+			//The ::size returns the number of elements used to represent the structure,
+			// so for a 3x3 symmetric matrix ::size would give 6, for n*(n+1)/2 elements used. 
+			WriteDerefType writeIndex;
+			
+			iterator() : parent(NULL) {}
+			iterator(Tensor *parent_) : parent(parent_) {}
+			iterator(const iterator &iter) : parent(iter.parent), writeIndex(iter.writeIndex) {}
+			
+			bool operator==(const iterator &b) const { return writeIndex == b.writeIndex; }
+			bool operator!=(const iterator &b) const { return writeIndex != b.writeIndex; }
+		
+			iterator &operator++() {
+				//allow the last index to overflow for sake of comparing it to end
+				for (int i = 0; i < numNestings; ++i) {	
+					++writeIndex(i);
+					if (writeIndex(i) < parent->nestingSizes()(i)) break;
+					if (i < numNestings-1) writeIndex(i) = 0;
+				}
+				return *this;
+			}
+
+			DerefType operator*() {
+				return getReadIndexForWriteIndex(writeIndex);
+			}
+
+			DerefType getReadIndex() { return getReadIndexForWriteIndex(writeIndex); }
+
+			static DerefType getReadIndexForWriteIndex(const WriteDerefType writeIndex) {
+				DerefType index;
+				TensorStats::template getReadIndexForWriteIndex<rank, 0, numNestings, 0>(index, writeIndex);
+				return index;
+			}
+		};
+
+		Tensor *parent;
+		Write(Tensor *parent_) : parent(parent_) {}
+
+		iterator begin() {
+			iterator i(parent);
+			return i;
+		}
+
+		iterator end() {
+			iterator i(parent);
+			i.writeIndex(numNestings-1) = WriteIndexInfo<numNestings-1>::size;
+			return i;
+		}
+	};
+	
+	Write write() {
+		return Write(this);
+	}
+
+	//constructors
+
+	Tensor() {}
+	Tensor(const BodyType &body_) : body(body_) {}
+	Tensor(const Tensor &t) : body(t.body) {}
+
+	Tensor(std::function<Type(DerefType)> f) {
+		typename Write::iterator end = write().end();
+		for (typename Write::iterator i = write().begin(); i != end; ++i) {
+			DerefType index = i.getReadIndex();
+			(*this)(index) = f(index);
+		}
+	}
+	
+	/*
+	Tensor<real, upper<3>> v;
+	v.body(0) will return of type real
+
+	Tensor<real, upper<3>, upper<4>> v;
+	v.body(0) will return of type upper<4>::body<real, real>
+	*/
+	BodyType body;
+
+	//no way to specify a typed list of arguments
+	// (solving that problem would give us arbitrary parameter constructors for vector classes)
+	//so here's the special case instances for up to N=4
+	typename TensorStats::InnerType::BodyType &operator()(int i) { return body(i); }
+	const typename TensorStats::InnerType::BodyType &operator()(int i) const { return body(i); }
+	//...and I haven't implemented these yet ...
+	Type &operator()(int i, int j) { return TensorStats::template get<2,0>(body, Vector<int,2>(i, j)); }
+	const Type &operator()(int i, int j) const { return TensorStats::template get_const<2,0>(body, Vector<int,2>(i, j)); }
+	Type &operator()(int i, int j, int k) { return TensorStats::template get<3,0>(body, Vector<int,3>(i, j, k)); }
+	const Type &operator()(int i, int j, int k) const { return TensorStats::template get_const<3,0>(body, Vector<int,3>(i, j, k)); }
+	Type &operator()(int i, int j, int k, int l) { return TensorStats::template get<4,0>(body, Vector<int,4>(i, j, k, l)); }
+	const Type &operator()(int i, int j, int k, int l) const { return TensorStats::template get_const<4,0>(body, Vector<int,4>(i, j, k, l)); }
+	
+	Type &operator()(const DerefType &deref) { return TensorStats::template get<rank,0>(body, deref); }
+	const Type &operator()(const DerefType &deref) const { return TensorStats::template get_const<rank,0>(body, deref); }
+
+	Tensor operator-() const { return Tensor(-body); }
+	Tensor operator+(const Tensor &b) const { return Tensor(body + b.body); }
+	Tensor operator-(const Tensor &b) const { return Tensor(body - b.body); }
+	Tensor operator*(const Type &b) const { return Tensor(body * b); }
+	Tensor operator/(const Type &b) const { return Tensor(body / b); }
+	Tensor &operator+=(const Tensor &b) { body += b.body; return *this; }
+	Tensor &operator-=(const Tensor &b) { body -= b.body; return *this; }
+	Tensor &operator*=(const Type &b) { body *= b; return *this; }
+	Tensor &operator/=(const Type &b) { body /= b; return *this; }
+
+	DerefType size() const {
+		DerefType s;
+		//metaprogram-driven
+		ForLoop<0, rank, AssignSize<Tensor>>::exec(s);
+		return s;
+	};
+
+	WriteDerefType nestingSizes() const {
+		WriteDerefType s;
+		ForLoop<0, numNestings, AssignWriteSize<Tensor>>::exec(s);
+		return s;
+	};
+
+	template<typename T>
+	bool operator==(const T &t) const {
+		if (rank != t.rank) return false;
+		if (size() != t.size()) return false;
+		for (const_iterator i = begin(); i != end(); ++i) {
+			if (*i != t(i.index)) return false;
+		}
+		return true;
+	}
+
+	template<typename T>
+	bool operator!=(const T &t) const {
+		return !operator==(t);
+	}
+
+	/*
+	casting-to-body operations
+	
+	these are currently used when someone dereferences a portion of the tensor like so:
+	Tensor<real, lower<dim>, lower<dim>> diff;
+	diff(i) = (cell[index+dxi(i)].w(j) - cell[index-dxi(i)].w(j)) / (2 * dx(i))
+	
+	this is kind of abusive of the whole class.
+	other options to retain this ability include wrapping returned tensor portions in tensor-like(-subclass?) accessors.
+	
+	the benefit of doing this is to allow assignments on tensors that have arbitrary rank.
+	if I were to remove this then I would need some sort of alternative to do just that.
+	this is where better iterators could come into play.
+	*/
+	operator BodyType&() { return body; }
+	operator const BodyType&() const { return body; }
+
+	//template<typename... Rest>
+	//IndexAccess<Tensor> operator()(Index first, Rest... rest) {
+	//	return IndexAccess<Tensor>(this, first, rest);
+	//}
+
+	//keep it from getting to the base case () where it will interfere with the int and Vector<int> operator()'s
+	IndexAccess<Tensor> operator()(Index &index) {
+		return IndexAccess<Tensor>(this, &index);
+	}
 };
 
 template<typename Type, typename... Args>

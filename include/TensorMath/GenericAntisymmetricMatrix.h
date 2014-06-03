@@ -100,6 +100,27 @@ struct GenericAntisymmetricMatrix : public GenericDenseMatrix<Type_, dim_, Scala
 		//i == i: return i * (i+1)/2 + j
 		return i * (i + 1) / 2 + j;
 	}
+/*
+  i->
+j    0 1 2
+|
+v 0  0 1 3 6
+  1    2 4 7
+  2      5 8
+           9
+*/
+
+	static Vector<int,2> getReadIndexForWriteIndex(int writeIndex) {
+		Vector<int,2> readIndex;
+		int w = writeIndex+1;
+		for (int i = 1; w > 0; ++i) {
+			++readIndex(0);
+			w -= i;
+		}
+		--readIndex(0);
+		readIndex(1) = writeIndex - readIndex(0) * (readIndex(0) + 1) / 2;
+		return readIndex;
+	}
 };
 
 
