@@ -36,7 +36,8 @@ struct IndexAccess {
 	template<typename TensorB>
 	IndexAccess &operator=(const IndexAccess<TensorB> &read) {
 		static_assert(TensorB::rank == rank, "tensor assignment of differing ranks");
-		
+
+		//TODO: this at compile time
 		typedef typename Tensor::DerefType DerefType;
 		DerefType dstForSrcIndex;
 		for (int j = 0; j < rank; ++j) {

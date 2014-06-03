@@ -438,21 +438,49 @@ struct Tensor {
 	*/
 	BodyType body;
 
-	//no way to specify a typed list of arguments
-	// (solving that problem would give us arbitrary parameter constructors for vector classes)
-	//so here's the special case instances for up to N=4
-	typename TensorStats::InnerType::BodyType &operator()(int i) { return body(i); }
-	const typename TensorStats::InnerType::BodyType &operator()(int i) const { return body(i); }
-	//...and I haven't implemented these yet ...
-	Type &operator()(int i, int j) { return TensorStats::template get<2,0>(body, Vector<int,2>(i, j)); }
-	const Type &operator()(int i, int j) const { return TensorStats::template get_const<2,0>(body, Vector<int,2>(i, j)); }
-	Type &operator()(int i, int j, int k) { return TensorStats::template get<3,0>(body, Vector<int,3>(i, j, k)); }
-	const Type &operator()(int i, int j, int k) const { return TensorStats::template get_const<3,0>(body, Vector<int,3>(i, j, k)); }
-	Type &operator()(int i, int j, int k, int l) { return TensorStats::template get<4,0>(body, Vector<int,4>(i, j, k, l)); }
-	const Type &operator()(int i, int j, int k, int l) const { return TensorStats::template get_const<4,0>(body, Vector<int,4>(i, j, k, l)); }
+	// dereference by vararg ints
+
+	template<int offset, typename... Rest>
+	struct BuildDeref;
+
+	template<int offset, typename... Rest>
+	struct BuildDeref<offset, int, Rest...> {
+		static DerefType exec(int next, Rest ... rest) {
+			DerefType index = BuildDeref<offset+1, Rest...>::exec(rest...);
+			index(offset) = next;
+			return index;
+		}
+	};
+
+	template<int offset>
+	struct BuildDeref<offset, int> {
+		static DerefType exec(int last) {
+			static_assert(offset == rank-1, "didn't provide enough arguments for dereference");
+			DerefType index;
+			index(offset) = last;
+			return index;
+		}
+	};
+
+	template<typename... Rest>
+	Type &operator()(int first, Rest... rest) {
+		return (*this)(BuildDeref<0, int, Rest...>::exec(first, rest...));
+	}
+
+	template<typename... Rest>
+	const Type &operator()(int first, Rest... rest) const {
+		return (*this)(BuildDeref<0, int, Rest...>::exec(first, rest...));
+	}
+
+	//dereference by a vector of ints
+
+	Type &operator()(const DerefType &deref) { 
+		return TensorStats::template get<rank,0>(body, deref);
+	}
 	
-	Type &operator()(const DerefType &deref) { return TensorStats::template get<rank,0>(body, deref); }
-	const Type &operator()(const DerefType &deref) const { return TensorStats::template get_const<rank,0>(body, deref); }
+	const Type &operator()(const DerefType &deref) const { 
+		return TensorStats::template get_const<rank,0>(body, deref);
+	}
 
 	Tensor operator-() const { return Tensor(-body); }
 	Tensor operator+(const Tensor &b) const { return Tensor(body + b.body); }
@@ -517,32 +545,26 @@ struct Tensor {
 	
 	template<int offset, typename... Rest>
 	struct BuildIndex<offset, Index, Rest...> {
-		static void exec(Vector<Index*, rank> &indexes, Index &next, Rest & ... rest) {
+		static Vector<Index*, rank> exec(Index &next, Rest & ... rest) {
+			Vector<Index*, rank> indexes = BuildIndex<offset+1, Rest...>::exec(rest...);
 			indexes(offset) = &next;
-			BuildIndex<offset+1, Rest...>::exec(indexes, rest...);
+			return indexes;
 		}
 	};
 
 	template<int offset>
 	struct BuildIndex<offset, Index> {
-		static void exec(Vector<Index*, rank> &indexes, Index &last) {
-			static_assert(offset == rank-1, "didn't provide enough arguments for dereference");
+		static Vector<Index*, rank> exec(Index &last) {
+			static_assert(offset == rank-1, "didn't provide enough arguments for index operation");
+			Vector<Index*, rank> indexes;
 			indexes(offset) = &last;
+			return indexes;
 		}
 	};
 
 	template<typename... Rest>
 	IndexAccess<Tensor> operator()(Index &first, Rest & ... rest) {
-		Vector<Index*, rank> indexes;
-		BuildIndex<0, Index, Rest...>::exec(indexes, first, rest...);
-		return IndexAccess<Tensor>(this, indexes);
-	}
-
-	//base case
-	IndexAccess<Tensor> operator()(Index &index) {
-		Vector<Index*, rank> indexes;
-		indexes(0) = &index;
-		return IndexAccess<Tensor>(this, indexes);
+		return IndexAccess<Tensor>(this, BuildIndex<0, Index, Rest...>::exec(first, rest...));
 	}
 };
 
