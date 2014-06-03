@@ -1,7 +1,9 @@
 #pragma once
 
-#include "TensorMath/GenericVector.h"
-#include "TensorMath/Vector.h"
+#include "Tensor/GenericVector.h"
+#include "Tensor/Vector.h"
+
+namespace Tensor {
 
 template<int dim_>
 struct GenericRank1 {
@@ -22,5 +24,7 @@ struct GenericRank1 {
 		//formality for decoding write indexes
 		static Vector<int,1> getReadIndexForWriteIndex(int writeIndex) { return Vector<int,1>(writeIndex); }
 	};
+};
+
 };
 

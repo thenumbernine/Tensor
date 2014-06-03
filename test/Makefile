@@ -12,7 +12,7 @@ LDFLAGS=
 
 all: $(DISTS)
 
-%.o: %.cpp ../include/TensorMath/*
+%.o: %.cpp ../include/Tensor/*
 	$(CC) $(CFLAGS) -o $@ $<
 
 %.out: %.o

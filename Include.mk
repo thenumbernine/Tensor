@@ -1,6 +1,6 @@
-# anyone who needs to use TensorMath should include this
+# anyone who needs to use Tensor should include this
 
-TENSORMATH_PATH:=$(dir $(lastword $(MAKEFILE_LIST)))
+TENSOR_PATH:=$(dir $(lastword $(MAKEFILE_LIST)))
 
-INCLUDE+=$(TENSORMATH_PATH)include
+INCLUDE+=$(TENSOR_PATH)include
 

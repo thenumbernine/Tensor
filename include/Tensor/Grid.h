@@ -1,9 +1,11 @@
 #pragma once
 
-#include "TensorMath/Vector.h"
+#include "Tensor/Vector.h"
 #include "Common/Exception.h"
-#include <assert.h>
+#include <cassert>
 #include <algorithm>
+
+namespace Tensor {
 
 //TODO move RangeObj iterator with Grid iterator
 template<int rank_>
@@ -135,7 +137,6 @@ struct Grid {
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
 				throw Common::Exception() << "size is " << size << " but dereference is " << deref;
-				assert(false);
 			}
 		}
 #endif
@@ -148,7 +149,6 @@ struct Grid {
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
 				throw Common::Exception() << "size is " << size << " but dereference is " << deref;
-				assert(false);
 			}
 		}
 #endif
@@ -161,5 +161,7 @@ struct Grid {
 	Type *end() { return v + size.volume(); }
 	const Type *begin() const { return v; }
 	const Type *end() const { return v + size.volume(); }
+};
+
 };
 

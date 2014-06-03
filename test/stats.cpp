@@ -1,7 +1,9 @@
-#include "TensorMath/Tensor.h"
+#include "Tensor/Tensor.h"
 #include "defs.h"
 #include <typeinfo>
 #include <iostream>
+
+using namespace Tensor;
 
 #define COMMA ,
 int main() {

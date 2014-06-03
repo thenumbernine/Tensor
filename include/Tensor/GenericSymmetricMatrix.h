@@ -1,6 +1,8 @@
 #pragma once
 
-#include "TensorMath/GenericDenseMatrix.h"
+#include "Tensor/GenericDenseMatrix.h"
+
+namespace Tensor {
 
 /*
 GenericSymmetricMatrix(i,j) == GenericSymmetricMatrix(j,i)
@@ -41,5 +43,7 @@ struct GenericSymmetricMatrix : public GenericDenseMatrix<Type_, dim_, ScalarTyp
 		readIndex(1) = writeIndex - readIndex(0) * (readIndex(0) + 1) / 2;
 		return readIndex;
 	}
+};
+
 };
 

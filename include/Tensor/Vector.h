@@ -1,7 +1,9 @@
 #pragma once
 
+#include "Tensor/GenericVector.h"
 #include <ostream>
-#include "TensorMath/GenericVector.h"
+
+namespace Tensor {
 
 /*
 vector class for fixed-size templated dimension (i.e. size) and type
@@ -38,4 +40,6 @@ std::ostream &operator<<(std::ostream &o, const Vector<Type,dim> &t) {
 	o << ")";
 	return o;
 }
+
+};
 

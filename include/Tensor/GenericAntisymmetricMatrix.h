@@ -1,6 +1,8 @@
 #pragma once
 
-#include "TensorMath/GenericDenseMatrix.h"
+#include "Tensor/GenericDenseMatrix.h"
+
+namespace Tensor {
 
 template<typename Type, typename OwnerType>
 struct AntisymmetricMatrixAccessor {
@@ -122,4 +124,5 @@ v 0  0 1 3 6
 	}
 };
 
+};
 

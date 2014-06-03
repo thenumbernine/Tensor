@@ -1,6 +1,8 @@
-#include "TensorMath/Tensor.h"
+#include "Tensor/Tensor.h"
 #include "defs.h"
 #include <algorithm>
+
+using namespace Tensor;
 
 int main() {
 

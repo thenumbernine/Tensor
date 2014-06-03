@@ -1,7 +1,9 @@
-#include "TensorMath/Tensor.h"
-//#include "TensorMath/Inverse.h"
+#include "Tensor/Tensor.h"
+//#include "Tensor/Inverse.h"
 #include "defs.h"
 #include <iostream>
+
+using namespace Tensor;
 
 template<typename InputType>
 typename InputType::Type determinant33(const InputType &a) {

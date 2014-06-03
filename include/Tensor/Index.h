@@ -10,8 +10,12 @@ Index i,j;
 c(i) = a(i,j) * b(j) <-performs multiplication of matrix a and vector b
 */
 
-struct Index {};
 #include "Common/Exception.h"
+
+namespace Tensor {
+
+struct Index {};
+
 template<typename Tensor_>
 struct IndexAccess {
 	typedef Tensor_ Tensor;
@@ -89,4 +93,5 @@ IndexAccess<Tensor>::IndexAccess(const IndexAccess<Tensor> &read)
 	}
 }
 
+};
 

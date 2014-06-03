@@ -1,7 +1,9 @@
 #pragma once
 
-#include "TensorMath/crtp_cast.h"
-#include "TensorMath/clamp.h"
+#include "Tensor/clamp.h"
+#include "Common/crtp_cast.h"
+
+namespace Tensor {
 
 /*
 the 'parent' curious pattern whatever for generic_vector and generic_matrix
@@ -160,5 +162,7 @@ struct GenericArray {
 		}
 		return crtp_cast<Child>(*this);
 	}
+};
+
 };
 

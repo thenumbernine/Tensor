@@ -5,10 +5,12 @@ holds different indexes for tensors
 these are what go in the args... of the tensor class
 */
 
-#include "TensorMath/Vector.h"
-#include "TensorMath/GenericRank1.h"					//Upper, Lower
-#include "TensorMath/GenericSymmetricMatrix.h"			//Symmetric
-#include "TensorMath/GenericAntisymmetricMatrix.h"		//Antisymmetric
+#include "Tensor/Vector.h"
+#include "Tensor/GenericRank1.h"					//Upper, Lower
+#include "Tensor/GenericSymmetricMatrix.h"			//Symmetric
+#include "Tensor/GenericAntisymmetricMatrix.h"		//Antisymmetric
+
+namespace Tensor {
 
 /*
 dim = dimension of this upper index
@@ -59,5 +61,7 @@ struct Antisymmetric {
 		Body(const Body &b) : Parent(b) {}
 		Body(const InnerType &t) : Parent(t) {}
 	};
+};
+
 };
 

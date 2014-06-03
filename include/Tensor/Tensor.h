@@ -1,9 +1,11 @@
 #pragma once
 
-#include "TensorMath/Meta.h"
-#include "TensorMath/IndexPlace.h"	//not because tensor.h needs it, but because anyone using tensor.h needs it
-#include "TensorMath/Index.h"
+#include "Tensor/IndexPlace.h"	//not because tensor.h needs it, but because anyone using tensor.h needs it
+#include "Tensor/Index.h"
+#include "Common/Meta.h"
 #include <functional>
+
+namespace Tensor {
 
 /*
 new experimental template-driven tensor class
@@ -221,7 +223,7 @@ struct Tensor {
 	//it pulls individual entries from the index args
 	//I could have the index args themselves do the calculation
 	// but that would mean making base-case specializations for each index class 
-	typedef ::TensorStats<ScalarType_, Args...> TensorStats;
+	typedef TensorStats<ScalarType_, Args...> TensorStats;
 	typedef typename TensorStats::BodyType BodyType;
 
 	//used to get information per-index of the tensor
@@ -229,11 +231,11 @@ struct Tensor {
 	// so Tensor<Real, Upper<2>, Symmetric<Upper<3>, Upper<3>>> can call ::IndexInfo<0>::dim to get 2, 
 	//  or call ::IndexInfo<1>::dim or ::IndexInfo<2>::dim to get 3
 	template<int index>
-	using IndexInfo = ::IndexStats<index, TensorStats>;
+	using IndexInfo = IndexStats<index, TensorStats>;
 
 	enum { rank = TensorStats::rank };
 	
-	typedef ::Vector<int,rank> DerefType;
+	typedef Vector<int,rank> DerefType;
 
 	//number of args deep
 	enum { numNestings = TensorStats::numNestings };
@@ -242,9 +244,9 @@ struct Tensor {
 	// so Tensor<Real, Upper<2>, Symmetric<Upper<3>, Upper<3>>> can call ::WriteIndexInfo<0>::size to get 2,
 	//  or call ::WriteIndexInfo<1>::size to get 6 = n*(n+1)/2 for n=3
 	template<int writeIndex>
-	using WriteIndexInfo = ::WriteIndexStats<writeIndex, TensorStats>;
+	using WriteIndexInfo = WriteIndexStats<writeIndex, TensorStats>;
 		
-	typedef ::Vector<int,numNestings> WriteDerefType;
+	typedef Vector<int,numNestings> WriteDerefType;
 
 	//here's a question
 	// const_iterator cycles through all readable indexes
@@ -579,7 +581,7 @@ struct Tensor {
 template<typename Type, typename... Args>
 std::ostream &operator<<(std::ostream &o, const Tensor<Type, Args...> &t) {
 	
-	typedef ::Tensor<Type, Args...> Tensor;
+	typedef Tensor<Type, Args...> Tensor;
 	typedef typename Tensor::const_iterator const_iterator;
 	enum { rank = Tensor::rank };
 	typedef typename Tensor::DerefType DerefType;
@@ -613,4 +615,6 @@ std::ostream &operator<<(std::ostream &o, const Tensor<Type, Args...> &t) {
 	}
 	return o;
 }
+
+};
 
