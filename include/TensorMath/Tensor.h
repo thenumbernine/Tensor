@@ -246,7 +246,18 @@ struct Tensor {
 		
 	typedef ::Vector<int,numNestings> WriteDerefType;
 
-	
+	//here's a question
+	// const_iterator cycles through all readable indexes
+	//  and is const access so it can only be used for reading
+	// Write::iterator cycles through all writeable indexes
+	//  and is non-const access so it can be used for writing
+	//   (actually it just returns indexes, so access doesn't matter)
+	//  and it potentially skips elements so it is no good for reading
+	// iterator cycles through all readable lndexes
+	//   and is non-const access, so it can be used for writing
+	//   but who would, when they would be writing over redundant indexes?
+	//so should I replace iterator with Write::iterator?
+
 	//read iterator
 	
 	//maybe I should put this in body
@@ -261,15 +272,22 @@ struct Tensor {
 		
 		bool operator==(const iterator &b) const { return index == b.index; }
 		bool operator!=(const iterator &b) const { return index != b.index; }
-		
-		//NOTICE this doesn't take symmetric indexes into account
-		//TODO make a separate write iterator
+	
+		struct Increment {
+			typedef iterator& Input;
+			template<int i>
+			struct Exec {
+				static bool exec(Input iter) {
+					++iter.index(i);
+					if (iter.index(i) < IndexInfo<i>::dim) return true;
+					if (i < rank-1) iter.index(i) = 0;
+					return false;
+				}
+			};
+		};
+
 		iterator &operator++() {
-			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
-				++index(i);
-				if (index(i) < parent->size()(i)) break;
-				if (i < rank-1) index(i) = 0;
-			}
+			ForLoop<0,rank,Increment>::exec(*this);
 			return *this;
 		}
 
@@ -298,15 +316,22 @@ struct Tensor {
 		
 		bool operator==(const const_iterator &b) const { return index == b.index; }
 		bool operator!=(const const_iterator &b) const { return index != b.index; }
-		
-		//NOTICE this doesn't take symmetric indexes into account
-		//TODO make a separate write iterator
+	
+		struct Increment {
+			typedef const_iterator& Input;
+			template<int i>
+			struct Exec {
+				static bool exec(Input iter) {
+					++iter.index(i);
+					if (iter.index(i) < IndexInfo<i>::dim) return true;
+					if (i < rank-1) iter.index(i) = 0;
+					return false;
+				}
+			};
+		};
+
 		const_iterator &operator++() {
-			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
-				++index(i);
-				if (index(i) < parent->size()(i)) break;
-				if (i < rank-1) index(i) = 0;
-			}
+			ForLoop<0,rank,Increment>::exec(*this);
 			return *this;
 		}
 
@@ -328,17 +353,14 @@ struct Tensor {
 	struct Write {
 		
 		struct iterator {
-			Tensor *parent;
-			
 			//this is an array as deep as the number of indexes that the tensor was built with
 			//each value of the array iterates from 0 to that nesting's type's ::size
 			//The ::size returns the number of elements used to represent the structure,
 			// so for a 3x3 symmetric matrix ::size would give 6, for n*(n+1)/2 elements used. 
 			WriteDerefType writeIndex;
 			
-			iterator() : parent(NULL) {}
-			iterator(Tensor *parent_) : parent(parent_) {}
-			iterator(const iterator &iter) : parent(iter.parent), writeIndex(iter.writeIndex) {}
+			iterator() {}
+			iterator(const iterator &iter) : writeIndex(iter.writeIndex) {}
 			
 			bool operator==(const iterator &b) const { return writeIndex == b.writeIndex; }
 			bool operator!=(const iterator &b) const { return writeIndex != b.writeIndex; }
@@ -375,23 +397,20 @@ struct Tensor {
 			}
 		};
 
-		Tensor *parent;
-		Write(Tensor *parent_) : parent(parent_) {}
-
 		iterator begin() {
-			iterator i(parent);
-			return i;
+			return iterator();
 		}
 
 		iterator end() {
-			iterator i(parent);
+			iterator i;
 			i.writeIndex(numNestings-1) = WriteIndexInfo<numNestings-1>::size;
 			return i;
 		}
 	};
-	
+
+	//no longer needs any member data from the parent
 	Write write() {
-		return Write(this);
+		return Write();
 	}
 
 	//constructors
@@ -489,20 +508,6 @@ struct Tensor {
 		//metaprogram-driven
 		ForLoop<0, rank, AssignSize>::exec(s);
 		return s;
-	};
-
-	//used with write iterator to determine sizes of nestings
-
-	struct AssignWriteSize {
-		typedef WriteDerefType& Input;
-
-		template<int writeIndex>
-		struct Exec {
-			static bool exec(Input input) {
-				input(writeIndex) = WriteIndexInfo<writeIndex>::size;
-				return false;
-			}
-		};
 	};
 
 	//equality
