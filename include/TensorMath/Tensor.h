@@ -168,36 +168,6 @@ struct TensorStats<ScalarType_> {
 	static void getReadIndexForWriteIndex(Vector<int, totalRank> &index, const Vector<int, numNestings> &writeIndex) {}
 };
 
-//want to compile-time assign indexes
-// need a compile-time for-loop
-
-template<typename Tensor_>
-struct AssignSize {
-	typedef Tensor_ Tensor;
-	typedef typename Tensor::DerefType Input;
-
-	template<int index>
-	struct Exec {
-		static void exec(Input &input) {
-			//now to make this nested type in Tensor ...
-			input(index) = Tensor::template IndexInfo<index>::dim;
-		}
-	};
-};
-
-template<typename Tensor_>
-struct AssignWriteSize {
-	typedef Tensor_ Tensor;
-	typedef typename Tensor::WriteDerefType Input;
-
-	template<int writeIndex>
-	struct Exec {
-		static void exec(Input &input) {
-			input(writeIndex) = Tensor::template WriteIndexInfo<writeIndex>::size;
-		}
-	};
-};
-
 /*
 retrieves stats for a particular index of the tensor
 currently stores dim
@@ -492,18 +462,47 @@ struct Tensor {
 	Tensor &operator*=(const Type &b) { body *= b; return *this; }
 	Tensor &operator/=(const Type &b) { body /= b; return *this; }
 
+	struct AssignSize {
+		typedef DerefType Input;
+
+		template<int index>
+		struct Exec {
+			static bool exec(Input &input) {
+				//now to make this nested type in Tensor ...
+				input(index) = IndexInfo<index>::dim;
+				return false;
+			}
+		};
+	};
+
 	DerefType size() const {
 		DerefType s;
 		//metaprogram-driven
-		ForLoop<0, rank, AssignSize<Tensor>>::exec(s);
+		ForLoop<0, rank, AssignSize>::exec(s);
 		return s;
+	};
+
+	//used with write iterator to determine sizes of nestings
+
+	struct AssignWriteSize {
+		typedef WriteDerefType Input;
+
+		template<int writeIndex>
+		struct Exec {
+			static bool exec(Input &input) {
+				input(writeIndex) = WriteIndexInfo<writeIndex>::size;
+				return false;
+			}
+		};
 	};
 
 	WriteDerefType nestingSizes() const {
 		WriteDerefType s;
-		ForLoop<0, numNestings, AssignWriteSize<Tensor>>::exec(s);
+		ForLoop<0, numNestings, AssignWriteSize>::exec(s);
 		return s;
 	};
+	
+	//equality
 
 	template<typename T>
 	bool operator==(const T &t) const {
