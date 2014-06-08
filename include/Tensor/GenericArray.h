@@ -43,7 +43,7 @@ struct GenericArray {
 
 	//subset
 	template<int start, int length>
-	GenericArray<Type, length, ScalarType, Child> subset() {	//bastard child.  this will make vec2s who think their CRAP type is vec3
+	GenericArray<Type, length, ScalarType, Child> subset() const {	//bastard child.  this will make vec2s who think their CRAP type is vec3
 		static_assert(length <= size, "cannot get a subset that is greater than the array itself");
 		static_assert(start >= 0, "cannot get negative bounds subsets");
 		static_assert(start <= size - length, "cannot get subsets that span past the end");

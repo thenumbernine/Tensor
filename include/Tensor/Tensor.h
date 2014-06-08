@@ -268,17 +268,16 @@ struct Tensor {
 		
 		bool operator==(const iterator &b) const { return index == b.index; }
 		bool operator!=(const iterator &b) const { return index != b.index; }
-	
+
+		
+		template<int i>
 		struct Increment {
-			template<int i>
-			struct Exec {
-				static bool exec(iterator &iter) {
-					++iter.index(i);
-					if (iter.index(i) < IndexInfo<i>::dim) return true;
-					if (i < rank-1) iter.index(i) = 0;
-					return false;
-				}
-			};
+			static bool exec(iterator &iter) {
+				++iter.index(i);
+				if (iter.index(i) < IndexInfo<i>::dim) return true;
+				if (i < rank-1) iter.index(i) = 0;
+				return false;
+			}
 		};
 
 		iterator &operator++() {
@@ -312,16 +311,14 @@ struct Tensor {
 		bool operator==(const const_iterator &b) const { return index == b.index; }
 		bool operator!=(const const_iterator &b) const { return index != b.index; }
 	
+		template<int i>
 		struct Increment {
-			template<int i>
-			struct Exec {
-				static bool exec(const_iterator &iter) {
-					++iter.index(i);
-					if (iter.index(i) < IndexInfo<i>::dim) return true;
-					if (i < rank-1) iter.index(i) = 0;
-					return false;
-				}
-			};
+			static bool exec(const_iterator &iter) {
+				++iter.index(i);
+				if (iter.index(i) < IndexInfo<i>::dim) return true;
+				if (i < rank-1) iter.index(i) = 0;
+				return false;
+			}
 		};
 
 		const_iterator &operator++() {
@@ -360,16 +357,14 @@ struct Tensor {
 			bool operator!=(const iterator &b) const { return writeIndex != b.writeIndex; }
 
 			//I could've for-loop'd this, but then I wouldn't have compile-time access to the write index size!
+			template<int i>
 			struct Increment {
-				template<int i>
-				struct Exec {
-					static bool exec(iterator& iter) {
-						++iter.writeIndex(i);
-						if (iter.writeIndex(i) < WriteIndexInfo<i>::size) return true;
-						if (i < numNestings-1) iter.writeIndex(i) = 0;
-						return false;
-					}
-				};
+				static bool exec(iterator& iter) {
+					++iter.writeIndex(i);
+					if (iter.writeIndex(i) < WriteIndexInfo<i>::size) return true;
+					if (i < numNestings-1) iter.writeIndex(i) = 0;
+					return false;
+				}
 			};
 
 			iterator &operator++() {
@@ -483,15 +478,13 @@ struct Tensor {
 	Tensor &operator*=(const Type &b) { body *= b; return *this; }
 	Tensor &operator/=(const Type &b) { body /= b; return *this; }
 
+	template<int index>
 	struct AssignSize {
-		template<int index>
-		struct Exec {
-			static bool exec(DerefType& input) {
-				//now to make this nested type in Tensor ...
-				input(index) = IndexInfo<index>::dim;
-				return false;
-			}
-		};
+		static bool exec(DerefType& input) {
+			//now to make this nested type in Tensor ...
+			input(index) = IndexInfo<index>::dim;
+			return false;
+		}
 	};
 
 	DerefType size() const {
