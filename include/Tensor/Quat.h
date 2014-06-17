@@ -63,8 +63,9 @@ struct Quat : public Vector<Type, 4> {
 	}
 };
 
-Quat operator*(Quat a, Quat b) {
-	return Quat::mul(a,b);
+template<typename Type>
+Quat<Type> operator*(Quat<Type> a, Quat<Type> b) {
+	return Quat<Type>::mul(a,b);
 }
 
 };
