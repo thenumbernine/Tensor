@@ -5,6 +5,6 @@ tensor library
 
 taken from my relativity project, working it into a C++ verison of my hydrodynamics project
 
-* note: uses "Exception" which is in another project of mine. working out the details.
+Depends on the "Common" project
 
 requires C++11	
