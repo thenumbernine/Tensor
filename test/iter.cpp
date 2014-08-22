@@ -69,24 +69,39 @@ int main() {
 		ECHO(s);
 	}
 
-#if 0
 	{
 		//arithemetic operations
 		Index i,j;
 		Tensor<Real, Upper<3>> b, c;
 		Tensor<Real, Upper<3>, Lower<3>> a;
 
+		b(0) = 1;
+		b(1) = 2;
+		b(2) = 3;
+		c(0) = 5;
+		c(1) = 7;
+		c(2) = 11;
+
 		//outer product
+#if 0
 		a(i,j) = b(i) * c(j);
 
+		for (int i = 0; i < 3; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				TEST_EQ(a(i,j), b(i) * c(j));
+			}
+		}
 		//exterior product
 		a(i,j) = b(i) * c(j) - b(j) * c(i);
 
 		//inner product?
-		Real dot = (b(i) * c(i))();
+		Real dot = b(i) * c(i);
 
 		//matrix multiplication
 		c(i) = a(i,j) * b(j);
-	}
+	
+		//discrete differentiation?
+		c(i) = (a(i+1) - a(i-1)) / (2 * dx)
 #endif
+	}
 }

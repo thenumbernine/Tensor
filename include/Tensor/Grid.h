@@ -115,7 +115,7 @@ struct Grid {
 	//step[0] = 1, step[1] = size[0], step[j] = product(i=1,j-1) size[i]
 	DerefType step;
 
-	Grid(const DerefType &size_) : size(size_) {
+	Grid(const DerefType &size_ = DerefType()) : size(size_) {
 		v = new Type[size.volume()]();
 		step(0) = 1;
 		for (int i = 1; i < rank; ++i) {
@@ -126,6 +126,42 @@ struct Grid {
 	~Grid() {
 		delete[] v;
 	}
+
+	// dereference by vararg ints
+
+	template<int offset, typename... Rest>
+	struct BuildDeref;
+
+	template<int offset, typename... Rest>
+	struct BuildDeref<offset, int, Rest...> {
+		static DerefType exec(int next, Rest ... rest) {
+			DerefType index = BuildDeref<offset+1, Rest...>::exec(rest...);
+			index(offset) = next;
+			return index;
+		}
+	};
+
+	template<int offset>
+	struct BuildDeref<offset, int> {
+		static DerefType exec(int last) {
+			static_assert(offset == rank-1, "didn't provide enough arguments for dereference");
+			DerefType index;
+			index(offset) = last;
+			return index;
+		}
+	};
+
+	template<typename... Rest>
+	Type &operator()(int first, Rest... rest) {
+		return getValue(BuildDeref<0, int, Rest...>::exec(first, rest...));
+	}
+
+	template<typename... Rest>
+	const Type &operator()(int first, Rest... rest) const {
+		return getValue(BuildDeref<0, int, Rest...>::exec(first, rest...));
+	}
+
+	//dereference by a vector of ints
 
 	//typical access will be only for the Type's sake
 	Type &operator()(const DerefType &deref) { return getValue(deref); }
@@ -157,10 +193,64 @@ struct Grid {
 		return v[flat_deref];
 	}
 
+	typedef Type* iterator;
 	Type *begin() { return v; }
 	Type *end() { return v + size.volume(); }
 	const Type *begin() const { return v; }
 	const Type *end() const { return v + size.volume(); }
+
+	RangeObj<rank> range() const {
+		return RangeObj<rank>(DerefType(), size);
+	}
+
+	//dereference by vararg ints 
+	
+	template<typename... Rest>
+	void resize(int first, Rest... rest) {
+		resize(BuildDeref<0, int, Rest...>::exec(first, rest...));
+	}
+
+	//dereference by a vector of ints
+
+	void resize(const DerefType& newSize) {
+		if (size == newSize) return;
+		
+		DerefType oldSize = size;
+		DerefType oldStep = step;
+		Type* oldV = v;
+		
+		size = newSize;
+		v = new Type[newSize.volume()];
+		step(0) = 1;
+		for (int i = 1; i < rank; ++i) {
+			step(i) = step(i-1) * size(i-1);
+		}
+
+		DerefType minSize;
+		for (int i = 0; i < rank; ++i) {
+			minSize(i) = size(i) < oldSize(i) ? size(i) : oldSize(i);
+		}
+
+		RangeObj<rank> range(DerefType(), minSize);		
+		for (typename RangeObj<rank>::iterator iter = range.begin(); iter != range.end(); ++iter) {
+			DerefType index = *iter;
+			int oldOffset = DerefType::dot(oldStep, index);
+			(*this)(index) = oldV[oldOffset];
+		}
+
+		delete[] oldV;
+	}
+
+	Grid& operator=(Grid& src) {
+		resize(src.size);
+
+		Type* srcv = src.v;
+		Type* dstv = v;
+		for (int i = size.volume()-1; i >= 0; --i) {
+			*(dstv++) = *(srcv++);
+		}
+		return *this;
+	}
 };
 
 };

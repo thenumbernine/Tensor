@@ -16,6 +16,10 @@ namespace Tensor {
 
 struct Index {};
 
+/*
+rather than this matching a Tensor for index dereferencing,
+this needs its index access abstracted so that binary operations can provide their own as well
+*/
 template<typename Tensor_>
 struct IndexAccess {
 	typedef Tensor_ Tensor;
@@ -91,6 +95,34 @@ IndexAccess<Tensor>::IndexAccess(const IndexAccess<Tensor> &read)
 		//assignment to a permutation of the same tensor type 
 		this->operator=(read);
 	}
+}
+
+template<typename TensorA, typename TensorB>
+struct BinaryOperationIndexAccess {
+	const TensorA& a;
+	const TensorB& b;
+	BinaryOperationIndexAccess(const TensorA& a_, const TensorB& b_)
+	: a(a_), b(b_) {}
+};
+
+template<typename TensorA, typename TensorB>
+struct MultiplyIndexAccess : public BinaryOperationIndexAccess<TensorA, TensorB> {
+	typedef BinaryOperationIndexAccess<TensorA, TensorB> Super;
+	using Super::Super;
+};
+
+template<typename TensorA, typename TensorB>
+MultiplyIndexAccess<TensorA, TensorB> operator*(const IndexAccess<TensorA> &a, const IndexAccess<TensorB> &b) {
+	Tensor::Vector<Index*, TensorA::rank + TensorB::rank> indexes;
+	for (int i = 0; i < TensorA::rank; ++i) {
+		indexes(i) = a.indexes(i);
+	}
+	for (int i = 0; i < TensorB::rank; ++i) {
+		indexes(i + TensorA::rank) = b.indexes(i);
+	}
+	
+	return IndexAccess<MultiplyIndexAccess<TensorA, TensorB>>(
+		MultiplyIndexAccess<TensorA, TensorB>(a,b), indexes);
 }
 
 };
