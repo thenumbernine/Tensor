@@ -70,6 +70,7 @@ int main() {
 	}
 
 	{
+#if 0
 		//arithemetic operations
 		Index i,j;
 		Tensor<Real, Upper<3>> b, c;
@@ -83,7 +84,6 @@ int main() {
 		c(2) = 11;
 
 		//outer product
-#if 0
 		a(i,j) = b(i) * c(j);
 
 		for (int i = 0; i < 3; ++i) {

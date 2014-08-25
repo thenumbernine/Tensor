@@ -194,6 +194,7 @@ struct Grid {
 	}
 
 	typedef Type* iterator;
+	typedef const Type* const_iterator;
 	Type *begin() { return v; }
 	Type *end() { return v + size.volume(); }
 	const Type *begin() const { return v; }

@@ -11,10 +11,46 @@ c(i) = a(i,j) * b(j) <-performs multiplication of matrix a and vector b
 */
 
 #include "Common/Exception.h"
+#include "Common/Meta.h"
 
 namespace Tensor {
 
 struct Index {};
+
+template<int rank, int j, int i>
+struct FindDstForSrcIndex {
+	typedef Vector<int, rank> DerefType;
+	typedef Vector<Index*, rank> IndexVector;
+	static bool exec(DerefType &dstForSrcIndex, const IndexVector& indexes, const IndexVector& readIndexes) {
+		if (readIndexes(j) == indexes(i)) {
+			dstForSrcIndex(j) = i;
+			return true;	//break
+		}
+		return false;
+	}
+};
+
+template<int rank, int j>
+struct FindDstForSrcOuter {
+	
+	typedef Vector<int, rank> DerefType;
+	
+	typedef Vector<Index*, rank> IndexVector;
+	
+	template<int i>
+	using FindDstForSrcIndexRank = FindDstForSrcIndex<rank, j, i>;
+	
+	static bool exec(DerefType &dstForSrcIndex, const IndexVector& indexes, const IndexVector& readIndexes) {
+		bool found = ForLoop<0, rank, FindDstForSrcIndexRank>::exec(
+			dstForSrcIndex,
+			indexes,
+			readIndexes);
+		
+		if (!found) throw Common::Exception() << "failed to find index";
+		
+		return false;
+	}
+};
 
 /*
 rather than this matching a Tensor for index dereferencing,
@@ -24,10 +60,12 @@ template<typename Tensor_>
 struct IndexAccess {
 	typedef Tensor_ Tensor;
 	enum { rank = Tensor::rank };
+	typedef Vector<Index*, rank> IndexVector;
+	typedef typename Tensor::DerefType DerefType;
 	Tensor *tensor;
-	Vector<Index*, rank> indexes;	//vector ...
+	IndexVector indexes;	//vector ...
 	
-	IndexAccess(Tensor *tensor_, Vector<Index*, rank> indexes_) 
+	IndexAccess(Tensor *tensor_, IndexVector indexes_) 
 	: tensor(tensor_), indexes(indexes_)
 	{
 	}
@@ -40,26 +78,34 @@ struct IndexAccess {
 	IndexAccess &operator=(const IndexAccess &read) {
 		return this->operator=<Tensor>(read);
 	}
+	
+	template<int i>
+	using FindDstForSrcOuterRank = FindDstForSrcOuter<rank, i>;
 
+	/*
+	uses operations of Tensor template parameter:
+	Tensor:
+		tensor->write().begin(), .end()	<- write iteration
+		tensor->operator()(DerefType)	<- write operator
+	
+	TensorB:
+		readSource.operator=	<- copy operation in case source and dest are the same (how else to circumvent this?)
+		readSource.operator()(DerefType)
+
+	If read and write are the same then we want 'read' to be copied before swizzling, to prevent overwrites of transpose operations.
+	If read has higher rank then a contration is required before the copy.
+	
+	- compare write indexes to read indexes.  
+		Find all read indexes that are not in write indexes.
+		Make sure they are in pairs -- complain otherwise.
+	*/
 	template<typename TensorB>
 	IndexAccess &operator=(const IndexAccess<TensorB> &read) {
 		static_assert(TensorB::rank == rank, "tensor assignment of differing ranks");
 
-		//TODO: this at compile time
-		typedef typename Tensor::DerefType DerefType;
 		DerefType dstForSrcIndex;
-		for (int j = 0; j < rank; ++j) {
-			bool found = false;
-			for (int i = 0; i < rank; ++i) {
-				if (read.indexes(j) == indexes(i)) {
-					dstForSrcIndex(j) = i;
-					found = true;
-					break;
-				}
-			}
-			if (!found) throw Common::Exception() << "failed to find indexes!";
-		}
-
+		ForLoop<0, rank, FindDstForSrcOuterRank>::exec(dstForSrcIndex, indexes, read.indexes);
+		
 		//make a copy, in case we're reading from the same source
 		TensorB readSource = *read.tensor;
 
@@ -95,34 +141,6 @@ IndexAccess<Tensor>::IndexAccess(const IndexAccess<Tensor> &read)
 		//assignment to a permutation of the same tensor type 
 		this->operator=(read);
 	}
-}
-
-template<typename TensorA, typename TensorB>
-struct BinaryOperationIndexAccess {
-	const TensorA& a;
-	const TensorB& b;
-	BinaryOperationIndexAccess(const TensorA& a_, const TensorB& b_)
-	: a(a_), b(b_) {}
-};
-
-template<typename TensorA, typename TensorB>
-struct MultiplyIndexAccess : public BinaryOperationIndexAccess<TensorA, TensorB> {
-	typedef BinaryOperationIndexAccess<TensorA, TensorB> Super;
-	using Super::Super;
-};
-
-template<typename TensorA, typename TensorB>
-MultiplyIndexAccess<TensorA, TensorB> operator*(const IndexAccess<TensorA> &a, const IndexAccess<TensorB> &b) {
-	Tensor::Vector<Index*, TensorA::rank + TensorB::rank> indexes;
-	for (int i = 0; i < TensorA::rank; ++i) {
-		indexes(i) = a.indexes(i);
-	}
-	for (int i = 0; i < TensorB::rank; ++i) {
-		indexes(i + TensorA::rank) = b.indexes(i);
-	}
-	
-	return IndexAccess<MultiplyIndexAccess<TensorA, TensorB>>(
-		MultiplyIndexAccess<TensorA, TensorB>(a,b), indexes);
 }
 
 };

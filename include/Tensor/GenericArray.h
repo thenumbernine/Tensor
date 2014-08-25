@@ -42,8 +42,11 @@ struct GenericArray {
 	}
 
 	//subset
+	//I would like to return the child type, but this is by definition returning a different static size
+	// and child types are flexible in their size initialization (rank-1's vs rank-2's, symmetric vs antisymmetric, etc.)
+	//so I have to return the parent class type
 	template<int start, int length>
-	GenericArray<Type, length, ScalarType, Child> subset() const {	//bastard child.  this will make vec2s who think their CRAP type is vec3
+	GenericArray<Type, length, ScalarType, Child> subset() const {
 		static_assert(length <= size, "cannot get a subset that is greater than the array itself");
 		static_assert(start >= 0, "cannot get negative bounds subsets");
 		static_assert(start <= size - length, "cannot get subsets that span past the end");
