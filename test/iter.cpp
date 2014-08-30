@@ -40,7 +40,7 @@ int main() {
 		TEST_EQ(a, Tensor<Real COMMA Upper<3>>(1)); 
 		TEST_EQ(b, Tensor<Real COMMA Lower<3>>(2));	
 
-		Index i;
+		Index<'i'> i;
 		a(i) = b(i);
 
 		TEST_EQ(a, Tensor<Real COMMA Upper<3>>(2));
@@ -48,7 +48,8 @@ int main() {
 	
 	{
 		//make sure 2D swizzling works
-		Index i, j;
+		Index<'i'> i;
+		Index<'j'> j;
 		Tensor<Real, Upper<3>, Upper<3>> m;
 		m(1,0) = 1;
 		ECHO(m);
@@ -60,7 +61,9 @@ int main() {
 	{
 		//make sure 3D swizzling works
 		//this verifies the mapping between indexes in tensor assignment (since the 2D case is always a cycle of at most period 2, i.e. its own inverse)
-		Index i, j, k;
+		Index<'i'> i;
+		Index<'j'> j;
+		Index<'k'> k;
 		Tensor<Real, Upper<3>, Upper<3>, Upper<3>> s;
 		s(0,1,0) = 1;
 		ECHO(s);

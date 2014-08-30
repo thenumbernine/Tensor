@@ -15,72 +15,69 @@ c(i) = a(i,j) * b(j) <-performs multiplication of matrix a and vector b
 
 namespace Tensor {
 
+template<char ident>
 struct Index {};
 
-template<int rank, int j, int i>
+template<typename IndexVector, typename ReadIndexVector, int j>
 struct FindDstForSrcIndex {
-	typedef Vector<int, rank> DerefType;
-	typedef Vector<Index*, rank> IndexVector;
-	static bool exec(DerefType &dstForSrcIndex, const IndexVector& indexes, const IndexVector& readIndexes) {
-		if (readIndexes(j) == indexes(i)) {
-			dstForSrcIndex(j) = i;
-			return true;	//break
+	template<int i>
+	struct Find {
+		enum { rank = IndexVector::size };
+		typedef Vector<int, rank> DerefType;
+		static bool exec(DerefType &dstForSrcIndex, const IndexVector& indexes, const IndexVector& readIndexes) {
+			if (readIndexes(j) == indexes(i)) {
+				dstForSrcIndex(j) = i;
+				return true;	//break
+			}
+			return false;
 		}
-		return false;
-	}
+	};
 };
 
-template<int rank, int j>
+template<typename IndexVector, typename ReadIndexVector>
 struct FindDstForSrcOuter {
-	
-	typedef Vector<int, rank> DerefType;
-	
-	typedef Vector<Index*, rank> IndexVector;
-	
-	template<int i>
-	using FindDstForSrcIndexRank = FindDstForSrcIndex<rank, j, i>;
-	
-	static bool exec(DerefType &dstForSrcIndex, const IndexVector& indexes, const IndexVector& readIndexes) {
-		bool found = ForLoop<0, rank, FindDstForSrcIndexRank>::exec(
-			dstForSrcIndex,
-			indexes,
-			readIndexes);
+	template<int j>
+	struct Find {
+		enum { rank = IndexVector::size };
+		typedef Vector<int, rank> DerefType;
 		
-		if (!found) throw Common::Exception() << "failed to find index";
-		
-		return false;
-	}
+		static bool exec(DerefType &dstForSrcIndex, const IndexVector& indexes, const IndexVector& readIndexes) {
+			bool found = ForLoop<0, rank, FindDstForSrcIndex<IndexVector, ReadIndexVector, j>::template Find>::exec(
+				dstForSrcIndex,
+				indexes,
+				readIndexes);
+			
+			if (!found) throw Common::Exception() << "failed to find index";
+			
+			return false;
+		}
+	};
 };
+
+
 
 /*
 rather than this matching a Tensor for index dereferencing,
 this needs its index access abstracted so that binary operations can provide their own as well
 */
-template<typename Tensor_>
+template<typename Tensor_, typename IndexVector>
 struct IndexAccess {
 	typedef Tensor_ Tensor;
 	enum { rank = Tensor::rank };
-	typedef Vector<Index*, rank> IndexVector;
 	typedef typename Tensor::DerefType DerefType;
 	Tensor *tensor;
-	IndexVector indexes;	//vector ...
-	
-	IndexAccess(Tensor *tensor_, IndexVector indexes_) 
-	: tensor(tensor_), indexes(indexes_)
+
+	IndexAccess(Tensor *tensor_) 
+	: tensor(tensor_)
 	{
 	}
 
-	IndexAccess(const IndexAccess &read);
-	
-	template<typename TensorB>
-	IndexAccess(const IndexAccess<TensorB> &read);
+	template<typename TensorB, typename IndexVectorB>
+	IndexAccess(const IndexAccess<TensorB, IndexVectorB> &read);
 
 	IndexAccess &operator=(const IndexAccess &read) {
 		return this->operator=<Tensor>(read);
 	}
-	
-	template<int i>
-	using FindDstForSrcOuterRank = FindDstForSrcOuter<rank, i>;
 
 	/*
 	uses operations of Tensor template parameter:
@@ -99,18 +96,16 @@ struct IndexAccess {
 		Find all read indexes that are not in write indexes.
 		Make sure they are in pairs -- complain otherwise.
 	*/
-	template<typename TensorB>
-	IndexAccess &operator=(const IndexAccess<TensorB> &read) {
+	template<typename TensorB, typename IndexVectorB>
+	IndexAccess &operator=(const IndexAccess<TensorB, IndexVectorB> &read) {
 		static_assert(TensorB::rank == rank, "tensor assignment of differing ranks");
 
 		DerefType dstForSrcIndex;
-		ForLoop<0, rank, FindDstForSrcOuterRank>::exec(dstForSrcIndex, indexes, read.indexes);
-		
-		//make a copy, in case we're reading from the same source
-		TensorB readSource = *read.tensor;
-
-		std::for_each(tensor->write().begin(), tensor->write().end(),
-		[&](DerefType i) {
+		ForLoop<0, rank, FindDstForSrcOuter<IndexVector, IndexVectorB>::template Find>::exec(dstForSrcIndex);
+	
+		//assign using write iterator so the result will be pushed on stack before overwriting the write tensor
+		// this way we get a copy to buffer changes between read and write, in case the same tensor is used for both
+		*tensor = Tensor([&](DerefType i) {
 			//for the j'th index of i ...
 			// ... find indexes(j) coinciding with read.indexes(k)
 			// ... and put that there
@@ -118,29 +113,17 @@ struct IndexAccess {
 			for (int j = 0; j < rank; ++j) {
 				destI(j) = i(dstForSrcIndex(j));
 			}
-			(*tensor)(i) = readSource(destI);
+			return (*read.tensor)(destI);
 		});
 		return *this;
 	}
 };
 
-template<typename Tensor>
-template<typename TensorB>
-IndexAccess<Tensor>::IndexAccess(const IndexAccess<TensorB> &read) {
+//tensor indexes differ...
+template<typename Tensor, typename IndexVector>
+template<typename TensorB, typename IndexVectorB>
+IndexAccess<Tensor, IndexVector>::IndexAccess(const IndexAccess<TensorB, IndexVectorB> &read) {
 	this->operator=(read);
-}
-
-template<typename Tensor>
-IndexAccess<Tensor>::IndexAccess(const IndexAccess<Tensor> &read) 
-{
-	if (tensor == read.tensor && indexes == read.indexes) {
-		//move constructor
-		tensor = read.tensor;
-		indexes = read.indexes;
-	} else {
-		//assignment to a permutation of the same tensor type 
-		this->operator=(read);
-	}
 }
 
 };

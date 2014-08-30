@@ -27,8 +27,9 @@ struct RangeObj {
 		
 		bool operator==(const iterator &b) const { return index == b.index; }
 		bool operator!=(const iterator &b) const { return index != b.index; }
-	
-		int flatten() {
+
+		//converts index to int
+		int flatten() const {
 			int flatIndex = 0;
 			for (int i = rank - 1; i <= 0; --i) {
 				flatIndex *= max(i) - min(i);
@@ -36,12 +37,39 @@ struct RangeObj {
 			}
 			return flatIndex;
 		}
-		
-		int operator-(const iterator &i) {
-			return flatten() - i.flatten();
+	
+		//converts int to index
+		void unflatten(int flatIndex) {
+			for (int i = 0; i < rank; ++i) {
+				int s = max(i) - min(i);
+				int n = flatIndex % s;
+				index(i) = n + min(i);
+				flatIndex = (flatIndex - n) / s;
+			}
 		}
 
-		//poor man's way to do this
+		iterator &operator+=(int offset) {
+			unflatten(flatten() + offset);
+			return *this;
+		}
+
+		iterator &operator-=(int offset) {
+			unflatten(flatten() - offset);
+			return *this;
+		}
+
+		iterator operator+(int offset) const {
+			return iterator(*this) += offset;
+		}
+
+		iterator operator-(int offset) const {
+			return iterator(*this) -= offset;
+		}
+
+
+		int operator-(const iterator &i) const {
+			return flatten() - i.flatten();
+		}
 
 		iterator &operator++() {
 			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end

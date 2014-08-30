@@ -531,32 +531,33 @@ struct Tensor {
 	//index assignment
 	//t(i,j) = t(j,i) etc
 
-	template<int offset, typename... Rest>
-	struct BuildIndex;
+/* working on this
+	template<char... IndexTypes>
+	struct ConvertToIndexes;
+
+	template<char IndexType, char... IndexTypes>
+	struct ConvertToIndexes<IndexType, IndexTypes...> {
+		typedef Index<IndexType> FirstIndex;
+		typedef TypeVector<FirstIndex> FirstIndexVector;
+		typedef typename ConvertToIndexes<IndexTypes...>::Type RestOfIndexVector;
+		typedef typename ConcatTypeVector<FirstIndexVector, RestOfIndexVector>::Type Type;
+	};
+
+	template<char IndexType>
+	struct ConvertToIndexes<IndexType> {
+		typedef TypeVector<Index<IndexType>> Type;
+	};
 	
-	template<int offset, typename... Rest>
-	struct BuildIndex<offset, Index, Rest...> {
-		static Vector<Index*, rank> exec(Index &next, Rest & ... rest) {
-			Vector<Index*, rank> indexes = BuildIndex<offset+1, Rest...>::exec(rest...);
-			indexes(offset) = &next;
-			return indexes;
-		}
-	};
-
-	template<int offset>
-	struct BuildIndex<offset, Index> {
-		static Vector<Index*, rank> exec(Index &last) {
-			static_assert(offset == rank-1, "didn't provide enough arguments for index operation");
-			Vector<Index*, rank> indexes;
-			indexes(offset) = &last;
-			return indexes;
-		}
-	};
-
-	template<typename... Rest>
-	IndexAccess<Tensor> operator()(Index &first, Rest & ... rest) {
-		return IndexAccess<Tensor>(this, BuildIndex<0, Index, Rest...>::exec(first, rest...));
+	template<char IndexType, char... IndexTypes>
+	IndexAccess<Tensor, typename ConvertToIndexes<IndexType, IndexTypes...>::Type> operator()
+		(GetTypeVectorArgs<ConvertToIndexes<IndexType, IndexTypes...>::Type>::Args)
+	{
+		return IndexAccess<
+			Tensor,
+			typename ConvertToIndexes<IndexType, IndexTypes...>::Type
+		>(this);
 	}
+*/
 };
 
 
