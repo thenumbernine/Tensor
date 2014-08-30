@@ -33,6 +33,7 @@ int main() {
 		TEST_EQ(s(1,0), 1);	
 	}
 
+	//index assignment
 	{
 		Tensor<Real, Upper<3>> a(1);
 		Tensor<Real, Lower<3>> b(2);
@@ -72,8 +73,8 @@ int main() {
 		ECHO(s);
 	}
 
-	{
 #if 0
+	{
 		//arithemetic operations
 		Index i,j;
 		Tensor<Real, Upper<3>> b, c;
@@ -105,6 +106,6 @@ int main() {
 	
 		//discrete differentiation?
 		c(i) = (a(i+1) - a(i-1)) / (2 * dx)
-#endif
 	}
+#endif
 }

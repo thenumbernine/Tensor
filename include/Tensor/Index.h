@@ -24,12 +24,28 @@ struct FindDstForSrcIndex {
 	struct Find {
 		enum { rank = IndexVector::size };
 		typedef Vector<int, rank> DerefType;
-		static bool exec(DerefType &dstForSrcIndex, const IndexVector& indexes, const IndexVector& readIndexes) {
-			if (readIndexes(j) == indexes(i)) {
-				dstForSrcIndex(j) = i;
-				return true;	//break
-			}
-			return false;
+		static bool exec(DerefType& dstForSrcIndex) {
+			
+			struct IndexesMatch {
+				static bool exec(DerefType& dstForSrcIndex) {
+					dstForSrcIndex(j) = i;
+					return true;	//meta-for-loop break
+				}
+			};
+			struct IndexesDontMatch {
+				static bool exec(DerefType& dstForSrcIndex) {
+					return false;
+				}
+			};
+			
+			return If<
+				std::is_same<
+					typename ReadIndexVector::template Get<j>,
+					typename IndexVector::template Get<i>
+				>::value,
+				IndexesMatch,
+				IndexesDontMatch
+			>::Type::exec(dstForSrcIndex);
 		}
 	};
 };
@@ -41,11 +57,8 @@ struct FindDstForSrcOuter {
 		enum { rank = IndexVector::size };
 		typedef Vector<int, rank> DerefType;
 		
-		static bool exec(DerefType &dstForSrcIndex, const IndexVector& indexes, const IndexVector& readIndexes) {
-			bool found = ForLoop<0, rank, FindDstForSrcIndex<IndexVector, ReadIndexVector, j>::template Find>::exec(
-				dstForSrcIndex,
-				indexes,
-				readIndexes);
+		static bool exec(DerefType &dstForSrcIndex) {
+			bool found = ForLoop<0, rank, FindDstForSrcIndex<IndexVector, ReadIndexVector, j>::template Find>::exec(dstForSrcIndex);
 			
 			if (!found) throw Common::Exception() << "failed to find index";
 			

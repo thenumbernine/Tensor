@@ -66,7 +66,6 @@ struct RangeObj {
 			return iterator(*this) -= offset;
 		}
 
-
 		int operator-(const iterator &i) const {
 			return flatten() - i.flatten();
 		}

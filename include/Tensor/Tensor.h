@@ -531,33 +531,10 @@ struct Tensor {
 	//index assignment
 	//t(i,j) = t(j,i) etc
 
-/* working on this
-	template<char... IndexTypes>
-	struct ConvertToIndexes;
-
-	template<char IndexType, char... IndexTypes>
-	struct ConvertToIndexes<IndexType, IndexTypes...> {
-		typedef Index<IndexType> FirstIndex;
-		typedef TypeVector<FirstIndex> FirstIndexVector;
-		typedef typename ConvertToIndexes<IndexTypes...>::Type RestOfIndexVector;
-		typedef typename ConcatTypeVector<FirstIndexVector, RestOfIndexVector>::Type Type;
-	};
-
-	template<char IndexType>
-	struct ConvertToIndexes<IndexType> {
-		typedef TypeVector<Index<IndexType>> Type;
-	};
-	
-	template<char IndexType, char... IndexTypes>
-	IndexAccess<Tensor, typename ConvertToIndexes<IndexType, IndexTypes...>::Type> operator()
-		(GetTypeVectorArgs<ConvertToIndexes<IndexType, IndexTypes...>::Type>::Args)
-	{
-		return IndexAccess<
-			Tensor,
-			typename ConvertToIndexes<IndexType, IndexTypes...>::Type
-		>(this);
+	template<typename IndexType, typename... IndexTypes>
+	IndexAccess<Tensor, TypeVector<IndexType, IndexTypes...>> operator()(IndexType, IndexTypes...) {
+		return IndexAccess<Tensor, TypeVector<IndexType, IndexTypes...>>(this);
 	}
-*/
 };
 
 
