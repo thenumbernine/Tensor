@@ -38,14 +38,14 @@ struct FindDstForSrcIndex {
 				}
 			};
 			
-			return If<
+			return std::conditional<
 				std::is_same<
 					typename ReadIndexVector::template Get<j>,
 					typename IndexVector::template Get<i>
 				>::value,
 				IndexesMatch,
 				IndexesDontMatch
-			>::Type::exec(dstForSrcIndex);
+			>::type::exec(dstForSrcIndex);
 		}
 	};
 };
@@ -113,6 +113,10 @@ struct IndexAccess {
 	IndexAccess &operator=(const IndexAccess<TensorB, IndexVectorB> &read) {
 		static_assert(TensorB::rank == rank, "tensor assignment of differing ranks");
 
+		//TODO this in compile time
+		// that would mean compile-time dereferences
+		// which would mean no longer dereferencing by int vectors but instead by compile-time parameter packs
+
 		DerefType dstForSrcIndex;
 		ForLoop<0, rank, FindDstForSrcOuter<IndexVector, IndexVectorB>::template Find>::exec(dstForSrcIndex);
 	
@@ -138,6 +142,20 @@ template<typename TensorB, typename IndexVectorB>
 IndexAccess<Tensor, IndexVector>::IndexAccess(const IndexAccess<TensorB, IndexVectorB> &read) {
 	this->operator=(read);
 }
+
+/*
+template<typename Type, typename... IndexesA, typename IndexVectorA, typename... IndexesB, typename IndexVectorB>
+IndexAccess< 
+	result tensor type:
+		of type of the greatest precision of tensor a & b's types
+		or maybe just take tensor a's type
+		or (currently) assert the types match
+		with concatenation of indexes
+		with all with any symmetric/antisymmetric modifiers removed
+	result indexes:
+operator*(const IndexAccess<Tensor<Type, IndexesA...>, IndexVectorA>& indexAccessA, const IndexAccess<Tensor<Type, IndexesB...>, IndexVectorB>& indexAccessB) {
+}
+*/
 
 };
 

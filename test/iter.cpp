@@ -73,10 +73,11 @@ int main() {
 		ECHO(s);
 	}
 
-#if 0
 	{
+#if 0
 		//arithemetic operations
-		Index i,j;
+		Index<'i'> i;
+		Index<'j'> j;
 		Tensor<Real, Upper<3>> b, c;
 		Tensor<Real, Upper<3>, Lower<3>> a;
 
@@ -95,6 +96,7 @@ int main() {
 				TEST_EQ(a(i,j), b(i) * c(j));
 			}
 		}
+
 		//exterior product
 		a(i,j) = b(i) * c(j) - b(j) * c(i);
 
@@ -106,6 +108,6 @@ int main() {
 	
 		//discrete differentiation?
 		c(i) = (a(i+1) - a(i-1)) / (2 * dx)
-	}
 #endif
+	}
 }

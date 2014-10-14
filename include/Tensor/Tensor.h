@@ -177,20 +177,20 @@ otherwise
 template<int index, typename TensorStats>
 struct IndexStats {
 	enum { 
-		dim = If<index < TensorStats::Index::rank,
+		dim = std::conditional<index < TensorStats::Index::rank,
 			typename TensorStats::Index,
 			IndexStats<index - TensorStats::Index::rank, typename TensorStats::InnerType>
-		>::Type::dim
+		>::type::dim
 	};
 };
 
 template<int writeIndex, typename TensorStats>
 struct WriteIndexInfo {
 	enum {
-		size = If<writeIndex == 0,
+		size = std::conditional<writeIndex == 0,
 			typename TensorStats::BodyType,
 			WriteIndexInfo<writeIndex - 1, typename TensorStats::InnerType>
-		>::Type::size
+		>::type::size
 	};
 };
 
