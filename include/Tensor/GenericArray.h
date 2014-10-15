@@ -194,7 +194,7 @@ struct GenericArray {
 
 	Child operator-() const {
 		Child b;
-		ForLoop<0, size, UnaryOp<Assign<Type, Type>, UnaryMinus<Type>, ArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>(b.v, v);
+		ForLoop<0, size, UnaryOp<Assign<Type, Type>, UnaryMinus<Type>, ArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>::exec(b.v, v);
 		return b;
 	}
 
@@ -207,7 +207,6 @@ struct GenericArray {
 	}
 	
 	Child operator-(const Child &b) const {
-		const GenericArray &a = *this;
 		Child c;
 		ForLoop<0, size, BinaryOp<Assign<Type, Type>, Sub<Type>, ArrayAccess<Type>, ConstArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>::exec(c.v, v, b.v);
 		return c;
