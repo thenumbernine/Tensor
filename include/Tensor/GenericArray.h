@@ -108,12 +108,19 @@ struct BinaryOp {
 	};
 };
 
-template<typename Type, typename Func>
+template<typename AssignOp, typename Func, typename AccessDest, typename AccessA, typename AccessB, typename AccessC>
 struct TernaryOp {
 	template<int index>
 	struct Inner {
-		static bool exec(Type* dst, const Type* srcA, const Type* srcB, const Type* srcC) {
-			dst[index] = Func::exec(srcA[index], srcB[index], srcC[index]);
+		static bool exec(typename AccessDest::Arg dst, typename AccessA::Arg a, typename AccessB::Arg b, typename AccessC::Arg c) {
+			AssignOp::exec(
+				AccessDest::template Inner<index>::exec(dst),
+				Func::exec(
+					AccessA::template Inner<index>::exec(a),
+					AccessB::template Inner<index>::exec(b),
+					AccessC::template Inner<index>::exec(c)
+				)
+			);
 			return false;
 		}
 	};
@@ -168,7 +175,7 @@ struct GenericArray {
 	//bounds
 	static Child clamp(const Child &a, const Child &min, const Child &max) {
 		Child b;
-		ForLoop<0, size, TernaryOp<Type, Clamp<Type>>::template Inner>::exec(b.v, a.v, min.v, max.v);
+		ForLoop<0, size, TernaryOp<Assign<Type, Type>, Clamp<Type>, ArrayAccess<Type>, ConstArrayAccess<Type>, ConstArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>::exec(b.v, a.v, min.v, max.v);
 		return b;
 	}
 
