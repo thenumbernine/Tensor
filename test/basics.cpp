@@ -2,8 +2,27 @@
 //#include "Tensor/Inverse.h"
 #include "Common/Test.h"
 #include <iostream>
+	
+void test_vectors() {
+	typedef double Real;
+	typedef Tensor::Vector<Real, 3> Vector;
+
+	Vector a(1,2,3);
+	Vector b(4,5,6);
+
+	//make sure GenericArray functionality works
+	TEST_EQ(Vector(1), Vector(1,1,1));
+	TEST_EQ(Vector(1,2), Vector(1,2,0));
+	TEST_EQ(b + a, Vector(5,7,9));
+	TEST_EQ(b - a, Vector(3,3,3));
+	TEST_EQ(b * a, Vector(4, 10, 18));
+	TEST_EQ(Vector(2,4,6)/Vector(1,2,3), Vector(2,2,2));
+	TEST_EQ(b * 2., Vector(8, 10, 12));
+	TEST_EQ(Vector(2,4,6)/2., Vector(1,2,3));
+}
 
 using namespace Tensor;
+using namespace std;
 
 template<typename InputType>
 typename InputType::Type determinant33(const InputType &a) {
@@ -14,8 +33,6 @@ typename InputType::Type determinant33(const InputType &a) {
 		- a(2,1) * a(1,2) * a(0,0)
 		- a(2,2) * a(1,0) * a(0,1);
 }
-
-using namespace std;
 
 //I know, it's not a legitimate unit test.
 // but maybe some day it will become one ...
@@ -136,6 +153,7 @@ void test_tensors() {
 }
 
 int main() {
+	test_vectors();
 	test_tensors();
 }
 
