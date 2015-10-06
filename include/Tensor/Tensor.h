@@ -544,7 +544,6 @@ std::ostream &operator<<(std::ostream &o, const Tensor<Type, Args...> &t) {
 	typedef Tensor<Type, Args...> Tensor;
 	typedef typename Tensor::const_iterator const_iterator;
 	enum { rank = Tensor::rank };
-	typedef typename Tensor::DerefType DerefType;
 	const char *empty = "";
 	const char *sep = ", ";
 	Vector<const char *,rank> seps(empty);
