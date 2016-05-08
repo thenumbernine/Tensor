@@ -41,5 +41,4 @@ std::ostream &operator<<(std::ostream &o, const Vector<Type,dim> &t) {
 	return o;
 }
 
-};
-
+}

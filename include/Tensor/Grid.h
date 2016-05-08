@@ -11,7 +11,7 @@ namespace Tensor {
 template<int rank_>
 struct RangeObj {
 	enum { rank = rank_ };
-	typedef Vector<int,rank> DerefType;
+	typedef ::Tensor::Vector<int,rank> DerefType;
 	DerefType min, max;
 
 	RangeObj(DerefType min_, DerefType max_) : min(min_), max(max_) {}
@@ -133,7 +133,7 @@ struct Grid {
 	typedef Type_ Type;
 	typedef Type value_type;
 	enum { rank = rank_ };
-	typedef Vector<int,rank> DerefType;
+	typedef ::Tensor::Vector<int,rank> DerefType;
 
 	Type *v;
 	DerefType size;
@@ -281,5 +281,4 @@ struct Grid {
 	}
 };
 
-};
-
+}
