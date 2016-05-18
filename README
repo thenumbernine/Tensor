@@ -7,4 +7,11 @@ taken from my relativity project, working it into a C++ verison of my hydrodynam
 
 Depends on the "Common" project
 
-requires C++11	
+requires C++11
+
+TODO:
+- get rid fo the Grid class.  
+	The difference between Grid and Tensor is allocation: Grid uses dynamic allocation, Tensor uses static allocation.
+	Intead, make the allocator of each dimension a templated parameter: dynamic vs static.
+	This will give dynamically-sized tensors all the operations of the Tensor template class without having to re-implement them all for Grid.
+	This will allow for flexible allocations: a degree-2 tensor can have one dimension statically allocated and one dimension dynmamically allocated
