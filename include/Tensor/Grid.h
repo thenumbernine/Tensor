@@ -31,7 +31,7 @@ struct RangeObj {
 		//converts index to int
 		int flatten() const {
 			int flatIndex = 0;
-			for (int i = rank - 1; i <= 0; --i) {
+			for (int i = rank - 1; i >= 0; --i) {
 				flatIndex *= max(i) - min(i);
 				flatIndex += index(i) - min(i);
 			}
@@ -42,7 +42,8 @@ struct RangeObj {
 		void unflatten(int flatIndex) {
 			for (int i = 0; i < rank; ++i) {
 				int s = max(i) - min(i);
-				int n = flatIndex % s;
+				int n = flatIndex;
+				if (i < rank-1) n %= s;
 				index(i) = n + min(i);
 				flatIndex = (flatIndex - n) / s;
 			}
