@@ -4,6 +4,7 @@
 #include "Tensor/Vector.h"
 #include "Tensor/Tensor.h"
 #include "Tensor/Grid.h"
+#include "Common/Macros.h"	//numberof
 
 namespace Tensor {
 
@@ -56,10 +57,6 @@ struct PartialDerivCoeffs<Real, 8> {
 };
 template<typename Real>
 const Real PartialDerivCoeffs<Real, 8>::coeffs[4] = { 4./5., -1./5., 4./105., -1./280. };
-
-#ifndef numberof
-#define numberof(x) (sizeof(x)/sizeof(*(x)))
-#endif
 
 /*
 partial derivative operator

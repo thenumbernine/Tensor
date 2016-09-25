@@ -217,7 +217,7 @@ struct Tensor {
 	//it pulls individual entries from the index args
 	//I could have the index args themselves do the calculation
 	// but that would mean making base-case specializations for each index class 
-	typedef TensorStats<ScalarType_, Args_...> TensorStats;
+	typedef ::Tensor::TensorStats<ScalarType_, Args_...> TensorStats;
 	typedef typename TensorStats::BodyType BodyType;
 
 	//used to get information per-index of the tensor
