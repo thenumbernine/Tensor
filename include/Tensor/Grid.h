@@ -5,6 +5,11 @@
 #include <cassert>
 #include <algorithm>
 
+#ifdef PLATFORM_msvc
+#undef min
+#undef max
+#endif
+
 namespace Tensor {
 
 //TODO move RangeObj iterator with Grid iterator
