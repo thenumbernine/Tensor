@@ -141,15 +141,23 @@ struct Grid {
 	enum { rank = rank_ };
 	typedef ::Tensor::Vector<int,rank> DerefType;
 
-	Type *v;
 	DerefType size;
+	Type *v;
+	bool own;	//or just use a shared_ptr to v?
 	
 	//cached for quick access by dot with index vector
 	//step[0] = 1, step[1] = size[0], step[j] = product(i=1,j-1) size[i]
 	DerefType step;
 
-	Grid(const DerefType &size_ = DerefType()) : size(size_) {
-		v = new Type[size.volume()]();
+	Grid(const DerefType &size_ = DerefType(), Type* v_ = (Type*)nullptr)
+	:	size(size_),
+		v(v_),
+		own(false)
+	{
+		if (!v) {
+			v = new Type[size.volume()]();
+			own = true;
+		}
 		step(0) = 1;
 		for (int i = 1; i < rank; ++i) {
 			step(i) = step(i-1) * size(i-1);
@@ -157,7 +165,9 @@ struct Grid {
 	}
 
 	~Grid() {
-		delete[] v;
+		if (own) {
+			delete[] v;
+		}
 	}
 
 	// dereference by vararg ints
