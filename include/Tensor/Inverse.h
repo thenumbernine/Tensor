@@ -2,7 +2,7 @@
 
 /*
 inverse function
-for any sort of rank-2 tensor object
+for any sort of rank-2 Tensor::Tensor object
 */
 
 #include "Tensor/Tensor.h"
@@ -33,10 +33,29 @@ struct DeterminantClass<Tensor<Real, Lower<1>, Lower<1>>> {
 	}
 };
 
+
+template<typename Real>
+struct DeterminantClass<Tensor<Real, Symmetric<Lower<1>, Lower<1>>>> {
+	typedef Real OutputType;
+	typedef Tensor<Real, Symmetric<Lower<1>, Lower<1>>> InputType;
+	OutputType operator()(const InputType &a) const { 
+		return a(0,0);
+	}
+};
+
 template<typename Real>
 struct DeterminantClass<Tensor<Real, Lower<2>, Lower<2>>> {
 	typedef Real OutputType;
 	typedef Tensor<Real, Lower<2>, Lower<2>> InputType;
+	OutputType operator()(const InputType &a) const { 
+		return det22(a(0,0), a(0,1), a(1,0), a(1,1));
+	}
+};
+
+template<typename Real>
+struct DeterminantClass<Tensor<Real, Symmetric<Lower<2>, Lower<2>>>> {
+	typedef Real OutputType;
+	typedef Tensor<Real, Symmetric<Lower<2>, Lower<2>>> InputType;
 	OutputType operator()(const InputType &a) const { 
 		return det22(a(0,0), a(0,1), a(1,0), a(1,1));
 	}
@@ -57,6 +76,15 @@ template<typename Real>
 struct DeterminantClass<Tensor<Real, Lower<3>, Lower<3>>> {
 	typedef Real OutputType;
 	typedef Tensor<Real, Lower<3>, Lower<3>> InputType;
+	OutputType operator()(const InputType &a) const { 
+		return determinant33<OutputType, InputType>(a);
+	}
+};
+
+template<typename Real>
+struct DeterminantClass<Tensor<Real, Symmetric<Lower<3>, Lower<3>>>> {
+	typedef Real OutputType;
+	typedef Tensor<Real, Symmetric<Lower<3>, Lower<3>>> InputType;
 	OutputType operator()(const InputType &a) const { 
 		return determinant33<OutputType, InputType>(a);
 	}
@@ -91,10 +119,37 @@ struct InverseClass<Tensor<Real_, Lower<1>, Lower<1>>> {
 };
 
 template<typename Real_>
+struct InverseClass<Tensor<Real_, Symmetric<Lower<1>, Lower<1>>>> {
+	typedef Real_ Real;
+	typedef Tensor<Real, Symmetric<Lower<1>, Lower<1>>> InputType;
+	typedef Tensor<Real, Symmetric<Upper<1>, Upper<1>>> OutputType;
+	OutputType operator()(const InputType &a, const Real &det) const {
+		OutputType result;
+		result(0,0) = 1. / det;
+		return result;
+	}
+};
+
+template<typename Real_>
 struct InverseClass<Tensor<Real_, Lower<2>, Lower<2>>> {
 	typedef Real_ Real;
 	typedef Tensor<Real, Lower<2>, Lower<2>> InputType;
 	typedef Tensor<Real, Upper<2>, Upper<2>> OutputType;
+	OutputType operator()(const InputType &a, const Real &det) const {
+		OutputType result;
+		result(0,0) = a(1,1) / det;
+		result(1,0) = -a(1,0) / det;
+		result(0,1) = -a(0,1) / det;
+		result(1,1) = a(0,0) / det;
+		return result;
+	}
+};
+
+template<typename Real_>
+struct InverseClass<Tensor<Real_, Symmetric<Lower<2>, Lower<2>>>> {
+	typedef Real_ Real;
+	typedef Tensor<Real, Symmetric<Lower<2>, Lower<2>>> InputType;
+	typedef Tensor<Real, Symmetric<Upper<2>, Upper<2>>> OutputType;
 	OutputType operator()(const InputType &a, const Real &det) const {
 		OutputType result;
 		result(0,0) = a(1,1) / det;
@@ -129,8 +184,8 @@ struct InverseClass<Tensor<Real_, Lower<3>, Lower<3>>> {
 template<typename Real_>
 struct InverseClass<Tensor<Real_, Symmetric<Lower<3>, Lower<3>>>> {
 	typedef Real_ Real;
-	typedef Tensor<Real, Lower<3>, Lower<3>> InputType;
-	typedef Tensor<Real, Upper<3>, Upper<3>> OutputType;
+	typedef Tensor<Real, Symmetric<Lower<3>, Lower<3>>> InputType;
+	typedef Tensor<Real, Symmetric<Upper<3>, Upper<3>>> OutputType;
 	OutputType operator()(const InputType &a, const Real &det) const {
 		OutputType result;
 		//symmetric, so only do Lower triangular
@@ -154,5 +209,4 @@ typename InverseClass<InputType>::OutputType inverse(const InputType &a) {
 	return InverseClass<InputType>()(a, determinant(a));
 }
 
-};
-
+}
