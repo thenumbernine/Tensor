@@ -76,10 +76,12 @@ struct GenericVector : public GenericArray<Type_, size_, ScalarType_, Child> {
 		return d;
 	}
 
+	static double lenSq(const Child &a) {
+		return (double)dot(a,a);
+	}
+
 	static double length(const Child &a) {
-		Type lengthSquared = dot(a,a);
-		//or provide your own sqrt and return Type?
-		return sqrt((double)lengthSquared);
+		return sqrt(lenSq(a));
 	}
 
 	//vector/vector operations
