@@ -14,6 +14,10 @@ template<typename DstType, typename SrcType> struct AndInto { static void exec(D
 template<typename DstType, typename SrcType> struct OrInto { static void exec(DstType& dst, const SrcType& src) { dst |= src; } };
 template<typename DstType, typename SrcType> struct XOrInto { static void exec(DstType& dst, const SrcType& src) { dst ^= src; } };
 
+//bool specializations
+template<> struct AndInto<bool, bool> { static void exec(bool& dst, const bool& src) { dst = dst && src; } };
+template<> struct OrInto<bool, bool> { static void exec(bool& dst, const bool& src) { dst = dst || src; } };
+
 //unary operations
 template<typename Type> struct Identity { static const Type &exec(const Type& a) { return a; } };
 template<typename Type> struct UnaryMinus { static Type exec(const Type& a) { return -a; } };
