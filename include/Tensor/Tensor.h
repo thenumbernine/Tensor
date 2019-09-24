@@ -25,15 +25,15 @@ struct TensorStats;
 
 template<typename ScalarType_, typename Index_, typename... Args>
 struct TensorStats<ScalarType_, Index_, Args...> {
-	typedef ScalarType_ ScalarType;
-	typedef Index_ Index;
-	typedef TensorStats<ScalarType, Args...> InnerType;
+	using ScalarType = ScalarType_;
+	using Index = Index_;
+	using InnerType = TensorStats<ScalarType, Args...>;
 	
 	//rank of the tensor.
 	//vector indexes contribute 1's, matrix (sym & antisym) contribute 2, etc
-	enum { rank = Index::rank + InnerType::rank };		
+	static constexpr auto rank = Index::rank + InnerType::rank;
 	
-	typedef typename Index::template Body<typename InnerType::BodyType, ScalarType> BodyType;
+	using BodyType = typename Index::template Body<typename InnerType::BodyType, ScalarType>;
 	
 		//inductive cases
 	
@@ -82,12 +82,12 @@ struct TensorStats<ScalarType_, Index_, Args...> {
 
 template<typename ScalarType_, typename Index_>
 struct TensorStats<ScalarType_, Index_> {
-	typedef ScalarType_ ScalarType;
-	typedef Index_ Index;
-	typedef TensorStats<ScalarType> InnerType;
-	enum { rank = Index::rank };
+	using ScalarType = ScalarType_;
+	using Index = Index_;
+	using InnerType = TensorStats<ScalarType>;
+	static constexpr auto rank = Index::rank;
 	
-	typedef typename Index::template Body<ScalarType, ScalarType> BodyType;
+	using BodyType = typename Index::template Body<ScalarType, ScalarType>;
 
 		//second-to-base (could be base) case
 	
@@ -130,24 +130,24 @@ struct TensorStats<ScalarType_, Index_> {
 //(it doesn't seem to recognize the single-entry base case)
 template<typename ScalarType_>
 struct TensorStats<ScalarType_> {
-	typedef ScalarType_ ScalarType;
-	enum { rank = 0 };
+	using ScalarType = ScalarType_;
+	static constexpr auto rank = 0;
 
-	typedef ScalarType BodyType;
+	using BodyType = ScalarType;
 
 	struct NullType {
-		typedef NullType InnerType;
-		typedef int BodyType;
-		enum { rank = 0 };
-		typedef NullType Index;
+		using InnerType = NullType;
+		using BodyType = int;
+		static constexpr auto rank = 0;
+		using Index = NullType;
 	};
 
 	//because the fixed-number-of-ints dereferences are members of the tensor
 	//we need safe ways for the compiler to reference those nested types
 	//even when the tensor does not have a compatible rank
 	//this seems like a bad idea
-	typedef NullType InnerType;
-	typedef NullType Index;
+	using InnerType = NullType;
+	using Index = NullType;
 
 		//base case: do nothing
 	
@@ -176,22 +176,18 @@ otherwise
 */
 template<int index, typename TensorStats>
 struct IndexStats {
-	enum { 
-		dim = std::conditional<index < TensorStats::Index::rank,
-			typename TensorStats::Index,
-			IndexStats<index - TensorStats::Index::rank, typename TensorStats::InnerType>
-		>::type::dim
-	};
+	static constexpr auto dim = std::conditional<index < TensorStats::Index::rank,
+		typename TensorStats::Index,
+		IndexStats<index - TensorStats::Index::rank, typename TensorStats::InnerType>
+	>::type::dim;
 };
 
 template<int writeIndex, typename TensorStats>
 struct WriteIndexInfo {
-	enum {
-		size = std::conditional<writeIndex == 0,
-			typename TensorStats::BodyType,
-			WriteIndexInfo<writeIndex - 1, typename TensorStats::InnerType>
-		>::type::size
-	};
+	static constexpr auto size = std::conditional<writeIndex == 0,
+		typename TensorStats::BodyType,
+		WriteIndexInfo<writeIndex - 1, typename TensorStats::InnerType>
+	>::type::size;
 };
 
 /*
@@ -210,15 +206,15 @@ examples:
 */
 template<typename ScalarType_, typename... Args_>
 struct Tensor {
-	typedef ScalarType_ Type;
-	typedef TypeVector<Args_...> Args;
+	using Type = ScalarType_;
+	using Args = std::tuple<Args_...>;
 
 	//TensorStats metaprogram calculates rank
 	//it pulls individual entries from the index args
 	//I could have the index args themselves do the calculation
 	// but that would mean making base-case specializations for each index class 
-	typedef ::Tensor::TensorStats<ScalarType_, Args_...> TensorStats;
-	typedef typename TensorStats::BodyType BodyType;
+	using TensorStats = ::Tensor::TensorStats<ScalarType_, Args_...>;
+	using BodyType = typename TensorStats::BodyType;
 
 	//used to get information per-index of the tensor
 	// currently supports: dim
@@ -227,12 +223,12 @@ struct Tensor {
 	template<int index>
 	using IndexInfo = IndexStats<index, TensorStats>;
 
-	enum { rank = TensorStats::rank };
+	static constexpr auto rank = TensorStats::rank;
 	
-	typedef Vector<int,rank> DerefType;
+	using DerefType = Vector<int,rank>;
 
 	//number of args deep
-	enum { numNestings = Args::size };
+	static constexpr auto numNestings = std::tuple_size_v<Args>;
 
 	//pulls a specific arg to get info from it
 	// so Tensor<Real, Upper<2>, Symmetric<Upper<3>, Upper<3>>> can call ::WriteIndexInfo<0>::size to get 2,
@@ -240,7 +236,7 @@ struct Tensor {
 	template<int writeIndex>
 	using WriteIndexInfo = ::Tensor::WriteIndexInfo<writeIndex, TensorStats>;
 		
-	typedef Vector<int,numNestings> WriteDerefType;
+	using WriteDerefType = Vector<int,numNestings>;
 
 	//here's a question
 	// const_iterator cycles through all readable indexes
@@ -281,7 +277,7 @@ struct Tensor {
 		};
 
 		iterator &operator++() {
-			ForLoop<0,rank,Increment>::exec(*this);
+			Common::ForLoop<0,rank,Increment>::exec(*this);
 			return *this;
 		}
 
@@ -322,7 +318,7 @@ struct Tensor {
 		};
 
 		const_iterator &operator++() {
-			ForLoop<0,rank,Increment>::exec(*this);
+			Common::ForLoop<0,rank,Increment>::exec(*this);
 			return *this;
 		}
 
@@ -368,7 +364,7 @@ struct Tensor {
 			};
 
 			iterator &operator++() {
-				ForLoop<0,numNestings,Increment>::exec(*this);
+				Common::ForLoop<0,numNestings,Increment>::exec(*this);
 				return *this;
 			}
 
@@ -490,7 +486,7 @@ struct Tensor {
 	DerefType size() const {
 		DerefType s;
 		//metaprogram-driven
-		ForLoop<0, rank, AssignSize>::exec(s);
+		Common::ForLoop<0, rank, AssignSize>::exec(s);
 		return s;
 	};
 
@@ -532,18 +528,17 @@ struct Tensor {
 	//t(i,j) = t(j,i) etc
 
 	template<typename IndexType, typename... IndexTypes>
-	IndexAccess<Tensor, TypeVector<IndexType, IndexTypes...>> operator()(IndexType, IndexTypes...) {
-		return IndexAccess<Tensor, TypeVector<IndexType, IndexTypes...>>(this);
+	IndexAccess<Tensor, std::tuple<IndexType, IndexTypes...>> operator()(IndexType, IndexTypes...) {
+		return IndexAccess<Tensor, std::tuple<IndexType, IndexTypes...>>(this);
 	}
 };
 
 
 template<typename Type, typename... Args>
 std::ostream &operator<<(std::ostream &o, const Tensor<Type, Args...> &t) {
-	
-	typedef Tensor<Type, Args...> Tensor;
-	typedef typename Tensor::const_iterator const_iterator;
-	enum { rank = Tensor::rank };
+	using Tensor = Tensor<Type, Args...>;
+	using const_iterator = typename Tensor::const_iterator;
+	static constexpr auto rank = Tensor::rank;
 	const char *empty = "";
 	const char *sep = ", ";
 	Vector<const char *,rank> seps(empty);
@@ -575,5 +570,4 @@ std::ostream &operator<<(std::ostream &o, const Tensor<Type, Args...> &t) {
 	return o;
 }
 
-};
-
+}

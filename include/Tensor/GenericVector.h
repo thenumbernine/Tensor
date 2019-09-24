@@ -11,11 +11,11 @@ adds int-based indexing and vector-vector ops to the array ops
 */
 template<typename Type_, int size_, typename ScalarType_, typename Child>
 struct GenericVector : public GenericArray<Type_, size_, ScalarType_, Child> {
-	typedef GenericArray<Type_, size_, ScalarType_, Child> Parent;
+	using Parent = GenericArray<Type_, size_, ScalarType_, Child>;
 
-	typedef typename Parent::Type Type;
-	enum { size = Parent::size };
-	typedef typename Parent::ScalarType ScalarType;
+	using Type = typename Parent::Type;
+	static constexpr auto size = Parent::size;
+	using ScalarType = typename Parent::ScalarType;
 
 	//inherited constructors
 	//using Parent::Parent;
@@ -111,5 +111,4 @@ struct GenericVector : public GenericArray<Type_, size_, ScalarType_, Child> {
 	Child operator/(const ScalarType &b) const { return Parent::operator/(b); }
 };
 
-};
-
+}

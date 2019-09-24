@@ -65,14 +65,14 @@ therefore GenericAntisymmetricMatrix(i,i) == 0
 */
 template<typename Type_, int dim_, typename ScalarType_, typename Child>
 struct GenericAntisymmetricMatrix : public GenericDenseMatrix<Type_, dim_, ScalarType_, Child, dim_ * (dim_ - 1) / 2> {
-	typedef GenericDenseMatrix<Type_, dim_, ScalarType_, Child, dim_ * (dim_ - 1) / 2> Parent;
+	using Parent = GenericDenseMatrix<Type_, dim_, ScalarType_, Child, dim_ * (dim_ - 1) / 2>;
 	
-	typedef typename Parent::Type Type;
-	enum { dim = Parent::dim };
-	typedef typename Parent::ScalarType ScalarType;
-	enum { size = Parent::size };
-	typedef AntisymmetricMatrixAccessor<Type_, Child> Accessor;
-	typedef AntisymmetricMatrixAccessorConst<Type_, Child> AccessorConst;
+	using Type = typename Parent::Type;
+	static constexpr auto dim = Parent::dim;
+	using ScalarType = typename Parent::ScalarType;
+	static constexpr auto size = Parent::size;
+	using Accessor = AntisymmetricMatrixAccessor<Type_, Child>;
+	using AccessorConst = AntisymmetricMatrixAccessorConst<Type_, Child>;
 
 	using Parent::Parent;
 	
@@ -124,5 +124,4 @@ v 0  0 1 3 6
 	}
 };
 
-};
-
+}

@@ -68,5 +68,4 @@ Quat<Type> operator*(Quat<Type> a, Quat<Type> b) {
 	return Quat<Type>::mul(a,b);
 }
 
-};
-
+}

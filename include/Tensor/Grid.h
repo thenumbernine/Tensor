@@ -15,8 +15,8 @@ namespace Tensor {
 //TODO move RangeObj iterator with Grid iterator
 template<int rank_>
 struct RangeObj {
-	enum { rank = rank_ };
-	typedef ::Tensor::Vector<int,rank> DerefType;
+	static constexpr auto rank = rank_;
+	using DerefType = ::Tensor::Vector<int,rank>;
 	DerefType min, max;
 
 	RangeObj(DerefType min_, DerefType max_) : min(min_), max(max_) {}
@@ -136,10 +136,10 @@ struct RangeObj {
 //so this is dynamically-sized tensor
 template<typename Type_, int rank_>
 struct Grid {
-	typedef Type_ Type;
-	typedef Type value_type;
-	enum { rank = rank_ };
-	typedef ::Tensor::Vector<int,rank> DerefType;
+	using Type = Type_;
+	using value_type = Type;
+	static constexpr auto rank = rank_;
+	using DerefType = ::Tensor::Vector<int,rank>;
 
 	DerefType size;
 	Type *v;
@@ -236,8 +236,8 @@ struct Grid {
 		return v[flat_deref];
 	}
 
-	typedef Type* iterator;
-	typedef const Type* const_iterator;
+	using iterator = Type*;
+	using const_iterator = const Type*;
 	Type *begin() { return v; }
 	Type *end() { return v + size.volume(); }
 	const Type *begin() const { return v; }

@@ -4,8 +4,8 @@
 #include <iostream>
 	
 void test_vectors() {
-	typedef double Real;
-	typedef Tensor::Vector<Real, 3> Vector;
+	using Real = double;
+	using Vector = Tensor::Vector<Real, 3>;
 
 	Vector a(1,2,3);
 	Vector b(4,5,6);
@@ -21,9 +21,6 @@ void test_vectors() {
 	TEST_EQ(Vector(2,4,6)/2., Vector(1,2,3));
 }
 
-using namespace Tensor;
-using namespace std;
-
 template<typename InputType>
 typename InputType::Type determinant33(const InputType &a) {
 	return a(0,0) * a(1,1) * a(2,2)
@@ -38,21 +35,21 @@ typename InputType::Type determinant33(const InputType &a) {
 // but maybe some day it will become one ...
 
 void test_tensors() {
-	typedef double Real;
-	typedef Tensor<Real,Upper<3>> Vector;
+	using Real = double;
+	using Vector = Tensor::Tensor<Real,Tensor::Upper<3>>;
 	Vector v;
 	
 	TEST_EQ(v.rank, 1);
 	TEST_EQ(v.size(), 3);
 	std::cout << "v^i = " << v << std::endl;
 
-	typedef Tensor<Real,Lower<3>> OneForm;
+	using OneForm = Tensor::Tensor<Real,Tensor::Lower<3>>;
 	OneForm w;
 	TEST_EQ(w.rank, 1);
 	TEST_EQ(w.size(), 3);
 	std::cout << "w_i = " << w << std::endl;
 
-	typedef Tensor<Real,Symmetric<Lower<3>,Lower<3>>> Metric;
+	using Metric = Tensor::Tensor<Real,Tensor::Symmetric<Tensor::Lower<3>,Tensor::Lower<3>>>;
 	Metric g;
 	TEST_EQ(g.rank, 2);
 	TEST_EQ(g.size()(0), 3);
@@ -62,7 +59,7 @@ void test_tensors() {
 	}
 	std::cout << "g_ij = " << g << std::endl;
 
-	typedef Tensor<Real,Upper<3>,Upper<3>> Matrix;
+	using Matrix = Tensor::Tensor<Real,Tensor::Upper<3>,Tensor::Upper<3>>;
 	Matrix h;
 	TEST_EQ(h.rank, 2);
 	TEST_EQ(h.size()(0), 3);
@@ -77,8 +74,8 @@ void test_tensors() {
 
 	//iterator access
 	int j = 0;
-	Tensor<Real, Upper<3>, Upper<3>, Upper<3>> ta;
-	for (Tensor<Real, Upper<3>, Upper<3>, Upper<3>>::iterator i = ta.begin(); 
+	Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Upper<3>, Tensor::Upper<3>> ta;
+	for (Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Upper<3>, Tensor::Upper<3>>::iterator i = ta.begin(); 
 		i != ta.end(); ++i) 
 	{
 		*i = j++;
@@ -94,17 +91,17 @@ void test_tensors() {
 	//subtensor access not workign
 	//i'll replace it with write iterators and metaprogram assignments
 	#if 0
-	Tensor<Real, Upper<3>, Upper<3>> tb;
-	for (Tensor<Real, Upper<3>, Upper<3>>::iterator i = tb.begin(); i != tb.end(); ++i) *i = 2.;
-	cout << "tb = " << tb << endl;
+	Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Upper<3>> tb;
+	for (Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Upper<3>>::iterator i = tb.begin(); i != tb.end(); ++i) *i = 2.;
+	std::cout << "tb = " << tb << std::endl;
 	ta(0) = tb;
-	cout << "ta = " << ta << endl;
-	Tensor<Real, Upper<3>> tc;
-	for (Tensor<Real, Upper<3>>::iterator i = tc.begin(); i != tc.end(); ++i) *i = 3.;
-	cout << "tc = " << tc << endl;
+	std::cout << "ta = " << ta << std::endl;
+	Tensor::Tensor<Real, Tensor::Upper<3>> tc;
+	for (Tensor::Tensor<Real, Tensor::Upper<3>>::iterator i = tc.begin(); i != tc.end(); ++i) *i = 3.;
+	std::cout << "tc = " << tc << std::endl;
 	//ta(0,0) = tc;		//not working
 	ta(0)(0) = tc;
-	cout << "ta = " << ta << endl;
+	std::cout << "ta = " << ta << std::endl;
 	#endif
 
 	//inverse
@@ -115,21 +112,21 @@ void test_tensors() {
 		}
 	}
 
-	cout << "m: " << m << endl;
-	cout << "determinant: " << determinant33<Matrix>(m) << endl;
+	std::cout << "m: " << m << std::endl;
+	std::cout << "determinant: " << determinant33<Matrix>(m) << std::endl;
 	
 
 #if 0	//not yet working
-	typedef Tensor<Real, 
-		antisymmetric<Lower<2>, Lower<2>>,
-		antisymmetric<Lower<2>, Lower<2>>
-	> RiemannTensor;
-	typedef RiemannTensor::TensorStats RiemannTensorStats;
-	typedef RiemannTensorStats::InnerType RiemannTensorStatsInnerType;
-	typedef RiemannTensorStatsInnerType::BodyType RiemannTensorStatsInnerBodyType;
+	using RiemannTensor = Tensor::Tensor<Real, 
+		antisymmetric<Tensor::Lower<2>, Tensor::Lower<2>>,
+		antisymmetric<Tensor::Lower<2>, Tensor::Lower<2>>
+	>;
+	using RiemannTensorStats = RiemannTensor::TensorStats;
+	using RiemannTensorStatsInnerType = RiemannTensorStats::InnerType;
+	using RiemannTensorStatsInnerBodyType = RiemannTensorStatsInnerType::BodyType;
 	RiemannTensor r;
-	cout << "size " << r.size() << endl;
-	cout << "rank " << r.rank << endl;
+	std::cout << "size " << r.size() << std::endl;
+	std::cout << "rank " << r.rank << std::endl;
 	int e = 0;
 	for (int i = 0; i < 2; ++i) {
 		for (int j = 0; j < i; ++j) {
@@ -144,7 +141,7 @@ void test_tensors() {
 		for (int j = 0; j < 2; ++j) {
 			for (int k = 0; k < 2; ++k) {
 				for (int l = 0; l < 2; ++l) {
-					cout << "r_" << i << j << k << l << " = " << ((RiemannTensorStatsInnerBodyType&)(r.body(i,j)))(k,l) << endl;
+					std::cout << "r_" << i << j << k << l << " = " << ((RiemannTensorStatsInnerBodyType&)(r.body(i,j)))(k,l) << std::endl;
 				}
 			}
 		}
@@ -152,7 +149,7 @@ void test_tensors() {
 #endif
 }
 
-int main() {
+void test_basics() {
 	test_vectors();
 	test_tensors();
 }

@@ -1,0 +1,3 @@
+distName='test'
+distType='app'
+depends = {'../../Common', '..'}

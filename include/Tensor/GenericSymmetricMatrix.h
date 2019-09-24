@@ -9,12 +9,12 @@ GenericSymmetricMatrix(i,j) == GenericSymmetricMatrix(j,i)
 */
 template<typename Type_, int dim_, typename ScalarType_, typename Child>
 struct GenericSymmetricMatrix : public GenericDenseMatrix<Type_, dim_, ScalarType_, Child, dim_ * (dim_ + 1) / 2> {
-	typedef GenericDenseMatrix<Type_, dim_, ScalarType_, Child, dim_ * (dim_ + 1) / 2> Parent;
+	using Parent = GenericDenseMatrix<Type_, dim_, ScalarType_, Child, dim_ * (dim_ + 1) / 2>;
 	
-	typedef typename Parent::Type Type;
-	enum { dim = Parent::dim };
-	typedef typename Parent::ScalarType ScalarType;
-	enum { size = Parent::size };
+	using Type = typename Parent::Type;
+	static constexpr auto dim = Parent::dim;
+	using ScalarType = typename Parent::ScalarType;
+	static constexpr auto size = Parent::size;
 
 	using Parent::Parent;
 
@@ -45,5 +45,4 @@ struct GenericSymmetricMatrix : public GenericDenseMatrix<Type_, dim_, ScalarTyp
 	}
 };
 
-};
-
+}

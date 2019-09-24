@@ -69,16 +69,16 @@ struct PartialDerivativeClass;
 
 template<int order, typename Real, int dim, typename... args>
 struct PartialDerivativeClass<order, Real, dim, Tensor<Real, args...>> {
-	typedef Tensor<Real, args...> InputType;
-	typedef Tensor<Real, Lower<dim>, args...> OutputType;
-	typedef std::function<InputType(Vector<int, dim> index)> FuncType;
-	enum { rank = InputType::rank };
+	using InputType = Tensor<Real, args...>;
+	using OutputType = Tensor<Real, Lower<dim>, args...>;
+	using FuncType = std::function<InputType(Vector<int, dim> index)>;
+	static constexpr auto rank = InputType::rank;
 	OutputType operator()(
 		const Vector<int, dim> &gridIndex,
 		const Vector<Real, dim> &dx,
 		FuncType f)
 	{
-		typedef PartialDerivCoeffs<Real, order> Coeffs;
+		using Coeffs = PartialDerivCoeffs<Real, order>;
 		return OutputType([&](Vector<int, rank+1> dstIndex){
 			int gradIndex = dstIndex(0);
 			Vector<int, rank> srcIndex;
@@ -99,15 +99,15 @@ struct PartialDerivativeClass<order, Real, dim, Tensor<Real, args...>> {
 
 template<int order, typename Real, int dim>
 struct PartialDerivativeClass<order, Real, dim, Real> {
-	typedef Real InputType;
-	typedef Tensor<Real, Lower<dim>> OutputType;
-	typedef std::function<InputType(Vector<int, dim> index)> FuncType;
+	using InputType = Real;
+	using OutputType = Tensor<Real, Lower<dim>>;
+	using FuncType = std::function<InputType(Vector<int, dim> index)>;
 	OutputType operator()(
 		const Vector<int, dim> &gridIndex,
 		const Vector<Real, dim> &dx, 
 		FuncType f)
 	{
-		typedef PartialDerivCoeffs<Real, order> Coeffs;
+		using Coeffs = PartialDerivCoeffs<Real, order>;
 		return OutputType([&](Vector<int, 1> dstIndex){
 			int gradIndex = dstIndex(0);
 			Real sum = 0.f;

@@ -12,12 +12,12 @@ child is used for
 */
 template<typename Type_, int dim_, typename ScalarType_, typename Child, int size_>
 struct GenericDenseMatrix : public GenericArray<Type_, size_, ScalarType_, Child> {
-	typedef GenericArray<Type_, size_, ScalarType_, Child> Parent;
+	using Parent = GenericArray<Type_, size_, ScalarType_, Child>;
 	
-	typedef typename Parent::Type Type;
-	enum { dim = dim_ };
-	typedef typename Parent::ScalarType ScalarType;
-	enum { size = Parent::size };
+	using Type = typename Parent::Type;
+	static constexpr auto dim = dim_;
+	using ScalarType = typename Parent::ScalarType;
+	static constexpr auto size = Parent::size;
 
 	/*
 	initialize to identity or zero?
@@ -34,5 +34,4 @@ struct GenericDenseMatrix : public GenericArray<Type_, size_, ScalarType_, Child
 	const Type &operator()(const Vector<int,2> &deref) const { return Parent::v[Child::index(deref(0),deref(1))]; }
 };
 
-};
-
+}

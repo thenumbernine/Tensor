@@ -125,5 +125,4 @@ struct TernaryOp {
 	};
 };
 
-};
-
+}

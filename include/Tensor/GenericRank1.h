@@ -7,14 +7,14 @@ namespace Tensor {
 
 template<int dim_>
 struct GenericRank1 {
-	enum { dim = dim_ };
-	enum { rank = 1 };
+	static constexpr auto dim = dim_;
+	static constexpr auto rank = 1;
 
 	//now i need a specialization of this for when 'type' is a primitive
 	// in such cases, accessing nested members results in compiler errors
 	template<typename InnerType, typename ScalarType>
 	struct Body : public GenericVector<InnerType, dim, ScalarType, Body<InnerType, ScalarType>> {
-		typedef GenericVector<InnerType, dim, ScalarType, Body<InnerType, ScalarType>> Parent;
+		using Parent = GenericVector<InnerType, dim, ScalarType, Body<InnerType, ScalarType>>;
 		
 		using Parent::Parent;
 
@@ -26,5 +26,4 @@ struct GenericRank1 {
 	};
 };
 
-};
-
+}

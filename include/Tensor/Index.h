@@ -22,8 +22,8 @@ template<typename IndexVector, typename ReadIndexVector, int j>
 struct FindDstForSrcIndex {
 	template<int i>
 	struct Find {
-		enum { rank = IndexVector::size };
-		typedef Vector<int, rank> DerefType;
+		static constexpr auto rank = std::tuple_size_v<IndexVector>;
+		using DerefType = Vector<int, rank>;
 		static bool exec(DerefType& dstForSrcIndex) {
 			
 			struct IndexesMatch {
@@ -38,14 +38,14 @@ struct FindDstForSrcIndex {
 				}
 			};
 			
-			return std::conditional<
-				std::is_same<
-					typename ReadIndexVector::template Get<j>,
-					typename IndexVector::template Get<i>
-				>::value,
+			return std::conditional_t<
+				std::is_same_v<
+					std::tuple_element_t<j, ReadIndexVector>,
+					std::tuple_element_t<i, IndexVector>
+				>,
 				IndexesMatch,
 				IndexesDontMatch
-			>::type::exec(dstForSrcIndex);
+			>::exec(dstForSrcIndex);
 		}
 	};
 };
@@ -54,11 +54,11 @@ template<typename IndexVector, typename ReadIndexVector>
 struct FindDstForSrcOuter {
 	template<int j>
 	struct Find {
-		enum { rank = IndexVector::size };
-		typedef Vector<int, rank> DerefType;
+		static constexpr auto rank = std::tuple_size_v<IndexVector>;
+		using DerefType = Vector<int, rank>;
 		
 		static bool exec(DerefType &dstForSrcIndex) {
-			bool found = ForLoop<0, rank, FindDstForSrcIndex<IndexVector, ReadIndexVector, j>::template Find>::exec(dstForSrcIndex);
+			bool found = Common::ForLoop<0, rank, FindDstForSrcIndex<IndexVector, ReadIndexVector, j>::template Find>::exec(dstForSrcIndex);
 			
 			if (!found) throw Common::Exception() << "failed to find index";
 			
@@ -75,9 +75,9 @@ this needs its index access abstracted so that binary operations can provide the
 */
 template<typename Tensor_, typename IndexVector>
 struct IndexAccess {
-	typedef Tensor_ Tensor;
-	enum { rank = Tensor::rank };
-	typedef typename Tensor::DerefType DerefType;
+	using Tensor = Tensor_;
+	static constexpr auto rank = Tensor::rank;
+	using DerefType = typename Tensor::DerefType;
 	Tensor *tensor;
 
 	IndexAccess(Tensor *tensor_) 
@@ -118,7 +118,7 @@ struct IndexAccess {
 		// which would mean no longer dereferencing by int vectors but instead by compile-time parameter packs
 
 		DerefType dstForSrcIndex;
-		ForLoop<0, rank, FindDstForSrcOuter<IndexVector, IndexVectorB>::template Find>::exec(dstForSrcIndex);
+		Common::ForLoop<0, rank, FindDstForSrcOuter<IndexVector, IndexVectorB>::template Find>::exec(dstForSrcIndex);
 	
 		//assign using write iterator so the result will be pushed on stack before overwriting the write tensor
 		// this way we get a copy to buffer changes between read and write, in case the same tensor is used for both
@@ -157,5 +157,4 @@ operator*(const IndexAccess<Tensor<Type, IndexesA...>, IndexVectorA>& indexAcces
 }
 */
 
-};
-
+}

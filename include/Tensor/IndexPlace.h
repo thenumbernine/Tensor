@@ -15,7 +15,7 @@ namespace Tensor {
 /*
 dim = dimension of this upper index
 used like so: 
-	typedef tensor<real, Upper<3>> vector3;
+	using vector3 = Tensor<real, Upper<3>>;
 */
 template<int dim>
 struct Upper : public GenericRank1<dim> {};
@@ -23,25 +23,25 @@ struct Upper : public GenericRank1<dim> {};
 /*
 dim = dimension of this lower index
 used like so:
-	typedef tensor<real, Lower<3>> oneform3;
+	using oneform3 = Tensor<real, Lower<3>>;
 */
 template<int dim>
 struct Lower : public GenericRank1<dim> {};
 
 /*
 used like so: 
-	typedef tensor<real, Symmetric<Lower<3>, Lower<3>>> metric3;
-	typedef tensor<real, Symmetric<Lower<3>, Lower<3>>, Symmetric<Lower<3>, Lower<3>>> riemann_metric3;
+	using metric3 = Tensor<real, Symmetric<Lower<3>, Lower<3>>>;
+	using riemann_metric3 = Tensor<real, Symmetric<Lower<3>, Lower<3>>, Symmetric<Lower<3>, Lower<3>>>;
 */
 template<typename Index1, typename Index2>
 struct Symmetric {
 	static_assert(Index1::dim == Index2::dim, "Symmetric can only accept two indexes of equal dimension");
-	enum { dim = Index1::dim };
-	enum { rank = Index1::rank + Index2::rank };
+	static constexpr auto dim = Index1::dim;
+	static constexpr auto rank = Index1::rank + Index2::rank;
 	
 	template<typename InnerType, typename ScalarType>
 	struct Body : public GenericSymmetricMatrix<InnerType, Index1::dim, ScalarType, Body<InnerType, ScalarType>> {
-		typedef GenericSymmetricMatrix<InnerType, Index1::dim, ScalarType, Body<InnerType, ScalarType>> Parent;
+		using Parent = GenericSymmetricMatrix<InnerType, Index1::dim, ScalarType, Body<InnerType, ScalarType>>;
 		Body() : Parent() {}
 		Body(const Body &b) : Parent(b) {}
 		Body(const InnerType &t) : Parent(t) {}
@@ -51,17 +51,16 @@ struct Symmetric {
 template<typename Index1, typename Index2>
 struct Antisymmetric {
 	static_assert(Index1::dim == Index2::dim, "Symmetric can only accept two indexes of equal dimension");
-	enum { dim = Index1::dim };
-	enum { rank = Index1::rank + Index2::rank };
+	static constexpr auto dim = Index1::dim;
+	static constexpr auto rank = Index1::rank + Index2::rank;
 
 	template<typename InnerType, typename ScalarType>
 	struct Body : public GenericAntisymmetricMatrix<InnerType, Index1::dim, ScalarType, Body<InnerType, ScalarType>> {
-		typedef GenericAntisymmetricMatrix<InnerType, Index1::dim, ScalarType, Body<InnerType, ScalarType>> Parent;
+		using Parent = GenericAntisymmetricMatrix<InnerType, Index1::dim, ScalarType, Body<InnerType, ScalarType>>;
 		Body() : Parent() {}
 		Body(const Body &b) : Parent(b) {}
 		Body(const InnerType &t) : Parent(t) {}
 	};
 };
 
-};
-
+}
