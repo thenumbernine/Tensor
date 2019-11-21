@@ -5,7 +5,7 @@
 #include <cassert>
 #include <algorithm>
 
-#ifdef PLATFORM_msvc
+#if PLATFORM_MSVC
 #undef min
 #undef max
 #endif
