@@ -41,6 +41,8 @@ struct GenericArray {
 	//I would like to return the child type, but this is by definition returning a different static size
 	// and child types are flexible in their size initialization (rank-1's vs rank-2's, symmetric vs antisymmetric, etc.)
 	//so I have to return the parent class type
+	//I could get around this by passing through the crtp template parameters a template of the child based on size ...
+	// this might not translate so well when applying it to certain data structures that do not represent sequential vectors, i.e. symmetric rank-2 tensors.
 	template<int start, int length>
 	GenericArray<Type, length, ScalarType, Child> subset() const {
 		static_assert(length <= size, "cannot get a subset that is greater than the array itself");

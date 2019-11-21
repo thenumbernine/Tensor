@@ -23,7 +23,7 @@ struct GenericVector : public GenericArray<Type_, size_, ScalarType_, Child> {
 	GenericVector(const Child &a) : Parent(a) {}
 	GenericVector(const Type &x) : Parent(x) {}
 
-	GenericVector(std::function<Type(int)> &f) {
+	GenericVector(std::function<Type(int)> f) {
 		for (int i = 0; i < size; ++i) {
 			Parent::v[i] = f(i);
 		}
