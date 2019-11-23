@@ -19,6 +19,10 @@ struct Quat : public Vector<Type, 4> {
 		(*this)(3) = w;
 	}
 
+	Quat unitConj() const {
+		return Quat(-(*this)(0), -(*this)(1), -(*this)(2), (*this)(3));
+	}
+
 	Quat fromAngleAxis() {
 		Type c = cos((*this)(3) * .5);
 		Type n = sqrt((*this)(0) * (*this)(0) + (*this)(1) * (*this)(1) + (*this)(2) * (*this)(2));
@@ -45,7 +49,7 @@ struct Quat : public Vector<Type, 4> {
 			2. * halfAngle);
 	}
 
-	static Quat mul(Quat &q, Quat &r) {
+	static Quat mul(const Quat &q, const Quat &r) {
 		Type a = (q(3) + q(0)) * (r(3) + r(0));
 		Type b = (q(2) - q(1)) * (r(1) - r(2));
 		Type c = (q(0) - q(3)) * (r(1) + r(2));
