@@ -6,18 +6,11 @@
 namespace Tensor {
 
 template<typename Type>
-struct Quat : public Vector<Type, 4> {
-	
-	Quat() {
-		(*this)(3) = 1.;
-	}
+struct Quat : public GenericVector<Type, 4, Type, Quat<Type>> {
+	using Super = GenericVector<Type, 4, Type, Quat<Type>>;
 
-	Quat(Type x, Type y, Type z, Type w) {
-		(*this)(0) = x;
-		(*this)(1) = y;
-		(*this)(2) = z;
-		(*this)(3) = w;
-	}
+	Quat() : Super(0,0,0,1) {}
+	Quat(Type x, Type y, Type z, Type w) : Super(x,y,z,w) {}
 
 	Quat unitConj() const {
 		return Quat(-(*this)(0), -(*this)(1), -(*this)(2), (*this)(3));
