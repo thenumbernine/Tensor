@@ -80,6 +80,22 @@ struct GenericVector : public GenericArray<Type_, size_, ScalarType_, Child> {
 	Type lenSq() const {
 		return dot(crtp_cast<Child>(*this), crtp_cast<Child>(*this));
 	}
+	
+	Type lenL1() const {
+		Type d = {};
+		for (int i = 0; i < size; ++i) {
+			d += fabs(Super::v[i]);
+		}
+		return d;
+	}
+
+	Type lenLInf() const {
+		Type d = {};
+		for (int i = 0; i < size; ++i) {
+			d = std::max<Type>(d, fabs(Super::v[i]));
+		}
+		return d;
+	}
 
 	Type length() const {
 		return (Type)sqrt(lenSq());
