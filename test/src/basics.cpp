@@ -7,8 +7,10 @@ void test_vectors() {
 	using Real = double;
 	using Vector = Tensor::Vector<Real, 3>;
 
+	//arg ctor works
 	Vector a(1,2,3);
-	Vector b(4,5,6);
+	//bracket ctor works
+	Vector b = {4,5,6};
 
 	//make sure GenericArray functionality works
 	TEST_EQ(Vector(1), Vector(1,1,1));
@@ -37,7 +39,8 @@ typename InputType::Type determinant33(const InputType &a) {
 void test_tensors() {
 	using Real = double;
 	using Vector = Tensor::Tensor<Real,Tensor::Upper<3>>;
-	Vector v;
+	
+	Vector v = {1,2,3};
 	
 	TEST_EQ(v.rank, 1);
 	TEST_EQ(v.size(), 3);
@@ -75,9 +78,7 @@ void test_tensors() {
 	//iterator access
 	int j = 0;
 	Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Upper<3>, Tensor::Upper<3>> ta;
-	for (Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Upper<3>, Tensor::Upper<3>>::iterator i = ta.begin(); 
-		i != ta.end(); ++i) 
-	{
+	for (auto i = ta.begin(); i != ta.end(); ++i) {
 		*i = j++;
 	}
 	for (int i = 0; i < 3; ++i) {
@@ -88,9 +89,9 @@ void test_tensors() {
 		}
 	}
 
-	//subtensor access not workign
+	//subtensor access not working
 	//i'll replace it with write iterators and metaprogram assignments
-	#if 0
+#if 0
 	Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Upper<3>> tb;
 	for (Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Upper<3>>::iterator i = tb.begin(); i != tb.end(); ++i) *i = 2.;
 	std::cout << "tb = " << tb << std::endl;
@@ -102,7 +103,7 @@ void test_tensors() {
 	//ta(0,0) = tc;		//not working
 	ta(0)(0) = tc;
 	std::cout << "ta = " << ta << std::endl;
-	#endif
+#endif
 
 	//inverse
 	Matrix m;
@@ -117,7 +118,7 @@ void test_tensors() {
 	
 
 #if 0	//not yet working
-	using RiemannTensor = Tensor::Tensor<Real, 
+	using RiemannTensor = Tensor::Tensor<Real,
 		antisymmetric<Tensor::Lower<2>, Tensor::Lower<2>>,
 		antisymmetric<Tensor::Lower<2>, Tensor::Lower<2>>
 	>;
@@ -153,4 +154,3 @@ void test_basics() {
 	test_vectors();
 	test_tensors();
 }
-

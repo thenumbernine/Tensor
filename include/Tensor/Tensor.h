@@ -61,7 +61,7 @@ struct TensorStats<ScalarType_, Index_, Args...> {
 	template<
 		int totalRank,
 		int currentRank,
-		int numNestings, 
+		int numNestings,
 		int currentNesting>
 	static void getReadIndexForWriteIndex(
 		Vector<int, totalRank> &index,
@@ -73,8 +73,8 @@ struct TensorStats<ScalarType_, Index_, Args...> {
 		}
 		InnerType::template getReadIndexForWriteIndex<
 			totalRank,
-			currentRank + Index::rank, 
-			numNestings, 
+			currentRank + Index::rank,
+			numNestings,
 			currentNesting + 1>
 				(index, writeIndex);
 	}
@@ -113,7 +113,7 @@ struct TensorStats<ScalarType_, Index_> {
 	template<
 		int totalRank,
 		int currentRank,
-		int numNestings, 
+		int numNestings,
 		int currentNesting>
 	static void getReadIndexForWriteIndex(
 		Vector<int, totalRank> &index,
@@ -122,7 +122,7 @@ struct TensorStats<ScalarType_, Index_> {
 		Vector<int,Index::rank> subIndex = BodyType::getReadIndexForWriteIndex(writeIndex(currentNesting));
 		for (int i = 0; i < Index::rank; ++i) {
 			index(i + currentRank) = subIndex(i);
-		}	
+		}
 	}
 };
 
@@ -168,7 +168,7 @@ retrieves stats for a particular index of the tensor
 currently stores dim
 
 how it works:
-if index <= TensorStats::Index::rank then 
+if index <= TensorStats::Index::rank then
 	use TensorStats::Index
 otherwise
 	perform the operation on
@@ -193,8 +193,8 @@ struct WriteIndexInfo {
 /*
 Type		= tensor element type
 TensorStats	= helper class for calculating some template values
-BodyType 	= the BodyType (the generic_vector subclass) of the tensor 
-DerefType 	= the dereference type that would be needed to dereference this BodyType 
+BodyType 	= the BodyType (the generic_vector subclass) of the tensor
+DerefType 	= the dereference type that would be needed to dereference this BodyType
 				= int vector with dimension equal to rank
 
 rank 		= total rank of the structure
@@ -212,13 +212,13 @@ struct Tensor {
 	//TensorStats metaprogram calculates rank
 	//it pulls individual entries from the index args
 	//I could have the index args themselves do the calculation
-	// but that would mean making base-case specializations for each index class 
+	// but that would mean making base-case specializations for each index class
 	using TensorStats = ::Tensor::TensorStats<ScalarType_, Args_...>;
 	using BodyType = typename TensorStats::BodyType;
 
 	//used to get information per-index of the tensor
 	// currently supports: dim
-	// so Tensor<Real, Upper<2>, Symmetric<Upper<3>, Upper<3>>> can call ::IndexInfo<0>::dim to get 2, 
+	// so Tensor<Real, Upper<2>, Symmetric<Upper<3>, Upper<3>>> can call ::IndexInfo<0>::dim to get 2,
 	//  or call ::IndexInfo<1>::dim or ::IndexInfo<2>::dim to get 3
 	template<int index>
 	using IndexInfo = IndexStats<index, TensorStats>;
@@ -253,7 +253,7 @@ struct Tensor {
 	//read iterator
 	
 	//maybe I should put this in body
-	//and then use a sort of nested iterator so it doesn't cover redundant elements in symmetric indexes 
+	//and then use a sort of nested iterator so it doesn't cover redundant elements in symmetric indexes
 	struct iterator {
 		Tensor *parent;
 		DerefType index;
@@ -295,7 +295,7 @@ struct Tensor {
 	}
 
 	//maybe I should put this in body
-	//and then use a sort of nested iterator so it doesn't cover redundant elements in symmetric indexes 
+	//and then use a sort of nested iterator so it doesn't cover redundant elements in symmetric indexes
 	struct const_iterator {
 		const Tensor *parent;
 		DerefType index;
@@ -343,7 +343,7 @@ struct Tensor {
 			//this is an array as deep as the number of indexes that the tensor was built with
 			//each value of the array iterates from 0 to that nesting's type's ::size
 			//The ::size returns the number of elements used to represent the structure,
-			// so for a 3x3 symmetric matrix ::size would give 6, for n*(n+1)/2 elements used. 
+			// so for a 3x3 symmetric matrix ::size would give 6, for n*(n+1)/2 elements used.
 			WriteDerefType writeIndex;
 			
 			iterator() {}
@@ -400,8 +400,10 @@ struct Tensor {
 	//constructors
 
 	Tensor() {}
-	Tensor(const BodyType &body_) : body(body_) {}
-	Tensor(const Tensor &t) : body(t.body) {}
+	Tensor(BodyType const & body_) : body(body_) {}
+	Tensor(Tensor const & t) : body(t.body) {}
+
+	//constructor from lambda
 
 	Tensor(std::function<Type(DerefType)> f) {
 		typename Write::iterator end = write().end();
@@ -410,12 +412,58 @@ struct Tensor {
 			(*this)(index) = f(index);
 		}
 	}
+
+	//constructor from members
+
+	Tensor(
+		typename TensorStats::InnerType::BodyType const & x0
+	)
+	requires (IndexInfo<0>::dim == 1)
+	{
+		body.v[0] = x0;
+	}
 	
+	Tensor(
+		typename TensorStats::InnerType::BodyType const & x0,
+		typename TensorStats::InnerType::BodyType const & x1
+	)
+	requires (IndexInfo<0>::dim == 2)
+	{
+		body.v[0] = x0;
+		body.v[1] = x1;
+	}
+	
+	Tensor(
+		typename TensorStats::InnerType::BodyType const & x0,
+		typename TensorStats::InnerType::BodyType const & x1,
+		typename TensorStats::InnerType::BodyType const & x2
+	)
+	requires (IndexInfo<0>::dim == 3)
+	{
+		body.v[0] = x0;
+		body.v[1] = x1;
+		body.v[2] = x2;
+	}
+
+	Tensor(
+		typename TensorStats::InnerType::BodyType const & x0,
+		typename TensorStats::InnerType::BodyType const & x1,
+		typename TensorStats::InnerType::BodyType const & x2,
+		typename TensorStats::InnerType::BodyType const & x3
+	)
+	requires (IndexInfo<0>::dim == 4)
+	{
+		body.v[0] = x0;
+		body.v[1] = x1;
+		body.v[2] = x2;
+		body.v[3] = x3;
+	}
+
 	/*
-	Tensor<real, upper<3>> v;
+	Tensor<real, Upper<3>> v;
 	v.body(0) will return of type real
 
-	Tensor<real, upper<3>, upper<4>> v;
+	Tensor<real, Upper<3>, upper<4>> v;
 	v.body(0) will return of type upper<4>::body<real, real>
 	*/
 	BodyType body;
@@ -456,11 +504,11 @@ struct Tensor {
 
 	//dereference by a vector of ints
 
-	Type &operator()(const DerefType &deref) { 
+	Type &operator()(const DerefType &deref) {
 		return TensorStats::template get<rank,0>(body, deref);
 	}
 	
-	const Type &operator()(const DerefType &deref) const { 
+	const Type &operator()(const DerefType &deref) const {
 		return TensorStats::template get_const<rank,0>(body, deref);
 	}
 
@@ -493,9 +541,11 @@ struct Tensor {
 	//equality
 
 	template<typename T>
-	bool operator==(const T &t) const {
+	bool operator==(T const & t) const {
 		if (rank != t.rank) return false;
 		if (size() != t.size()) return false;
+		
+		//TODO write-iterator if they have matching symmetries
 		for (const_iterator i = begin(); i != end(); ++i) {
 			if (*i != t(i.index)) return false;
 		}
@@ -503,8 +553,21 @@ struct Tensor {
 	}
 
 	template<typename T>
-	bool operator!=(const T &t) const {
+	bool operator!=(T const & t) const {
 		return !operator==(t);
+	}
+
+	//assignment
+
+	template<typename T>
+	Tensor& operator=(T const & t) {
+		iterator i = begin();
+		typename T::iterator j = t.read().begin();
+		for (; i != end(); ++i, ++j) {
+			if (j == t.end()) break;
+			*i = *j;
+		}
+		return *this;
 	}
 
 	/*

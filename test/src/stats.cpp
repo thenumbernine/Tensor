@@ -49,6 +49,4 @@ void test_stats() {
 	TEST_EQ((Tensor::Tensor<Real, Tensor::Antisymmetric<Tensor::Lower<2>, Tensor::Lower<2>>, Tensor::Antisymmetric<Tensor::Lower<3>, Tensor::Lower<3>>>::IndexInfo<2>::dim), 3);
 	TEST_EQ((Tensor::Tensor<Real, Tensor::Antisymmetric<Tensor::Lower<2>, Tensor::Lower<2>>, Tensor::Antisymmetric<Tensor::Lower<3>, Tensor::Lower<3>>>::IndexInfo<3>::dim), 3);
 	ECHO(f.size());
-	
 }
-

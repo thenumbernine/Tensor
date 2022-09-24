@@ -26,7 +26,7 @@ void test_iter() {
 		
 		//would be '0' if write iter skipped a mem address present in the matrix
 		//would be '2' if write iter was traversing a non-symmetric matrix
-		TEST_EQ(s(1,0), 1);	
+		TEST_EQ(s(1,0), 1);
 	}
 
 	//index assignment
@@ -54,7 +54,7 @@ void test_iter() {
 		m(1,0) = 1;
 		ECHO(m);
 		m(i,j) = m(j,i);
-		TEST_EQ(m(0, 1), 1);	
+		TEST_EQ(m(0, 1), 1);
 		ECHO(m);
 	}
 
