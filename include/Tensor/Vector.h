@@ -34,8 +34,8 @@ struct Vector : public GenericVector<Type_, dim_, Type_, Vector<Type_, dim_> > {
 };
 
 template<typename Type, int dim>
-std::ostream &operator<<(std::ostream &o, const Vector<Type,dim> &t) {
-	const char *sep = "";
+std::ostream &operator<<(std::ostream &o, Vector<Type,dim> const &t) {
+	char const *sep = "";
 	o << "(";
 	for (int i = 0; i < t.dim; ++i) {
 		o << sep << t(i);
@@ -45,40 +45,63 @@ std::ostream &operator<<(std::ostream &o, const Vector<Type,dim> &t) {
 	return o;
 }
 
-using bool2 = Vector<bool, 2>;
-using bool3 = Vector<bool, 3>;
-using bool4 = Vector<bool, 4>;
+template<int dim> using boolN = Vector<bool, dim>;
+using bool1 = boolN<1>;
+using bool2 = boolN<2>;
+using bool3 = boolN<3>;
+using bool4 = boolN<4>;
 
-using char2 = Vector<char, 2>;
-using char3 = Vector<char, 3>;
-using char4 = Vector<char, 4>;
+template<int dim> using charN = Vector<char, dim>;
+using char1 = charN<1>;
+using char2 = charN<2>;
+using char3 = charN<3>;
+using char4 = charN<4>;
 
-using uchar2 = Vector<unsigned char, 2>;
-using uchar3 = Vector<unsigned char, 3>;
-using uchar4 = Vector<unsigned char, 4>;
+template<int dim> using ucharN = Vector<unsigned char, dim>;
+using uchar1 = ucharN<1>;
+using uchar2 = ucharN<2>;
+using uchar3 = ucharN<3>;
+using uchar4 = ucharN<4>;
 
-using short2 = Vector<short, 2>;
-using short3 = Vector<short, 3>;
-using short4 = Vector<short, 4>;
+template<int dim> using shortN = Vector<short, dim>;
+using short1 = shortN<1>;
+using short2 = shortN<2>;
+using short3 = shortN<3>;
+using short4 = shortN<4>;
 
-using ushort2 = Vector<unsigned short, 2>;
-using ushort3 = Vector<unsigned short, 3>;
-using ushort4 = Vector<unsigned short, 4>;
+template<int dim> using ushortN = Vector<unsigned short, dim>;
+using ushort1 = ushortN<1>;
+using ushort2 = ushortN<2>;
+using ushort3 = ushortN<3>;
+using ushort4 = ushortN<4>;
 
-using int2 = Vector<int, 2>;
-using int3 = Vector<int, 3>;
-using int4 = Vector<int, 4>;
+template<int dim> using intN = Vector<int, dim>;
+using int1 = intN<1>;
+using int2 = intN<2>;
+using int3 = intN<3>;
+using int4 = intN<4>;
 
-using uint2 = Vector<unsigned int, 2>;
-using uint3 = Vector<unsigned int, 3>;
-using uint4 = Vector<unsigned int, 4>;
+template<int dim> using uintN = Vector<unsigned int, dim>;
+using uint1 = uintN<1>;
+using uint2 = uintN<2>;
+using uint3 = uintN<3>;
+using uint4 = uintN<4>;
 
-using float2 = Vector<float, 2>;
-using float3 = Vector<float, 3>;
-using float4 = Vector<float, 4>;
+template<int dim> using floatN = Vector<float, dim>;
+using float1 = floatN<1>;
+using float2 = floatN<2>;
+using float3 = floatN<3>;
+using float4 = floatN<4>;
 
-using double2 = Vector<double, 2>;
-using double3 = Vector<double, 3>;
-using double4 = Vector<double, 4>;
+template<int dim> using doubleN = Vector<double, dim>;
+using double1 = doubleN<1>;
+using double2 = doubleN<2>;
+using double3 = doubleN<3>;
+using double4 = doubleN<4>;
+
+template<typename T> using _vec1 = Vector<T, 1>;
+template<typename T> using _vec2 = Vector<T, 2>;
+template<typename T> using _vec3 = Vector<T, 3>;
+template<typename T> using _vec4 = Vector<T, 4>;
 
 }

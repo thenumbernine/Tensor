@@ -27,11 +27,28 @@ struct GenericDenseMatrix : public GenericArray<Type_, size_, ScalarType_, Child
 	*/
 	GenericDenseMatrix() : Parent() {}
 
-	//index access
+	//operator() index access
+	
 	Type &operator()(int i, int j) { return Parent::v[Child::index(i,j)]; }
-	const Type &operator()(int i, int j) const { return Parent::v[Child::index(i,j)]; }
-	Type &operator()(const Vector<int,2> &deref) { return Parent::v[Child::index(deref(0),deref(1))]; }
-	const Type &operator()(const Vector<int,2> &deref) const { return Parent::v[Child::index(deref(0),deref(1))]; }
+	Type const &operator()(int i, int j) const { return Parent::v[Child::index(i,j)]; }
+	Type &operator()(int2 const &deref) { return Parent::v[Child::index(deref(0),deref(1))]; }
+	Type const &operator()(int2 const &deref) const { return Parent::v[Child::index(deref(0),deref(1))]; }
+
+	//operator[] index access
+	
+	struct IndexOperatorRef {
+		GenericDenseMatrix * owner = {};
+		int i = {};
+		IndexOperatorRef(GenericDenseMatrix * owner_, int i_) : owner(owner_), i(i_) {}
+		
+		Type &operator[](int j) { return owner->v[Child::index(i,j)]; }
+		Type const &operator[](int j) const { return owner->v[Child::index(i,j)]; }
+	};
+
+	IndexOperatorRef &operator[](int i) { return IndexOperatorRef(this, i); }
+	IndexOperatorRef const &operator[](int i) const { return IndexOperatorRef(this, i); }
+	Type &operator[](int2 const &deref) { return Parent::v[Child::index(deref(0),deref(1))]; }
+	Type const &operator[](int2 const &deref) const { return Parent::v[Child::index(deref(0),deref(1))]; }
 };
 
 }

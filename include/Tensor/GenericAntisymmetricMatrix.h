@@ -13,7 +13,7 @@ struct AntisymmetricMatrixAccessor {
 	AntisymmetricMatrixAccessor(OwnerType *owner_, int offset_, bool flip_) 
 	: owner(owner_), offset(offset_), flip(flip_) {}
 
-	AntisymmetricMatrixAccessor &operator=(const Type &value) {
+	AntisymmetricMatrixAccessor &operator=(Type const &value) {
 		if (owner) {
 			if (flip) {
 				owner->v[offset] = -value;
@@ -39,11 +39,11 @@ struct AntisymmetricMatrixAccessor {
 
 template<typename Type, typename OwnerType>
 struct AntisymmetricMatrixAccessorConst {
-	const OwnerType *owner;
+	OwnerType const *owner;
 	int offset;
 	bool flip;
 
-	AntisymmetricMatrixAccessorConst(const OwnerType *owner_, int offset_, bool flip_) 
+	AntisymmetricMatrixAccessorConst(OwnerType const *owner_, int offset_, bool flip_) 
 	: owner(owner_), offset(offset_), flip(flip_) {}
 
 	//instead of returning this
@@ -76,7 +76,8 @@ struct GenericAntisymmetricMatrix : public GenericDenseMatrix<Type_, dim_, Scala
 
 	using Parent::Parent;
 	
-	//index access
+	//operator() index access
+	
 	Accessor operator()(int i, int j) {
 		if (i == j) return Accessor(NULL, 0, false);
 		if (i < j) return Accessor(this, index(i,j), false);
@@ -87,6 +88,8 @@ struct GenericAntisymmetricMatrix : public GenericDenseMatrix<Type_, dim_, Scala
 		if (i < j) return AccessorConst(this, index(i,j), false);
 		if (i > j) return AccessorConst(this, index(j,i), true);
 	}
+
+	//TODO operator[] partial-Accessor access
 
 	/*
 	math-index: i is the row, j is the column
@@ -111,8 +114,8 @@ v 0  0 1 3 6
            9
 */
 
-	static Vector<int,2> getReadIndexForWriteIndex(int writeIndex) {
-		Vector<int,2> readIndex;
+	static int2 getReadIndexForWriteIndex(int writeIndex) {
+		int2 readIndex;
 		int w = writeIndex+1;
 		for (int i = 1; w > 0; ++i) {
 			++readIndex(0);

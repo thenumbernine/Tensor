@@ -32,8 +32,8 @@ struct GenericSymmetricMatrix : public GenericDenseMatrix<Type_, dim_, ScalarTyp
 		return i * (i + 1) / 2 + j;
 	}
 
-	static Vector<int,2> getReadIndexForWriteIndex(int writeIndex) {
-		Vector<int,2> readIndex;
+	static int2 getReadIndexForWriteIndex(int writeIndex) {
+		int2 readIndex;
 		int w = writeIndex+1;
 		for (int i = 1; w > 0; ++i) {
 			++readIndex(0);

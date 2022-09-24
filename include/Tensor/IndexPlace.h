@@ -43,8 +43,8 @@ struct Symmetric {
 	struct Body : public GenericSymmetricMatrix<InnerType, Index1::dim, ScalarType, Body<InnerType, ScalarType>> {
 		using Parent = GenericSymmetricMatrix<InnerType, Index1::dim, ScalarType, Body<InnerType, ScalarType>>;
 		Body() : Parent() {}
-		Body(const Body &b) : Parent(b) {}
-		Body(const InnerType &t) : Parent(t) {}
+		Body(Body const &b) : Parent(b) {}
+		Body(InnerType const &t) : Parent(t) {}
 	};
 };
 
@@ -58,8 +58,8 @@ struct Antisymmetric {
 	struct Body : public GenericAntisymmetricMatrix<InnerType, Index1::dim, ScalarType, Body<InnerType, ScalarType>> {
 		using Parent = GenericAntisymmetricMatrix<InnerType, Index1::dim, ScalarType, Body<InnerType, ScalarType>>;
 		Body() : Parent() {}
-		Body(const Body &b) : Parent(b) {}
-		Body(const InnerType &t) : Parent(t) {}
+		Body(Body const &b) : Parent(b) {}
+		Body(InnerType const &t) : Parent(t) {}
 	};
 };
 

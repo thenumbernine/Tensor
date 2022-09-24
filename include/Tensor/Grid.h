@@ -16,7 +16,7 @@ namespace Tensor {
 template<int rank_>
 struct RangeObj {
 	static constexpr auto rank = rank_;
-	using DerefType = ::Tensor::Vector<int,rank>;
+	using DerefType = intN<rank>;
 	DerefType min, max;
 
 	RangeObj(DerefType min_, DerefType max_) : min(min_), max(max_) {}
@@ -28,10 +28,10 @@ struct RangeObj {
 		
 		iterator()  {}
 		iterator(DerefType min_, DerefType max_) : index(min_), min(min_), max(max_) {}
-		iterator(const iterator &iter) : index(iter.index), min(iter.min), max(iter.max) {}
+		iterator(iterator const &iter) : index(iter.index), min(iter.min), max(iter.max) {}
 		
-		bool operator==(const iterator &b) const { return index == b.index; }
-		bool operator!=(const iterator &b) const { return index != b.index; }
+		bool operator==(iterator const &b) const { return index == b.index; }
+		bool operator!=(iterator const &b) const { return index != b.index; }
 
 		//converts index to int
 		int flatten() const {
@@ -72,7 +72,7 @@ struct RangeObj {
 			return iterator(*this) -= offset;
 		}
 
-		int operator-(const iterator &i) const {
+		int operator-(iterator const &i) const {
 			return flatten() - i.flatten();
 		}
 
@@ -103,10 +103,10 @@ struct RangeObj {
 		
 		const_iterator() {}
 		const_iterator(DerefType min_, DerefType max_) : min(min_), max(max_) {}
-		const_iterator(const const_iterator &iter) : index(iter.index), min(iter.min), max(iter.max) {}
+		const_iterator(const_iterator const &iter) : index(iter.index), min(iter.min), max(iter.max) {}
 		
-		bool operator==(const const_iterator &b) const { return index == b.index; }
-		bool operator!=(const const_iterator &b) const { return index != b.index; }
+		bool operator==(const_iterator const &b) const { return index == b.index; }
+		bool operator!=(const_iterator const &b) const { return index != b.index; }
 		
 		const_iterator &operator++() {
 			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
@@ -117,8 +117,8 @@ struct RangeObj {
 			return *this;
 		}
 
-		const DerefType &operator*() const { return index; }
-		const DerefType *operator->() const { return &index; }
+		DerefType const &operator*() const { return index; }
+		DerefType const *operator->() const { return &index; }
 	};
 
 	const_iterator begin() const {
@@ -139,7 +139,7 @@ struct Grid {
 	using Type = Type_;
 	using value_type = Type;
 	static constexpr auto rank = rank_;
-	using DerefType = ::Tensor::Vector<int,rank>;
+	using DerefType = intN<rank>;
 
 	DerefType size;
 	Type *v;
@@ -149,7 +149,7 @@ struct Grid {
 	//step[0] = 1, step[1] = size[0], step[j] = product(i=1,j-1) size[i]
 	DerefType step;
 
-	Grid(const DerefType &size_ = DerefType(), Type* v_ = (Type*)nullptr)
+	Grid(DerefType const &size_ = DerefType(), Type* v_ = (Type*)nullptr)
 	:	size(size_),
 		v(v_),
 		own(false)
@@ -200,18 +200,18 @@ struct Grid {
 	}
 
 	template<typename... Rest>
-	const Type &operator()(int first, Rest... rest) const {
+	Type const &operator()(int first, Rest... rest) const {
 		return getValue(BuildDeref<0, int, Rest...>::exec(first, rest...));
 	}
 
 	//dereference by a vector of ints
 
 	//typical access will be only for the Type's sake
-	Type &operator()(const DerefType &deref) { return getValue(deref); }
-	const Type &operator()(const DerefType &deref) const { return getValue(deref); }
+	Type &operator()(DerefType const &deref) { return getValue(deref); }
+	Type const &operator()(DerefType const &deref) const { return getValue(deref); }
 
 	//but other folks (currently only our initialization of our indexes) will want the whole value
-	Type &getValue(const DerefType &deref) { 
+	Type &getValue(DerefType const &deref) { 
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
@@ -223,7 +223,7 @@ struct Grid {
 		assert(flat_deref >= 0 && flat_deref < size.volume());
 		return v[flat_deref];
 	}
-	const Type &getValue(const DerefType &deref) const { 
+	Type const &getValue(DerefType const &deref) const { 
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
@@ -237,11 +237,11 @@ struct Grid {
 	}
 
 	using iterator = Type*;
-	using const_iterator = const Type*;
+	using const_iterator = Type const*;
 	Type *begin() { return v; }
 	Type *end() { return v + size.volume(); }
-	const Type *begin() const { return v; }
-	const Type *end() const { return v + size.volume(); }
+	Type const *begin() const { return v; }
+	Type const *end() const { return v + size.volume(); }
 
 	RangeObj<rank> range() const {
 		return RangeObj<rank>(DerefType(), size);
@@ -256,7 +256,7 @@ struct Grid {
 
 	//dereference by a vector of ints
 
-	void resize(const DerefType& newSize) {
+	void resize(DerefType const& newSize) {
 		if (size == newSize) return;
 		
 		DerefType oldSize = size;

@@ -8,9 +8,8 @@ T& clamp(T &x, T &min, T &max) {
 }
 
 template<typename T>
-const T& clamp(const T &x, const T &min, const T &max) {
+T const& clamp(T const &x, T const &min, T const &max) {
 	if (x < min) return min;
 	if (x > max) return max;
 	return x;
 }
-

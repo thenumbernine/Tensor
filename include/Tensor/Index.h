@@ -23,7 +23,7 @@ struct FindDstForSrcIndex {
 	template<int i>
 	struct Find {
 		static constexpr auto rank = std::tuple_size_v<IndexVector>;
-		using DerefType = Vector<int, rank>;
+		using DerefType = intN<rank>;
 		static bool exec(DerefType& dstForSrcIndex) {
 			
 			struct IndexesMatch {
@@ -55,7 +55,7 @@ struct FindDstForSrcOuter {
 	template<int j>
 	struct Find {
 		static constexpr auto rank = std::tuple_size_v<IndexVector>;
-		using DerefType = Vector<int, rank>;
+		using DerefType = intN<rank>;
 		
 		static bool exec(DerefType &dstForSrcIndex) {
 			bool found = Common::ForLoop<0, rank, FindDstForSrcIndex<IndexVector, ReadIndexVector, j>::template Find>::exec(dstForSrcIndex);
@@ -86,9 +86,9 @@ struct IndexAccess {
 	}
 
 	template<typename TensorB, typename IndexVectorB>
-	IndexAccess(const IndexAccess<TensorB, IndexVectorB> &read);
+	IndexAccess(IndexAccess<TensorB, IndexVectorB> const &read);
 
-	IndexAccess &operator=(const IndexAccess &read) {
+	IndexAccess &operator=(IndexAccess const &read) {
 		return this->operator=<Tensor>(read);
 	}
 
@@ -110,7 +110,7 @@ struct IndexAccess {
 		Make sure they are in pairs -- complain otherwise.
 	*/
 	template<typename TensorB, typename IndexVectorB>
-	IndexAccess &operator=(const IndexAccess<TensorB, IndexVectorB> &read) {
+	IndexAccess &operator=(IndexAccess<TensorB, IndexVectorB> const &read) {
 		static_assert(TensorB::rank == rank, "tensor assignment of differing ranks");
 
 		//TODO this in compile time
@@ -139,7 +139,7 @@ struct IndexAccess {
 //tensor indexes differ...
 template<typename Tensor, typename IndexVector>
 template<typename TensorB, typename IndexVectorB>
-IndexAccess<Tensor, IndexVector>::IndexAccess(const IndexAccess<TensorB, IndexVectorB> &read) {
+IndexAccess<Tensor, IndexVector>::IndexAccess(IndexAccess<TensorB, IndexVectorB> const &read) {
 	this->operator=(read);
 }
 

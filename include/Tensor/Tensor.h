@@ -39,8 +39,8 @@ struct TensorStats<ScalarType_, Index_, Args...> {
 	
 	//get an element in a tensor
 	template<int totalRank, int offset>
-	static ScalarType &get(BodyType &body, const Vector<int,totalRank> &deref) {
-		Vector<int,Index::rank> subderef;
+	static ScalarType &get(BodyType &body, intN<totalRank> const &deref) {
+		intN<Index::rank> subderef;
 		for (int i = 0; i < Index::rank; ++i) {
 			subderef(i) = deref(i + offset);
 		}
@@ -48,8 +48,8 @@ struct TensorStats<ScalarType_, Index_, Args...> {
 	}
 
 	template<int totalRank, int offset>
-	static const ScalarType &get_const(const BodyType &body, const Vector<int,totalRank> &deref) {
-		Vector<int,Index::rank> subderef;
+	static ScalarType const &get_const(BodyType const &body, intN<totalRank> const &deref) {
+		intN<Index::rank> subderef;
 		for (int i = 0; i < Index::rank; ++i) {
 			subderef(i) = deref(i + offset);
 		}
@@ -64,10 +64,10 @@ struct TensorStats<ScalarType_, Index_, Args...> {
 		int numNestings,
 		int currentNesting>
 	static void getReadIndexForWriteIndex(
-		Vector<int, totalRank> &index,
-		const Vector<int, numNestings> &writeIndex)
+		intN<totalRank> &index,
+		intN<numNestings> const &writeIndex)
 	{
-		Vector<int,Index::rank> subIndex = BodyType::getReadIndexForWriteIndex(writeIndex(currentNesting));
+		intN<Index::rank> subIndex = BodyType::getReadIndexForWriteIndex(writeIndex(currentNesting));
 		for (int i = 0; i < Index::rank; ++i) {
 			index(i + currentRank) = subIndex(i);
 		}
@@ -93,8 +93,8 @@ struct TensorStats<ScalarType_, Index_> {
 	
 	//get an element in a tensor
 	template<int totalRank, int offset>
-	static ScalarType &get(BodyType &body, const Vector<int,totalRank> &deref) {
-		Vector<int,Index::rank> subderef;
+	static ScalarType &get(BodyType &body, intN<totalRank> const &deref) {
+		intN<Index::rank> subderef;
 		for (int i = 0; i < Index::rank; ++i) {
 			subderef(i) = deref(i + offset);
 		}
@@ -102,8 +102,8 @@ struct TensorStats<ScalarType_, Index_> {
 	}
 
 	template<int totalRank, int offset>
-	static const ScalarType &get_const(const BodyType &body, const Vector<int,totalRank> &deref) {
-		Vector<int,Index::rank> subderef;
+	static ScalarType const &get_const(BodyType const &body, intN<totalRank> const &deref) {
+		intN<Index::rank> subderef;
 		for (int i = 0; i < Index::rank; ++i) {
 			subderef(i) = deref(i + offset);
 		}
@@ -116,10 +116,10 @@ struct TensorStats<ScalarType_, Index_> {
 		int numNestings,
 		int currentNesting>
 	static void getReadIndexForWriteIndex(
-		Vector<int, totalRank> &index,
-		const Vector<int, numNestings> &writeIndex)
+		intN<totalRank> &index,
+		intN<numNestings> const &writeIndex)
 	{
-		Vector<int,Index::rank> subIndex = BodyType::getReadIndexForWriteIndex(writeIndex(currentNesting));
+		intN<Index::rank> subIndex = BodyType::getReadIndexForWriteIndex(writeIndex(currentNesting));
 		for (int i = 0; i < Index::rank; ++i) {
 			index(i + currentRank) = subIndex(i);
 		}
@@ -154,13 +154,13 @@ struct TensorStats<ScalarType_> {
 		//get an element in a tensor
 	
 	template<int totalRank, int offset>
-	static ScalarType &get(BodyType &body, const Vector<int,totalRank> &deref) {}
+	static ScalarType &get(BodyType &body, intN<totalRank> const &deref) {}
 	
 	template<int totalRank, int offset>
-	static const ScalarType &get_const(const BodyType &body, const Vector<int,totalRank> &deref) {}
+	static ScalarType const &get_const(BodyType const &body, intN<totalRank> const &deref) {}
 
 	template<int totalRank, int currentRank, int numNestings, int currentNesting>
-	static void getReadIndexForWriteIndex(Vector<int, totalRank> &index, const Vector<int, numNestings> &writeIndex) {}
+	static void getReadIndexForWriteIndex(intN<totalRank> &index, intN<numNestings> const &writeIndex) {}
 };
 
 /*
@@ -225,7 +225,7 @@ struct Tensor {
 
 	static constexpr auto rank = TensorStats::rank;
 	
-	using DerefType = Vector<int,rank>;
+	using DerefType = intN<rank>;
 
 	//number of args deep
 	static constexpr auto numNestings = std::tuple_size_v<Args>;
@@ -236,7 +236,7 @@ struct Tensor {
 	template<int writeIndex>
 	using WriteIndexInfo = ::Tensor::WriteIndexInfo<writeIndex, TensorStats>;
 		
-	using WriteDerefType = Vector<int,numNestings>;
+	using WriteDerefType = intN<numNestings>;
 
 	//here's a question
 	// const_iterator cycles through all readable indexes
@@ -260,10 +260,10 @@ struct Tensor {
 		
 		iterator() : parent(NULL) {}
 		iterator(Tensor *parent_) : parent(parent_) {}
-		iterator(const iterator &iter) : parent(iter.parent), index(iter.index) {}
+		iterator(iterator const &iter) : parent(iter.parent), index(iter.index) {}
 		
-		bool operator==(const iterator &b) const { return index == b.index; }
-		bool operator!=(const iterator &b) const { return index != b.index; }
+		bool operator==(iterator const &b) const { return index == b.index; }
+		bool operator!=(iterator const &b) const { return index != b.index; }
 
 		
 		template<int i>
@@ -297,15 +297,15 @@ struct Tensor {
 	//maybe I should put this in body
 	//and then use a sort of nested iterator so it doesn't cover redundant elements in symmetric indexes
 	struct const_iterator {
-		const Tensor *parent;
+		Tensor const *parent;
 		DerefType index;
 		
 		const_iterator() : parent(NULL) {}
-		const_iterator(const Tensor *parent_) : parent(parent_) {}
-		const_iterator(const const_iterator &iter) : parent(iter.parent), index(iter.index) {}
+		const_iterator(Tensor const *parent_) : parent(parent_) {}
+		const_iterator(const_iterator const &iter) : parent(iter.parent), index(iter.index) {}
 		
-		bool operator==(const const_iterator &b) const { return index == b.index; }
-		bool operator!=(const const_iterator &b) const { return index != b.index; }
+		bool operator==(const_iterator const &b) const { return index == b.index; }
+		bool operator!=(const_iterator const &b) const { return index != b.index; }
 	
 		template<int i>
 		struct Increment {
@@ -322,7 +322,7 @@ struct Tensor {
 			return *this;
 		}
 
-		const Type &operator*() const { return (*parent)(index); }
+		Type const &operator*() const { return (*parent)(index); }
 	};
 
 	const_iterator begin() const {
@@ -347,10 +347,10 @@ struct Tensor {
 			WriteDerefType writeIndex;
 			
 			iterator() {}
-			iterator(const iterator &iter) : writeIndex(iter.writeIndex) {}
+			iterator(iterator const &iter) : writeIndex(iter.writeIndex) {}
 			
-			bool operator==(const iterator &b) const { return writeIndex == b.writeIndex; }
-			bool operator!=(const iterator &b) const { return writeIndex != b.writeIndex; }
+			bool operator==(iterator const &b) const { return writeIndex == b.writeIndex; }
+			bool operator!=(iterator const &b) const { return writeIndex != b.writeIndex; }
 
 			//I could've for-loop'd this, but then I wouldn't have compile-time access to the write index size!
 			template<int i>
@@ -374,7 +374,7 @@ struct Tensor {
 
 			DerefType getReadIndex() { return getReadIndexForWriteIndex(writeIndex); }
 
-			static DerefType getReadIndexForWriteIndex(const WriteDerefType writeIndex) {
+			static DerefType getReadIndexForWriteIndex(WriteDerefType const writeIndex) {
 				DerefType index;
 				TensorStats::template getReadIndexForWriteIndex<rank, 0, numNestings, 0>(index, writeIndex);
 				return index;
@@ -498,29 +498,42 @@ struct Tensor {
 	}
 
 	template<typename... Rest>
-	const Type &operator()(int first, Rest... rest) const {
+	Type const &operator()(int first, Rest... rest) const {
 		return (*this)(BuildDeref<0, int, Rest...>::exec(first, rest...));
+	}
+
+	//a single dereference using []
+	// TODO this does NOT regard multi-rank storage like Symmetric
+	// in order to do that, you need a(nother?) wrapper
+	// though you could get by with this so long as the storage was rank-1 (i.e. Lower or Upper alone)
+
+	BodyType::Type & operator[](int i) {
+		return body[i];
+	}
+
+	BodyType::Type const & operator[](int i) const {
+		return body[i];
 	}
 
 	//dereference by a vector of ints
 
-	Type &operator()(const DerefType &deref) {
+	Type & operator()(DerefType const & deref) {
 		return TensorStats::template get<rank,0>(body, deref);
 	}
 	
-	const Type &operator()(const DerefType &deref) const {
+	Type const & operator()(DerefType const & deref) const {
 		return TensorStats::template get_const<rank,0>(body, deref);
 	}
 
 	Tensor operator-() const { return Tensor(-body); }
-	Tensor operator+(const Tensor &b) const { return Tensor(body + b.body); }
-	Tensor operator-(const Tensor &b) const { return Tensor(body - b.body); }
-	Tensor operator*(const Type &b) const { return Tensor(body * b); }
-	Tensor operator/(const Type &b) const { return Tensor(body / b); }
-	Tensor &operator+=(const Tensor &b) { body += b.body; return *this; }
-	Tensor &operator-=(const Tensor &b) { body -= b.body; return *this; }
-	Tensor &operator*=(const Type &b) { body *= b; return *this; }
-	Tensor &operator/=(const Type &b) { body /= b; return *this; }
+	Tensor operator+(Tensor const &b) const { return Tensor(body + b.body); }
+	Tensor operator-(Tensor const &b) const { return Tensor(body - b.body); }
+	Tensor operator*(Type const &b) const { return Tensor(body * b); }
+	Tensor operator/(Type const &b) const { return Tensor(body / b); }
+	Tensor &operator+=(Tensor const &b) { body += b.body; return *this; }
+	Tensor &operator-=(Tensor const &b) { body -= b.body; return *this; }
+	Tensor &operator*=(Type const &b) { body *= b; return *this; }
+	Tensor &operator/=(Type const &b) { body /= b; return *this; }
 
 	template<int index>
 	struct AssignSize {
@@ -585,7 +598,7 @@ struct Tensor {
 	this is where better iterators could come into play.
 	*/
 	operator BodyType&() { return body; }
-	operator const BodyType&() const { return body; }
+	operator BodyType const&() const { return body; }
 
 	//index assignment
 	//t(i,j) = t(j,i) etc
@@ -598,13 +611,13 @@ struct Tensor {
 
 
 template<typename Type, typename... Args>
-std::ostream &operator<<(std::ostream &o, const Tensor<Type, Args...> &t) {
+std::ostream &operator<<(std::ostream &o, Tensor<Type, Args...> const &t) {
 	using Tensor = Tensor<Type, Args...>;
 	using const_iterator = typename Tensor::const_iterator;
 	static constexpr auto rank = Tensor::rank;
-	const char *empty = "";
-	const char *sep = ", ";
-	Vector<const char *,rank> seps(empty);
+	char const *empty = "";
+	char const *sep = ", ";
+	Vector<char const *,rank> seps(empty);
 	for (const_iterator i = t.begin(); i != t.end(); ++i) {
 		o << seps(0);
 		for (int j = 0; j < rank; ++j) {

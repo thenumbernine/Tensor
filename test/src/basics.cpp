@@ -9,8 +9,13 @@ void test_vectors() {
 
 	//arg ctor works
 	Vector a(1,2,3);
+	
 	//bracket ctor works
 	Vector b = {4,5,6};
+
+	//access
+	TEST_EQ(a(0), 1);
+	TEST_EQ(a[0], 1);
 
 	//make sure GenericArray functionality works
 	TEST_EQ(Vector(1), Vector(1,1,1));
@@ -24,7 +29,7 @@ void test_vectors() {
 }
 
 template<typename InputType>
-typename InputType::Type determinant33(const InputType &a) {
+typename InputType::Type determinant33(InputType const &a) {
 	return a(0,0) * a(1,1) * a(2,2)
 		+ a(0,1) * a(1,2) * a(2,0)
 		+ a(0,2) * a(1,0) * a(2,1)

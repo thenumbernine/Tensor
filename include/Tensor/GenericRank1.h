@@ -18,11 +18,14 @@ struct GenericRank1 {
 		
 		using Parent::Parent;
 
-		InnerType &operator()(const Vector<int,1> &deref) { return Parent::v[deref(0)]; }
-		const InnerType &operator()(const Vector<int,1> &deref) const { return Parent::v[deref(0)]; }
+		InnerType &operator()(int1 const &deref) { return Parent::v[deref(0)]; }
+		InnerType const &operator()(int1 const &deref) const { return Parent::v[deref(0)]; }
+		
+		InnerType &operator[](int i) { return Parent::v[i]; }
+		InnerType const &operator[](int i) const { return Parent::v[i]; }
 	
 		//formality for decoding write indexes
-		static Vector<int,1> getReadIndexForWriteIndex(int writeIndex) { return Vector<int,1>(writeIndex); }
+		static int1 getReadIndexForWriteIndex(int writeIndex) { return int1(writeIndex); }
 	};
 };
 

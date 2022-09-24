@@ -28,12 +28,12 @@ struct GenericArray {
 	}
 
 	//default copy ctor
-	GenericArray(const Child &a) {
+	GenericArray(Child const &a) {
 		Common::ForLoop<0, size, UnaryOp<Assign<Type, Type>, Identity<Type>, ArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>::exec(v, a.v);
 	}
 
 	//default fill ctor
-	GenericArray(const Type &x) {
+	GenericArray(Type const &x) {
 		Common::ForLoop<0, size, UnaryOp<Assign<Type, Type>, Identity<Type>, ArrayAccess<Type>, ConstScalarAccess<Type>>::template Inner>::exec(v, x);
 	}
 
@@ -54,7 +54,7 @@ struct GenericArray {
 	}	
 
 	//bounds
-	static Child clamp(const Child &a, const Child &min, const Child &max) {
+	static Child clamp(Child const &a, Child const &min, Child const &max) {
 		Child b;
 		Common::ForLoop<0, size, TernaryOp<Assign<Type, Type>, Clamp<Type>, ArrayAccess<Type>, ConstArrayAccess<Type>, ConstArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>::exec(b.v, a.v, min.v, max.v);
 		return b;
@@ -63,13 +63,13 @@ struct GenericArray {
 	//boolean operations
 
 	template<typename ChildType2>
-	bool operator==(const GenericArray<Type, size, ScalarType, ChildType2> &b) const {
+	bool operator==(GenericArray<Type, size, ScalarType, ChildType2> const &b) const {
 		bool result = true;
 		Common::ForLoop<0, size, BinaryOp<AndInto<bool, bool>, Equals<bool, Type, Type>, ScalarAccess<bool>, ConstArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>::exec(result, v, b.v);
 		return result;
 	}
 
-	bool operator!=(const Child &b) const { return !this->operator==(b); }
+	bool operator!=(Child const &b) const { return !this->operator==(b); }
 
 	//unary math operator
 
@@ -81,13 +81,13 @@ struct GenericArray {
 
 	//pairwise math operators
 
-	Child operator+(const Child &b) const {
+	Child operator+(Child const &b) const {
 		Child c;
 		Common::ForLoop<0, size, BinaryOp<Assign<Type, Type>, Add<Type, Type, Type>, ArrayAccess<Type>, ConstArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>::exec(c.v, v, b.v);
 		return c;
 	}
 	
-	Child operator-(const Child &b) const {
+	Child operator-(Child const &b) const {
 		Child c;
 		Common::ForLoop<0, size, BinaryOp<Assign<Type, Type>, Sub<Type, Type, Type>, ArrayAccess<Type>, ConstArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>::exec(c.v, v, b.v);
 		return c;
@@ -100,13 +100,13 @@ struct GenericArray {
 
 	//I'm omitting scalar + and -, but not for any good reason
 
-	Child operator*(const ScalarType &b) const {
+	Child operator*(ScalarType const &b) const {
 		Child c;
 		Common::ForLoop<0, size, BinaryOp<Assign<Type, Type>, Mul<Type, Type, ScalarType>, ArrayAccess<Type>, ConstArrayAccess<Type>, ConstScalarAccess<ScalarType>>::template Inner>::exec(c.v, v, b);
 		return c;
 	}
 
-	Child operator/(const ScalarType &b) const {
+	Child operator/(ScalarType const &b) const {
 		Child c;
 		Common::ForLoop<0, size, BinaryOp<Assign<Type, Type>, Div<Type, Type, ScalarType>, ArrayAccess<Type>, ConstArrayAccess<Type>, ConstScalarAccess<ScalarType>>::template Inner>::exec(c.v, v, b);
 		return c;
@@ -114,22 +114,22 @@ struct GenericArray {
 
 	//these will have to be overridden to return the correct type (unless I cast it here...)
 
-	Child &operator+=(const Child &b) {
+	Child &operator+=(Child const &b) {
 		Common::ForLoop<0, size, UnaryOp<AddInto<Type, Type>, Identity<Type>, ArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>::exec(v, b.v);
 		return crtp_cast<Child>(*this);
 	}
 
-	Child &operator-=(const Child &b) {
+	Child &operator-=(Child const &b) {
 		Common::ForLoop<0, size, UnaryOp<SubInto<Type, Type>, Identity<Type>, ArrayAccess<Type>, ConstArrayAccess<Type>>::template Inner>::exec(v, b.v);
 		return crtp_cast<Child>(*this);
 	}
 
-	Child &operator*=(const ScalarType &b) {
+	Child &operator*=(ScalarType const &b) {
 		Common::ForLoop<0, size, UnaryOp<MulInto<Type, Type>, Identity<Type>, ArrayAccess<Type>, ConstScalarAccess<Type>>::template Inner>::exec(v, b);
 		return crtp_cast<Child>(*this);
 	}
 
-	Child &operator/=(const ScalarType &b) {
+	Child &operator/=(ScalarType const &b) {
 		Common::ForLoop<0, size, UnaryOp<DivInto<Type, Type>, Identity<Type>, ArrayAccess<Type>, ConstScalarAccess<Type>>::template Inner>::exec(v, b);
 		return crtp_cast<Child>(*this);
 	}

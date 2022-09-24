@@ -42,7 +42,7 @@ struct Quat : public GenericVector<Type, 4, Type, Quat<Type>> {
 			2. * halfAngle);
 	}
 
-	static Quat mul(const Quat &q, const Quat &r) {
+	static Quat mul(Quat const &q, Quat const &r) {
 		Type a = (q(3) + q(0)) * (r(3) + r(0));
 		Type b = (q(2) - q(1)) * (r(1) - r(2));
 		Type c = (q(0) - q(3)) * (r(1) + r(2));
