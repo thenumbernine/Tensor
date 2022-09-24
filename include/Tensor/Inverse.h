@@ -71,7 +71,6 @@ OutputType determinant33(InputType const &a) {
 		- a(0,0) * a(1,2) * a(2,1);
 }
 
-//this is where boost::bind would be helpful: for a generic dimension determinant function
 template<typename Real>
 struct DeterminantClass<Tensor<Real, Lower<3>, Lower<3>>> {
 	using OutputType = Real;
@@ -87,6 +86,51 @@ struct DeterminantClass<Tensor<Real, Symmetric<Lower<3>, Lower<3>>>> {
 	using InputType = Tensor<Real, Symmetric<Lower<3>, Lower<3>>>;
 	OutputType operator()(InputType const &a) const { 
 		return determinant33<OutputType, InputType>(a);
+	}
+};
+
+template<typename Real>
+struct DeterminantClass<Tensor<Real, Lower<4>, Lower<4>>> {
+	using OutputType = Real;
+	using InputType = Tensor<Real, Lower<4>, Lower<4>>;
+	OutputType operator()(InputType const &a) const { 
+		//autogen'd with symmath
+		Real const tmp1 = a(2,2) * a(3,3);
+		Real const tmp2 = a(2,3) * a(3,2);
+		Real const tmp3 = a(2,1) * a(3,3);
+		Real const tmp4 = a(2,3) * a(3,1);
+		Real const tmp5 = a(2,1) * a(3,2);
+		Real const tmp6 = a(2,2) * a(3,1);
+		Real const tmp7 = a(2,0) * a(3,3);
+		Real const tmp8 = a(2,3) * a(3,0);
+		Real const tmp9 = a(2,0) * a(3,2);
+		Real const tmp10 = a(2,2) * a(3,0);
+		Real const tmp11 = a(2,0) * a(3,1);
+		Real const tmp12 = a(2,1) * a(3,0);
+		return a(0,0) * a(1,1) * tmp1 
+			- a(0,0) * a(1,1) * tmp2 
+			- a(0,0) * a(1,2) * tmp3
+			+ a(0,0) * a(1,2) * tmp4
+			+ a(0,0) * a(1,3) * tmp5 
+			- a(0,0) * a(1,3) * tmp6 
+			- a(0,1) * a(1,0) * tmp1
+			+ a(0,1) * a(1,0) * tmp2
+			+ a(0,1) * a(1,2) * tmp7 
+			- a(0,1) * a(1,2) * tmp8 
+			- a(0,1) * a(1,3) * tmp9
+			+ a(0,1) * a(1,3) * tmp10
+			+ a(0,2) * a(1,0) * tmp3 
+			- a(0,2) * a(1,0) * tmp4 
+			- a(0,2) * a(1,1) * tmp7
+			+ a(0,2) * a(1,1) * tmp8
+			+ a(0,2) * a(1,3) * tmp11 
+			- a(0,2) * a(1,3) * tmp12 
+			- a(0,3) * a(1,0) * tmp5
+			+ a(0,3) * a(1,0) * tmp6
+			+ a(0,3) * a(1,1) * tmp9 
+			- a(0,3) * a(1,1) * tmp10
+			+ a(0,3) * a(1,2) * tmp12 
+			- a(0,3) * a(1,2) * tmp11;
 	}
 };
 
@@ -198,6 +242,59 @@ struct InverseClass<Tensor<Real_, Symmetric<Lower<3>, Lower<3>>>> {
 		return result;
 	}
 };
+
+//from : https://stackoverflow.com/questions/1148309/inverting-a-4x4-matrix
+template<typename Real_>
+struct InverseClass<Tensor<Real_, Lower<4>, Lower<4>>> {
+	using Real = Real_;
+	using InputType = Tensor<Real, Lower<4>, Lower<4>>;
+	using OutputType = Tensor<Real, Upper<4>, Upper<4>>;
+	OutputType operator()(InputType const &a, Real const &det) const {
+		Real invDet = Real(1) / det;
+		Real const a2323 = a(2,2) * a(3,3) - a(2,3) * a(3,2);
+		Real const a1323 = a(2,1) * a(3,3) - a(2,3) * a(3,1);
+		Real const a1223 = a(2,1) * a(3,2) - a(2,2) * a(3,1);
+		Real const a0323 = a(2,0) * a(3,3) - a(2,3) * a(3,0);
+		Real const a0223 = a(2,0) * a(3,2) - a(2,2) * a(3,0);
+		Real const a0123 = a(2,0) * a(3,1) - a(2,1) * a(3,0);
+		Real const a2313 = a(1,2) * a(3,3) - a(1,3) * a(3,2);
+		Real const a1313 = a(1,1) * a(3,3) - a(1,3) * a(3,1);
+		Real const a1213 = a(1,1) * a(3,2) - a(1,2) * a(3,1);
+		Real const a2312 = a(1,2) * a(2,3) - a(1,3) * a(2,2);
+		Real const a1312 = a(1,1) * a(2,3) - a(1,3) * a(2,1);
+		Real const a1212 = a(1,1) * a(2,2) - a(1,2) * a(2,1);
+		Real const a0313 = a(1,0) * a(3,3) - a(1,3) * a(3,0);
+		Real const a0213 = a(1,0) * a(3,2) - a(1,2) * a(3,0);
+		Real const a0312 = a(1,0) * a(2,3) - a(1,3) * a(2,0);
+		Real const a0212 = a(1,0) * a(2,2) - a(1,2) * a(2,0);
+		Real const a0113 = a(1,0) * a(3,1) - a(1,1) * a(3,0);
+		Real const a0112 = a(1,0) * a(2,1) - a(1,1) * a(2,0);
+		return { 
+			{
+			   invdet *  (a(1,1) * a2323 - a(1,2) * a1323 + a(1,3) * a1223),
+			   invdet * -(a(0,1) * a2323 - a(0,2) * a1323 + a(0,3) * a1223),
+			   invdet *  (a(0,1) * a2313 - a(0,2) * a1313 + a(0,3) * a1213),
+			   invdet * -(a(0,1) * a2312 - a(0,2) * a1312 + a(0,3) * a1212),
+			}, {
+			   invdet * -(a(1,0) * a2323 - a(1,2) * a0323 + a(1,3) * a0223),
+			   invdet *  (a(0,0) * a2323 - a(0,2) * a0323 + a(0,3) * a0223),
+			   invdet * -(a(0,0) * a2313 - a(0,2) * a0313 + a(0,3) * a0213),
+			   invdet *  (a(0,0) * a2312 - a(0,2) * a0312 + a(0,3) * a0212),
+			}, {
+			   invdet *  (a(1,0) * a1323 - a(1,1) * a0323 + a(1,3) * a0123),
+			   invdet * -(a(0,0) * a1323 - a(0,1) * a0323 + a(0,3) * a0123),
+			   invdet *  (a(0,0) * a1313 - a(0,1) * a0313 + a(0,3) * a0113),
+			   invdet * -(a(0,0) * a1312 - a(0,1) * a0312 + a(0,3) * a0112),
+			}, {
+			   invdet * -(a(1,0) * a1223 - a(1,1) * a0223 + a(1,2) * a0123),
+			   invdet *  (a(0,0) * a1223 - a(0,1) * a0223 + a(0,2) * a0123),
+			   invdet * -(a(0,0) * a1213 - a(0,1) * a0213 + a(0,2) * a0113),
+			   invdet *  (a(0,0) * a1212 - a(0,1) * a0212 + a(0,2) * a0112),
+			}
+		};
+	}
+};
+
 
 template<typename InputType>
 typename InverseClass<InputType>::OutputType inverse(InputType const &a, typename InverseClass<InputType>::Real const &det) {
