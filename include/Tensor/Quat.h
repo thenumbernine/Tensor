@@ -8,10 +8,12 @@ namespace Tensor {
 template<typename Type>
 struct Quat : public GenericVector<Type, 4, Type, Quat<Type>> {
 	using Super = GenericVector<Type, 4, Type, Quat<Type>>;
+	using vec3 = Tensor::Vector<Type, 3>;
 
 	Quat() : Super(0,0,0,1) {}
 	Quat(Type x, Type y, Type z, Type w) : Super(x,y,z,w) {}
 
+	//conjugate assuming the quat is unit length
 	Quat unitConj() const {
 		return Quat(-(*this)(0), -(*this)(1), -(*this)(2), (*this)(3));
 	}
@@ -57,6 +59,36 @@ struct Quat : public GenericVector<Type, 4, Type, Quat<Type>> {
 			-c + .5 * ( e - f + g - h),
 			-d + .5 * ( e - f - g + h),
 			b + .5 * (-e - f + g + h));
+	}
+
+	vec3 rotate(vec3 const & v) const {
+		Quat vq = {v(0), v(1), v(2), 0};
+		vq = mul(mul(*this, vq), unitConj());
+		return {vq(0), vq(1), vq(2)};
+	}
+
+	vec3 xAxis() const {
+		return {
+			1 - 2 * ((*this)(1) * (*this)(1) + (*this)(2) * (*this)(2)),
+			2 * ((*this)(0) * (*this)(1) + (*this)(2) * (*this)(3)),
+			2 * ((*this)(0) * (*this)(2) - (*this)(3) * (*this)(1))
+		};
+	}
+
+	vec3 yAxis() const {
+		return {
+			2 * ((*this)(0) * (*this)(1) - (*this)(3) * (*this)(2)),
+			1 - 2 * ((*this)(0) * (*this)(0) + (*this)(2) * (*this)(2)),
+			2 * ((*this)(1) * (*this)(2) + (*this)(3) * (*this)(0))
+		};
+	}
+
+	vec3 zAxis() const {
+		return {
+			2 * ((*this)(0) * (*this)(2) + (*this)(3) * (*this)(1)),
+			2 * ((*this)(1) * (*this)(2) - (*this)(3) * (*this)(0)),
+			1 - 2 * ((*this)(0) * (*this)(0) + (*this)(1) * (*this)(1))
+		};
 	}
 };
 
