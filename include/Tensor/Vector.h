@@ -87,6 +87,24 @@ using uint2 = uintN<2>;
 using uint3 = uintN<3>;
 using uint4 = uintN<4>;
 
+template<int dim> using sizeN = Vector<size_t, dim>;
+using size1 = sizeN<1>;
+using size2 = sizeN<2>;
+using size3 = sizeN<3>;
+using size4 = sizeN<4>;
+
+template<int dim> using intptrN = Vector<intptr_t, dim>;
+using intptr1 = intptrN<1>;
+using intptr2 = intptrN<2>;
+using intptr3 = intptrN<3>;
+using intptr4 = intptrN<4>;
+
+template<int dim> using uintptrN = Vector<uintptr_t, dim>;
+using uintptr1 = uintptrN<1>;
+using uintptr2 = uintptrN<2>;
+using uintptr3 = uintptrN<3>;
+using uintptr4 = uintptrN<4>;
+
 template<int dim> using floatN = Vector<float, dim>;
 using float1 = floatN<1>;
 using float2 = floatN<2>;
