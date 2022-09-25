@@ -8,7 +8,7 @@ namespace Tensor {
 template<typename Type>
 struct Quat : public GenericVector<Type, 4, Type, Quat<Type>> {
 	using Super = GenericVector<Type, 4, Type, Quat<Type>>;
-	using vec3 = Tensor::Vector<Type, 3>;
+	using vec3 = Vector<Type, 3>;
 
 	Quat() : Super(0,0,0,1) {}
 	Quat(Type x, Type y, Type z, Type w) : Super(x,y,z,w) {}
