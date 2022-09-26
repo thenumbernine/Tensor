@@ -14,8 +14,9 @@ TODO:
 	index notation still
 */
 
-#include <tuple>
 #include "Common/String.h"
+#include <tuple>
+#include <functional>	//for Partial
 
 namespace Tensor {
 namespace v2 {
@@ -106,25 +107,32 @@ namespace v2 {
 	}
 
 // works for nesting _vec's, not for _sym's
+// I am using operator[] as the de-facto correct reference
 #define TENSOR2_ADD_VECTOR_BRACKET_INDEX()\
 	T & operator[](int i) { return s[i]; }\
 	T const & operator[](int i) const { return s[i]; }
 
-#define TENSOR2_ADD_CALL_INDEX()\
-\
-	/* a(i) := a_i */\
-	auto & operator()(int i) { return s[i]; }\
-	auto const & operator()(int i) const { return s[i]; }\
+// operator() should default through operator[]
+#define TENSOR2_ADD_RECURSIVE_CALL_INDEX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	template<typename... Rest>\
 	auto & operator()(int i, Rest... rest) {\
-		return s[i](rest...);\
+		return (*this)[i](rest...);\
 	}\
+\
 	template<typename... Rest>\
 	auto const & operator()(int i, Rest... rest) const {\
-		return s[i](rest...);\
+		return (*this)[i](rest...);\
 	}
+
+#define TENSOR2_ADD_CALL_INDEX()\
+\
+	/* a(i) := a_i */\
+	auto & operator()(int i) { return (*this)[i]; }\
+	auto const & operator()(int i) const { return (*this)[i]; }\
+\
+	TENSOR2_ADD_RECURSIVE_CALL_INDEX()
 
 // danger ... danger ...
 #define TENSOR2_ADD_ASSIGN_OP(classname)\
@@ -135,6 +143,7 @@ namespace v2 {
 		return *this;\
 	}
 
+//these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
 #define TENSOR2_ADD_OPS(classname)\
 	TENSOR2_ADD_VECTOR_OP_EQ(classname, +=)\
 	TENSOR2_ADD_VECTOR_OP_EQ(classname, -=)\
@@ -158,10 +167,12 @@ namespace v2 {
 #endif
 
 
-//use the 'rank' field to check and see if we're in a _vec or not
-// TODO use something more specific to _vec in case other non-_vec classes use 'rank'
+/*
+use the 'rank' field to check and see if we're in a _vec (or a _sym) or not
+ TODO use something more specific to this file in case other classes elsewhere use 'rank'
+*/
 template<typename T>
-constexpr bool is_vec_v = requires(T const & t) { T::rank; };
+constexpr bool is_tensor_v = requires(T const & t) { T::rank; };
 
 // base/scalar case
 template<typename T>
@@ -171,7 +182,7 @@ struct VectorTraits {
 };
 
 // recursive/vec/matrix/tensor case
-template<typename T> requires is_vec_v<T> 
+template<typename T> requires is_tensor_v<T> 
 struct VectorTraits<T> {
 	static constexpr int rank = T::rank;
 	using ScalarType = typename T::ScalarType;
@@ -367,46 +378,91 @@ static_assert(std::is_same_v<float4::InnerType, float>);
 static_assert(float4::rank == 1);
 static_assert(float4::dim == 4);
 
+
+template<int dim> using boolN = _vec<bool, dim>;
+template<int dim> using ucharN = _vec<unsigned char, dim>;
+template<int dim> using intN = _vec<int, dim>;
+template<int dim> using uintN = _vec<unsigned int, dim>;
+template<int dim> using floatN = _vec<float, dim>;
+template<int dim> using doubleN = _vec<double, dim>;
+
+
 //convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
 // ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed
 // ... also GLSL is column-major so between this and GLSL the indexes have to be transposed.
 template<typename T, int dim1, int dim2> using _mat = _vec<_vec<T, dim2>, dim1>;
 
 template<typename T> using _mat2x2 = _vec2<_vec2<T>>;
+using bool2x2 = _mat2x2<bool>;
+using uchar2x2 = _mat2x2<unsigned char>;
 using int2x2 = _mat2x2<int>;
+using uint2x2 = _mat2x2<uint>;
 using float2x2 = _mat2x2<float>;
+using double2x2 = _mat2x2<double>;
 
 template<typename T> using _mat2x3 = _vec2<_vec3<T>>;
+using bool2x3 = _mat2x3<bool>;
+using uchar2x3 = _mat2x3<unsigned char>;
 using int2x3 = _mat2x3<int>;
+using uint2x3 = _mat2x3<uint>;
 using float2x3 = _mat2x3<float>;
+using double2x3 = _mat2x3<double>;
 
 template<typename T> using _mat2x4 = _vec2<_vec4<T>>;
+using bool2x4 = _mat2x4<bool>;
+using uchar2x4 = _mat2x4<unsigned char>;
 using int2x4 = _mat2x4<int>;
+using uint2x4 = _mat2x4<uint>;
 using float2x4 = _mat2x4<float>;
+using double2x4 = _mat2x4<double>;
 
 template<typename T> using _mat3x2 = _vec3<_vec2<T>>;
+using bool3x2 = _mat3x2<bool>;
+using uchar3x2 = _mat3x2<unsigned char>;
 using int3x2 = _mat3x2<int>;
+using uint3x2 = _mat3x2<uint>;
 using float3x2 = _mat3x2<float>;
+using double3x2 = _mat3x2<double>;
 
 template<typename T> using _mat3x3 = _vec3<_vec3<T>>;
+using bool3x3 = _mat3x3<bool>;
+using uchar3x3 = _mat3x3<unsigned char>;
 using int3x3 = _mat3x3<int>;
+using uint3x3 = _mat3x3<uint>;
 using float3x3 = _mat3x3<float>;
+using double3x3 = _mat3x3<double>;
 
 template<typename T> using _mat3x4 = _vec3<_vec4<T>>;
+using bool3x4 = _mat3x4<bool>;
+using uchar3x4 = _mat3x4<unsigned char>;
 using int3x4 = _mat3x4<int>;
+using uint3x4 = _mat3x4<uint>;
 using float3x4 = _mat3x4<float>;
+using double3x4 = _mat3x4<double>;
 
 template<typename T> using _mat4x2 = _vec4<_vec2<T>>;
+using bool4x2 = _mat4x2<bool>;
+using uchar4x2 = _mat4x2<unsigned char>;
 using int4x2 = _mat4x2<int>;
+using uint4x2 = _mat4x2<uint>;
 using float4x2 = _mat4x2<float>;
+using double4x2 = _mat4x2<double>;
 
 template<typename T> using _mat4x3 = _vec4<_vec3<T>>;
+using bool4x3 = _mat4x3<bool>;
+using uchar4x3 = _mat4x3<unsigned char>;
 using int4x3 = _mat4x3<int>;
+using uint4x3 = _mat4x3<uint>;
 using float4x3 = _mat4x3<float>;
+using double4x3 = _mat4x3<double>;
 
 template<typename T> using _mat4x4 = _vec4<_vec4<T>>;
+using bool4x4 = _mat4x4<bool>;
+using uchar4x4 = _mat4x4<unsigned char>;
 using int4x4 = _mat4x4<int>;
+using uint4x4 = _mat4x4<uint>;
 using float4x4 = _mat4x4<float>;
+using double4x4 = _mat4x4<double>;
 
 static_assert(std::is_same_v<float4x4::ScalarType, float>);
 static_assert(std::is_same_v<float4x4::InnerType, float4>);
@@ -800,13 +856,50 @@ using _tensor = _vec<_tensor<T, dims...>, dim>;
 
 // symmetric matrices
 
-#define TENSOR2_ADD_SYMMETRIC_MATRIX_BRACKET_INDEX(classname)\
+template<int dim>
+int symIndex(int i, int j) {
+	if (j > i) return symIndex<dim>(j,i);
+	return ((i * (i + 1)) >> 1) + j;
+}
+
+//also symmetric has to define 1-arg operator()
+// that means I can't use the default so i have to make a 2-arg recursive case
+#define TENSOR2_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()\
+\
+	/* a(i1,i2,...) := a_i1_i2_... */\
+	template<typename... Rest>\
+	auto & operator()(int i, int j, Rest... rest) {\
+		return (*this)(i,j)(rest...);\
+	}\
+\
+	template<typename... Rest>\
+	auto const & operator()(int i, int j, Rest... rest) const {\
+		return (*this)(i,j)(rest...);\
+	}
+
+
+/*
+for the call index operator
+a 1-param is incomplete, so it should return an accessor (same as operator[])
+but a 2-param is complete
+and a more-than-2 will return call on the []
+and therein risks applying a call to an accessor
+so the accessors need nested call indexing too
+*/
+#define TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
+	TENSOR2_ADD_OPS(classname)\
+\
+	/* a(i,j) := a_ij = a_ji */\
+	/* this is the direct acces */\
+	InnerType & operator()(int i, int j) { return s[symIndex<dim>(i,j)]; }\
+	InnerType const & operator()(int i, int j) const { return s[symIndex<dim>(i,j)]; }\
+\
 	struct Accessor {\
 		classname & owner;\
 		int i;\
 		Accessor(classname & owner_, int i_) : owner(owner_), i(i_) {}\
 		InnerType & operator[](int j) { return owner(i,j); }\
-		/*TENSOR2_ADD_CALL_INDEX() * This needs to be here for vector-of-symmetrics own operator() to work properly (right?) */\
+		TENSOR2_ADD_CALL_INDEX()\
 	};\
 	Accessor operator[](int i) { return Accessor(*this, i); }\
 \
@@ -815,19 +908,17 @@ using _tensor = _vec<_tensor<T, dims...>, dim>;
 		int i;\
 		ConstAccessor(classname const & owner_, int i_) : owner(owner_), i(i_) {}\
 		InnerType const & operator[](int j) { return owner(i,j); }\
-		/*TENSOR2_ADD_CALL_INDEX()*/\
+		TENSOR2_ADD_CALL_INDEX()\
 	};\
-	ConstAccessor operator[](int i) const { return ConstAccessor(*this, i); }
+	ConstAccessor operator[](int i) const { return ConstAccessor(*this, i); }\
+\
+	/* a(i) := a_i */\
+	/* this is incomplete so it returns the operator[] which returns the accessor */\
+	Accessor & operator()(int i) { return (*this)[i]; }\
+	ConstAccessor & operator()(int i) const { return (*this)[i]; }\
+\
+	TENSOR2_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()
 
-#define TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
-	TENSOR2_ADD_SYMMETRIC_MATRIX_BRACKET_INDEX(classname)\
-	TENSOR2_ADD_OPS(classname)
-
-template<int dim>
-int symIndex(int i, int j) {
-	if (j > i) return symIndex<dim>(j,i);
-	return ((i * (i + 1)) >> 1) + j;
-}
 
 template<typename T, int dim_>
 struct _sym {
@@ -1012,6 +1103,179 @@ struct _sym<T,4> {
 	TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
 	//TENSOR2_ADD_CAST_OP(_sym)
 };
+
+// symmetric op symmetric
+
+#define TENSOR2_ADD_SYMMETRIC_SYMMETRIC_OP(op)\
+template<typename T, int dim>\
+_sym<T,dim> operator op(_sym<T,dim> const & a, _sym<T,dim> const & b) {\
+	_sym<T,dim> c;\
+	for (int i = 0; i < c.count; ++i) {\
+		c.s[i] = a.s[i] op b.s[i];\
+	}\
+	return c;\
+}
+
+TENSOR2_ADD_SYMMETRIC_SYMMETRIC_OP(+)
+TENSOR2_ADD_SYMMETRIC_SYMMETRIC_OP(-)
+TENSOR2_ADD_SYMMETRIC_SYMMETRIC_OP(/)
+
+// symmetric op scalar, scalar op symmetric
+
+#define TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(op)\
+template<typename T, int dim>\
+requires std::is_same_v<typename _sym<T,dim>::ScalarType, T>\
+_sym<T,dim> operator op(_sym<T,dim> const & a, T const & b) {\
+	_sym<T,dim> c;\
+	for (int i = 0; i < c.count; ++i) {\
+		c.s[i] = a.s[i] op b;\
+	}\
+	return c;\
+}\
+template<typename T, int dim>\
+requires std::is_same_v<typename _sym<T,dim>::ScalarType, T>\
+_sym<T,dim> operator op(T const & a, _sym<T,dim> const & b) {\
+	_sym<T,dim> c;\
+	for (int i = 0; i < c.count; ++i) {\
+		c.s[i] = a op b.s[i];\
+	}\
+	return c;\
+}
+
+TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(+)
+TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(-)
+TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(*)
+TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
+
+
+//  partial derivatives
+
+template<typename Type, int rank> 
+Type getOffset(
+	std::function<Type(intN<rank>)> f,
+	intN<rank> index,
+	int dim,
+	int offset)
+{
+	index(dim) += offset;
+	return f(index);
+}
+
+/*
+partial derivative index operator
+(partial derivative alone one coordinate)
+
+finite difference coefficients for center-space finite-difference partial derivatives found at
+http://en.wikipedia.org/wiki/Finite_difference_coefficients
+*/
+
+template<typename Real, int order>
+struct PartialDerivCoeffs;
+
+template<typename Real>
+struct PartialDerivCoeffs<Real, 2> {
+	static Real const coeffs[1];
+};
+template<typename Real>
+Real const PartialDerivCoeffs<Real, 2>::coeffs[1] = { 1./2. };
+
+template<typename Real>
+struct PartialDerivCoeffs<Real, 4> {
+	static Real const coeffs[2];
+};
+template<typename Real>
+Real const PartialDerivCoeffs<Real, 4>::coeffs[2] = { 2./3., -1./12. };
+
+template<typename Real>
+struct PartialDerivCoeffs<Real, 6> {
+	static Real const coeffs[3];
+};
+template<typename Real>
+Real const PartialDerivCoeffs<Real, 6>::coeffs[3] = { 3./4., -3./20., 1./60. };
+
+template<typename Real>
+struct PartialDerivCoeffs<Real, 8> {
+	static Real const coeffs[4];
+};
+template<typename Real>
+Real const PartialDerivCoeffs<Real, 8>::coeffs[4] = { 4./5., -1./5., 4./105., -1./280. };
+
+/*
+partial derivative operator
+for now let's use 2-point everywhere: d/dx^i f(x) ~= (f(x + dx^i) - f(x - dx^i)) / (2 * |dx^i|)
+	index = index in grid of cell to pull the specified field
+	k = dimension to differentiate across
+*/
+template<int order, typename Real, int dim, typename InputType>
+struct PartialDerivativeClass;
+
+template<int order, typename Real, int dim, typename InputType>
+requires is_tensor_v<InputType> && std::is_same_v<Real, typename InputType::ScalarType>
+struct PartialDerivativeClass<order, Real, dim, InputType> {
+	using RealN = _vec<Real, dim>;
+	using OutputType = _vec<InputType, dim>;
+	using FuncType = std::function<InputType(intN<dim> index)>;
+	static constexpr auto rank = InputType::rank;
+	OutputType operator()(
+		intN<dim> const & gridIndex,
+		RealN const & dx,
+		FuncType f)
+	{
+		using Coeffs = PartialDerivCoeffs<Real, order>;
+		return OutputType([&](intN<rank+1> dstIndex){
+			int gradIndex = dstIndex(0);
+			intN<rank> srcIndex;
+			for (int i = 0; i < rank; ++i) {
+				srcIndex(i) = dstIndex(i+1);
+			}
+			Real sum = {};
+			for (int i = 1; i <= (int)numberof(Coeffs::coeffs); ++i) {
+				sum += (
+					getOffset<InputType, dim>(f, gridIndex, gradIndex, i)(srcIndex) 
+					- getOffset<InputType, dim>(f, gridIndex, gradIndex, -i)(srcIndex)
+				) * Coeffs::coeffs[i-1];
+			}
+			return sum / dx(gradIndex);
+		});
+	}
+};
+
+template<int order, typename Real, int dim>
+struct PartialDerivativeClass<order, Real, dim, Real> {
+	using RealN = _vec<Real, dim>;
+	using InputType = Real;
+	using OutputType = RealN;
+	using FuncType = std::function<InputType(intN<dim> index)>;
+	OutputType operator()(
+		intN<dim> const &gridIndex,
+		RealN const &dx, 
+		FuncType f)
+	{
+		using Coeffs = PartialDerivCoeffs<Real, order>;
+		return OutputType([&](intN<1> dstIndex){
+			int gradIndex = dstIndex(0);
+			Real sum = {};
+			for (int i = 1; i <= (int)numberof(Coeffs::coeffs); ++i) {
+				sum += (
+					getOffset<InputType, dim>(f, gridIndex, gradIndex, i)
+					- getOffset<InputType, dim>(f, gridIndex, gradIndex, -i)
+				) * Coeffs::coeffs[i-1];
+			}
+			return sum / dx(gradIndex);		
+		});
+	}
+};
+
+template<int order, typename Real, int dim, typename InputType>
+typename PartialDerivativeClass<order, Real, dim, InputType>::OutputType
+partialDerivative(
+	intN<dim> const &index,
+	Vector<Real, dim> const &dx,
+	typename PartialDerivativeClass<order, Real, dim, InputType>::FuncType f)
+{
+	return PartialDerivativeClass<order, Real, dim, InputType>()(index, dx, f);
+}
+
 
 
 
