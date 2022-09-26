@@ -27,7 +27,7 @@ namespace v2 {
 
 #define TENSOR2_ADD_VECTOR_OP_EQ(classname, op)\
 	classname& operator op(classname const & b) {\
-		for (int i = 0; i < dim; ++i) {\
+		for (int i = 0; i < count; ++i) {\
 			s[i] op b.s[i];\
 		}\
 		return *this;\
@@ -35,7 +35,7 @@ namespace v2 {
 
 #define TENSOR2_ADD_SCALAR_OP_EQ(classname, op)\
 	classname& operator op(ScalarType const & b) {\
-		for (int i = 0; i < dim; ++i) {\
+		for (int i = 0; i < count; ++i) {\
 			s[i] op b;\
 		}\
 		return *this;\
@@ -43,7 +43,7 @@ namespace v2 {
 
 #define TENSOR2_ADD_CMP_OP(classname)\
 	bool operator==(classname const & b) const {\
-		for (int i = 0; i < dim; ++i) {\
+		for (int i = 0; i < count; ++i) {\
 			if (s[i] != b.s[i]) return false;\
 		}\
 		return true;\
@@ -55,7 +55,7 @@ namespace v2 {
 // danger ... danger ...
 #define TENSOR2_ADD_CAST_BOOL_OP()\
 	operator bool() const {\
-		for (int i = 0; i < dim; ++i) {\
+		for (int i = 0; i < count; ++i) {\
 			if (s[i] != T()) return true;\
 		}\
 		return false;\
@@ -66,7 +66,7 @@ namespace v2 {
 	template<int dim2, typename U>\
 	operator classname<U, dim2>() const {\
 		classname<U, dim2> res;\
-		for (int i = 0; i < dim && i < dim2; ++i) {\
+		for (int i = 0; i < count && i < dim2; ++i) {\
 			res.s[i] = (U)s[i];\
 		}\
 		return res;\
@@ -75,7 +75,7 @@ namespace v2 {
 #define TENSOR2_ADD_UNM(classname)\
 	classname operator-() const {\
 		classname result;\
-		for (int i = 0; i < dim; ++i) {\
+		for (int i = 0; i < count; ++i) {\
 			result.s[i] = -s[i];\
 		}\
 		return result;\
@@ -84,7 +84,7 @@ namespace v2 {
 #define TENSOR2_ADD_DOT(classname)\
 	T dot(classname const & b) const {\
 		T result = {};\
-		for (int i = 0; i < dim; ++i) {\
+		for (int i = 0; i < count; ++i) {\
 			result += s[i] * b.s[i];\
 		}\
 		return result;\
@@ -97,22 +97,45 @@ namespace v2 {
 	template<typename U, int dim2>\
 	classname(othername<U, dim2> const & v) {\
 		int i = 0;\
-		for (; i < dim && i < dim2; ++i) {\
+		for (; i < count && i < dim2; ++i) {\
 			s[i] = (T)v[i];\
 		}\
-		for (; i < dim; ++i) {\
+		for (; i < count; ++i) {\
 			s[i] = {};\
 		}\
 	}
 
-#define TENSOR2_ADD_BRACKET_INDEX()\
+// works for nesting _vec's, not for _sym's
+#define TENSOR2_ADD_VECTOR_BRACKET_INDEX()\
 	T & operator[](int i) { return s[i]; }\
 	T const & operator[](int i) const { return s[i]; }
 
-#define TENSOR2_ADD_OPS(classname)\
-	ScalarType & operator()(int i) { return s[i]; }\
-	ScalarType const & operator()(int i) const { return s[i]; }\
+#define TENSOR2_ADD_CALL_INDEX()\
 \
+	/* a(i) := a_i */\
+	auto & operator()(int i) { return s[i]; }\
+	auto const & operator()(int i) const { return s[i]; }\
+\
+	/* a(i1,i2,...) := a_i1_i2_... */\
+	template<typename... Rest>\
+	auto & operator()(int i, Rest... rest) {\
+		return s[i](rest...);\
+	}\
+	template<typename... Rest>\
+	auto const & operator()(int i, Rest... rest) const {\
+		return s[i](rest...);\
+	}
+
+// danger ... danger ...
+#define TENSOR2_ADD_ASSIGN_OP(classname)\
+	classname & operator=(classname const & o) {\
+		for (int i = 0; i < count; ++i) {\
+			s[i] = o.s[i];\
+		}\
+		return *this;\
+	}
+
+#define TENSOR2_ADD_OPS(classname)\
 	TENSOR2_ADD_VECTOR_OP_EQ(classname, +=)\
 	TENSOR2_ADD_VECTOR_OP_EQ(classname, -=)\
 	TENSOR2_ADD_VECTOR_OP_EQ(classname, *=)\
@@ -123,34 +146,32 @@ namespace v2 {
 	TENSOR2_ADD_SCALAR_OP_EQ(classname, /=)\
 	TENSOR2_ADD_UNM(classname)\
 	TENSOR2_ADD_DOT(classname)\
-	TENSOR2_ADD_CMP_OP(classname)\
-	TENSOR2_ADD_BRACKET_INDEX()
-//	TENSOR2_ADD_CAST_BOOL_OP()
+	TENSOR2_ADD_CMP_OP(classname)
+
+#define TENSOR2_VECTOR_CLASS_OPS(classname)\
+	TENSOR2_ADD_VECTOR_BRACKET_INDEX()\
+	TENSOR2_ADD_CALL_INDEX()\
+	TENSOR2_ADD_OPS(classname)
 
 #if 0	//hmm, this isn't working when it is run
-	classname& operator=(classname const & o) {\
-		for (int i = 0; i < dim; ++i) {\
-			s[i] = o.s[i];\
-		}\
-		return *this;\
-	}
+	//TENSOR2_ADD_ASSIGN_OP(classname)
 #endif
 
 
 //use the 'rank' field to check and see if we're in a _vec or not
 // TODO use something more specific to _vec in case other non-_vec classes use 'rank'
 template<typename T>
-constexpr bool has_rank_v = requires(T const & t) { T::rank; };
+constexpr bool is_vec_v = requires(T const & t) { T::rank; };
 
-// base case
+// base/scalar case
 template<typename T>
 struct VectorTraits {
 	static constexpr int rank = 0;
 	using ScalarType = T;
 };
 
-// recursive case
-template<typename T> requires has_rank_v<T> 
+// recursive/vec/matrix/tensor case
+template<typename T> requires is_vec_v<T> 
 struct VectorTraits<T> {
 	static constexpr int rank = T::rank;
 	using ScalarType = typename T::ScalarType;
@@ -160,59 +181,36 @@ struct VectorTraits<T> {
 //default
 template<typename T, int dim_>
 struct _vec {
+	// this is this class.  useful for templates.  you'd be surprised.
 	using This = _vec;
-	using ScalarType = T;				//for TENSOR2_ADD_OPS
-	static constexpr int dim = dim_;	//for TENSOR2_ADD_OPS
-
-	T s[dim];
-	_vec() {}
-
-	TENSOR2_ADD_OPS(_vec)
-	//TENSOR2_ADD_CAST_OP(_vec)
-};
-
-// to help the template evaluations of matrices ... here's the 1D vector
-template<typename T>
-struct _vec<T,1> {
-	using This = _vec;
+	
+	// this is the next most nested class, so vector-of-vector is a matrix.
 	using InnerType = T;
+	
+	// this is the child-most nested class that isn't in our math library.
 	using ScalarType = typename VectorTraits<T>::ScalarType;
-	static constexpr int dim = 1;
+	
+	// this is this particular dimension of our vector
+	// M = matrix<T,i,j> == vec<vec<T,j>,i> so M::dim == i and M::InnerType::dim == j 
+	// I'll make a tuple getter for all dimensions eventually, its size will be 'rank'
+	static constexpr int dim = dim_;
+
+	// this is the rank/degree/index/number of letter-indexes of your tensor.
+	// for vectors-of-vectors this is the nesting.
+	// if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each.
 	static constexpr int rank = 1 + VectorTraits<T>::rank;
+	
+	//this is the storage size, used for iterting across 's'
+	// for vectors etc it is 's'
+	// for (anti?)symmetric it is N*(N+1)/2
+	static constexpr int count = dim;
 
-	union {
-		struct {
-			T x = {};
-		};
-		struct {
-			T s0;
-		};
-		T s[dim];
-	};
+	T s[dim] = {};
 	_vec() {}
-	_vec(T x_) : x(x_) {}
-
-	static constexpr auto fields = std::make_tuple(
-		std::make_pair("x", &This::x)
-	);
-
-	TENSOR2_ADD_OPS(_vec)
+	
+	TENSOR2_VECTOR_CLASS_OPS(_vec)
 	//TENSOR2_ADD_CAST_OP(_vec)
 };
-
-template<typename T>
-using _vec1 = _vec<T,1>;
-
-using bool1 = _vec1<bool>;
-using uchar1 = _vec1<unsigned char>;
-using int1 = _vec1<int>;
-using float1 = _vec1<float>;
-using double1 = _vec1<double>;
-
-static_assert(std::is_same_v<float1::ScalarType, float>);
-static_assert(std::is_same_v<float1::InnerType, float>);
-static_assert(float1::rank == 1);
-static_assert(float1::dim == 1);
 
 
 template<typename T>
@@ -222,6 +220,7 @@ struct _vec<T,2> {
 	using ScalarType = typename VectorTraits<T>::ScalarType;
 	static constexpr int dim = 2;
 	static constexpr int rank = 1 + VectorTraits<T>::rank;
+	static constexpr int count = dim;
 
 	union {
 		struct {
@@ -242,8 +241,11 @@ struct _vec<T,2> {
 		std::make_pair("y", &This::y)
 	);
 
-	TENSOR2_ADD_OPS(_vec)
+	TENSOR2_VECTOR_CLASS_OPS(_vec)
 	//TENSOR2_ADD_CAST_OP(_vec)
+
+	//alright i can do swizzles, but not swizzle-assigns 
+	// (or maybe I can, but no promises)
 };
 
 template<typename T>
@@ -269,6 +271,7 @@ struct _vec<T,3> {
 	using ScalarType = typename VectorTraits<T>::ScalarType;
 	static constexpr int dim = 3;
 	static constexpr int rank = 1 + VectorTraits<T>::rank;
+	static constexpr int count = dim;
 
 	union {
 		struct {
@@ -292,7 +295,7 @@ struct _vec<T,3> {
 		std::make_pair("z", &This::z)
 	);
 
-	TENSOR2_ADD_OPS(_vec)
+	TENSOR2_VECTOR_CLASS_OPS(_vec)
 	//TENSOR2_ADD_CAST_OP(_vec)
 };
 
@@ -318,6 +321,7 @@ struct _vec<T,4> {
 	using ScalarType = typename VectorTraits<T>::ScalarType;
 	static constexpr int dim = 4;
 	static constexpr int rank = 1 + VectorTraits<T>::rank;
+	static constexpr int count = dim;
 
 	union {
 		struct {
@@ -344,7 +348,7 @@ struct _vec<T,4> {
 		std::make_pair("w", &This::w)
 	);
 
-	TENSOR2_ADD_OPS(_vec)
+	TENSOR2_VECTOR_CLASS_OPS(_vec)
 	//TENSOR2_ADD_CAST_OP(_vec)
 };
 
@@ -602,6 +606,7 @@ _mat<T,dim1,dim2> outerProduct(_vec<T,dim1> const & a, _vec<T,dim2> const & b) {
 }
 
 // matrix functions
+// TODO generalize to any sort of tensor swizzle
 
 template<typename T, int dim1, int dim2>
 _mat<T,dim2,dim1> transpose(_mat<T,dim1,dim2> const & a) {
@@ -613,6 +618,10 @@ _mat<T,dim2,dim1> transpose(_mat<T,dim1,dim2> const & a) {
 	}
 	return at;
 }
+
+// determinant
+// TODO generalize or at least expose Levi-Civita tensor as constexpr 
+// for implementing cross in higher dimensions, determinant, and whatever else.
 
 template<typename T, int dim>
 T determinant(_mat<T,dim,dim> const & a);
@@ -671,6 +680,8 @@ T determinant(_mat4x4<T> const & a) {
 		+ a.s0.s3 * a.s1.s2 * tmp12 
 		- a.s0.s3 * a.s1.s2 * tmp11;
 }
+
+// inverse
 
 template<typename T, int dim>
 _mat<T,dim,dim> inverse(_mat<T,dim,dim> const & a, T const det);
@@ -755,6 +766,254 @@ _mat<T,dim,dim> diagonalMatrix(_vec<T,dim> const & v) {
 	}
 	return a;
 }
+
+#if 1
+
+template<typename T, int dim, int... dims>
+struct NestedTensor;
+
+template<typename T, int dim>
+struct NestedTensor<T, dim> {
+	using tensor = _vec<T,dim>;
+};
+
+template<typename T, int dim, int... dims>
+struct NestedTensor {
+	using tensor = _vec<typename NestedTensor<T, dims...>::tensor, dim>;
+};
+
+template<typename T, int dim, int... dims>
+using _tensor = NestedTensor<T, dim, dims...>::tensor;
+
+#else
+
+template<typename T, int dim, int... dims>
+using _tensor;
+
+template<typename T, int dim>
+using _tensor<T, dim> = _vec<T, dim>;
+
+template<typename T, int dim, int... dims>
+using _tensor = _vec<_tensor<T, dims...>, dim>;
+
+#endif
+
+// symmetric matrices
+
+#define TENSOR2_ADD_SYMMETRIC_MATRIX_BRACKET_INDEX(classname)\
+	struct Accessor {\
+		classname & owner;\
+		int i;\
+		Accessor(classname & owner_, int i_) : owner(owner_), i(i_) {}\
+		InnerType & operator[](int j) { return owner(i,j); }\
+		/*TENSOR2_ADD_CALL_INDEX() * This needs to be here for vector-of-symmetrics own operator() to work properly (right?) */\
+	};\
+	Accessor operator[](int i) { return Accessor(*this, i); }\
+\
+	struct ConstAccessor {\
+		classname const & owner;\
+		int i;\
+		ConstAccessor(classname const & owner_, int i_) : owner(owner_), i(i_) {}\
+		InnerType const & operator[](int j) { return owner(i,j); }\
+		/*TENSOR2_ADD_CALL_INDEX()*/\
+	};\
+	ConstAccessor operator[](int i) const { return ConstAccessor(*this, i); }
+
+#define TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
+	TENSOR2_ADD_SYMMETRIC_MATRIX_BRACKET_INDEX(classname)\
+	TENSOR2_ADD_OPS(classname)
+
+template<int dim>
+int symIndex(int i, int j) {
+	if (j > i) return symIndex<dim>(j,i);
+	return ((i * (i + 1)) >> 1) + j;
+}
+
+template<typename T, int dim_>
+struct _sym {
+	using This = _sym;
+	using InnerType = T;
+	using ScalarType = typename VectorTraits<T>::ScalarType;
+	static constexpr int dim = dim_;
+	static constexpr int rank = 2 + VectorTraits<T>::rank;
+	static constexpr int count = (dim * (dim + 1)) >> 1;
+
+	T s[(dim*(dim+1))>>1] = {};
+	_sym() {}
+
+	TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	//TENSOR2_ADD_CAST_OP(_sym)
+};
+
+template<typename T>
+struct _sym<T,2> {
+	using This = _sym;
+	using InnerType = T;
+	using ScalarType = typename VectorTraits<T>::ScalarType;
+	static constexpr int dim = 2;
+	static constexpr int rank = 2 + VectorTraits<T>::rank;
+	static constexpr int count = (dim * (dim + 1)) >> 1;
+
+	union {
+		struct {
+			T xx = {};
+			T xy = {};
+			T yy = {};
+		};
+		struct {
+			T s00;
+			T s01;
+			T s11;
+		};
+		T s[(dim*(dim+1))>>1];
+	};
+	_sym() {}
+	_sym(T xx_, T xy_, T yy_) 
+	: xx(xx_), xy(xy_), yy(yy_) {}
+
+	static constexpr auto fields = std::make_tuple(
+		std::make_pair("xx", &This::xx),
+		std::make_pair("xy", &This::xy),
+		std::make_pair("yy", &This::yy)
+	);
+
+	TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	//TENSOR2_ADD_CAST_OP(_sym)
+};
+
+template<typename T>
+struct _sym<T,3> {
+	using This = _sym;
+	using InnerType = T;
+	using ScalarType = typename VectorTraits<T>::ScalarType;
+	static constexpr int dim = 3;
+	static constexpr int rank = 2 + VectorTraits<T>::rank;
+	static constexpr int count = (dim * (dim + 1)) >> 1;
+
+	union {
+		struct {
+			T xx = {};
+			T xy = {};
+			T yy = {};
+			T xz = {};
+			T yz = {};
+			T zz = {};
+		};
+		struct {
+			T s00;
+			T s01;
+			T s11;
+			T s02;
+			T s12;
+			T s22;
+		};
+		T s[(dim*(dim+1))>>1];
+	};
+	_sym() {}
+	_sym(
+		T const & xx_,
+		T const & xy_,
+		T const & yy_,
+		T const & xz_,
+		T const & yz_,
+		T const & zz_
+	) : xx(xx_),
+		xy(xy_),
+		yy(yy_),
+		xz(xz_),
+		yz(yz_),
+		zz(zz_) {}
+
+	static constexpr auto fields = std::make_tuple(
+		std::make_pair("xx", &This::xx),
+		std::make_pair("xy", &This::xy),
+		std::make_pair("yy", &This::yy),
+		std::make_pair("xz", &This::xz),
+		std::make_pair("yz", &This::yz),
+		std::make_pair("zz", &This::zz)
+	);
+
+	TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	//TENSOR2_ADD_CAST_OP(_sym)
+};
+
+template<typename T>
+struct _sym<T,4> {
+	using This = _sym;
+	using InnerType = T;
+	using ScalarType = typename VectorTraits<T>::ScalarType;
+	static constexpr int dim = 4;
+	static constexpr int rank = 2 + VectorTraits<T>::rank;
+	static constexpr int count = (dim * (dim + 1)) >> 1;
+
+	union {
+		struct {
+			T xx = {};
+			T xy = {};
+			T yy = {};
+			T xz = {};
+			T yz = {};
+			T zz = {};
+			T xw = {};
+			T yw = {};
+			T zw = {};
+			T ww = {};
+		};
+		struct {
+			T s00;
+			T s01;
+			T s11;
+			T s02;
+			T s12;
+			T s22;
+			T s03;
+			T s13;
+			T s23;
+			T s33;	
+		};
+		T s[(dim*(dim+1))>>1];
+	};
+	_sym() {}
+	_sym(
+		T const & xx_,
+		T const & xy_,
+		T const & yy_,
+		T const & xz_,
+		T const & yz_,
+		T const & zz_,
+		T const & xw_,
+		T const & yw_,
+		T const & zw_,
+		T const & ww_
+	) : xx(xx_),
+		xy(xy_),
+		yy(yy_),
+		xz(xz_),
+		yz(yz_),
+		zz(zz_),
+		xw(xw_),
+		yw(yw_),
+		zw(zw_),
+		ww(ww_) {}
+
+	static constexpr auto fields = std::make_tuple(
+		std::make_pair("xx", &This::xx),
+		std::make_pair("xy", &This::xy),
+		std::make_pair("yy", &This::yy),
+		std::make_pair("xz", &This::xz),
+		std::make_pair("yz", &This::yz),
+		std::make_pair("zz", &This::zz),
+		std::make_pair("xw", &This::xw),
+		std::make_pair("yw", &This::yw),
+		std::make_pair("zw", &This::zw),
+		std::make_pair("ww", &This::ww)
+	);
+
+	TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	//TENSOR2_ADD_CAST_OP(_sym)
+};
+
+
 
 } //v2
 } //Tensor
