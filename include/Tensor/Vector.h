@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Tensor/GenericVector.h"
+#include "Common/String.h"
 #include <ostream>
 
 namespace Tensor {
@@ -121,5 +122,19 @@ template<typename T> using _vec1 = Vector<T, 1>;
 template<typename T> using _vec2 = Vector<T, 2>;
 template<typename T> using _vec3 = Vector<T, 3>;
 template<typename T> using _vec4 = Vector<T, 4>;
+
+}
+
+namespace std {
+
+template<typename T, int n>
+std::string to_string(Tensor::Vector<T, n> const & x) {
+	return Common::objectStringFromOStream(x);
+}
+
+template<typename T>
+std::string to_string(std::vector<T> const & x) {
+	return Common::objectStringFromOStream(x);
+}
 
 }
