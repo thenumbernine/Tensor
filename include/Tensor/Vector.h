@@ -285,6 +285,14 @@ namespace Tensor {
 		return *(_vec<T,subdim>*)(s+offset);\
 	}
 
+// TODO write iterator so _sym
+// also TODO can't use this in conjunction with the requires to_ostream or you get ambiguous operator
+// the operator<< requires to_fields and _vec having fields probably doesn't help
+#define TENSOR_ADD_TO_OSTREAM(classname)\
+	std::ostream & to_ostream(std::ostream & o) const {\
+		return Common::iteratorToOStream(o, *this);\
+	}\
+
 //these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
 #define TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_VECTOR_OP_EQ(classname, +=)\
@@ -410,8 +418,8 @@ namespace Tensor {
 			}\
 		}\
 \
-		void to_ostream(std::ostream & o) const {\
-			o << "ReadIterator(owner=" << &owner << ", index=" << index << ")";\
+		std::ostream & to_ostream(std::ostream & o) const {\
+			return o << "ReadIterator(owner=" << &owner << ", index=" << index << ")";\
 		}\
 \
 		static ReadIterator begin(vec_constness & v) {\
@@ -1523,7 +1531,7 @@ std::ostream & operator<<(std::ostream & o, Tensor::_vec<Type,dim> const & t) {
 	char const * sep = "";
 	o << "{";
 	for (int i = 0; i < t.count; ++i) {
-		o << sep << t(i);
+		o << sep << t.s[i];
 		sep = ", ";
 	}
 	o << "}";

@@ -143,14 +143,14 @@ struct Grid {
 	using DerefType = intN<rank>;
 
 	DerefType size;
-	Type *v;
-	bool own;	//or just use a shared_ptr to v?
+	Type * v = {};
+	bool own = {};	//or just use a shared_ptr to v?
 	
 	//cached for quick access by dot with index vector
 	//step[0] = 1, step[1] = size[0], step[j] = product(i=1,j-1) size[i]
 	DerefType step;
 
-	Grid(DerefType const &size_ = DerefType(), Type* v_ = (Type*)nullptr)
+	Grid(DerefType const &size_ = DerefType(), Type* v_ = {})
 	:	size(size_),
 		v(v_),
 		own(false)
@@ -216,7 +216,11 @@ struct Grid {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
-				throw Common::Exception() << "size is " << size << " but dereference is " << deref;
+				// TODO why can't I use operator<<?  no, 'using ::operator<<' doen't help
+				// doesn't work:
+				//throw Common::Exception() << "size is " << size << " but dereference is " << deref;
+				// works:
+				throw Common::Exception() << "size is " << std::to_string(size) << " but dereference is " << std::to_string(deref);
 			}
 		}
 #endif
@@ -228,7 +232,8 @@ struct Grid {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
-				throw Common::Exception() << "size is " << size << " but dereference is " << deref;
+				// same as above
+				throw Common::Exception() << "size is " << std::to_string(size) << " but dereference is " << std::to_string(deref);
 			}
 		}
 #endif
