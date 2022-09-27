@@ -222,6 +222,8 @@ void test_vec() {
 		// read iterator
 		{
 			auto i = m.begin();
+			// iterating in memory order for row-major
+			// also in left-right top-bottom order when read
 			TEST_EQ(*i, 1); ++i;
 			TEST_EQ(*i, 2); ++i;
 			TEST_EQ(*i, 3); ++i;

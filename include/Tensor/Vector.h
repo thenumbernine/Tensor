@@ -296,9 +296,8 @@ namespace Tensor {
 	TENSOR_ADD_CMP_OP(classname)\
 	TENSOR_ADD_SIZE(classname)
 
-#define TENSOR_ADD_CTORS(classname)\
-\
-	/* lambda ctor */\
+// lambda ctor
+#define TENSOR_ADD_LAMBDA_CTOR(classname)\
 	classname(std::vector<ScalarType(intN)> f) {\
 		/* TODO maybe? for (auto i : iterate_index()) {*/\
 		for (auto i = begin(); i != end(); ++i) {\
@@ -306,8 +305,22 @@ namespace Tensor {
 		}\
 	}
 
+// vector cast operator
+// TODO not sure how to write this to generalize into _sym and others (or if I should try to?)
+#define TENSOR_ADD_VECTOR_CAST_CTOR(classname)\
+	template<int dim2, typename U>\
+	_vec(_vec<U, dim2> const & t) {\
+		for (int i = 0; i < count && i < t.count; ++i) {\
+			s[i] = (U)t.s[i];\
+		}\
+	}
+
+#define TENSOR_ADD_CTORS(classname)\
+//	TENSOR_ADD_LAMBDA_CTOR(classname)
+//	TENSOR_ADD_VECTOR_CAST_CTOR(classname)
+
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
-	/*TENSOR_ADD_CTORS(classname)*/\
+	TENSOR_ADD_CTORS(classname)\
 	TENSOR_ADD_VECTOR_BRACKET_INDEX()\
 	TENSOR_ADD_CALL_INDEX()\
 	TENSOR_ADD_OPS(classname)\
@@ -352,9 +365,10 @@ namespace Tensor {
 		template<int i>\
 		struct Increment {\
 			static bool exec(ReadIterator &iter) {\
-				++iter.index[i];\
-				if (iter.index[i] < vec_constness::template ith_dim<i>) return true;\
-				if (i < rank-1) iter.index[i] = 0;\
+				constexpr int j = rank-1-i;\
+				++iter.index[j];\
+				if (iter.index[j] < vec_constness::template ith_dim<j>) return true;\
+				if (j > 0) iter.index[j] = 0;\
 				return false;\
 			}\
 		};\
@@ -385,7 +399,7 @@ namespace Tensor {
 		}\
 		static ReadIterator end(vec_constness & v) {\
 			intN index;\
-			index[rank-1] = vec_constness::template ith_dim<rank-1>;\
+			index[0] = vec_constness::template ith_dim<0>;\
 			return ReadIterator(v, index);\
 		}\
 	};\
