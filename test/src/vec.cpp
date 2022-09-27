@@ -50,6 +50,9 @@ void test_vec() {
 		TEST_EQ(g[0], 7);
 		TEST_EQ(g[1], 1);
 		TEST_EQ(g[2], 2);
+		
+		//.size()
+		TEST_EQ(f.size(), (_vec<int,1>(3)));	//TODO special case for 1-dim size?
 
 		// vector/scalar operations
 		TEST_EQ(f+1.f, float3(5,6,8));
@@ -188,6 +191,11 @@ void test_vec() {
 		TEST_EQ(m[0], float3(1,2,3));
 		TEST_EQ(m[1], float3(4,5,6));
 		TEST_EQ(m[2], float3(7,8,9));
+
+		TEST_EQ(m.size(), int2(3,3));
+
+		// read iterator
+		// write iterator (should match read iterator except for symmetric members)
 
 		// TODO matrix subset access
 

@@ -73,6 +73,12 @@ namespace Tensor {
 		return !operator==(b);\
 	}
 
+//::size() returns the total nested dimensions as an int-vec
+#define TENSOR2_ADD_SIZE(classname)\
+	static _vec<int,rank> size() {\
+		return VectorTraits<This>::size();\
+	}
+
 // danger ... danger ...
 #define TENSOR2_ADD_CAST_BOOL_OP()\
 	operator bool() const {\
@@ -228,7 +234,8 @@ namespace Tensor {
 	TENSOR2_ADD_SCALAR_OP_EQ(classname, /=)\
 	TENSOR2_ADD_UNM(classname)\
 	TENSOR2_ADD_DOT(classname)\
-	TENSOR2_ADD_CMP_OP(classname)
+	TENSOR2_ADD_CMP_OP(classname)\
+	TENSOR2_ADD_SIZE(classname)
 
 #define TENSOR2_VECTOR_CLASS_OPS(classname)\
 	TENSOR2_ADD_VECTOR_BRACKET_INDEX()\
@@ -237,6 +244,7 @@ namespace Tensor {
 	TENSOR2_ADD_SUBSET_ACCESS()\
 \
 	/* assumes InnerType operator* exists */\
+	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
 	T volume() const {\
 		T res = s[0];\
 		for (int i = 1; i < count; ++i) {\
@@ -244,6 +252,49 @@ namespace Tensor {
 		}\
 		return res;\
 	}
+
+#if 0	// iterators
+	template<typename vec_constness>\
+	struct ReadIterator {\
+		using intN = _vec<int,dim>;\
+		vec_constness & owner;\
+		intN index;\
+		ReadIterator(Tensor & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
+		ReadIterator(ReadIterator const & o) { operator=(o); }\
+		ReadIterator(ReadIterator && o) { operator=(o); }\
+		ReadIterator & operator=(ReadIterator const & o) {\
+			owner = o.owner;\
+			index = o.index;\
+			return *this;\
+		}\
+		ReadIterator & operator=(ReadIterator && o) {\
+			owner = o.owner;\
+			index = o.index;\
+			return *this;\
+		}\
+		bool operator==(ReadIterator const & o) const { return &parent == &o.parent && index == o.index; }\
+		bool operator!=(ReadIterator const & o) const { return !operator==(o); }\
+		ReadIterator & operator++() {\
+			return *this;\
+		}\
+		ScalarType & operator*() const { return owner(index); }\
+		static ReadIterator begin(vec_constness & v) { return ReadIterator(v); }\
+		static ReadIterator end(vec_constness & v) {\
+			intN index;\
+			index[rank-1] = size()[rank-1];\
+			return ReadIterator(v, index);\
+		}\
+	};\
+	using iterator = ReadIterator<_vec>;\
+	iterator begin() { return iterator::begin(*this); }\
+	iterator end() { return iterator::end(*this); }\
+	using const_iterator = ReadIterator<_vec const>;\
+	const_iterator begin() const { return const_iterator::begin(*this); }\
+	const_iterator end() const { return const_iterator::end(*this); }\
+	const_iterator cbegin() const { return const_iterator::begin(*this); }\
+	const_iterator cend() const { return const_iterator::end(*this); }\
+
+#endif
 
 #if 0	//hmm, this isn't working when it is run
 	//TENSOR2_ADD_ASSIGN_OP(classname)
@@ -257,22 +308,98 @@ use the 'rank' field to check and see if we're in a _vec (or a _sym) or not
 template<typename T>
 constexpr bool is_tensor_v = requires(T const & t) { T::rank; };
 
+template<typename T, int dim_>
+struct _vec;
+
 // base/scalar case
 template<typename T>
 struct VectorTraits {
+	
 	static constexpr int rank = 0;
+	
 	using ScalarType = T;
 };
 
 // recursive/vec/matrix/tensor case
 template<typename T> requires is_tensor_v<T> 
 struct VectorTraits<T> {
+	
 	static constexpr int rank = T::rank;
+	
 	using ScalarType = typename T::ScalarType;
+
+	static _vec<int,rank> size() {
+		_vec<int,rank> sizev;
+		for (int i = 0; i < T::thisRank; ++i) {
+			sizev(i) = T::dim;
+		}
+		if constexpr (T::thisRank < rank) {
+			sizev.template subset<rank-T::thisRank, T::thisRank>()
+				= VectorTraits<typename T::InnerType>::size();
+		}
+		return sizev;
+	}
 };
 
+// size == 1 specialization
+// tempted to always make edge-cases to make this turn into a primitive itself
+// ::size() is on my mind especially
 
-//default
+template<typename T>
+struct _vec<T,1> {
+	using This = _vec;
+	using InnerType = T;
+	using ScalarType = typename VectorTraits<T>::ScalarType;
+	static constexpr int dim = 1;
+	static constexpr int thisRank = 1;
+	static constexpr int rank = thisRank + VectorTraits<T>::rank;
+	static constexpr int count = dim;
+
+	union {
+		struct {
+			T x = {};
+		};
+		struct {
+			T s0;
+		};
+		T s[dim];
+	};
+	_vec() {}
+	_vec(T x_) : x(x_) {}
+
+	static constexpr auto fields = std::make_tuple(
+		std::make_pair("x", &This::x)
+	);
+
+	TENSOR2_VECTOR_CLASS_OPS(_vec)
+	//TENSOR2_ADD_CAST_OP(_vec)
+
+	//not gonna bother with swizzle.  TODO get rid of this class.
+};
+
+template<typename T>
+using _vec1 = _vec<T,1>;
+
+using bool1 = _vec1<bool>;
+using uchar1 = _vec1<unsigned char>;
+using int1 = _vec1<int>;
+using uint1 = _vec1<unsigned int>;
+using float1 = _vec1<float>;
+using double1 = _vec1<double>;
+
+static_assert(sizeof(bool1) == sizeof(bool) * 1);
+static_assert(sizeof(uchar1) == sizeof(unsigned char) * 1);
+static_assert(sizeof(int1) == sizeof(int) * 1);
+static_assert(sizeof(uint1) == sizeof(unsigned int) * 1);
+static_assert(sizeof(float1) == sizeof(float) * 1);
+static_assert(sizeof(double1) == sizeof(double) * 1);
+static_assert(std::is_same_v<float1::ScalarType, float>);
+static_assert(std::is_same_v<float1::InnerType, float>);
+static_assert(float1::rank == 1);
+static_assert(float1::dim == 1);
+
+// default
+
 template<typename T, int dim_>
 struct _vec {
 	// this is this class.  useful for templates.  you'd be surprised.
@@ -283,16 +410,20 @@ struct _vec {
 	
 	// this is the child-most nested class that isn't in our math library.
 	using ScalarType = typename VectorTraits<T>::ScalarType;
-	
+
 	// this is this particular dimension of our vector
 	// M = matrix<T,i,j> == vec<vec<T,j>,i> so M::dim == i and M::InnerType::dim == j 
 	// I'll make a tuple getter for all dimensions eventually, its size will be 'rank'
 	static constexpr int dim = dim_;
 
+	//how much does this structure contribute to the overall rank.
+	// for _vec it is 1, for _sym it is 2
+	static constexpr int thisRank = 1;
+
 	// this is the rank/degree/index/number of letter-indexes of your tensor.
 	// for vectors-of-vectors this is the nesting.
 	// if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each.
-	static constexpr int rank = 1 + VectorTraits<T>::rank;
+	static constexpr int rank = thisRank + VectorTraits<T>::rank;
 	
 	//this is the storage size, used for iterting across 's'
 	// for vectors etc it is 's'
@@ -306,6 +437,7 @@ struct _vec {
 	//TENSOR2_ADD_CAST_OP(_vec)
 };
 
+// size == 2 specialization
 
 template<typename T>
 struct _vec<T,2> {
@@ -313,7 +445,8 @@ struct _vec<T,2> {
 	using InnerType = T;
 	using ScalarType = typename VectorTraits<T>::ScalarType;
 	static constexpr int dim = 2;
-	static constexpr int rank = 1 + VectorTraits<T>::rank;
+	static constexpr int thisRank = 1;
+	static constexpr int rank = thisRank + VectorTraits<T>::rank;
 	static constexpr int count = dim;
 
 	union {
@@ -403,13 +536,16 @@ static_assert(std::is_same_v<float2::InnerType, float>);
 static_assert(float2::rank == 1);
 static_assert(float2::dim == 2);
 
+// size == 3 specialization
+
 template<typename T>
 struct _vec<T,3> {
 	using This = _vec;
 	using InnerType = T;
 	using ScalarType = typename VectorTraits<T>::ScalarType;
 	static constexpr int dim = 3;
-	static constexpr int rank = 1 + VectorTraits<T>::rank;
+	static constexpr int thisRank = 1;
+	static constexpr int rank = thisRank + VectorTraits<T>::rank;
 	static constexpr int count = dim;
 
 	union {
@@ -518,7 +654,8 @@ struct _vec<T,4> {
 	using InnerType = T;
 	using ScalarType = typename VectorTraits<T>::ScalarType;
 	static constexpr int dim = 4;
-	static constexpr int rank = 1 + VectorTraits<T>::rank;
+	static constexpr int thisRank = 1;
+	static constexpr int rank = thisRank + VectorTraits<T>::rank;
 	static constexpr int count = dim;
 
 	union {
@@ -1022,7 +1159,8 @@ struct _sym {
 	using InnerType = T;
 	using ScalarType = typename VectorTraits<T>::ScalarType;
 	static constexpr int dim = dim_;
-	static constexpr int rank = 2 + VectorTraits<T>::rank;
+	static constexpr int thisRank = 2;
+	static constexpr int rank = thisRank + VectorTraits<T>::rank;
 	static constexpr int count = (dim * (dim + 1)) >> 1;
 
 	T s[(dim*(dim+1))>>1] = {};
@@ -1038,7 +1176,8 @@ struct _sym<T,2> {
 	using InnerType = T;
 	using ScalarType = typename VectorTraits<T>::ScalarType;
 	static constexpr int dim = 2;
-	static constexpr int rank = 2 + VectorTraits<T>::rank;
+	static constexpr int thisRank = 2;
+	static constexpr int rank = thisRank + VectorTraits<T>::rank;
 	static constexpr int count = (dim * (dim + 1)) >> 1;
 
 	union {
@@ -1074,7 +1213,8 @@ struct _sym<T,3> {
 	using InnerType = T;
 	using ScalarType = typename VectorTraits<T>::ScalarType;
 	static constexpr int dim = 3;
-	static constexpr int rank = 2 + VectorTraits<T>::rank;
+	static constexpr int thisRank = 2;
+	static constexpr int rank = thisRank + VectorTraits<T>::rank;
 	static constexpr int count = (dim * (dim + 1)) >> 1;
 
 	union {
@@ -1130,7 +1270,8 @@ struct _sym<T,4> {
 	using InnerType = T;
 	using ScalarType = typename VectorTraits<T>::ScalarType;
 	static constexpr int dim = 4;
-	static constexpr int rank = 2 + VectorTraits<T>::rank;
+	static constexpr int thisRank = 2;
+	static constexpr int rank = thisRank + VectorTraits<T>::rank;
 	static constexpr int count = (dim * (dim + 1)) >> 1;
 
 	union {
