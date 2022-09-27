@@ -72,6 +72,8 @@ void test_vec() {
 			// TODO verify cbegin/cend
 			// TODO support for rbegin/rend const/not const and crbegin/crend
 		}
+		
+		TEST_EQ(f, float3([](int i) -> float { return 4 + i * (i + 1) / 2; }));
 
 		// bracket ctor
 		float3 g = {7,1,2};
@@ -131,7 +133,6 @@ void test_vec() {
 		// TODO vector subset access
 	
 		// swizzle
-		auto fxxx = f.zyx();
 		// TODO need an operator== between T and reference_wrapper<T> ...
 		// or casting ctor?
 		// a generic ctor between _vecs would be nice, but maybe problematic for _mat = _sym
@@ -211,6 +212,8 @@ void test_vec() {
 		TEST_EQ(m[1], float3(4,5,6));
 		TEST_EQ(m[2], float3(7,8,9));
 
+		//dims and rank.  really these are static_assert's, except dims(), but it could be, but I'd have to constexpr some things ...
+		TEST_EQ(m.rank, 2);
 		TEST_EQ(m.dims(), int2(3,3));
 		TEST_EQ(m.ith_dim<0>, 3);
 		TEST_EQ(m.ith_dim<1>, 3);
@@ -218,8 +221,10 @@ void test_vec() {
 		// read iterator
 		{
 			auto i = m.begin();
+#if 0 // not sure which to use			
 			// iterating in memory order for row-major
 			// also in left-right top-bottom order when read
+			// but lambda init is now m(i,j) == 1 + i(1) + 3 * i(0) ... transposed of typical memory indexing
 			TEST_EQ(*i, 1); ++i;
 			TEST_EQ(*i, 2); ++i;
 			TEST_EQ(*i, 3); ++i;
@@ -230,9 +235,31 @@ void test_vec() {
 			TEST_EQ(*i, 8); ++i;
 			TEST_EQ(*i, 9); ++i;
 			TEST_EQ(i, m.end());
+#endif
+#if 1
+			//iterating transpose to memory order for row-major
+			// but lambda init is now m(i,j) == 1 + i(0) + 3 * i(1)  ... typical memory indexing
+			// I could fulfill both at the same time by making my matrices column-major, like OpenGL does ... tempting ...
+			TEST_EQ(*i, 1); ++i;
+			TEST_EQ(*i, 4); ++i;
+			TEST_EQ(*i, 7); ++i;
+			TEST_EQ(*i, 2); ++i;
+			TEST_EQ(*i, 5); ++i;
+			TEST_EQ(*i, 8); ++i;
+			TEST_EQ(*i, 3); ++i;
+			TEST_EQ(*i, 6); ++i;
+			TEST_EQ(*i, 9); ++i;
+			TEST_EQ(i, m.end());
+#endif
 		}
 
 		// write iterator (should match read iterator except for symmetric members)
+
+		// lambda constructor
+		// row-major, sequential in memory:
+		TEST_EQ(m, float3x3([](int2 i) -> float { return 1 + i(1) + 3 * i(0); }));
+		// col-major, sequential in memory:
+		//TEST_EQ(m, float3x3([](int2 i) -> float { return 1 + i(0) + 3 * i(1); }));
 
 		// TODO matrix subset access
 

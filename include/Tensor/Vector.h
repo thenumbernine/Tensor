@@ -137,7 +137,7 @@ namespace Tensor {
 		}\
 		return res;\
 	}
-	
+
 #define TENSOR_ADD_UNM(classname)\
 	classname operator-() const {\
 		classname result;\
@@ -297,11 +297,21 @@ namespace Tensor {
 	TENSOR_ADD_SIZE(classname)
 
 // lambda ctor
-// TODO maybe? for (auto i : iterate_index()) {
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
-	classname(std::vector<ScalarType(intN)> f) {\
+	/* use int<rank> as our lambda index: */\
+	classname(std::function<ScalarType(intN)> f) {\
+		/* TODO write-member-only: for (auto i : iterate_index()) {*/\
 		for (auto i = begin(); i != end(); ++i) {\
 			*i = f(i.index);\
+		}\
+	}\
+\
+	/* only for rank-1, allow int as the lambda index */\
+	classname(std::function<ScalarType(int)> f)\
+	requires (rank == 1)\
+	{\
+		for (auto i = begin(); i != end(); ++i) {\
+			*i = f(i.index[0]);\
 		}\
 	}
 
@@ -365,10 +375,16 @@ namespace Tensor {
 		template<int i>\
 		struct Increment {\
 			static bool exec(ReadIterator &iter) {\
-				constexpr int j = rank-1-i;\
-				++iter.index[j];\
-				if (iter.index[j] < vec_constness::template ith_dim<j>) return true;\
-				if (j > 0) iter.index[j] = 0;\
+				/* inc n-1 first */\
+				/*constexpr int j = rank-1-i;*/\
+				/*++iter.index[j];*/\
+				/*if (iter.index[j] < vec_constness::template ith_dim<j>) return true;*/\
+				/*if (j > 0) iter.index[j] = 0;*/\
+				/* inc 0 first */\
+				++iter.index[i];\
+				if (iter.index[i] < vec_constness::template ith_dim<i>) return true;\
+				if (i < rank-1) iter.index[i] = 0;\
+				/* end inc */\
 				return false;\
 			}\
 		};\
@@ -399,7 +415,11 @@ namespace Tensor {
 		}\
 		static ReadIterator end(vec_constness & v) {\
 			intN index;\
-			index[0] = vec_constness::template ith_dim<0>;\
+			/* inc n-1 first */\
+			/*index[0] = vec_constness::template ith_dim<0>;*/\
+			/* inc 0 first */\
+			index[rank-1] = vec_constness::template ith_dim<rank-1>;\
+			/* end inc */\
 			return ReadIterator(v, index);\
 		}\
 	};\
