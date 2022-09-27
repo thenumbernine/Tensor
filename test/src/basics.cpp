@@ -48,13 +48,13 @@ void test_tensors() {
 	Vector v = {1,2,3};
 	
 	TEST_EQ(v.rank, 1);
-	TEST_EQ(v.size(), 3);
+	TEST_EQ(v.size()(0), 3);
 	std::cout << "v^i = " << v << std::endl;
 
 	using OneForm = Tensor::Tensor<Real,Tensor::Lower<3>>;
 	OneForm w;
 	TEST_EQ(w.rank, 1);
-	TEST_EQ(w.size(), 3);
+	TEST_EQ(w.size()(0), 3);
 	std::cout << "w_i = " << w << std::endl;
 
 	using Metric = Tensor::Tensor<Real,Tensor::Symmetric<Tensor::Lower<3>,Tensor::Lower<3>>>;

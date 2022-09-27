@@ -12,11 +12,31 @@ TODO:
 	symmetric and antisymmetric matrices
 	operator() reference drilling
 	index notation still
+
+
+alright conventions, esp with my _sym being in the mix ...
+operator[i] will denote a single index.  this means for two-rank structs they will have to return an accessor object
+operator(i) same
+operator(i,j,k,...) should always be allowed for any number of index dereferencing ... which means it will need to be implemented on accessors as well ... and means it may return an accessor
+
+for GLSL / CL convention, every struct should have when possible:
+	.s[]  (except for reference types ofc ... but why am I even mixing them in?  cuz swizzle and std::tie)
+direct access to the data ... should be done via .s[] for now at least
+
+operators ... scalar / tensor, tensor/scalar, tensor/tensor 
+
+the * operator for tensor/tensor should be an outer+contract, ex:
+	rank-2 a * rank-2 b = a_ij * b_jk = rank-2 c_ik (matrix mul)
+	rank-1 a * rank-1 b = rank-0 c (dot product) ... tho for GLSL compat this is a per-element vector
+	rank-3 a * rank-3 b = a_ijk * b_klm = c_ijlm
+
+
 */
 
 #include "Common/String.h"
 #include <tuple>
-#include <functional>	//for Partial
+#include <functional>	//reference_wrapper, also function<> is by Partial
+#include <cmath>		//sqrt()
 
 namespace Tensor {
 namespace v2 {
@@ -255,8 +275,48 @@ struct _vec<T,2> {
 	TENSOR2_VECTOR_CLASS_OPS(_vec)
 	//TENSOR2_ADD_CAST_OP(_vec)
 
-	//alright i can do swizzles, but not swizzle-assigns 
-	// (or maybe I can, but no promises)
+	// 2-component swizzles
+#define TENSOR2_VEC2_ADD_SWIZZLE2_ij(i, j)\
+	auto i ## j () { return _vec<std::reference_wrapper<T>, 2>(i, j); }
+#define TENSOR2_VEC2_ADD_SWIZZLE2_i(i)\
+	TENSOR2_VEC2_ADD_SWIZZLE2_ij(i,x)\
+	TENSOR2_VEC2_ADD_SWIZZLE2_ij(i,y)
+#define TENSOR3_VEC2_ADD_SWIZZLE2()\
+	TENSOR2_VEC2_ADD_SWIZZLE2_i(x)\
+	TENSOR2_VEC2_ADD_SWIZZLE2_i(y)
+	TENSOR3_VEC2_ADD_SWIZZLE2()
+	
+	// 3-component swizzles
+#define TENSOR2_VEC2_ADD_SWIZZLE3_ijk(i, j, k)\
+	auto i ## j ## k() { return _vec<std::reference_wrapper<T>, 3>(i, j, k); }
+#define TENSOR2_VEC2_ADD_SWIZZLE3_ij(i,j)\
+	TENSOR2_VEC2_ADD_SWIZZLE3_ijk(i,j,x)\
+	TENSOR2_VEC2_ADD_SWIZZLE3_ijk(i,j,y)
+#define TENSOR2_VEC2_ADD_SWIZZLE3_i(i)\
+	TENSOR2_VEC2_ADD_SWIZZLE3_ij(i,x)\
+	TENSOR2_VEC2_ADD_SWIZZLE3_ij(i,y)
+#define TENSOR3_VEC2_ADD_SWIZZLE3()\
+	TENSOR2_VEC2_ADD_SWIZZLE3_i(x)\
+	TENSOR2_VEC2_ADD_SWIZZLE3_i(y)
+	TENSOR3_VEC2_ADD_SWIZZLE3()
+
+	// 4-component swizzles
+#define TENSOR2_VEC2_ADD_SWIZZLE4_ijkl(i, j, k, l)\
+	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<T>, 4>(i, j, k, l); }
+#define TENSOR2_VEC2_ADD_SWIZZLE4_ijk(i,j,k)\
+	TENSOR2_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,x)\
+	TENSOR2_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,y)
+#define TENSOR2_VEC2_ADD_SWIZZLE4_ij(i,j)\
+	TENSOR2_VEC2_ADD_SWIZZLE4_ijk(i,j,x)\
+	TENSOR2_VEC2_ADD_SWIZZLE4_ijk(i,j,y)
+#define TENSOR2_VEC2_ADD_SWIZZLE4_i(i)\
+	TENSOR2_VEC2_ADD_SWIZZLE4_ij(i,x)\
+	TENSOR2_VEC2_ADD_SWIZZLE4_ij(i,y)
+#define TENSOR3_VEC2_ADD_SWIZZLE4()\
+	TENSOR2_VEC2_ADD_SWIZZLE4_i(x)\
+	TENSOR2_VEC2_ADD_SWIZZLE4_i(y)
+	TENSOR3_VEC2_ADD_SWIZZLE4()
+
 };
 
 template<typename T>
@@ -273,7 +333,6 @@ static_assert(std::is_same_v<float2::ScalarType, float>);
 static_assert(std::is_same_v<float2::InnerType, float>);
 static_assert(float2::rank == 1);
 static_assert(float2::dim == 2);
-
 
 template<typename T>
 struct _vec<T,3> {
@@ -295,7 +354,7 @@ struct _vec<T,3> {
 			T s1;
 			T s2;
 		};
-		T s[dim];
+		T s[dim];// requires !std::is_reference_v<T>;
 	};
 	_vec() {}
 	_vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
@@ -308,7 +367,60 @@ struct _vec<T,3> {
 
 	TENSOR2_VECTOR_CLASS_OPS(_vec)
 	//TENSOR2_ADD_CAST_OP(_vec)
+
+	// 2-component swizzles
+#define TENSOR2_VEC3_ADD_SWIZZLE2_ij(i, j)\
+	auto i ## j () { return _vec<std::reference_wrapper<T>, 2>(i, j); }
+#define TENSOR2_VEC3_ADD_SWIZZLE2_i(i)\
+	TENSOR2_VEC3_ADD_SWIZZLE2_ij(i,x)\
+	TENSOR2_VEC3_ADD_SWIZZLE2_ij(i,y)\
+	TENSOR2_VEC3_ADD_SWIZZLE2_ij(i,z)
+#define TENSOR3_VEC3_ADD_SWIZZLE2()\
+	TENSOR2_VEC3_ADD_SWIZZLE2_i(x)\
+	TENSOR2_VEC3_ADD_SWIZZLE2_i(y)\
+	TENSOR2_VEC3_ADD_SWIZZLE2_i(z)
+	TENSOR3_VEC3_ADD_SWIZZLE2()
+	
+	// 3-component swizzles
+#define TENSOR2_VEC3_ADD_SWIZZLE3_ijk(i, j, k)\
+	auto i ## j ## k() { return _vec<std::reference_wrapper<T>, 3>(i, j, k); }
+#define TENSOR2_VEC3_ADD_SWIZZLE3_ij(i,j)\
+	TENSOR2_VEC3_ADD_SWIZZLE3_ijk(i,j,x)\
+	TENSOR2_VEC3_ADD_SWIZZLE3_ijk(i,j,y)\
+	TENSOR2_VEC3_ADD_SWIZZLE3_ijk(i,j,z)
+#define TENSOR2_VEC3_ADD_SWIZZLE3_i(i)\
+	TENSOR2_VEC3_ADD_SWIZZLE3_ij(i,x)\
+	TENSOR2_VEC3_ADD_SWIZZLE3_ij(i,y)\
+	TENSOR2_VEC3_ADD_SWIZZLE3_ij(i,z)
+#define TENSOR3_VEC3_ADD_SWIZZLE3()\
+	TENSOR2_VEC3_ADD_SWIZZLE3_i(x)\
+	TENSOR2_VEC3_ADD_SWIZZLE3_i(y)\
+	TENSOR2_VEC3_ADD_SWIZZLE3_i(z)
+	TENSOR3_VEC3_ADD_SWIZZLE3()
+
+	// 4-component swizzles
+#define TENSOR2_VEC3_ADD_SWIZZLE4_ijkl(i, j, k, l)\
+	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<T>, 4>(i, j, k, l); }
+#define TENSOR2_VEC3_ADD_SWIZZLE4_ijk(i,j,k)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,x)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,y)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,z)
+#define TENSOR2_VEC3_ADD_SWIZZLE4_ij(i,j)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_ijk(i,j,x)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_ijk(i,j,y)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_ijk(i,j,z)
+#define TENSOR2_VEC3_ADD_SWIZZLE4_i(i)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_ij(i,x)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_ij(i,y)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_ij(i,z)
+#define TENSOR3_VEC3_ADD_SWIZZLE4()\
+	TENSOR2_VEC3_ADD_SWIZZLE4_i(x)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_i(y)\
+	TENSOR2_VEC3_ADD_SWIZZLE4_i(z)
+	TENSOR3_VEC3_ADD_SWIZZLE4()
 };
+
+// TODO specialization for reference types -- don't initialize the s[] array (cuz in C++ you can't)
 
 template<typename T>
 using _vec3 = _vec<T,3>;
@@ -361,6 +473,66 @@ struct _vec<T,4> {
 
 	TENSOR2_VECTOR_CLASS_OPS(_vec)
 	//TENSOR2_ADD_CAST_OP(_vec)
+
+	// 2-component swizzles
+#define TENSOR2_VEC4_ADD_SWIZZLE2_ij(i, j)\
+	auto i ## j () { return _vec<std::reference_wrapper<T>, 2>(i, j); }
+#define TENSOR2_VEC4_ADD_SWIZZLE2_i(i)\
+	TENSOR2_VEC4_ADD_SWIZZLE2_ij(i,x)\
+	TENSOR2_VEC4_ADD_SWIZZLE2_ij(i,y)\
+	TENSOR2_VEC4_ADD_SWIZZLE2_ij(i,z)\
+	TENSOR2_VEC4_ADD_SWIZZLE2_ij(i,w)
+#define TENSOR3_VEC4_ADD_SWIZZLE2()\
+	TENSOR2_VEC4_ADD_SWIZZLE2_i(x)\
+	TENSOR2_VEC4_ADD_SWIZZLE2_i(y)\
+	TENSOR2_VEC4_ADD_SWIZZLE2_i(z)\
+	TENSOR2_VEC4_ADD_SWIZZLE2_i(w)
+	TENSOR3_VEC4_ADD_SWIZZLE2()
+	
+	// 3-component swizzles
+#define TENSOR2_VEC4_ADD_SWIZZLE3_ijk(i, j, k)\
+	auto i ## j ## k() { return _vec<std::reference_wrapper<T>, 3>(i, j, k); }
+#define TENSOR2_VEC4_ADD_SWIZZLE3_ij(i,j)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_ijk(i,j,x)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_ijk(i,j,y)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_ijk(i,j,z)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_ijk(i,j,w)
+#define TENSOR2_VEC4_ADD_SWIZZLE3_i(i)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_ij(i,x)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_ij(i,y)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_ij(i,z)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_ij(i,w)
+#define TENSOR3_VEC4_ADD_SWIZZLE3()\
+	TENSOR2_VEC4_ADD_SWIZZLE3_i(x)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_i(y)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_i(z)\
+	TENSOR2_VEC4_ADD_SWIZZLE3_i(w)
+	TENSOR3_VEC4_ADD_SWIZZLE3()
+
+	// 4-component swizzles
+#define TENSOR2_VEC4_ADD_SWIZZLE4_ijkl(i, j, k, l)\
+	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<T>, 4>(i, j, k, l); }
+#define TENSOR2_VEC4_ADD_SWIZZLE4_ijk(i,j,k)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,x)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,y)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,z)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,w)
+#define TENSOR2_VEC4_ADD_SWIZZLE4_ij(i,j)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ijk(i,j,x)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ijk(i,j,y)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ijk(i,j,z)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ijk(i,j,w)
+#define TENSOR2_VEC4_ADD_SWIZZLE4_i(i)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ij(i,x)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ij(i,y)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ij(i,z)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_ij(i,w)
+#define TENSOR3_VEC4_ADD_SWIZZLE4()\
+	TENSOR2_VEC4_ADD_SWIZZLE4_i(x)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_i(y)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_i(z)\
+	TENSOR2_VEC4_ADD_SWIZZLE4_i(w)
+	TENSOR3_VEC4_ADD_SWIZZLE4()
 };
 
 template<typename T>
@@ -1148,7 +1320,58 @@ TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(*)
 TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 
 
+// ostream
+// _vec does have .fields
+// and I do have my default .fields ostream
+// but here's a manual override anyways
+// so that the .fields vec2 vec3 vec4 and the non-.fields other vecs all look the same
+#if 1
+template<typename Type, int dim>
+std::ostream & operator<<(std::ostream & o, _vec<Type,dim> const & t) {
+	char const * sep = "";
+	o << "{";
+	for (int i = 0; i < t.count; ++i) {
+		o << sep << t(i);
+		sep = ", ";
+	}
+	o << "}";
+	return o;
+}
+
+// TODO print as fields of .sym, or print as vector?
+template<typename Type, int dim>
+std::ostream & operator<<(std::ostream & o, _sym<Type,dim> const & t) {
+	char const * sep = "";
+	o << "{";
+	for (int i = 0; i < t.count; ++i) {
+		o << sep << t.s[i];
+		sep = ", ";
+	}
+	o << "}";
+	return o;
+}
+#endif
+
+}
+}
+
+// tostring / ostream
+
+namespace std {
+
+template<typename T, int n>
+std::string to_string(Tensor::v2::_vec<T, n> const & x) {
+	return Common::objectStringFromOStream(x);
+}
+
+}
+
 //  partial derivatives
+
+namespace Tensor {
+namespace v2 {
+
+#if 0
 
 template<typename Type, int rank> 
 Type getOffset(
@@ -1276,7 +1499,7 @@ partialDerivative(
 	return PartialDerivativeClass<order, Real, dim, InputType>()(index, dx, f);
 }
 
-
+#endif
 
 
 } //v2

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Tensor/GenericVector.h"
-#include "Common/String.h"
-#include <ostream>
+#include "Common/String.h"	//objectStringFromOStream
+#include <iostream>
 
 namespace Tensor {
 
@@ -33,18 +33,6 @@ struct Vector : public GenericVector<Type_, dim_, Type_, Vector<Type_, dim_> > {
 		return result;
 	}
 };
-
-template<typename Type, int dim>
-std::ostream &operator<<(std::ostream &o, Vector<Type,dim> const &t) {
-	char const *sep = "";
-	o << "(";
-	for (int i = 0; i < t.dim; ++i) {
-		o << sep << t(i);
-		sep = ", ";
-	}
-	o << ")";
-	return o;
-}
 
 template<int dim> using boolN = Vector<bool, dim>;
 using bool1 = boolN<1>;
@@ -123,17 +111,25 @@ template<typename T> using _vec2 = Vector<T, 2>;
 template<typename T> using _vec3 = Vector<T, 3>;
 template<typename T> using _vec4 = Vector<T, 4>;
 
+// this doesn't work in global scope.  hmmm.  what have I done?
+template<typename Type, int dim>
+std::ostream & operator<<(std::ostream & o, Tensor::Vector<Type,dim> const & t) {
+	char const *sep = "";
+	o << "(";
+	for (int i = 0; i < dim; ++i) {
+		o << sep << t(i);
+		sep = ", ";
+	}
+	o << ")";
+	return o;
+}
+
 }
 
 namespace std {
 
 template<typename T, int n>
 std::string to_string(Tensor::Vector<T, n> const & x) {
-	return Common::objectStringFromOStream(x);
-}
-
-template<typename T>
-std::string to_string(std::vector<T> const & x) {
 	return Common::objectStringFromOStream(x);
 }
 
