@@ -52,7 +52,7 @@ void test_vec() {
 		TEST_EQ(g[2], 2);
 		
 		//.size()
-		TEST_EQ(f.size(), (_vec<int,1>(3)));	//TODO special case for 1-dim size?
+		TEST_EQ(f.size(), 3);
 
 		// vector/scalar operations
 		TEST_EQ(f+1.f, float3(5,6,8));

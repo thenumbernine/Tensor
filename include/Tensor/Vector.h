@@ -74,8 +74,9 @@ namespace Tensor {
 	}
 
 //::size() returns the total nested dimensions as an int-vec
+// TODO size() might be ambiguous, how about 'dimensions' or 'dims' since thats what it's a collection of?
 #define TENSOR2_ADD_SIZE(classname)\
-	static _vec<int,rank> size() {\
+	static auto size() {\
 		return VectorTraits<This>::size();\
 	}
 
@@ -328,75 +329,30 @@ struct VectorTraits<T> {
 	
 	using ScalarType = typename T::ScalarType;
 
-	static _vec<int,rank> size() {
-		_vec<int,rank> sizev;
-		for (int i = 0; i < T::thisRank; ++i) {
-			sizev(i) = T::dim;
+	static auto size() {
+		// if this is a vector-of-scalars, such that the size would be an int1, just use int
+		if constexpr (T::rank == 1) {
+			return T::dim;
+		} else {
+			// use an int[dim]
+			_vec<int,rank> sizev;
+			for (int i = 0; i < T::thisRank; ++i) {
+				sizev(i) = T::dim;
+			}
+			if constexpr (T::thisRank < rank) {
+				// special case reading from int
+				if constexpr (T::InnerType::rank == 1) {
+					sizev(T::thisRank) = VectorTraits<typename T::InnerType>::size();
+				} else {
+					// assigning sub-vector
+					sizev.template subset<rank-T::thisRank, T::thisRank>()
+						= VectorTraits<typename T::InnerType>::size();
+				}
+			}
+			return sizev;
 		}
-		if constexpr (T::thisRank < rank) {
-			sizev.template subset<rank-T::thisRank, T::thisRank>()
-				= VectorTraits<typename T::InnerType>::size();
-		}
-		return sizev;
 	}
 };
-
-// size == 1 specialization
-// tempted to always make edge-cases to make this turn into a primitive itself
-// ::size() is on my mind especially
-
-template<typename T>
-struct _vec<T,1> {
-	using This = _vec;
-	using InnerType = T;
-	using ScalarType = typename VectorTraits<T>::ScalarType;
-	static constexpr int dim = 1;
-	static constexpr int thisRank = 1;
-	static constexpr int rank = thisRank + VectorTraits<T>::rank;
-	static constexpr int count = dim;
-
-	union {
-		struct {
-			T x = {};
-		};
-		struct {
-			T s0;
-		};
-		T s[dim];
-	};
-	_vec() {}
-	_vec(T x_) : x(x_) {}
-
-	static constexpr auto fields = std::make_tuple(
-		std::make_pair("x", &This::x)
-	);
-
-	TENSOR2_VECTOR_CLASS_OPS(_vec)
-	//TENSOR2_ADD_CAST_OP(_vec)
-
-	//not gonna bother with swizzle.  TODO get rid of this class.
-};
-
-template<typename T>
-using _vec1 = _vec<T,1>;
-
-using bool1 = _vec1<bool>;
-using uchar1 = _vec1<unsigned char>;
-using int1 = _vec1<int>;
-using uint1 = _vec1<unsigned int>;
-using float1 = _vec1<float>;
-using double1 = _vec1<double>;
-
-static_assert(sizeof(bool1) == sizeof(bool) * 1);
-static_assert(sizeof(uchar1) == sizeof(unsigned char) * 1);
-static_assert(sizeof(int1) == sizeof(int) * 1);
-static_assert(sizeof(uint1) == sizeof(unsigned int) * 1);
-static_assert(sizeof(float1) == sizeof(float) * 1);
-static_assert(sizeof(double1) == sizeof(double) * 1);
-static_assert(std::is_same_v<float1::ScalarType, float>);
-static_assert(std::is_same_v<float1::InnerType, float>);
-static_assert(float1::rank == 1);
-static_assert(float1::dim == 1);
 
 // default
 
