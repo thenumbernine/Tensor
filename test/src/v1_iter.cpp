@@ -6,7 +6,7 @@ namespace Tensor {
 using namespace Tensor::v1;
 }
 
-void test_iter() {
+void test_v1_iter() {
 	using Real = double;
 
 	TEST_EQ((Tensor::Tensor<Real, Tensor::Upper<3>>::numNestings), 1);

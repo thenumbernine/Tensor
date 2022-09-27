@@ -7,7 +7,7 @@ namespace Tensor {
 using namespace Tensor::v1;
 }
 
-void test_vectors() {
+void test_v1_vectors() {
 	using Real = double;
 	using Vector = Tensor::Vector<Real, 3>;
 
@@ -45,7 +45,7 @@ typename InputType::Type determinant33(InputType const &a) {
 //I know, it's not a legitimate unit test.
 // but maybe some day it will become one ...
 
-void test_tensors() {
+void test_v1_tensors() {
 	using Real = double;
 	using Vector = Tensor::Tensor<Real,Tensor::Upper<3>>;
 	
@@ -159,7 +159,7 @@ void test_tensors() {
 #endif
 }
 
-void test_basics() {
-	test_vectors();
-	test_tensors();
+void test_v1_basics() {
+	test_v1_vectors();
+	test_v1_tensors();
 }

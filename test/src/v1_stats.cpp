@@ -7,7 +7,7 @@ namespace Tensor {
 using namespace Tensor::v1;
 }
 
-void test_stats() {
+void test_v1_stats() {
 	using Real = double;
 
 	Tensor::Tensor<Real,Tensor::Upper<3>> a;

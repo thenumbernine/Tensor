@@ -6,9 +6,7 @@ using namespace Tensor;
 // static tests here:
 
 
-void test_v2() {
-	std::cout << "v2" << std::endl;
-	
+void test_vec() {
 	//vector
 
 	{
