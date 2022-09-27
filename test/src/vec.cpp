@@ -135,14 +135,10 @@ void test_vec() {
 		// TODO need an operator== between T and reference_wrapper<T> ...
 		// or casting ctor?
 		// a generic ctor between _vecs would be nice, but maybe problematic for _mat = _sym
-		//TEST_EQ(f.xxx(), float3(4,4,4));	
-		TEST_EQ(fxxx.z, f.x);
-		TEST_EQ(fxxx.y, f.y);
-		TEST_EQ(fxxx.x, f.z);
-
-//		TEST_EQ(f.xy(), float2(4,5));
-//		TEST_EQ(f.yx(), float2(5,4));
-//		TEST_EQ(f.yy(), float2(5,5));
+		TEST_EQ(float3(f.zyx()), float3(7,5,4));
+		TEST_EQ(float2(f.xy()), float2(4,5));
+		TEST_EQ(float2(f.yx()), float2(5,4));
+		TEST_EQ(float2(f.yy()), float2(5,5));
 		
 		/* more tests ...
 		float2 float4
