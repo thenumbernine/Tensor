@@ -287,7 +287,7 @@ struct Grid {
 	}
 
 	Grid& operator=(Grid& src) {
-		resize(src.size);
+		resize(src.dims());
 
 		Type* srcv = src.v;
 		Type* dstv = v;

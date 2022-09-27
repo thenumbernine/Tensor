@@ -74,11 +74,9 @@ namespace Tensor {
 	}
 
 //::dims returns the total nested dimensions as an int-vec
-// NOTICE THIS WAS CHANGED FROM METHOD TO MEMBER BY MEANS OF CONSTEXPR'ING ALL THE CTORS AND ::subset()  
-//  IF YOU RUN INTO PROBLEM DOWN THE LINE WITH THESE BEING CONSTEXPR, COME BACK TO THIS AND UNDO IT
 #define TENSOR2_ADD_SIZE(classname)\
 	template<int i> static constexpr int ith_dim = VectorTraits<This>::template calc_ith_dim<i>();\
-	static constexpr auto dims = VectorTraits<This>::dims();
+	static constexpr auto dims() { return VectorTraits<This>::dims(); }
 
 // danger ... danger ...
 #define TENSOR2_ADD_CAST_BOOL_OP()\
@@ -155,24 +153,46 @@ namespace Tensor {
 
 #define TENSOR2_ADD_INT_VEC_CALL_INDEX()\
 \
-	/* a(intN(i,...)) base case */\
-	auto & operator()(_vec<int,1> const & i) { return (*this)[i(0)]; }\
-	auto const & operator()(_vec<int,1> const & i) const { return (*this)[i(0)]; }\
-\
-	/* a(intN(i,...)) inductive case */\
+	/* a(intN(i,...)) */\
 	template<int dim2>\
-	requires (dim2 > 1)\
 	auto & operator()(_vec<int,dim2> const & i) {\
-		auto const & subi = (i.template subset<dim2-1, 1>());\
-		return (*this)[i(0)](subi);\
+		if constexpr (dim2 == 1) {\
+			return (*this)[i(0)];\
+		} else {\
+			return (*this)[i(0)](i.template subset<dim2-1, 1>());\
+		}\
+	}\
+	template<int dim2>\
+	auto const & operator()(_vec<int,dim2> const & i) const {\
+		if constexpr (dim2 == 1) {\
+			return (*this)[i(0)];\
+		} else {\
+			return (*this)[i(0)](i.template subset<dim2-1, 1>());\
+		}\
 	}\
 \
-	/* a(intN(i,...)) inductive case const */\
+	/* same but for std::array */\
+	/* NOTICE this is only because _vec::iterator needs a std::array for indexing */\
+	/*  and that is because _vec<T> can't seem to use _vec<int> for indexes, gets an 'incomplete type' error */\
 	template<int dim2>\
-	requires (dim2 > 1)\
-	auto const & operator()(_vec<int,dim2> const & i) const {\
-		auto const & subi = (i.template subset<dim2-1, 1>());\
-		return (*this)[i(0)](subi);\
+	auto & operator()(std::array<int,dim2> const & i) {\
+		if constexpr (dim2 == 1) {\
+			return (*this)[i[0]];\
+		} else {\
+			std::array<int,dim2-1> subi;\
+			std::copy(i.begin() + 1, i.begin() + dim2, subi.begin());\
+			return (*this)[i[0]](subi);\
+		}\
+	}\
+	template<int dim2>\
+	auto const & operator()(std::array<int,dim2> const & i) const {\
+		if constexpr (dim2 == 1) {\
+			return (*this)[i[0]];\
+		} else {\
+			std::array<int,dim2-1> subi;\
+			std::copy(i.begin() + 1, i.begin() + dim2, subi.begin());\
+			return (*this)[i[0]](subi);\
+		}\
 	}
 
 #define TENSOR2_ADD_CALL_INDEX()\
@@ -197,27 +217,27 @@ namespace Tensor {
 \
 	/* assumes packed tensor */\
 	template<int subdim, int offset>\
-	constexpr _vec<T,subdim> & subset() {\
+	_vec<T,subdim> & subset() {\
 		static_assert(offset + subdim <= dim);\
 		return *(_vec<T,subdim>*)(s+offset);\
 	}\
 \
 	/* assumes packed tensor */\
 	template<int subdim, int offset>\
-	constexpr _vec<T,subdim> const & subset() const {\
+	_vec<T,subdim> const & subset() const {\
 		static_assert(offset + subdim <= dim);\
 		return *(_vec<T,subdim>*)(s+offset);\
 	}\
 \
 	/* assumes packed tensor */\
 	template<int subdim>\
-	constexpr _vec<T,subdim> & subset(int offset) {\
+	_vec<T,subdim> & subset(int offset) {\
 		return *(_vec<T,subdim>*)(s+offset);\
 	}\
 \
 	/* assumes packed tensor */\
 	template<int subdim>\
-	constexpr _vec<T,subdim> const & subset(int offset) const {\
+	_vec<T,subdim> const & subset(int offset) const {\
 		return *(_vec<T,subdim>*)(s+offset);\
 	}
 
@@ -250,16 +270,17 @@ namespace Tensor {
 			res *= s[i];\
 		}\
 		return res;\
-	}
-
-#if 0
+	}\
+\
 	/* iterators */\
 	template<typename vec_constness>\
 	struct ReadIterator {\
-		using intN = _vec<int,dim>;\
+		/* _vec<int,dim> inside ReadIterator inside _vec<T,dim> is giving 'incomplete type' errors'*/\
+		/*using intN = _vec<int,rank>;*/\
+		using intN = std::array<int,rank>;\
 		vec_constness & owner;\
 		intN index;\
-		ReadIterator(Tensor & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
+		ReadIterator(vec_constness & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
 		ReadIterator(ReadIterator const & o) { operator=(o); }\
 		ReadIterator(ReadIterator && o) { operator=(o); }\
 		ReadIterator & operator=(ReadIterator const & o) {\
@@ -272,15 +293,19 @@ namespace Tensor {
 			index = o.index;\
 			return *this;\
 		}\
-		bool operator==(ReadIterator const & o) const { return &parent == &o.parent && index == o.index; }\
-		bool operator!=(ReadIterator const & o) const { return !operator==(o); }\
+		bool operator==(ReadIterator const & o) const {\
+			return &owner == &o.owner && index == o.index;\
+		}\
+		bool operator!=(ReadIterator const & o) const {\
+			return !operator==(o);\
+		}\
 \
 		template<int i>\
 		struct Increment {\
 			static bool exec(ReadIterator &iter) {\
-				++iter.index(i);\
-				if (iter.index(i) < VectorTraits<vec_constness>::ith_dim<i>) return true;\
-				if (i < rank-1) iter.index(i) = 0;\
+				++iter.index[i];\
+				if (iter.index[i] < vec_constness::template ith_dim<i>) return true;\
+				if (i < rank-1) iter.index[i] = 0;\
 				return false;\
 			}\
 		};\
@@ -289,12 +314,30 @@ namespace Tensor {
 			Common::ForLoop<0,rank,Increment>::exec(*this);\
 			return *this;\
 		}\
+		ReadIterator &operator++(int) {\
+			Common::ForLoop<0,rank,Increment>::exec(*this);\
+			return *this;\
+		}\
 \
-		ScalarType & operator*() const { return owner(index); }\
-		static ReadIterator begin(vec_constness & v) { return ReadIterator(v); }\
+		ScalarType & operator*() const {\
+			if constexpr (rank == 1) {\
+				return owner[index[0]];\
+			} else {\
+				return owner(index);\
+			}\
+		}\
+\
+		void to_ostream(std::ostream & o) const {\
+			/*o << "ReadIterator(owner=" << &owner << ", index=" << index << ")";*/\
+			o << "here";\
+		}\
+\
+		static ReadIterator begin(vec_constness & v) {\
+			return ReadIterator(v);\
+		}\
 		static ReadIterator end(vec_constness & v) {\
 			intN index;\
-			index[rank-1] = vec_constness::ith_dim<rank-1>;\
+			index[rank-1] = vec_constness::template ith_dim<rank-1>;\
 			return ReadIterator(v, index);\
 		}\
 	};\
@@ -306,7 +349,6 @@ namespace Tensor {
 	const_iterator end() const { return const_iterator::end(*this); }\
 	const_iterator cbegin() const { return const_iterator::begin(*this); }\
 	const_iterator cend() const { return const_iterator::end(*this); }
-#endif
 
 #if 0	//hmm, this isn't working when it is run
 	//TENSOR2_ADD_ASSIGN_OP(classname)
@@ -415,7 +457,7 @@ struct _vec {
 	static constexpr int count = dim;
 
 	T s[dim] = {};
-	constexpr _vec() {}
+	_vec() {}
 	
 	TENSOR2_VECTOR_CLASS_OPS(_vec)
 	//TENSOR2_ADD_CAST_OP(_vec)
@@ -444,8 +486,8 @@ struct _vec<T,2> {
 		};
 		T s[dim];
 	};
-	constexpr _vec() {}
-	constexpr _vec(T x_, T y_) : x(x_), y(y_) {}
+	_vec() {}
+	_vec(T x_, T y_) : x(x_), y(y_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -545,8 +587,8 @@ struct _vec<T,3> {
 		};
 		T s[dim];// requires !std::is_reference_v<T>;
 	};
-	constexpr _vec() {}
-	constexpr _vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
+	_vec() {}
+	_vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -657,8 +699,8 @@ struct _vec<T,4> {
 		};
 		T s[dim];
 	};
-	constexpr _vec() {}
-	constexpr _vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
+	_vec() {}
+	_vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1177,8 +1219,8 @@ struct _sym<T,2> {
 		};
 		T s[(dim*(dim+1))>>1];
 	};
-	constexpr _sym() {}
-	constexpr _sym(T xx_, T xy_, T yy_) : xx(xx_), xy(xy_), yy(yy_) {}
+	_sym() {}
+	_sym(T xx_, T xy_, T yy_) : xx(xx_), xy(xy_), yy(yy_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("xx", &This::xx),
@@ -1219,8 +1261,8 @@ struct _sym<T,3> {
 		};
 		T s[(dim*(dim+1))>>1];
 	};
-	constexpr _sym() {}
-	constexpr _sym(
+	_sym() {}
+	_sym(
 		T const & xx_,
 		T const & xy_,
 		T const & yy_,
@@ -1284,8 +1326,8 @@ struct _sym<T,4> {
 		};
 		T s[(dim*(dim+1))>>1];
 	};
-	constexpr _sym() {}
-	constexpr _sym(
+	_sym() {}
+	_sym(
 		T const & xx_,
 		T const & xy_,
 		T const & yy_,

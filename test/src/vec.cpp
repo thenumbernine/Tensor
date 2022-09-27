@@ -6,6 +6,9 @@ using namespace Tensor;
 
 // static tests here:
 
+std::ostream & operator<<(std::ostream & o, float3::iterator const & i) {
+	return o << "here";
+}
 
 void test_vec() {
 	//vector
@@ -44,15 +47,29 @@ void test_vec() {
 		TEST_EQ(f(1), 5);
 		TEST_EQ(f(2), 7);
 		
-		// bracket ctor
-		float3 g = {7,1,2};
 		//test [] indexing
-		TEST_EQ(g[0], 7);
-		TEST_EQ(g[1], 1);
-		TEST_EQ(g[2], 2);
+		TEST_EQ(f[0], 4);
+		TEST_EQ(f[1], 5);
+		TEST_EQ(f[2], 7);
 		
 		//.dims
-		TEST_EQ(f.dims, 3);
+		TEST_EQ(f.dims(), 3);
+		TEST_EQ(f.ith_dim<0>, 3);
+	
+		//iterator
+		{
+			auto i = f.begin();
+			TEST_EQ(*i, 4);
+			++i;
+			TEST_EQ(*i, 5);
+			i++;
+			TEST_EQ(*i, 7);
+			i++;
+			TEST_EQ(i, f.end());
+		}
+
+		// bracket ctor
+		float3 g = {7,1,2};
 
 		// vector/scalar operations
 		TEST_EQ(f+1.f, float3(5,6,8));
@@ -192,7 +209,7 @@ void test_vec() {
 		TEST_EQ(m[1], float3(4,5,6));
 		TEST_EQ(m[2], float3(7,8,9));
 
-		TEST_EQ(m.dims, int2(3,3));
+		TEST_EQ(m.dims(), int2(3,3));
 		TEST_EQ(m.ith_dim<0>, 3);
 		TEST_EQ(m.ith_dim<1>, 3);
 
