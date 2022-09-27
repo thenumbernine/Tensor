@@ -297,9 +297,9 @@ namespace Tensor {
 	TENSOR_ADD_SIZE(classname)
 
 // lambda ctor
+// TODO maybe? for (auto i : iterate_index()) {
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
 	classname(std::vector<ScalarType(intN)> f) {\
-		/* TODO maybe? for (auto i : iterate_index()) {*/\
 		for (auto i = begin(); i != end(); ++i) {\
 			*i = f(i.index);\
 		}\
@@ -316,8 +316,8 @@ namespace Tensor {
 	}
 
 #define TENSOR_ADD_CTORS(classname)\
-//	TENSOR_ADD_LAMBDA_CTOR(classname)
-//	TENSOR_ADD_VECTOR_CAST_CTOR(classname)
+	TENSOR_ADD_LAMBDA_CTOR(classname)\
+	TENSOR_ADD_VECTOR_CAST_CTOR(classname)
 
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
 	TENSOR_ADD_CTORS(classname)\
