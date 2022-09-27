@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Tensor/Vector.h"
 
 namespace Tensor {
