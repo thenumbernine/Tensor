@@ -74,7 +74,10 @@ namespace Tensor {
 	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
 	/*  for vectors-of-vectors this is the nesting. */\
 	/*  if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each. */\
-	static constexpr int rank = thisRank + VectorTraits<T>::rank;
+	static constexpr int rank = VectorTraits<This>::rank;\
+\
+	/* used for vector-dereferencing into the tensor. */\
+	using intN = _vec<int,rank>;
 
 
 //for giving operators to the Cons and Prim vector classes
@@ -292,7 +295,15 @@ namespace Tensor {
 	TENSOR_ADD_CMP_OP(classname)\
 	TENSOR_ADD_SIZE(classname)
 
+#define TENSOR_ADD_LAMBDA_CTOR(classname)\
+	classname(std::vector<ScalarType(intN)> f) {\
+		for (auto i : iterate_index()) {\
+			(*this)(i) = f(i);\
+		}\
+	}
+
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
+	/*TENSOR_ADD_LAMBDA_CTOR(classname)*/\
 	TENSOR_ADD_VECTOR_BRACKET_INDEX()\
 	TENSOR_ADD_CALL_INDEX()\
 	TENSOR_ADD_OPS(classname)\
@@ -311,7 +322,7 @@ namespace Tensor {
 	/* iterators */\
 	template<typename vec_constness>\
 	struct ReadIterator {\
-		using intN = _vec<int,rank>;\
+		using intN = vec_constness::intN;\
 		vec_constness & owner;\
 		intN index;\
 		ReadIterator(vec_constness & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
@@ -401,7 +412,7 @@ struct _vec;
 // base/scalar case
 template<typename T>
 struct VectorTraits {
-	
+	static constexpr int thisRank = 0;
 	static constexpr int rank = 0;
 	
 	using ScalarType = T;
@@ -410,8 +421,9 @@ struct VectorTraits {
 // recursive/vec/matrix/tensor case
 template<typename T> requires is_tensor_v<T> 
 struct VectorTraits<T> {
-	
-	static constexpr int rank = T::rank;
+	using InnerType = typename T::InnerType;
+
+	static constexpr int rank = T::thisRank + VectorTraits<InnerType>::rank;
 	
 	using ScalarType = typename T::ScalarType;
 
@@ -434,7 +446,7 @@ struct VectorTraits<T> {
 			return T::dim;
 		} else {
 			// use an int[dim]
-			_vec<int,rank> sizev;
+			typename T::intN sizev;
 #if 0
 #error "TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly."
 #else
