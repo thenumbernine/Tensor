@@ -55,12 +55,9 @@ void test_vec() {
 		//iterator
 		{
 			auto i = f.begin();
-			TEST_EQ(*i, 4);
-			++i;
-			TEST_EQ(*i, 5);
-			i++;
-			TEST_EQ(*i, 7);
-			i++;
+			TEST_EQ(*i, 4); ++i;
+			TEST_EQ(*i, 5); i++;
+			TEST_EQ(*i, 7); i++;
 			TEST_EQ(i, f.end());
 		
 			for (auto & i : f) {
