@@ -1129,7 +1129,7 @@ T distance(_vec<T,dim> const & a, _vec<T,dim> const & b) {
 }
 
 template<typename T, int dim>
-T normalize(_vec<T,dim> const & v) {
+_vec<T,dim> normalize(_vec<T,dim> const & v) {
 	return v / length(v);
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Tensor/Vector.h"
+#include "Tensor/clamp.h"
 #include <cmath>
 
 // TODO any vec& member return types will have to be overloaded
@@ -14,7 +15,7 @@ struct _quat : public _vec4<T> {
 	using vec3 = _vec3<T>;
 
 	_quat() : Super(0,0,0,1) {}
-	_quat(T const & x, T const & y, T const & z, T const & w) 
+	_quat(T const & x, T const & y, T const & z, T const & w)
 	: Super(x,y,z,w) {}
 
 	//conjugate assuming the quat is unit length
@@ -38,9 +39,7 @@ struct _quat : public _vec4<T> {
 	static float angleAxisEpsilon;
 
 	_quat toAngleAxis() const {
-		T const cosHalfAngle = (*this)(3);
-		if ((*this)(3) < -1.) (*this)(3) = -1.;
-		if ((*this)(3) > 1.) (*this)(3) = 1.;
+		T const cosHalfAngle = clamp((*this)(3), T(-1), T(1));
 		T const halfAngle = acos(cosHalfAngle);
 		T const scale = sin(halfAngle);
 
@@ -53,7 +52,7 @@ struct _quat : public _vec4<T> {
 			(*this)(0) * invscale,
 			(*this)(1) * invscale,
 			(*this)(2) * invscale,
-			2. * halfAngle,
+			2 * halfAngle,
 		};
 	}
 
@@ -67,7 +66,7 @@ struct _quat : public _vec4<T> {
 		T const g = (q(3) + q(1)) * (r(3) - r(2));
 		T const h = (q(3) - q(1)) * (r(3) + r(2));
 
-		return { 
+		return {
 			 a - ( e + f + g + h) / 2,
 			-c + ( e - f + g - h) / 2,
 			-d + ( e - f - g + h) / 2,
@@ -76,9 +75,9 @@ struct _quat : public _vec4<T> {
 	}
 
 	vec3 rotate(vec3 const & v) const {
-		_quat vq = {v(0), v(1), v(2)};
+		_quat vq = {v(0), v(1), v(2), 0};
 		vq = *this * vq * unitConj();
-		return {vq(0), vq(1), vq(2)};
+		return vq.template subset<3,0>();
 	}
 
 	vec3 xAxis() const {
@@ -112,6 +111,11 @@ float _quat<T>::angleAxisEpsilon = 1e-4;
 template<typename T>
 _quat<T> operator*(_quat<T> a, _quat<T> b) {
 	return _quat<T>::mul(a,b);
+}
+
+template<typename T>
+_quat<T> normalize(_quat<T> const & v) {
+	return (_quat<T>)normalize(v);
 }
 
 using quati = _quat<int>;	// I don't judge
