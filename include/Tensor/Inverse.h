@@ -26,8 +26,9 @@ typename T::ScalarType determinant33(T const & a) {
 		- a(0,0) * a(1,2) * a(2,1);
 }
 
-template<typename T>
-typename T::ScalarType determinant44(T const & a) {
+template<typename M>
+typename M::ScalarType determinant44(M const & a) {
+	using T = typename M::ScalarType;
 	//autogen'd with symmath
 	T const tmp1 = a(2,2) * a(3,3);
 	T const tmp2 = a(2,3) * a(3,2);
@@ -67,8 +68,27 @@ typename T::ScalarType determinant44(T const & a) {
 		- a(0,3) * a(1,2) * tmp11;
 }
 
+template<typename M>
+typename M::ScalarType determinantNN(M const & a) {
+	using T = M::ScalarType;
+	constexpr int dim = T::dim;
+	T sign = 1;
+	T sum = {};
+	for (int k = 0; k < dim; ++k) {
+		_mat<T,dim-1,dim-1> sub;
+		for (int i = 0; i < dim-1; ++i) {
+			for (int j = 0; j < dim-1; ++j) {
+				sub(i,j) = a(i+1, j + (j>=k));
+			}
+		}
+		sum += sign * a(0,k) * determinant(sub);
+		sign = -sign;
+	}
+	return sum;
+}
+
 template<typename T>
-T::ScalarType determinant(T const & a);
+typename T::ScalarType determinant(T const & a);
 
 template<typename T>
 T determinant(_mat2x2<T> const & a) {
@@ -83,6 +103,12 @@ T determinant(_mat3x3<T> const & a) {
 template<typename T>
 T determinant(_mat4x4<T> const & a) {
 	return determinant44(a);
+}
+
+template<typename T, int dim>
+requires (dim > 4)
+T determinant(_mat<T,dim,dim> const & a) {
+	return determinantNN(a);
 }
 
 // determinant for symmetric
@@ -101,6 +127,13 @@ template<typename T>
 T determinant(_sym4<T> const & a) {
 	return determinant44(a);
 }
+
+template<typename T, int dim>
+requires (dim > 4)
+T determinant(_sym<T,dim> const & a) {
+	return determinantNN(a);
+}
+
 
 // inverse for matrix
 

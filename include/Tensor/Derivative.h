@@ -123,7 +123,7 @@ template<int order, typename Real, int dim, typename InputType>
 typename PartialDerivativeClass<order, Real, dim, InputType>::OutputType
 partialDerivative(
 	intN<dim> const &index,
-	Vector<Real, dim> const &dx,
+	_vec<Real, dim> const &dx,
 	typename PartialDerivativeClass<order, Real, dim, InputType>::FuncType f)
 {
 	return PartialDerivativeClass<order, Real, dim, InputType>()(index, dx, f);
