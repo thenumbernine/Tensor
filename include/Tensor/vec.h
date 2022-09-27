@@ -1161,6 +1161,7 @@ using int2s2 = _sym2<int>;
 using uint2s2 = _sym2<uint>;
 using float2s2 = _sym2<float>;
 using double2s2 = _sym2<double>;
+static_assert(std::is_same_v<typename float2s2::ScalarType, float>);
 
 template<typename T> using _sym3 = _sym<T,3>;
 using bool3s3 = _sym3<bool>;
@@ -1170,6 +1171,15 @@ using uint3s3 = _sym3<uint>;
 using float3s3 = _sym3<float>;
 using double3s3 = _sym3<double>;
 static_assert(std::is_same_v<typename float3s3::ScalarType, float>);
+
+template<typename T> using _sym4 = _sym<T,4>;
+using bool4s4 = _sym4<bool>;
+using uchar4s4 = _sym4<unsigned char>;
+using int4s4 = _sym4<int>;
+using uint4s4 = _sym4<uint>;
+using float4s4 = _sym4<float>;
+using double4s4 = _sym4<double>;
+static_assert(std::is_same_v<typename float4s4::ScalarType, float>);
 
 
 // determinant for matrix
@@ -1197,6 +1207,47 @@ typename T::ScalarType determinant33(T const & a) {
 }
 
 template<typename T>
+typename T::ScalarType determinant44(T const & a) {
+	//autogen'd with symmath
+	T const tmp1 = a(2,2) * a(3,3);
+	T const tmp2 = a(2,3) * a(3,2);
+	T const tmp3 = a(2,1) * a(3,3);
+	T const tmp4 = a(2,3) * a(3,1);
+	T const tmp5 = a(2,1) * a(3,2);
+	T const tmp6 = a(2,2) * a(3,1);
+	T const tmp7 = a(2,0) * a(3,3);
+	T const tmp8 = a(2,3) * a(3,0);
+	T const tmp9 = a(2,0) * a(3,2);
+	T const tmp10 = a(2,2) * a(3,0);
+	T const tmp11 = a(2,0) * a(3,1);
+	T const tmp12 = a(2,1) * a(3,0);
+	return a(0,0) * a(1,1) * tmp1 
+		- a(0,0) * a(1,1) * tmp2 
+		- a(0,0) * a(1,2) * tmp3
+		+ a(0,0) * a(1,2) * tmp4
+		+ a(0,0) * a(1,3) * tmp5 
+		- a(0,0) * a(1,3) * tmp6 
+		- a(0,1) * a(1,0) * tmp1
+		+ a(0,1) * a(1,0) * tmp2
+		+ a(0,1) * a(1,2) * tmp7 
+		- a(0,1) * a(1,2) * tmp8 
+		- a(0,1) * a(1,3) * tmp9
+		+ a(0,1) * a(1,3) * tmp10
+		+ a(0,2) * a(1,0) * tmp3 
+		- a(0,2) * a(1,0) * tmp4 
+		- a(0,2) * a(1,1) * tmp7
+		+ a(0,2) * a(1,1) * tmp8
+		+ a(0,2) * a(1,3) * tmp11 
+		- a(0,2) * a(1,3) * tmp12 
+		- a(0,3) * a(1,0) * tmp5
+		+ a(0,3) * a(1,0) * tmp6
+		+ a(0,3) * a(1,1) * tmp9 
+		- a(0,3) * a(1,1) * tmp10
+		+ a(0,3) * a(1,2) * tmp12 
+		- a(0,3) * a(1,2) * tmp11;
+}
+
+template<typename T>
 T::ScalarType determinant(T const & a);
 
 template<typename T>
@@ -1211,43 +1262,7 @@ T determinant(_mat3x3<T> const & a) {
 
 template<typename T>
 T determinant(_mat4x4<T> const & a) {
-	//autogen'd with symmath
-	T const tmp1 = a.s2.s2 * a.s3.s3;
-	T const tmp2 = a.s2.s3 * a.s3.s2;
-	T const tmp3 = a.s2.s1 * a.s3.s3;
-	T const tmp4 = a.s2.s3 * a.s3.s1;
-	T const tmp5 = a.s2.s1 * a.s3.s2;
-	T const tmp6 = a.s2.s2 * a.s3.s1;
-	T const tmp7 = a.s2.s0 * a.s3.s3;
-	T const tmp8 = a.s2.s3 * a.s3.s0;
-	T const tmp9 = a.s2.s0 * a.s3.s2;
-	T const tmp10 = a.s2.s2 * a.s3.s0;
-	T const tmp11 = a.s2.s0 * a.s3.s1;
-	T const tmp12 = a.s2.s1 * a.s3.s0;
-	return a.s0.s0 * a.s1.s1 * tmp1 
-		- a.s0.s0 * a.s1.s1 * tmp2 
-		- a.s0.s0 * a.s1.s2 * tmp3
-		+ a.s0.s0 * a.s1.s2 * tmp4
-		+ a.s0.s0 * a.s1.s3 * tmp5 
-		- a.s0.s0 * a.s1.s3 * tmp6 
-		- a.s0.s1 * a.s1.s0 * tmp1
-		+ a.s0.s1 * a.s1.s0 * tmp2
-		+ a.s0.s1 * a.s1.s2 * tmp7 
-		- a.s0.s1 * a.s1.s2 * tmp8 
-		- a.s0.s1 * a.s1.s3 * tmp9
-		+ a.s0.s1 * a.s1.s3 * tmp10
-		+ a.s0.s2 * a.s1.s0 * tmp3 
-		- a.s0.s2 * a.s1.s0 * tmp4 
-		- a.s0.s2 * a.s1.s1 * tmp7
-		+ a.s0.s2 * a.s1.s1 * tmp8
-		+ a.s0.s2 * a.s1.s3 * tmp11 
-		- a.s0.s2 * a.s1.s3 * tmp12 
-		- a.s0.s3 * a.s1.s0 * tmp5
-		+ a.s0.s3 * a.s1.s0 * tmp6
-		+ a.s0.s3 * a.s1.s1 * tmp9 
-		- a.s0.s3 * a.s1.s1 * tmp10
-		+ a.s0.s3 * a.s1.s2 * tmp12 
-		- a.s0.s3 * a.s1.s2 * tmp11;
+	return determinant44(a);
 }
 
 // determinant for symmetric
@@ -1260,6 +1275,11 @@ T determinant(_sym2<T> const & a) {
 template<typename T>
 T determinant(_sym3<T> const & a) {
 	return determinant33(a);
+}
+
+template<typename T>
+T determinant(_sym4<T> const & a) {
+	return determinant44(a);
 }
 
 // inverse for matrix
