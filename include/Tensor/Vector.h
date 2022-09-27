@@ -41,12 +41,48 @@ the * operator for tensor/tensor should be an outer+contract, ex:
 
 namespace Tensor {
 
+#define TENSOR_VECTOR_HEADER(dim_)\
+\
+	/* TRUE FOR _vec (NOT FOR _sym) */\
+	/* this is this particular dimension of our vector */\
+	/* M = matrix<T,i,j> == vec<vec<T,j>,i> so M::dim == i and M::InnerType::dim == j  */\
+	/*  i.e. M::dims = int2(i,j) and M::ith_dim<0> == i and M::ith_dim<1> == j */\
+	static constexpr int dim = dim_;\
+\
+	/* TRUE FOR _vec (NOT FOR _sym) */\
+	/*how much does this structure contribute to the overall rank. */\
+	/* for _vec it is 1, for _sym it is 2 */\
+	static constexpr int thisRank = 1;\
+\
+	/* TRUE FOR _vec (NOT FOR _sym) */\
+	/*this is the storage size, used for iterting across 's' */\
+	/* for vectors etc it is 's' */\
+	/* for (anti?)symmetric it is N*(N+1)/2 */\
+	static constexpr int count = dim;\
+
+#define TENSOR_HEADER()\
+\
+	/*  TRUE FOR ALL TENSORS */\
+	/*  this is the next most nested class, so vector-of-vector is a matrix. */\
+	using InnerType = T;\
+\
+	/*  TRUE FOR ALL TENSORS */\
+	/*  this is the child-most nested class that isn't in our math library. */\
+	using ScalarType = typename VectorTraits<T>::ScalarType;\
+\
+	/*  TRUE FOR ALL TENSORS */\
+	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
+	/*  for vectors-of-vectors this is the nesting. */\
+	/*  if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each. */\
+	static constexpr int rank = thisRank + VectorTraits<T>::rank;
+
+
 //for giving operators to the Cons and Prim vector classes
 //how can you add correctly-typed ops via crtp to a union?
 //unions can't inherit.
 //until then...
 
-#define TENSOR2_ADD_VECTOR_OP_EQ(classname, op)\
+#define TENSOR_ADD_VECTOR_OP_EQ(classname, op)\
 	classname& operator op(classname const & b) {\
 		for (int i = 0; i < count; ++i) {\
 			s[i] op b.s[i];\
@@ -54,7 +90,7 @@ namespace Tensor {
 		return *this;\
 	}
 
-#define TENSOR2_ADD_SCALAR_OP_EQ(classname, op)\
+#define TENSOR_ADD_SCALAR_OP_EQ(classname, op)\
 	classname& operator op(ScalarType const & b) {\
 		for (int i = 0; i < count; ++i) {\
 			s[i] op b;\
@@ -62,7 +98,7 @@ namespace Tensor {
 		return *this;\
 	}
 
-#define TENSOR2_ADD_CMP_OP(classname)\
+#define TENSOR_ADD_CMP_OP(classname)\
 	bool operator==(classname const & b) const {\
 		for (int i = 0; i < count; ++i) {\
 			if (s[i] != b.s[i]) return false;\
@@ -74,12 +110,12 @@ namespace Tensor {
 	}
 
 //::dims returns the total nested dimensions as an int-vec
-#define TENSOR2_ADD_SIZE(classname)\
+#define TENSOR_ADD_SIZE(classname)\
 	template<int i> static constexpr int ith_dim = VectorTraits<This>::template calc_ith_dim<i>();\
 	static constexpr auto dims() { return VectorTraits<This>::dims(); }
 
 // danger ... danger ...
-#define TENSOR2_ADD_CAST_BOOL_OP()\
+#define TENSOR_ADD_CAST_BOOL_OP()\
 	operator bool() const {\
 		for (int i = 0; i < count; ++i) {\
 			if (s[i] != T()) return true;\
@@ -88,7 +124,7 @@ namespace Tensor {
 	}
 
 // danger ... danger ...
-#define TENSOR2_ADD_CAST_OP(classname)\
+#define TENSOR_ADD_CAST_OP(classname)\
 	template<int dim2, typename U>\
 	operator classname<U, dim2>() const {\
 		classname<U, dim2> res;\
@@ -98,7 +134,7 @@ namespace Tensor {
 		return res;\
 	}
 	
-#define TENSOR2_ADD_UNM(classname)\
+#define TENSOR_ADD_UNM(classname)\
 	classname operator-() const {\
 		classname result;\
 		for (int i = 0; i < count; ++i) {\
@@ -107,7 +143,7 @@ namespace Tensor {
 		return result;\
 	}
 
-#define TENSOR2_ADD_DOT(classname)\
+#define TENSOR_ADD_DOT(classname)\
 	T dot(classname const & b) const {\
 		T result = {};\
 		for (int i = 0; i < count; ++i) {\
@@ -119,7 +155,7 @@ namespace Tensor {
 	T length() const { return (T)sqrt(lenSq()); }
 
 // danger ... danger ...
-#define TENSOR2_ADD_CTOR_FROM_VEC(classname, othername)\
+#define TENSOR_ADD_CTOR_FROM_VEC(classname, othername)\
 	template<typename U, int dim2>\
 	classname(othername<U, dim2> const & v) {\
 		int i = 0;\
@@ -133,12 +169,12 @@ namespace Tensor {
 
 // works for nesting _vec's, not for _sym's
 // I am using operator[] as the de-facto correct reference
-#define TENSOR2_ADD_VECTOR_BRACKET_INDEX()\
+#define TENSOR_ADD_VECTOR_BRACKET_INDEX()\
 	T & operator[](int i) { return s[i]; }\
 	T const & operator[](int i) const { return s[i]; }
 
 // operator() should default through operator[]
-#define TENSOR2_ADD_RECURSIVE_CALL_INDEX()\
+#define TENSOR_ADD_RECURSIVE_CALL_INDEX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	template<typename... Rest>\
@@ -151,7 +187,7 @@ namespace Tensor {
 		return (*this)[i](rest...);\
 	}
 
-#define TENSOR2_ADD_INT_VEC_CALL_INDEX()\
+#define TENSOR_ADD_INT_VEC_CALL_INDEX()\
 \
 	/* a(intN(i,...)) */\
 	template<int dim2>\
@@ -195,17 +231,17 @@ namespace Tensor {
 		}\
 	}
 
-#define TENSOR2_ADD_CALL_INDEX()\
+#define TENSOR_ADD_CALL_INDEX()\
 \
 	/* a(i) := a_i */\
 	auto & operator()(int i) { return (*this)[i]; }\
 	auto const & operator()(int i) const { return (*this)[i]; }\
 \
-	TENSOR2_ADD_RECURSIVE_CALL_INDEX()\
-	TENSOR2_ADD_INT_VEC_CALL_INDEX()
+	TENSOR_ADD_RECURSIVE_CALL_INDEX()\
+	TENSOR_ADD_INT_VEC_CALL_INDEX()
 
 // danger ... danger ...
-#define TENSOR2_ADD_ASSIGN_OP(classname)\
+#define TENSOR_ADD_ASSIGN_OP(classname)\
 	classname & operator=(classname const & o) {\
 		for (int i = 0; i < count; ++i) {\
 			s[i] = o.s[i];\
@@ -213,7 +249,7 @@ namespace Tensor {
 		return *this;\
 	}
 
-#define TENSOR2_ADD_SUBSET_ACCESS()\
+#define TENSOR_ADD_SUBSET_ACCESS()\
 \
 	/* assumes packed tensor */\
 	template<int subdim, int offset>\
@@ -242,25 +278,25 @@ namespace Tensor {
 	}
 
 //these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
-#define TENSOR2_ADD_OPS(classname)\
-	TENSOR2_ADD_VECTOR_OP_EQ(classname, +=)\
-	TENSOR2_ADD_VECTOR_OP_EQ(classname, -=)\
-	TENSOR2_ADD_VECTOR_OP_EQ(classname, *=)\
-	TENSOR2_ADD_VECTOR_OP_EQ(classname, /=)\
-	TENSOR2_ADD_SCALAR_OP_EQ(classname, +=)\
-	TENSOR2_ADD_SCALAR_OP_EQ(classname, -=)\
-	TENSOR2_ADD_SCALAR_OP_EQ(classname, *=)\
-	TENSOR2_ADD_SCALAR_OP_EQ(classname, /=)\
-	TENSOR2_ADD_UNM(classname)\
-	TENSOR2_ADD_DOT(classname)\
-	TENSOR2_ADD_CMP_OP(classname)\
-	TENSOR2_ADD_SIZE(classname)
+#define TENSOR_ADD_OPS(classname)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, +=)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, -=)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, *=)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, /=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, +=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, -=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, *=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, /=)\
+	TENSOR_ADD_UNM(classname)\
+	TENSOR_ADD_DOT(classname)\
+	TENSOR_ADD_CMP_OP(classname)\
+	TENSOR_ADD_SIZE(classname)
 
-#define TENSOR2_VECTOR_CLASS_OPS(classname)\
-	TENSOR2_ADD_VECTOR_BRACKET_INDEX()\
-	TENSOR2_ADD_CALL_INDEX()\
-	TENSOR2_ADD_OPS(classname)\
-	TENSOR2_ADD_SUBSET_ACCESS()\
+#define TENSOR_VECTOR_CLASS_OPS(classname)\
+	TENSOR_ADD_VECTOR_BRACKET_INDEX()\
+	TENSOR_ADD_CALL_INDEX()\
+	TENSOR_ADD_OPS(classname)\
+	TENSOR_ADD_SUBSET_ACCESS()\
 \
 	/* assumes InnerType operator* exists */\
 	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
@@ -275,9 +311,7 @@ namespace Tensor {
 	/* iterators */\
 	template<typename vec_constness>\
 	struct ReadIterator {\
-		/* _vec<int,dim> inside ReadIterator inside _vec<T,dim> is giving 'incomplete type' errors'*/\
-		/*using intN = _vec<int,rank>;*/\
-		using intN = std::array<int,rank>;\
+		using intN = _vec<int,rank>;\
 		vec_constness & owner;\
 		intN index;\
 		ReadIterator(vec_constness & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
@@ -350,7 +384,7 @@ namespace Tensor {
 	const_iterator cend() const { return const_iterator::end(*this); }
 
 #if 0	//hmm, this isn't working when it is run
-	//TENSOR2_ADD_ASSIGN_OP(classname)
+	//TENSOR_ADD_ASSIGN_OP(classname)
 #endif
 
 
@@ -429,37 +463,15 @@ template<typename T, int dim_>
 struct _vec {
 	// this is this class.  useful for templates.  you'd be surprised.
 	using This = _vec;
-	
-	// this is the next most nested class, so vector-of-vector is a matrix.
-	using InnerType = T;
-	
-	// this is the child-most nested class that isn't in our math library.
-	using ScalarType = typename VectorTraits<T>::ScalarType;
 
-	// this is this particular dimension of our vector
-	// M = matrix<T,i,j> == vec<vec<T,j>,i> so M::dim == i and M::InnerType::dim == j 
-	//  i.e. M::dims = int2(i,j) and M::ith_dim<0> == i and M::ith_dim<1> == j
-	static constexpr int dim = dim_;
-
-	//how much does this structure contribute to the overall rank.
-	// for _vec it is 1, for _sym it is 2
-	static constexpr int thisRank = 1;
-
-	// this is the rank/degree/index/number of letter-indexes of your tensor.
-	// for vectors-of-vectors this is the nesting.
-	// if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each.
-	static constexpr int rank = thisRank + VectorTraits<T>::rank;
-	
-	//this is the storage size, used for iterting across 's'
-	// for vectors etc it is 's'
-	// for (anti?)symmetric it is N*(N+1)/2
-	static constexpr int count = dim;
+	TENSOR_VECTOR_HEADER(dim_)
+	TENSOR_HEADER()
 
 	T s[count] = {};
 	_vec() {}
 	
-	TENSOR2_VECTOR_CLASS_OPS(_vec)
-	//TENSOR2_ADD_CAST_OP(_vec)
+	TENSOR_VECTOR_CLASS_OPS(_vec)
+	//TENSOR_ADD_CAST_OP(_vec)
 };
 
 // size == 2 specialization
@@ -467,12 +479,8 @@ struct _vec {
 template<typename T>
 struct _vec<T,2> {
 	using This = _vec;
-	using InnerType = T;
-	using ScalarType = typename VectorTraits<T>::ScalarType;
-	static constexpr int dim = 2;
-	static constexpr int thisRank = 1;
-	static constexpr int rank = thisRank + VectorTraits<T>::rank;
-	static constexpr int count = dim;
+	TENSOR_VECTOR_HEADER(2);
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -493,49 +501,49 @@ struct _vec<T,2> {
 		std::make_pair("y", &This::y)
 	);
 
-	TENSOR2_VECTOR_CLASS_OPS(_vec)
-	//TENSOR2_ADD_CAST_OP(_vec)
+	TENSOR_VECTOR_CLASS_OPS(_vec)
+	//TENSOR_ADD_CAST_OP(_vec)
 
 	// 2-component swizzles
-#define TENSOR2_VEC2_ADD_SWIZZLE2_ij(i, j)\
+#define TENSOR_VEC2_ADD_SWIZZLE2_ij(i, j)\
 	auto i ## j () { return _vec<std::reference_wrapper<T>, 2>(i, j); }
-#define TENSOR2_VEC2_ADD_SWIZZLE2_i(i)\
-	TENSOR2_VEC2_ADD_SWIZZLE2_ij(i,x)\
-	TENSOR2_VEC2_ADD_SWIZZLE2_ij(i,y)
+#define TENSOR_VEC2_ADD_SWIZZLE2_i(i)\
+	TENSOR_VEC2_ADD_SWIZZLE2_ij(i,x)\
+	TENSOR_VEC2_ADD_SWIZZLE2_ij(i,y)
 #define TENSOR3_VEC2_ADD_SWIZZLE2()\
-	TENSOR2_VEC2_ADD_SWIZZLE2_i(x)\
-	TENSOR2_VEC2_ADD_SWIZZLE2_i(y)
+	TENSOR_VEC2_ADD_SWIZZLE2_i(x)\
+	TENSOR_VEC2_ADD_SWIZZLE2_i(y)
 	TENSOR3_VEC2_ADD_SWIZZLE2()
 	
 	// 3-component swizzles
-#define TENSOR2_VEC2_ADD_SWIZZLE3_ijk(i, j, k)\
+#define TENSOR_VEC2_ADD_SWIZZLE3_ijk(i, j, k)\
 	auto i ## j ## k() { return _vec<std::reference_wrapper<T>, 3>(i, j, k); }
-#define TENSOR2_VEC2_ADD_SWIZZLE3_ij(i,j)\
-	TENSOR2_VEC2_ADD_SWIZZLE3_ijk(i,j,x)\
-	TENSOR2_VEC2_ADD_SWIZZLE3_ijk(i,j,y)
-#define TENSOR2_VEC2_ADD_SWIZZLE3_i(i)\
-	TENSOR2_VEC2_ADD_SWIZZLE3_ij(i,x)\
-	TENSOR2_VEC2_ADD_SWIZZLE3_ij(i,y)
+#define TENSOR_VEC2_ADD_SWIZZLE3_ij(i,j)\
+	TENSOR_VEC2_ADD_SWIZZLE3_ijk(i,j,x)\
+	TENSOR_VEC2_ADD_SWIZZLE3_ijk(i,j,y)
+#define TENSOR_VEC2_ADD_SWIZZLE3_i(i)\
+	TENSOR_VEC2_ADD_SWIZZLE3_ij(i,x)\
+	TENSOR_VEC2_ADD_SWIZZLE3_ij(i,y)
 #define TENSOR3_VEC2_ADD_SWIZZLE3()\
-	TENSOR2_VEC2_ADD_SWIZZLE3_i(x)\
-	TENSOR2_VEC2_ADD_SWIZZLE3_i(y)
+	TENSOR_VEC2_ADD_SWIZZLE3_i(x)\
+	TENSOR_VEC2_ADD_SWIZZLE3_i(y)
 	TENSOR3_VEC2_ADD_SWIZZLE3()
 
 	// 4-component swizzles
-#define TENSOR2_VEC2_ADD_SWIZZLE4_ijkl(i, j, k, l)\
+#define TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i, j, k, l)\
 	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<T>, 4>(i, j, k, l); }
-#define TENSOR2_VEC2_ADD_SWIZZLE4_ijk(i,j,k)\
-	TENSOR2_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,x)\
-	TENSOR2_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,y)
-#define TENSOR2_VEC2_ADD_SWIZZLE4_ij(i,j)\
-	TENSOR2_VEC2_ADD_SWIZZLE4_ijk(i,j,x)\
-	TENSOR2_VEC2_ADD_SWIZZLE4_ijk(i,j,y)
-#define TENSOR2_VEC2_ADD_SWIZZLE4_i(i)\
-	TENSOR2_VEC2_ADD_SWIZZLE4_ij(i,x)\
-	TENSOR2_VEC2_ADD_SWIZZLE4_ij(i,y)
+#define TENSOR_VEC2_ADD_SWIZZLE4_ijk(i,j,k)\
+	TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,x)\
+	TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,y)
+#define TENSOR_VEC2_ADD_SWIZZLE4_ij(i,j)\
+	TENSOR_VEC2_ADD_SWIZZLE4_ijk(i,j,x)\
+	TENSOR_VEC2_ADD_SWIZZLE4_ijk(i,j,y)
+#define TENSOR_VEC2_ADD_SWIZZLE4_i(i)\
+	TENSOR_VEC2_ADD_SWIZZLE4_ij(i,x)\
+	TENSOR_VEC2_ADD_SWIZZLE4_ij(i,y)
 #define TENSOR3_VEC2_ADD_SWIZZLE4()\
-	TENSOR2_VEC2_ADD_SWIZZLE4_i(x)\
-	TENSOR2_VEC2_ADD_SWIZZLE4_i(y)
+	TENSOR_VEC2_ADD_SWIZZLE4_i(x)\
+	TENSOR_VEC2_ADD_SWIZZLE4_i(y)
 	TENSOR3_VEC2_ADD_SWIZZLE4()
 
 };
@@ -566,12 +574,8 @@ static_assert(float2::dim == 2);
 template<typename T>
 struct _vec<T,3> {
 	using This = _vec;
-	using InnerType = T;
-	using ScalarType = typename VectorTraits<T>::ScalarType;
-	static constexpr int dim = 3;
-	static constexpr int thisRank = 1;
-	static constexpr int rank = thisRank + VectorTraits<T>::rank;
-	static constexpr int count = dim;
+	TENSOR_VECTOR_HEADER(3);
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -595,58 +599,58 @@ struct _vec<T,3> {
 		std::make_pair("z", &This::z)
 	);
 
-	TENSOR2_VECTOR_CLASS_OPS(_vec)
-	//TENSOR2_ADD_CAST_OP(_vec)
+	TENSOR_VECTOR_CLASS_OPS(_vec)
+	//TENSOR_ADD_CAST_OP(_vec)
 
 	// 2-component swizzles
-#define TENSOR2_VEC3_ADD_SWIZZLE2_ij(i, j)\
+#define TENSOR_VEC3_ADD_SWIZZLE2_ij(i, j)\
 	auto i ## j () { return _vec<std::reference_wrapper<T>, 2>(i, j); }
-#define TENSOR2_VEC3_ADD_SWIZZLE2_i(i)\
-	TENSOR2_VEC3_ADD_SWIZZLE2_ij(i,x)\
-	TENSOR2_VEC3_ADD_SWIZZLE2_ij(i,y)\
-	TENSOR2_VEC3_ADD_SWIZZLE2_ij(i,z)
+#define TENSOR_VEC3_ADD_SWIZZLE2_i(i)\
+	TENSOR_VEC3_ADD_SWIZZLE2_ij(i,x)\
+	TENSOR_VEC3_ADD_SWIZZLE2_ij(i,y)\
+	TENSOR_VEC3_ADD_SWIZZLE2_ij(i,z)
 #define TENSOR3_VEC3_ADD_SWIZZLE2()\
-	TENSOR2_VEC3_ADD_SWIZZLE2_i(x)\
-	TENSOR2_VEC3_ADD_SWIZZLE2_i(y)\
-	TENSOR2_VEC3_ADD_SWIZZLE2_i(z)
+	TENSOR_VEC3_ADD_SWIZZLE2_i(x)\
+	TENSOR_VEC3_ADD_SWIZZLE2_i(y)\
+	TENSOR_VEC3_ADD_SWIZZLE2_i(z)
 	TENSOR3_VEC3_ADD_SWIZZLE2()
 	
 	// 3-component swizzles
-#define TENSOR2_VEC3_ADD_SWIZZLE3_ijk(i, j, k)\
+#define TENSOR_VEC3_ADD_SWIZZLE3_ijk(i, j, k)\
 	auto i ## j ## k() { return _vec<std::reference_wrapper<T>, 3>(i, j, k); }
-#define TENSOR2_VEC3_ADD_SWIZZLE3_ij(i,j)\
-	TENSOR2_VEC3_ADD_SWIZZLE3_ijk(i,j,x)\
-	TENSOR2_VEC3_ADD_SWIZZLE3_ijk(i,j,y)\
-	TENSOR2_VEC3_ADD_SWIZZLE3_ijk(i,j,z)
-#define TENSOR2_VEC3_ADD_SWIZZLE3_i(i)\
-	TENSOR2_VEC3_ADD_SWIZZLE3_ij(i,x)\
-	TENSOR2_VEC3_ADD_SWIZZLE3_ij(i,y)\
-	TENSOR2_VEC3_ADD_SWIZZLE3_ij(i,z)
+#define TENSOR_VEC3_ADD_SWIZZLE3_ij(i,j)\
+	TENSOR_VEC3_ADD_SWIZZLE3_ijk(i,j,x)\
+	TENSOR_VEC3_ADD_SWIZZLE3_ijk(i,j,y)\
+	TENSOR_VEC3_ADD_SWIZZLE3_ijk(i,j,z)
+#define TENSOR_VEC3_ADD_SWIZZLE3_i(i)\
+	TENSOR_VEC3_ADD_SWIZZLE3_ij(i,x)\
+	TENSOR_VEC3_ADD_SWIZZLE3_ij(i,y)\
+	TENSOR_VEC3_ADD_SWIZZLE3_ij(i,z)
 #define TENSOR3_VEC3_ADD_SWIZZLE3()\
-	TENSOR2_VEC3_ADD_SWIZZLE3_i(x)\
-	TENSOR2_VEC3_ADD_SWIZZLE3_i(y)\
-	TENSOR2_VEC3_ADD_SWIZZLE3_i(z)
+	TENSOR_VEC3_ADD_SWIZZLE3_i(x)\
+	TENSOR_VEC3_ADD_SWIZZLE3_i(y)\
+	TENSOR_VEC3_ADD_SWIZZLE3_i(z)
 	TENSOR3_VEC3_ADD_SWIZZLE3()
 
 	// 4-component swizzles
-#define TENSOR2_VEC3_ADD_SWIZZLE4_ijkl(i, j, k, l)\
+#define TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i, j, k, l)\
 	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<T>, 4>(i, j, k, l); }
-#define TENSOR2_VEC3_ADD_SWIZZLE4_ijk(i,j,k)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,x)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,y)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,z)
-#define TENSOR2_VEC3_ADD_SWIZZLE4_ij(i,j)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_ijk(i,j,x)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_ijk(i,j,y)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_ijk(i,j,z)
-#define TENSOR2_VEC3_ADD_SWIZZLE4_i(i)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_ij(i,x)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_ij(i,y)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_ij(i,z)
+#define TENSOR_VEC3_ADD_SWIZZLE4_ijk(i,j,k)\
+	TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,x)\
+	TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,y)\
+	TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,z)
+#define TENSOR_VEC3_ADD_SWIZZLE4_ij(i,j)\
+	TENSOR_VEC3_ADD_SWIZZLE4_ijk(i,j,x)\
+	TENSOR_VEC3_ADD_SWIZZLE4_ijk(i,j,y)\
+	TENSOR_VEC3_ADD_SWIZZLE4_ijk(i,j,z)
+#define TENSOR_VEC3_ADD_SWIZZLE4_i(i)\
+	TENSOR_VEC3_ADD_SWIZZLE4_ij(i,x)\
+	TENSOR_VEC3_ADD_SWIZZLE4_ij(i,y)\
+	TENSOR_VEC3_ADD_SWIZZLE4_ij(i,z)
 #define TENSOR3_VEC3_ADD_SWIZZLE4()\
-	TENSOR2_VEC3_ADD_SWIZZLE4_i(x)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_i(y)\
-	TENSOR2_VEC3_ADD_SWIZZLE4_i(z)
+	TENSOR_VEC3_ADD_SWIZZLE4_i(x)\
+	TENSOR_VEC3_ADD_SWIZZLE4_i(y)\
+	TENSOR_VEC3_ADD_SWIZZLE4_i(z)
 	TENSOR3_VEC3_ADD_SWIZZLE4()
 };
 
@@ -676,12 +680,8 @@ static_assert(float3::dim == 3);
 template<typename T>
 struct _vec<T,4> {
 	using This = _vec;
-	using InnerType = T;
-	using ScalarType = typename VectorTraits<T>::ScalarType;
-	static constexpr int dim = 4;
-	static constexpr int thisRank = 1;
-	static constexpr int rank = thisRank + VectorTraits<T>::rank;
-	static constexpr int count = dim;
+	TENSOR_VECTOR_HEADER(4);
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -708,67 +708,67 @@ struct _vec<T,4> {
 		std::make_pair("w", &This::w)
 	);
 
-	TENSOR2_VECTOR_CLASS_OPS(_vec)
-	//TENSOR2_ADD_CAST_OP(_vec)
+	TENSOR_VECTOR_CLASS_OPS(_vec)
+	//TENSOR_ADD_CAST_OP(_vec)
 
 	// 2-component swizzles
-#define TENSOR2_VEC4_ADD_SWIZZLE2_ij(i, j)\
+#define TENSOR_VEC4_ADD_SWIZZLE2_ij(i, j)\
 	auto i ## j () { return _vec<std::reference_wrapper<T>, 2>(i, j); }
-#define TENSOR2_VEC4_ADD_SWIZZLE2_i(i)\
-	TENSOR2_VEC4_ADD_SWIZZLE2_ij(i,x)\
-	TENSOR2_VEC4_ADD_SWIZZLE2_ij(i,y)\
-	TENSOR2_VEC4_ADD_SWIZZLE2_ij(i,z)\
-	TENSOR2_VEC4_ADD_SWIZZLE2_ij(i,w)
+#define TENSOR_VEC4_ADD_SWIZZLE2_i(i)\
+	TENSOR_VEC4_ADD_SWIZZLE2_ij(i,x)\
+	TENSOR_VEC4_ADD_SWIZZLE2_ij(i,y)\
+	TENSOR_VEC4_ADD_SWIZZLE2_ij(i,z)\
+	TENSOR_VEC4_ADD_SWIZZLE2_ij(i,w)
 #define TENSOR3_VEC4_ADD_SWIZZLE2()\
-	TENSOR2_VEC4_ADD_SWIZZLE2_i(x)\
-	TENSOR2_VEC4_ADD_SWIZZLE2_i(y)\
-	TENSOR2_VEC4_ADD_SWIZZLE2_i(z)\
-	TENSOR2_VEC4_ADD_SWIZZLE2_i(w)
+	TENSOR_VEC4_ADD_SWIZZLE2_i(x)\
+	TENSOR_VEC4_ADD_SWIZZLE2_i(y)\
+	TENSOR_VEC4_ADD_SWIZZLE2_i(z)\
+	TENSOR_VEC4_ADD_SWIZZLE2_i(w)
 	TENSOR3_VEC4_ADD_SWIZZLE2()
 	
 	// 3-component swizzles
-#define TENSOR2_VEC4_ADD_SWIZZLE3_ijk(i, j, k)\
+#define TENSOR_VEC4_ADD_SWIZZLE3_ijk(i, j, k)\
 	auto i ## j ## k() { return _vec<std::reference_wrapper<T>, 3>(i, j, k); }
-#define TENSOR2_VEC4_ADD_SWIZZLE3_ij(i,j)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_ijk(i,j,x)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_ijk(i,j,y)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_ijk(i,j,z)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_ijk(i,j,w)
-#define TENSOR2_VEC4_ADD_SWIZZLE3_i(i)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_ij(i,x)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_ij(i,y)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_ij(i,z)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_ij(i,w)
+#define TENSOR_VEC4_ADD_SWIZZLE3_ij(i,j)\
+	TENSOR_VEC4_ADD_SWIZZLE3_ijk(i,j,x)\
+	TENSOR_VEC4_ADD_SWIZZLE3_ijk(i,j,y)\
+	TENSOR_VEC4_ADD_SWIZZLE3_ijk(i,j,z)\
+	TENSOR_VEC4_ADD_SWIZZLE3_ijk(i,j,w)
+#define TENSOR_VEC4_ADD_SWIZZLE3_i(i)\
+	TENSOR_VEC4_ADD_SWIZZLE3_ij(i,x)\
+	TENSOR_VEC4_ADD_SWIZZLE3_ij(i,y)\
+	TENSOR_VEC4_ADD_SWIZZLE3_ij(i,z)\
+	TENSOR_VEC4_ADD_SWIZZLE3_ij(i,w)
 #define TENSOR3_VEC4_ADD_SWIZZLE3()\
-	TENSOR2_VEC4_ADD_SWIZZLE3_i(x)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_i(y)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_i(z)\
-	TENSOR2_VEC4_ADD_SWIZZLE3_i(w)
+	TENSOR_VEC4_ADD_SWIZZLE3_i(x)\
+	TENSOR_VEC4_ADD_SWIZZLE3_i(y)\
+	TENSOR_VEC4_ADD_SWIZZLE3_i(z)\
+	TENSOR_VEC4_ADD_SWIZZLE3_i(w)
 	TENSOR3_VEC4_ADD_SWIZZLE3()
 
 	// 4-component swizzles
-#define TENSOR2_VEC4_ADD_SWIZZLE4_ijkl(i, j, k, l)\
+#define TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i, j, k, l)\
 	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<T>, 4>(i, j, k, l); }
-#define TENSOR2_VEC4_ADD_SWIZZLE4_ijk(i,j,k)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,x)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,y)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,z)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,w)
-#define TENSOR2_VEC4_ADD_SWIZZLE4_ij(i,j)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ijk(i,j,x)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ijk(i,j,y)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ijk(i,j,z)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ijk(i,j,w)
-#define TENSOR2_VEC4_ADD_SWIZZLE4_i(i)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ij(i,x)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ij(i,y)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ij(i,z)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_ij(i,w)
+#define TENSOR_VEC4_ADD_SWIZZLE4_ijk(i,j,k)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,x)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,y)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,z)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,w)
+#define TENSOR_VEC4_ADD_SWIZZLE4_ij(i,j)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ijk(i,j,x)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ijk(i,j,y)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ijk(i,j,z)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ijk(i,j,w)
+#define TENSOR_VEC4_ADD_SWIZZLE4_i(i)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ij(i,x)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ij(i,y)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ij(i,z)\
+	TENSOR_VEC4_ADD_SWIZZLE4_ij(i,w)
 #define TENSOR3_VEC4_ADD_SWIZZLE4()\
-	TENSOR2_VEC4_ADD_SWIZZLE4_i(x)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_i(y)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_i(z)\
-	TENSOR2_VEC4_ADD_SWIZZLE4_i(w)
+	TENSOR_VEC4_ADD_SWIZZLE4_i(x)\
+	TENSOR_VEC4_ADD_SWIZZLE4_i(y)\
+	TENSOR_VEC4_ADD_SWIZZLE4_i(z)\
+	TENSOR_VEC4_ADD_SWIZZLE4_i(w)
 	TENSOR3_VEC4_ADD_SWIZZLE4()
 };
 
@@ -899,7 +899,7 @@ static_assert(float4x4::InnerType::dim == 4);
 
 // vector op vector, matrix op matrix, and tensor op tensor per-component operators
 
-#define TENSOR2_ADD_VECTOR_VECTOR_OP(op)\
+#define TENSOR_ADD_VECTOR_VECTOR_OP(op)\
 template<typename T, int dim>\
 _vec<T,dim> operator op(_vec<T,dim> const & a, _vec<T,dim> const & b) {\
 	_vec<T,dim> c;\
@@ -909,12 +909,12 @@ _vec<T,dim> operator op(_vec<T,dim> const & a, _vec<T,dim> const & b) {\
 	return c;\
 }
 
-TENSOR2_ADD_VECTOR_VECTOR_OP(+)
-TENSOR2_ADD_VECTOR_VECTOR_OP(-)
-TENSOR2_ADD_VECTOR_VECTOR_OP(/)
+TENSOR_ADD_VECTOR_VECTOR_OP(+)
+TENSOR_ADD_VECTOR_VECTOR_OP(-)
+TENSOR_ADD_VECTOR_VECTOR_OP(/)
 
 // vector * vector
-//TENSOR2_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
+//TENSOR_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
 // so it has to be constrained to only T == _vec<T,dim>:ScalarType
 // c_i := a_i * b_i
 template<typename T, int dim>
@@ -933,7 +933,7 @@ _vec<T,dim> operator*(_vec<T, dim> const & a, _vec<T,dim> const & b) {
 // c_i := a_i * b
 // c_i := a * b_i
 
-#define TENSOR2_ADD_VECTOR_SCALAR_OP(op)\
+#define TENSOR_ADD_VECTOR_SCALAR_OP(op)\
 template<typename T, int dim>\
 requires std::is_same_v<typename _vec<T,dim>::ScalarType, T>\
 _vec<T,dim> operator op(_vec<T,dim> const & a, T const & b) {\
@@ -953,10 +953,10 @@ _vec<T,dim> operator op(T const & a, _vec<T,dim> const & b) {\
 	return c;\
 }
 
-TENSOR2_ADD_VECTOR_SCALAR_OP(+)
-TENSOR2_ADD_VECTOR_SCALAR_OP(-)
-TENSOR2_ADD_VECTOR_SCALAR_OP(*)
-TENSOR2_ADD_VECTOR_SCALAR_OP(/)
+TENSOR_ADD_VECTOR_SCALAR_OP(+)
+TENSOR_ADD_VECTOR_SCALAR_OP(-)
+TENSOR_ADD_VECTOR_SCALAR_OP(*)
+TENSOR_ADD_VECTOR_SCALAR_OP(/)
 
 
 // matrix * matrix operators
@@ -1113,6 +1113,11 @@ _mat<T,dim,dim> diagonalMatrix(_vec<T,dim> const & v) {
 
 // symmetric matrices
 
+#define TENSOR_SYMMETRIC_MATRIX_HEADER(dim_)\
+	static constexpr int dim = dim_;\
+	static constexpr int thisRank = 2;\
+	static constexpr int count = (dim * (dim + 1)) >> 1;
+
 template<int dim>
 int symIndex(int i, int j) {
 	if (j > i) return symIndex<dim>(j,i);
@@ -1121,7 +1126,7 @@ int symIndex(int i, int j) {
 
 //also symmetric has to define 1-arg operator()
 // that means I can't use the default so i have to make a 2-arg recursive case
-#define TENSOR2_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()\
+#define TENSOR_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	template<typename... Rest>\
@@ -1143,8 +1148,8 @@ and a more-than-2 will return call on the []
 and therein risks applying a call to an accessor
 so the accessors need nested call indexing too
 */
-#define TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
-	TENSOR2_ADD_OPS(classname)\
+#define TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
+	TENSOR_ADD_OPS(classname)\
 \
 	/* a(i,j) := a_ij = a_ji */\
 	/* this is the direct acces */\
@@ -1156,7 +1161,7 @@ so the accessors need nested call indexing too
 		int i;\
 		Accessor(classname & owner_, int i_) : owner(owner_), i(i_) {}\
 		InnerType & operator[](int j) { return owner(i,j); }\
-		TENSOR2_ADD_CALL_INDEX()\
+		TENSOR_ADD_CALL_INDEX()\
 	};\
 	Accessor operator[](int i) { return Accessor(*this, i); }\
 \
@@ -1165,7 +1170,7 @@ so the accessors need nested call indexing too
 		int i;\
 		ConstAccessor(classname const & owner_, int i_) : owner(owner_), i(i_) {}\
 		InnerType const & operator[](int j) { return owner(i,j); }\
-		TENSOR2_ADD_CALL_INDEX()\
+		TENSOR_ADD_CALL_INDEX()\
 	};\
 	ConstAccessor operator[](int i) const { return ConstAccessor(*this, i); }\
 \
@@ -1174,36 +1179,28 @@ so the accessors need nested call indexing too
 	Accessor & operator()(int i) { return (*this)[i]; }\
 	ConstAccessor & operator()(int i) const { return (*this)[i]; }\
 \
-	TENSOR2_ADD_INT_VEC_CALL_INDEX()\
-	TENSOR2_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()
+	TENSOR_ADD_INT_VEC_CALL_INDEX()\
+	TENSOR_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()
 
 
 template<typename T, int dim_>
 struct _sym {
 	using This = _sym;
-	using InnerType = T;
-	using ScalarType = typename VectorTraits<T>::ScalarType;
-	static constexpr int dim = dim_;
-	static constexpr int thisRank = 2;
-	static constexpr int rank = thisRank + VectorTraits<T>::rank;
-	static constexpr int count = (dim * (dim + 1)) >> 1;
+	TENSOR_SYMMETRIC_MATRIX_HEADER(dim_)
+	TENSOR_HEADER()
 
 	T s[count] = {};
 	_sym() {}
 
-	TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
-	//TENSOR2_ADD_CAST_OP(_sym)
+	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	//TENSOR_ADD_CAST_OP(_sym)
 };
 
 template<typename T>
 struct _sym<T,2> {
 	using This = _sym;
-	using InnerType = T;
-	using ScalarType = typename VectorTraits<T>::ScalarType;
-	static constexpr int dim = 2;
-	static constexpr int thisRank = 2;
-	static constexpr int rank = thisRank + VectorTraits<T>::rank;
-	static constexpr int count = (dim * (dim + 1)) >> 1;
+	TENSOR_SYMMETRIC_MATRIX_HEADER(2)
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -1227,19 +1224,15 @@ struct _sym<T,2> {
 		std::make_pair("yy", &This::yy)
 	);
 
-	TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
-	//TENSOR2_ADD_CAST_OP(_sym)
+	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	//TENSOR_ADD_CAST_OP(_sym)
 };
 
 template<typename T>
 struct _sym<T,3> {
 	using This = _sym;
-	using InnerType = T;
-	using ScalarType = typename VectorTraits<T>::ScalarType;
-	static constexpr int dim = 3;
-	static constexpr int thisRank = 2;
-	static constexpr int rank = thisRank + VectorTraits<T>::rank;
-	static constexpr int count = (dim * (dim + 1)) >> 1;
+	TENSOR_SYMMETRIC_MATRIX_HEADER(3)
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -1284,19 +1277,15 @@ struct _sym<T,3> {
 		std::make_pair("zz", &This::zz)
 	);
 
-	TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
-	//TENSOR2_ADD_CAST_OP(_sym)
+	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	//TENSOR_ADD_CAST_OP(_sym)
 };
 
 template<typename T>
 struct _sym<T,4> {
 	using This = _sym;
-	using InnerType = T;
-	using ScalarType = typename VectorTraits<T>::ScalarType;
-	static constexpr int dim = 4;
-	static constexpr int thisRank = 2;
-	static constexpr int rank = thisRank + VectorTraits<T>::rank;
-	static constexpr int count = (dim * (dim + 1)) >> 1;
+	TENSOR_SYMMETRIC_MATRIX_HEADER(4)
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -1361,13 +1350,13 @@ struct _sym<T,4> {
 		std::make_pair("ww", &This::ww)
 	);
 
-	TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
-	//TENSOR2_ADD_CAST_OP(_sym)
+	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	//TENSOR_ADD_CAST_OP(_sym)
 };
 
 // symmetric op symmetric
 
-#define TENSOR2_ADD_SYMMETRIC_SYMMETRIC_OP(op)\
+#define TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(op)\
 template<typename T, int dim>\
 _sym<T,dim> operator op(_sym<T,dim> const & a, _sym<T,dim> const & b) {\
 	_sym<T,dim> c;\
@@ -1377,13 +1366,13 @@ _sym<T,dim> operator op(_sym<T,dim> const & a, _sym<T,dim> const & b) {\
 	return c;\
 }
 
-TENSOR2_ADD_SYMMETRIC_SYMMETRIC_OP(+)
-TENSOR2_ADD_SYMMETRIC_SYMMETRIC_OP(-)
-TENSOR2_ADD_SYMMETRIC_SYMMETRIC_OP(/)
+TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(+)
+TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(-)
+TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(/)
 
 // symmetric op scalar, scalar op symmetric
 
-#define TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(op)\
+#define TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(op)\
 template<typename T, int dim>\
 requires std::is_same_v<typename _sym<T,dim>::ScalarType, T>\
 _sym<T,dim> operator op(_sym<T,dim> const & a, T const & b) {\
@@ -1403,10 +1392,10 @@ _sym<T,dim> operator op(T const & a, _sym<T,dim> const & b) {\
 	return c;\
 }
 
-TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(+)
-TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(-)
-TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(*)
-TENSOR2_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
+TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(+)
+TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(-)
+TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(*)
+TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 
 // how to name symmetric-optimized storage?
 
