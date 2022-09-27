@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Tensor/Vector.h"
+#include "Tensor/vec.h"	// new tensor struct
 #include "Common/Exception.h"
 #include <cassert>
 #include <algorithm>
@@ -10,13 +10,15 @@
 #undef max
 #endif
 
+
+
 namespace Tensor {
 
 //TODO move RangeObj iterator with Grid iterator
 template<int rank_>
 struct RangeObj {
 	static constexpr auto rank = rank_;
-	using DerefType = intN<rank>;
+	using DerefType = v2::intN<rank>;
 	DerefType min, max;
 
 	RangeObj(DerefType min_, DerefType max_) : min(min_), max(max_) {}
@@ -139,7 +141,7 @@ struct Grid {
 	using Type = Type_;
 	using value_type = Type;
 	static constexpr auto rank = rank_;
-	using DerefType = intN<rank>;
+	using DerefType = v2::intN<rank>;
 
 	DerefType size;
 	Type *v;
@@ -219,7 +221,7 @@ struct Grid {
 			}
 		}
 #endif
-		int flat_deref = DerefType::dot(deref, step);
+		int flat_deref = deref.dot(step);
 		assert(flat_deref >= 0 && flat_deref < size.volume());
 		return v[flat_deref];
 	}
@@ -231,7 +233,7 @@ struct Grid {
 			}
 		}
 #endif
-		int flat_deref = DerefType::dot(deref, step);
+		int flat_deref = deref.dot(step);
 		assert(flat_deref >= 0 && flat_deref < size.volume());
 		return v[flat_deref];
 	}
@@ -278,7 +280,7 @@ struct Grid {
 		RangeObj<rank> range(DerefType(), minSize);		
 		for (typename RangeObj<rank>::iterator iter = range.begin(); iter != range.end(); ++iter) {
 			DerefType index = *iter;
-			int oldOffset = DerefType::dot(oldStep, index);
+			int oldOffset = oldStep.dot(index);
 			(*this)(index) = oldV[oldOffset];
 		}
 

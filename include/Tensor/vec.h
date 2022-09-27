@@ -181,7 +181,15 @@ namespace v2 {
 #define TENSOR2_VECTOR_CLASS_OPS(classname)\
 	TENSOR2_ADD_VECTOR_BRACKET_INDEX()\
 	TENSOR2_ADD_CALL_INDEX()\
-	TENSOR2_ADD_OPS(classname)
+	TENSOR2_ADD_OPS(classname)\
+\
+	T volume() const {\
+		T res = s[0];\
+		for (int i = 1; i < count; ++i) {\
+			res *= s[i];\
+		}\
+		return res;\
+	}
 
 #if 0	//hmm, this isn't working when it is run
 	//TENSOR2_ADD_ASSIGN_OP(classname)

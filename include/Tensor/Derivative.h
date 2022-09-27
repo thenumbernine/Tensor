@@ -3,7 +3,6 @@
 #include "Tensor/clamp.h"
 #include "Tensor/Vector.h"
 #include "Tensor/Tensor.h"
-#include "Tensor/Grid.h"
 #include "Common/Macros.h"	//numberof
 
 namespace Tensor {
