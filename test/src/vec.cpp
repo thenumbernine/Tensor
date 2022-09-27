@@ -2,8 +2,6 @@
 #include "Tensor/Inverse.h"
 #include "Common/Test.h"
 
-using namespace Tensor;
-
 // static tests here:
 
 void test_vec() {
@@ -11,7 +9,7 @@ void test_vec() {
 
 	{
 		// default ctor
-		float3 f;
+		Tensor::float3 f;
 		for (int i = 0; i < f.dim; ++i) {
 			TEST_EQ(f.s[i], 0);
 		}
@@ -19,7 +17,7 @@ void test_vec() {
 
 	{
 		// parenthesis ctor
-		float3 f(4,5,7);
+		Tensor::float3 f(4,5,7);
 	
 		//operator<< works?
 		std::cout << f << std::endl;
@@ -70,38 +68,38 @@ void test_vec() {
 			// TODO support for rbegin/rend const/not const and crbegin/crend
 		}
 		
-		TEST_EQ(f, float3([](int i) -> float { return 4 + i * (i + 1) / 2; }));
+		TEST_EQ(f, Tensor::float3([](int i) -> float { return 4 + i * (i + 1) / 2; }));
 
 		// bracket ctor
-		float3 g = {7,1,2};
+		Tensor::float3 g = {7,1,2};
 
 		// vector/scalar operations
-		TEST_EQ(f+1.f, float3(5,6,8));
-		TEST_EQ(f-1.f, float3(3,4,6));
-		TEST_EQ(f*12.f, float3(48, 60, 84));
-		TEST_EQ(f/2.f, float3(2.f, 2.5f, 3.5f));
+		TEST_EQ(f+1.f, Tensor::float3(5,6,8));
+		TEST_EQ(f-1.f, Tensor::float3(3,4,6));
+		TEST_EQ(f*12.f, Tensor::float3(48, 60, 84));
+		TEST_EQ(f/2.f, Tensor::float3(2.f, 2.5f, 3.5f));
 		// scalar/vector operations
-		TEST_EQ(1.f+f, float3(5,6,8));
-		TEST_EQ(1.f-f, float3(-3, -4, -6));
-		TEST_EQ(12.f*f, float3(48, 60, 84));
-		TEST_EQ(2.f/f, float3(0.5, 0.4, 0.28571428571429));
+		TEST_EQ(1.f+f, Tensor::float3(5,6,8));
+		TEST_EQ(1.f-f, Tensor::float3(-3, -4, -6));
+		TEST_EQ(12.f*f, Tensor::float3(48, 60, 84));
+		TEST_EQ(2.f/f, Tensor::float3(0.5, 0.4, 0.28571428571429));
 		// vector/vector operations
-		TEST_EQ(f+g, float3(11, 6, 9));
-		TEST_EQ(f-g, float3(-3, 4, 5));
-		TEST_EQ(f*g, float3(28, 5, 14));	//the controversial default-per-element-mul
-		TEST_EQ(f/g, float3(0.57142857142857, 5.0, 3.5));	// wow, this equality passes while sqrt(90) fails
+		TEST_EQ(f+g, Tensor::float3(11, 6, 9));
+		TEST_EQ(f-g, Tensor::float3(-3, 4, 5));
+		TEST_EQ(f*g, Tensor::float3(28, 5, 14));	//the controversial default-per-element-mul
+		TEST_EQ(f/g, Tensor::float3(0.57142857142857, 5.0, 3.5));	// wow, this equality passes while sqrt(90) fails
 		// hmm, do I have vector*vector => scalar default to dot product?
 
 		// op= scalar 
-		{ float3 h = f; h += 2; TEST_EQ(h, float3(6,7,9)); }
-		{ float3 h = f; h -= 3; TEST_EQ(h, float3(1,2,4)); }
-		{ float3 h = f; h *= 3; TEST_EQ(h, float3(12,15,21)); }
-		{ float3 h = f; h /= 4; TEST_EQ(h, float3(1,1.25,1.75)); }
+		{ Tensor::float3 h = f; h += 2; TEST_EQ(h, Tensor::float3(6,7,9)); }
+		{ Tensor::float3 h = f; h -= 3; TEST_EQ(h, Tensor::float3(1,2,4)); }
+		{ Tensor::float3 h = f; h *= 3; TEST_EQ(h, Tensor::float3(12,15,21)); }
+		{ Tensor::float3 h = f; h /= 4; TEST_EQ(h, Tensor::float3(1,1.25,1.75)); }
 		// op= vector 
-		{ float3 h = f; h += float3(3,2,1); TEST_EQ(h, float3(7,7,8)); }
-		{ float3 h = f; h -= float3(5,0,9); TEST_EQ(h, float3(-1,5,-2)); }
-		{ float3 h = f; h *= float3(-1,1,-2); TEST_EQ(h, float3(-4,5,-14)); }
-		{ float3 h = f; h /= float3(-2,3,-4); TEST_EQ(h, float3(-2, 5.f/3.f, -1.75)); }
+		{ Tensor::float3 h = f; h += Tensor::float3(3,2,1); TEST_EQ(h, Tensor::float3(7,7,8)); }
+		{ Tensor::float3 h = f; h -= Tensor::float3(5,0,9); TEST_EQ(h, Tensor::float3(-1,5,-2)); }
+		{ Tensor::float3 h = f; h *= Tensor::float3(-1,1,-2); TEST_EQ(h, Tensor::float3(-4,5,-14)); }
+		{ Tensor::float3 h = f; h /= Tensor::float3(-2,3,-4); TEST_EQ(h, Tensor::float3(-2, 5.f/3.f, -1.75)); }
 
 		// dot product
 		TEST_EQ(dot(f,g), 47)
@@ -116,12 +114,12 @@ void test_vec() {
 		TEST_EQ_EPS(length(f), sqrt(90), 1e-7);
 		
 		// cros product
-		TEST_EQ(cross(f,g), float3(3, 41, -31))
+		TEST_EQ(cross(f,g), Tensor::float3(3, 41, -31))
 	
 		// outer product
 		// hmm, in the old days macros couldn't detect <>'s so you'd have to wrap them in ()'s if the <>'s had ,'s in them
 		// now same persists for {}'s it seems
-		TEST_EQ(outerProduct(f,g), float3x3(
+		TEST_EQ(outerProduct(f,g), Tensor::float3x3(
 			{28, 4, 8},
 			{35, 5, 10},
 			{49, 7, 14}
@@ -133,10 +131,10 @@ void test_vec() {
 		// TODO need an operator== between T and reference_wrapper<T> ...
 		// or casting ctor?
 		// a generic ctor between _vecs would be nice, but maybe problematic for _mat = _sym
-		TEST_EQ(float3(f.zyx()), float3(7,5,4));
-		TEST_EQ(float2(f.xy()), float2(4,5));
-		TEST_EQ(float2(f.yx()), float2(5,4));
-		TEST_EQ(float2(f.yy()), float2(5,5));
+		TEST_EQ(Tensor::float3(f.zyx()), Tensor::float3(7,5,4));
+		TEST_EQ(Tensor::float2(f.xy()), Tensor::float2(4,5));
+		TEST_EQ(Tensor::float2(f.yx()), Tensor::float2(5,4));
+		TEST_EQ(Tensor::float2(f.yy()), Tensor::float2(5,5));
 		
 		/* more tests ...
 		float2 float4
@@ -150,7 +148,7 @@ void test_vec() {
 	// matrix
 	{
 		//bracket ctor
-		float3x3 m = {
+		Tensor::float3x3 m = {
 			{1,2,3},
 			{4,5,6},
 			{7,8,9},
@@ -194,24 +192,24 @@ void test_vec() {
 		TEST_EQ(m(2,2), 9);
 
 		//m(int2(i,j)) indexing
-		TEST_EQ(m(int2(0,0)), 1);
-		TEST_EQ(m(int2(0,1)), 2);
-		TEST_EQ(m(int2(0,2)), 3);
-		TEST_EQ(m(int2(1,0)), 4);
-		TEST_EQ(m(int2(1,1)), 5);
-		TEST_EQ(m(int2(1,2)), 6);
-		TEST_EQ(m(int2(2,0)), 7);
-		TEST_EQ(m(int2(2,1)), 8);
-		TEST_EQ(m(int2(2,2)), 9);
+		TEST_EQ(m(Tensor::int2(0,0)), 1);
+		TEST_EQ(m(Tensor::int2(0,1)), 2);
+		TEST_EQ(m(Tensor::int2(0,2)), 3);
+		TEST_EQ(m(Tensor::int2(1,0)), 4);
+		TEST_EQ(m(Tensor::int2(1,1)), 5);
+		TEST_EQ(m(Tensor::int2(1,2)), 6);
+		TEST_EQ(m(Tensor::int2(2,0)), 7);
+		TEST_EQ(m(Tensor::int2(2,1)), 8);
+		TEST_EQ(m(Tensor::int2(2,2)), 9);
 		
 		// sub-vectors (row)
-		TEST_EQ(m[0], float3(1,2,3));
-		TEST_EQ(m[1], float3(4,5,6));
-		TEST_EQ(m[2], float3(7,8,9));
+		TEST_EQ(m[0], Tensor::float3(1,2,3));
+		TEST_EQ(m[1], Tensor::float3(4,5,6));
+		TEST_EQ(m[2], Tensor::float3(7,8,9));
 
 		//dims and rank.  really these are static_assert's, except dims(), but it could be, but I'd have to constexpr some things ...
 		TEST_EQ(m.rank, 2);
-		TEST_EQ(m.dims(), int2(3,3));
+		TEST_EQ(m.dims(), Tensor::int2(3,3));
 		TEST_EQ(m.ith_dim<0>, 3);
 		TEST_EQ(m.ith_dim<1>, 3);
 
@@ -254,9 +252,9 @@ void test_vec() {
 
 		// lambda constructor
 		// row-major, sequential in memory:
-		TEST_EQ(m, float3x3([](int2 i) -> float { return 1 + i(1) + 3 * i(0); }));
+		TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(1) + 3 * i(0); }));
 		// col-major, sequential in memory:
-		//TEST_EQ(m, float3x3([](int2 i) -> float { return 1 + i(0) + 3 * i(1); }));
+		//TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(0) + 3 * i(1); }));
 
 		// TODO matrix subset access
 
@@ -280,7 +278,7 @@ void test_vec() {
 	*/
 
 	{
-		float3x3 m;
+		Tensor::float3x3 m;
 	
 		//TODO verify lambda ctor only covers write operators, i.e. 6 inits instead of 9
 		
@@ -291,7 +289,7 @@ void test_vec() {
 
 	// tensor of vec-vec-vec
 	{
-		using T = _tensor<float, 2, 4, 5>;
+		using T = Tensor::_tensor<float, 2, 4, 5>;
 		T t;
 		static_assert(t.rank == 3);
 		static_assert(t.ith_dim<0> == 2);
