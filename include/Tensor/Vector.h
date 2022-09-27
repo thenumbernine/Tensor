@@ -73,12 +73,12 @@ namespace Tensor {
 		return !operator==(b);\
 	}
 
-//::size() returns the total nested dimensions as an int-vec
-// TODO size() might be ambiguous, how about 'dimensions' or 'dims' since thats what it's a collection of?
+//::dims returns the total nested dimensions as an int-vec
+// NOTICE THIS WAS CHANGED FROM METHOD TO MEMBER BY MEANS OF CONSTEXPR'ING ALL THE CTORS AND ::subset()  
+//  IF YOU RUN INTO PROBLEM DOWN THE LINE WITH THESE BEING CONSTEXPR, COME BACK TO THIS AND UNDO IT
 #define TENSOR2_ADD_SIZE(classname)\
-	static auto size() {\
-		return VectorTraits<This>::size();\
-	}
+	template<int i> static constexpr int ith_dim = VectorTraits<This>::template calc_ith_dim<i>();\
+	static constexpr auto dims = VectorTraits<This>::dims();
 
 // danger ... danger ...
 #define TENSOR2_ADD_CAST_BOOL_OP()\
@@ -163,8 +163,7 @@ namespace Tensor {
 	template<int dim2>\
 	requires (dim2 > 1)\
 	auto & operator()(_vec<int,dim2> const & i) {\
-		constexpr int subdim2 = dim2 - 1;\
-		auto const & subi = (i. template subset<subdim2, 1>());\
+		auto const & subi = (i.template subset<dim2-1, 1>());\
 		return (*this)[i(0)](subi);\
 	}\
 \
@@ -172,8 +171,7 @@ namespace Tensor {
 	template<int dim2>\
 	requires (dim2 > 1)\
 	auto const & operator()(_vec<int,dim2> const & i) const {\
-		constexpr int subdim2 = dim2 - 1;\
-		auto const & subi = (i. template subset<subdim2, 1>());\
+		auto const & subi = (i.template subset<dim2-1, 1>());\
 		return (*this)[i(0)](subi);\
 	}
 
@@ -199,27 +197,27 @@ namespace Tensor {
 \
 	/* assumes packed tensor */\
 	template<int subdim, int offset>\
-	_vec<T,subdim> & subset() {\
+	constexpr _vec<T,subdim> & subset() {\
 		static_assert(offset + subdim <= dim);\
 		return *(_vec<T,subdim>*)(s+offset);\
 	}\
 \
 	/* assumes packed tensor */\
 	template<int subdim, int offset>\
-	_vec<T,subdim> const & subset() const {\
+	constexpr _vec<T,subdim> const & subset() const {\
 		static_assert(offset + subdim <= dim);\
 		return *(_vec<T,subdim>*)(s+offset);\
 	}\
 \
 	/* assumes packed tensor */\
 	template<int subdim>\
-	_vec<T,subdim> & subset(int offset) {\
+	constexpr _vec<T,subdim> & subset(int offset) {\
 		return *(_vec<T,subdim>*)(s+offset);\
 	}\
 \
 	/* assumes packed tensor */\
 	template<int subdim>\
-	_vec<T,subdim> const & subset(int offset) const {\
+	constexpr _vec<T,subdim> const & subset(int offset) const {\
 		return *(_vec<T,subdim>*)(s+offset);\
 	}
 
@@ -254,7 +252,8 @@ namespace Tensor {
 		return res;\
 	}
 
-#if 0	// iterators
+#if 0
+	/* iterators */\
 	template<typename vec_constness>\
 	struct ReadIterator {\
 		using intN = _vec<int,dim>;\
@@ -275,14 +274,27 @@ namespace Tensor {
 		}\
 		bool operator==(ReadIterator const & o) const { return &parent == &o.parent && index == o.index; }\
 		bool operator!=(ReadIterator const & o) const { return !operator==(o); }\
-		ReadIterator & operator++() {\
+\
+		template<int i>\
+		struct Increment {\
+			static bool exec(ReadIterator &iter) {\
+				++iter.index(i);\
+				if (iter.index(i) < VectorTraits<vec_constness>::ith_dim<i>) return true;\
+				if (i < rank-1) iter.index(i) = 0;\
+				return false;\
+			}\
+		};\
+\
+		ReadIterator &operator++() {\
+			Common::ForLoop<0,rank,Increment>::exec(*this);\
 			return *this;\
 		}\
+\
 		ScalarType & operator*() const { return owner(index); }\
 		static ReadIterator begin(vec_constness & v) { return ReadIterator(v); }\
 		static ReadIterator end(vec_constness & v) {\
 			intN index;\
-			index[rank-1] = size()[rank-1];\
+			index[rank-1] = vec_constness::ith_dim<rank-1>;\
 			return ReadIterator(v, index);\
 		}\
 	};\
@@ -293,8 +305,7 @@ namespace Tensor {
 	const_iterator begin() const { return const_iterator::begin(*this); }\
 	const_iterator end() const { return const_iterator::end(*this); }\
 	const_iterator cbegin() const { return const_iterator::begin(*this); }\
-	const_iterator cend() const { return const_iterator::end(*this); }\
-
+	const_iterator cend() const { return const_iterator::end(*this); }
 #endif
 
 #if 0	//hmm, this isn't working when it is run
@@ -329,26 +340,43 @@ struct VectorTraits<T> {
 	
 	using ScalarType = typename T::ScalarType;
 
-	static auto size() {
-		// if this is a vector-of-scalars, such that the size would be an int1, just use int
+	// a function for getting the i'th component of the size vector
+	template<int i>
+	static constexpr int calc_ith_dim() {
+		static_assert(i >= 0, "you tried to get a negative size");
+		static_assert(i < rank, "you tried to get an oob size");
+		if constexpr (i < T::thisRank) {
+			return T::dim;
+		} else {
+			return VectorTraits<typename T::InnerType>::template calc_ith_dim<i - T::thisRank>();
+		}
+	}
+
+	// .. then for loop iterator in dims() function and just a single exceptional case in the dims() function is needed
+	static constexpr auto dims() {
+		// if this is a vector-of-scalars, such that the dims would be an int1, just use int
 		if constexpr (T::rank == 1) {
 			return T::dim;
 		} else {
 			// use an int[dim]
 			_vec<int,rank> sizev;
+#if 0
+#error "TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly."
+#else
 			for (int i = 0; i < T::thisRank; ++i) {
-				sizev(i) = T::dim;
+				sizev.s[i] = T::dim;
 			}
 			if constexpr (T::thisRank < rank) {
 				// special case reading from int
 				if constexpr (T::InnerType::rank == 1) {
-					sizev(T::thisRank) = VectorTraits<typename T::InnerType>::size();
+					sizev.s[T::thisRank] = VectorTraits<typename T::InnerType>::dims();
 				} else {
 					// assigning sub-vector
 					sizev.template subset<rank-T::thisRank, T::thisRank>()
-						= VectorTraits<typename T::InnerType>::size();
+						= VectorTraits<typename T::InnerType>::dims();
 				}
 			}
+#endif			
 			return sizev;
 		}
 	}
@@ -369,7 +397,7 @@ struct _vec {
 
 	// this is this particular dimension of our vector
 	// M = matrix<T,i,j> == vec<vec<T,j>,i> so M::dim == i and M::InnerType::dim == j 
-	// I'll make a tuple getter for all dimensions eventually, its size will be 'rank'
+	//  i.e. M::dims = int2(i,j) and M::ith_dim<0> == i and M::ith_dim<1> == j
 	static constexpr int dim = dim_;
 
 	//how much does this structure contribute to the overall rank.
@@ -387,7 +415,7 @@ struct _vec {
 	static constexpr int count = dim;
 
 	T s[dim] = {};
-	_vec() {}
+	constexpr _vec() {}
 	
 	TENSOR2_VECTOR_CLASS_OPS(_vec)
 	//TENSOR2_ADD_CAST_OP(_vec)
@@ -416,8 +444,8 @@ struct _vec<T,2> {
 		};
 		T s[dim];
 	};
-	_vec() {}
-	_vec(T x_, T y_) : x(x_), y(y_) {}
+	constexpr _vec() {}
+	constexpr _vec(T x_, T y_) : x(x_), y(y_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -517,8 +545,8 @@ struct _vec<T,3> {
 		};
 		T s[dim];// requires !std::is_reference_v<T>;
 	};
-	_vec() {}
-	_vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
+	constexpr _vec() {}
+	constexpr _vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -629,8 +657,8 @@ struct _vec<T,4> {
 		};
 		T s[dim];
 	};
-	_vec() {}
-	_vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
+	constexpr _vec() {}
+	constexpr _vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1149,9 +1177,8 @@ struct _sym<T,2> {
 		};
 		T s[(dim*(dim+1))>>1];
 	};
-	_sym() {}
-	_sym(T xx_, T xy_, T yy_) 
-	: xx(xx_), xy(xy_), yy(yy_) {}
+	constexpr _sym() {}
+	constexpr _sym(T xx_, T xy_, T yy_) : xx(xx_), xy(xy_), yy(yy_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("xx", &This::xx),
@@ -1192,8 +1219,8 @@ struct _sym<T,3> {
 		};
 		T s[(dim*(dim+1))>>1];
 	};
-	_sym() {}
-	_sym(
+	constexpr _sym() {}
+	constexpr _sym(
 		T const & xx_,
 		T const & xy_,
 		T const & yy_,
@@ -1257,8 +1284,8 @@ struct _sym<T,4> {
 		};
 		T s[(dim*(dim+1))>>1];
 	};
-	_sym() {}
-	_sym(
+	constexpr _sym() {}
+	constexpr _sym(
 		T const & xx_,
 		T const & xy_,
 		T const & yy_,
