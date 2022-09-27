@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Tensor/vec.h"	// new tensor struct
+#include "Tensor/Vector.h"	// new tensor struct
 #include "Common/Exception.h"
 #include <cassert>
 #include <algorithm>

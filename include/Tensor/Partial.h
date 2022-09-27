@@ -1,4 +1,4 @@
-#include "Tensor/vec.h"
+#include "Tensor/Vector.h"
 #include <functional>
 
 namespace Tensor {
