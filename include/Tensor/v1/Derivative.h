@@ -1,11 +1,12 @@
 #pragma once
 
 #include "Tensor/clamp.h"
-#include "Tensor/Vector.h"
-#include "Tensor/Tensor.h"
+#include "Tensor/v1/Vector.h"
+#include "Tensor/v1/Tensor.h"
 #include "Common/Macros.h"	//numberof
 
 namespace Tensor {
+namespace v1 {
 
 template<typename Type, int rank> 
 Type getOffset(
@@ -131,4 +132,5 @@ partialDerivative(
 	return PartialDerivativeClass<order, Real, dim, InputType>()(index, dx, f);
 }
 
+}
 }

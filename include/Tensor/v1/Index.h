@@ -14,6 +14,7 @@ c(i) = a(i,j) * b(j) <-performs multiplication of matrix a and vector b
 #include "Common/Meta.h"
 
 namespace Tensor {
+namespace v1 {
 
 template<char ident>
 struct Index {};
@@ -157,4 +158,5 @@ operator*(const IndexAccess<Tensor<Type, IndexesA...>, IndexVectorA>& indexAcces
 }
 */
 
+}
 }

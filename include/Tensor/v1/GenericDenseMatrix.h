@@ -1,8 +1,9 @@
 #pragma once
 
-#include "Tensor/GenericArray.h"
+#include "Tensor/v1/GenericArray.h"
 
 namespace Tensor {
+namespace v1 {
 
 /*
 child being the whatever curious whatever thing that returns its child
@@ -51,4 +52,5 @@ struct GenericDenseMatrix : public GenericArray<Type_, size_, ScalarType_, Child
 	Type const &operator[](int2 const &deref) const { return Parent::v[Child::index(deref(0),deref(1))]; }
 };
 
+}
 }

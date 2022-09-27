@@ -1,10 +1,11 @@
 #pragma once
 
-#include "Tensor/GenericVector.h"
+#include "Tensor/v1/GenericVector.h"
 #include "Common/String.h"	//objectStringFromOStream
 #include <iostream>
 
 namespace Tensor {
+namespace v1 {
 
 /*
 vector class for fixed-size templated dimension (i.e. size) and type
@@ -113,7 +114,7 @@ template<typename T> using _vec4 = Vector<T, 4>;
 
 // this doesn't work in global scope.  hmmm.  what have I done?
 template<typename Type, int dim>
-std::ostream & operator<<(std::ostream & o, Tensor::Vector<Type,dim> const & t) {
+std::ostream & operator<<(std::ostream & o, Vector<Type,dim> const & t) {
 	char const *sep = "";
 	o << "(";
 	for (int i = 0; i < dim; ++i) {
@@ -125,11 +126,12 @@ std::ostream & operator<<(std::ostream & o, Tensor::Vector<Type,dim> const & t) 
 }
 
 }
+}
 
 namespace std {
 
 template<typename T, int n>
-std::string to_string(Tensor::Vector<T, n> const & x) {
+std::string to_string(Tensor::v1::Vector<T, n> const & x) {
 	return Common::objectStringFromOStream(x);
 }
 

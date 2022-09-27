@@ -1,11 +1,12 @@
 #pragma once
 
-#include "Tensor/IndexPlace.h"	//not because tensor.h needs it, but because anyone using tensor.h needs it
-#include "Tensor/Index.h"
+#include "Tensor/v1/IndexPlace.h"	//not because tensor.h needs it, but because anyone using tensor.h needs it
+#include "Tensor/v1/Index.h"
 #include "Common/Meta.h"
 #include <functional>
 
 namespace Tensor {
+namespace v1 {
 
 /*
 new experimental template-driven tensor class
@@ -213,7 +214,7 @@ struct Tensor {
 	//it pulls individual entries from the index args
 	//I could have the index args themselves do the calculation
 	// but that would mean making base-case specializations for each index class
-	using TensorStats = ::Tensor::TensorStats<ScalarType_, Args_...>;
+	using TensorStats = ::Tensor::v1::TensorStats<ScalarType_, Args_...>;
 	using BodyType = typename TensorStats::BodyType;
 
 	//used to get information per-index of the tensor
@@ -234,7 +235,7 @@ struct Tensor {
 	// so Tensor<Real, Upper<2>, Symmetric<Upper<3>, Upper<3>>> can call ::WriteIndexInfo<0>::size to get 2,
 	//  or call ::WriteIndexInfo<1>::size to get 6 = n*(n+1)/2 for n=3
 	template<int writeIndex>
-	using WriteIndexInfo = ::Tensor::WriteIndexInfo<writeIndex, TensorStats>;
+	using WriteIndexInfo = WriteIndexInfo<writeIndex, TensorStats>;
 		
 	using WriteDerefType = intN<numNestings>;
 
@@ -646,4 +647,5 @@ std::ostream &operator<<(std::ostream &o, Tensor<Type, Args...> const &t) {
 	return o;
 }
 
+}
 }

@@ -3,6 +3,7 @@
 #include "Common/Meta.h"
 
 namespace Tensor {
+namespace v1 {
 
 //assignment binary operations
 template<typename DstType, typename SrcType> struct Assign { static void exec(DstType& dst, SrcType const& src) { dst = src; } };
@@ -129,4 +130,5 @@ struct TernaryOp {
 	};
 };
 
+}
 }

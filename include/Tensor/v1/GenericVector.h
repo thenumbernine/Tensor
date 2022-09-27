@@ -1,10 +1,11 @@
 #pragma once
 
-#include "Tensor/GenericArray.h"
+#include "Tensor/v1/GenericArray.h"
 #include <cmath>	//sqrt
 #include <functional>
 
 namespace Tensor {
+namespace v1 {
 
 /*
 adds int-based indexing and vector-vector ops to the array ops
@@ -143,4 +144,5 @@ struct GenericVector : public GenericArray<Type_, size_, ScalarType_, Child> {
 	Child operator/(ScalarType const &b) const { return Super::operator/(b); }
 };
 
+}
 }

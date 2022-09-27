@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Tensor/GenericVector.h"
-#include "Tensor/Vector.h"
+#include "Tensor/v1/GenericVector.h"
+#include "Tensor/v1/Vector.h"
 
 namespace Tensor {
+namespace v1 {
 
 template<int dim_>
 struct GenericRank1 {
@@ -29,4 +30,5 @@ struct GenericRank1 {
 	};
 };
 
+}
 }

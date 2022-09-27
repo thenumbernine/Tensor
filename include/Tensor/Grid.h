@@ -11,14 +11,13 @@
 #endif
 
 
-
 namespace Tensor {
 
 //TODO move RangeObj iterator with Grid iterator
 template<int rank_>
 struct RangeObj {
 	static constexpr auto rank = rank_;
-	using DerefType = v2::intN<rank>;
+	using DerefType = intN<rank>;
 	DerefType min, max;
 
 	RangeObj(DerefType min_, DerefType max_) : min(min_), max(max_) {}
@@ -141,7 +140,7 @@ struct Grid {
 	using Type = Type_;
 	using value_type = Type;
 	static constexpr auto rank = rank_;
-	using DerefType = v2::intN<rank>;
+	using DerefType = intN<rank>;
 
 	DerefType size;
 	Type *v;

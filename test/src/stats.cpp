@@ -1,7 +1,11 @@
-#include "Tensor/Tensor.h"
+#include "Tensor/v1/Tensor.h"
 #include "Common/Test.h"
 #include <typeinfo>
 #include <iostream>
+
+namespace Tensor {
+using namespace Tensor::v1;
+}
 
 void test_stats() {
 	using Real = double;

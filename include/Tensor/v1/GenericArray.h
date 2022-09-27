@@ -1,11 +1,12 @@
 #pragma once
 
 #include "Tensor/clamp.h"
-#include "Tensor/Meta.h"
+#include "Tensor/v1/Meta.h"
 #include "Common/crtp_cast.h"
 #include <iostream>
 
 namespace Tensor {
+namespace v1 {
 
 /*
 the 'parent' curious pattern whatever for generic_vector and generic_matrix
@@ -135,4 +136,5 @@ struct GenericArray {
 	}
 };
 
+}
 }

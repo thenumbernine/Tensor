@@ -5,9 +5,10 @@ inverse function
 for any sort of rank-2 Tensor::Tensor object
 */
 
-#include "Tensor/Tensor.h"
+#include "Tensor/v1/Tensor.h"
 
 namespace Tensor {
+namespace v1 {
 
 template<typename Real>
 Real det22(
@@ -306,4 +307,5 @@ typename InverseClass<InputType>::OutputType inverse(InputType const &a) {
 	return InverseClass<InputType>()(a, determinant(a));
 }
 
+}
 }

@@ -1,8 +1,12 @@
-#include "Tensor/Tensor.h"
-//#include "Tensor/Inverse.h"
+#include "Tensor/v1/Tensor.h"
+//#include "Tensor/v1/Inverse.h"
 #include "Common/Test.h"
 #include <iostream>
-	
+
+namespace Tensor {
+using namespace Tensor::v1;
+}
+
 void test_vectors() {
 	using Real = double;
 	using Vector = Tensor::Vector<Real, 3>;

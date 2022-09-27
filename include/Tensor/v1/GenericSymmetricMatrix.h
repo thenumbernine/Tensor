@@ -1,8 +1,9 @@
 #pragma once
 
-#include "Tensor/GenericDenseMatrix.h"
+#include "Tensor/v1/GenericDenseMatrix.h"
 
 namespace Tensor {
+namespace v1 {
 
 /*
 GenericSymmetricMatrix(i,j) == GenericSymmetricMatrix(j,i)
@@ -45,4 +46,5 @@ struct GenericSymmetricMatrix : public GenericDenseMatrix<Type_, dim_, ScalarTyp
 	}
 };
 
+}
 }

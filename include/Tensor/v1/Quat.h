@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Tensor/Vector.h"
+#include "Tensor/v1/Vector.h"
 #include <cmath>
 
 namespace Tensor {
+namespace v1 {
 
 template<typename Type>
 struct Quat : public GenericVector<Type, 4, Type, Quat<Type>> {
@@ -97,4 +98,5 @@ Quat<Type> operator*(Quat<Type> a, Quat<Type> b) {
 	return Quat<Type>::mul(a,b);
 }
 
+}
 }
