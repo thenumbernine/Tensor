@@ -68,7 +68,13 @@ void test_vec() {
 			// TODO support for rbegin/rend const/not const and crbegin/crend
 		}
 		
+		//lambda ctor
 		TEST_EQ(f, Tensor::float3([](int i) -> float { return 4 + i * (i + 1) / 2; }));
+
+		// TODO casting ctor
+
+		// scalar ctor
+		TEST_EQ(Tensor::float3(3), Tensor::float3(3,3,3));
 
 		// bracket ctor
 		Tensor::float3 g = {7,1,2};
@@ -255,6 +261,11 @@ void test_vec() {
 		TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(1) + 3 * i(0); }));
 		// col-major, sequential in memory:
 		//TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(0) + 3 * i(1); }));
+		
+		// TODO casting ctor
+
+		// scalar ctor
+		TEST_EQ(Tensor::float3x3(3), (Tensor::float3x3{{3,3,3},{3,3,3},{3,3,3}}));
 
 		// TODO matrix subset access
 

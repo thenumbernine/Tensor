@@ -327,9 +327,16 @@ namespace Tensor {
 		}\
 	}
 
+#define TENSOR_ADD_SCALAR_CTOR(classname)\
+	classname(ScalarType const & x) {\
+		for (int i = 0; i < count; ++i) {\
+			s[i] = x;\
+		}\
+	}
+
 // vector cast operator
 // TODO not sure how to write this to generalize into _sym and others (or if I should try to?)
-#define TENSOR_ADD_VECTOR_CAST_CTOR(classname)\
+#define TENSOR_ADD_GENERIC_CTOR(classname)\
 	template<int dim2, typename U>\
 	_vec(_vec<U, dim2> const & t) {\
 		for (int i = 0; i < count && i < t.count; ++i) {\
@@ -338,8 +345,9 @@ namespace Tensor {
 	}
 
 #define TENSOR_ADD_CTORS(classname)\
+	TENSOR_ADD_SCALAR_CTOR(classname)\
+	TENSOR_ADD_GENERIC_CTOR(classname)\
 	TENSOR_ADD_LAMBDA_CTOR(classname)\
-	TENSOR_ADD_VECTOR_CAST_CTOR(classname)
 
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
 	TENSOR_ADD_CTORS(classname)\
