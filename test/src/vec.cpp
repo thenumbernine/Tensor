@@ -133,6 +133,7 @@ void test_vec() {
 		// swizzle
 		auto fxxx = f.zyx();
 		// TODO need an operator== between T and reference_wrapper<T> ...
+		// or casting ctor?
 		// a generic ctor between _vecs would be nice, but maybe problematic for _mat = _sym
 		//TEST_EQ(f.xxx(), float3(4,4,4));	
 		TEST_EQ(fxxx.z, f.x);
@@ -219,7 +220,6 @@ void test_vec() {
 		TEST_EQ(m.ith_dim<1>, 3);
 
 		// read iterator
-#if 0	
 		{
 			auto i = m.begin();
 			TEST_EQ(*i, 1); ++i;
@@ -233,7 +233,6 @@ void test_vec() {
 			TEST_EQ(*i, 9); ++i;
 			TEST_EQ(i, m.end());
 		}
-#endif
 
 		// write iterator (should match read iterator except for symmetric members)
 

@@ -24,7 +24,7 @@ for GLSL / CL convention, every struct should have when possible:
 	.s[]  (except for reference types ofc ... but why am I even mixing them in?  cuz swizzle and std::tie)
 direct access to the data ... should be done via .s[] for now at least
 
-operators ... scalar / tensor, tensor/scalar, tensor/tensor 
+operators ... scalar / tensor, tensor/scalar, tensor/tensor
 
 the * operator for tensor/tensor should be an outer+contract, ex:
 	rank-2 a * rank-2 b = a_ij * b_jk = rank-2 c_ik (matrix mul)
@@ -68,6 +68,7 @@ namespace Tensor {
 \
 	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the child-most nested class that isn't in our math library. */\
+	/* TODO why can't I use VectorTraits<This> here? */\
 	using ScalarType = typename VectorTraits<T>::ScalarType;\
 \
 	/*  TRUE FOR ALL TENSORS */\
@@ -295,15 +296,18 @@ namespace Tensor {
 	TENSOR_ADD_CMP_OP(classname)\
 	TENSOR_ADD_SIZE(classname)
 
-#define TENSOR_ADD_LAMBDA_CTOR(classname)\
+#define TENSOR_ADD_CTORS(classname)\
+\
+	/* lambda ctor */\
 	classname(std::vector<ScalarType(intN)> f) {\
-		for (auto i : iterate_index()) {\
-			(*this)(i) = f(i);\
+		/* TODO maybe? for (auto i : iterate_index()) {*/\
+		for (auto i = begin(); i != end(); ++i) {\
+			*i = f(i.index);\
 		}\
 	}
 
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
-	/*TENSOR_ADD_LAMBDA_CTOR(classname)*/\
+	/*TENSOR_ADD_CTORS(classname)*/\
 	TENSOR_ADD_VECTOR_BRACKET_INDEX()\
 	TENSOR_ADD_CALL_INDEX()\
 	TENSOR_ADD_OPS(classname)\
@@ -412,20 +416,22 @@ struct _vec;
 // base/scalar case
 template<typename T>
 struct VectorTraits {
-	static constexpr int thisRank = 0;
+	using InnerType = void;
+	using InnerTraits = void;
 	static constexpr int rank = 0;
-	
 	using ScalarType = T;
 };
 
 // recursive/vec/matrix/tensor case
-template<typename T> requires is_tensor_v<T> 
+template<typename T>
+requires is_tensor_v<T>
 struct VectorTraits<T> {
 	using InnerType = typename T::InnerType;
+	using InnerTraits = VectorTraits<InnerType>;
 
-	static constexpr int rank = T::thisRank + VectorTraits<InnerType>::rank;
-	
-	using ScalarType = typename T::ScalarType;
+	static constexpr int rank = T::thisRank + InnerTraits::rank;
+
+	using ScalarType = typename InnerTraits::ScalarType;
 
 	// a function for getting the i'th component of the size vector
 	template<int i>
@@ -435,7 +441,7 @@ struct VectorTraits<T> {
 		if constexpr (i < T::thisRank) {
 			return T::dim;
 		} else {
-			return VectorTraits<typename T::InnerType>::template calc_ith_dim<i - T::thisRank>();
+			return InnerTraits::template calc_ith_dim<i - T::thisRank>();
 		}
 	}
 
@@ -455,15 +461,15 @@ struct VectorTraits<T> {
 			}
 			if constexpr (T::thisRank < rank) {
 				// special case reading from int
-				if constexpr (T::InnerType::rank == 1) {
-					sizev.s[T::thisRank] = VectorTraits<typename T::InnerType>::dims();
+				if constexpr (InnerType::rank == 1) {
+					sizev.s[T::thisRank] = InnerTraits::dims();
 				} else {
 					// assigning sub-vector
 					sizev.template subset<rank-T::thisRank, T::thisRank>()
-						= VectorTraits<typename T::InnerType>::dims();
+						= InnerTraits::dims();
 				}
 			}
-#endif			
+#endif
 			return sizev;
 		}
 	}
@@ -1322,7 +1328,7 @@ struct _sym<T,4> {
 			T s03;
 			T s13;
 			T s23;
-			T s33;	
+			T s33;
 		};
 		T s[count];
 	};
