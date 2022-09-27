@@ -1,4 +1,4 @@
-#include "Tensor/Vector.h"
+#include "Tensor/Tensor.h"
 #include "Tensor/Inverse.h"
 #include "Common/Test.h"
 
@@ -272,12 +272,30 @@ void test_vec() {
 	opertors
 	make sure operator* works
 	I don't think I have marix *= working yet
-
-	tensor of vec-vec-vec
 	
 	symmetric
 
 	tensor of vec-symmetric
 	tensor of symmetric-vec
 	*/
+
+	{
+		float3x3 m;
+	
+		//TODO verify lambda ctor only covers write operators, i.e. 6 inits instead of 9
+		
+		static_assert(m.rank == 2);
+		static_assert(m.ith_dim<0> == 3);
+		static_assert(m.ith_dim<1> == 3);
+	}
+
+	// tensor of vec-vec-vec
+	{
+		using T = _tensor<float, 2, 4, 5>;
+		T t;
+		static_assert(t.rank == 3);
+		static_assert(t.ith_dim<0> == 2);
+		static_assert(t.ith_dim<1> == 4);
+		static_assert(t.ith_dim<2> == 5);
+	}
 }

@@ -75,7 +75,11 @@ namespace Tensor {
 	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
 	/*  for vectors-of-vectors this is the nesting. */\
 	/*  if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each. */\
-	static constexpr int rank = VectorTraits<This>::rank;\
+	/**/\
+	/* if we do recursive case in VectorTraits (failing for rank-3 and above): */\
+	/*static constexpr int rank = VectorTraits<This>::rank;*/\
+	/* if we do recursive case here: */\
+	static constexpr int rank = thisRank + VectorTraits<InnerType>::rank;\
 \
 	/* used for vector-dereferencing into the tensor. */\
 	using intN = _vec<int,rank>;
@@ -463,7 +467,12 @@ struct VectorTraits<T> {
 	using InnerType = typename T::InnerType;
 	using InnerTraits = VectorTraits<InnerType>;
 
-	static constexpr int rank = T::thisRank + InnerTraits::rank;
+	// using rank = thisRank + VectorTraits<InnerType>::rank in _vec
+	static constexpr int rank = T::rank;
+	// using VectorTraits<This>::rank in _vec
+	// would be nice to do all recursive calcs inside VectorTraits instead of across _vec
+	// but this screws up with _tensor<real,3,3,3> rank3 and above
+	//static constexpr int rank = T::thisRank + InnerTraits::rank;
 
 	using ScalarType = typename InnerTraits::ScalarType;
 
