@@ -328,8 +328,7 @@ namespace Tensor {
 		}\
 \
 		void to_ostream(std::ostream & o) const {\
-			/*o << "ReadIterator(owner=" << &owner << ", index=" << index << ")";*/\
-			o << "here";\
+			o << "ReadIterator(owner=" << &owner << ", index=" << index << ")";\
 		}\
 \
 		static ReadIterator begin(vec_constness & v) {\
@@ -341,10 +340,10 @@ namespace Tensor {
 			return ReadIterator(v, index);\
 		}\
 	};\
-	using iterator = ReadIterator<_vec>;\
+	using iterator = ReadIterator<This>;\
 	iterator begin() { return iterator::begin(*this); }\
 	iterator end() { return iterator::end(*this); }\
-	using const_iterator = ReadIterator<_vec const>;\
+	using const_iterator = ReadIterator<This const>;\
 	const_iterator begin() const { return const_iterator::begin(*this); }\
 	const_iterator end() const { return const_iterator::end(*this); }\
 	const_iterator cbegin() const { return const_iterator::begin(*this); }\
@@ -456,7 +455,7 @@ struct _vec {
 	// for (anti?)symmetric it is N*(N+1)/2
 	static constexpr int count = dim;
 
-	T s[dim] = {};
+	T s[count] = {};
 	_vec() {}
 	
 	TENSOR2_VECTOR_CLASS_OPS(_vec)
@@ -484,7 +483,7 @@ struct _vec<T,2> {
 			T s0;
 			T s1;
 		};
-		T s[dim];
+		T s[count];
 	};
 	_vec() {}
 	_vec(T x_, T y_) : x(x_), y(y_) {}
@@ -585,7 +584,7 @@ struct _vec<T,3> {
 			T s1;
 			T s2;
 		};
-		T s[dim];// requires !std::is_reference_v<T>;
+		T s[count];
 	};
 	_vec() {}
 	_vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
@@ -697,7 +696,7 @@ struct _vec<T,4> {
 			T s2;
 			T s3;
 		};
-		T s[dim];
+		T s[count];
 	};
 	_vec() {}
 	_vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
@@ -1189,7 +1188,7 @@ struct _sym {
 	static constexpr int rank = thisRank + VectorTraits<T>::rank;
 	static constexpr int count = (dim * (dim + 1)) >> 1;
 
-	T s[(dim*(dim+1))>>1] = {};
+	T s[count] = {};
 	_sym() {}
 
 	TENSOR2_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
@@ -1217,7 +1216,7 @@ struct _sym<T,2> {
 			T s01;
 			T s11;
 		};
-		T s[(dim*(dim+1))>>1];
+		T s[count];
 	};
 	_sym() {}
 	_sym(T xx_, T xy_, T yy_) : xx(xx_), xy(xy_), yy(yy_) {}
@@ -1259,7 +1258,7 @@ struct _sym<T,3> {
 			T s12;
 			T s22;
 		};
-		T s[(dim*(dim+1))>>1];
+		T s[count];
 	};
 	_sym() {}
 	_sym(
@@ -1324,7 +1323,7 @@ struct _sym<T,4> {
 			T s23;
 			T s33;	
 		};
-		T s[(dim*(dim+1))>>1];
+		T s[count];
 	};
 	_sym() {}
 	_sym(
@@ -1461,6 +1460,8 @@ static_assert(sizeof(float4s4) == sizeof(float) * 10);
 static_assert(sizeof(double4s4) == sizeof(double) * 10);
 static_assert(std::is_same_v<typename float4s4::ScalarType, float>);
 
+}
+
 // ostream
 // _vec does have .fields
 // and I do have my default .fields ostream
@@ -1468,7 +1469,7 @@ static_assert(std::is_same_v<typename float4s4::ScalarType, float>);
 // so that the .fields vec2 vec3 vec4 and the non-.fields other vecs all look the same
 #if 1
 template<typename Type, int dim>
-std::ostream & operator<<(std::ostream & o, _vec<Type,dim> const & t) {
+std::ostream & operator<<(std::ostream & o, Tensor::_vec<Type,dim> const & t) {
 	char const * sep = "";
 	o << "{";
 	for (int i = 0; i < t.count; ++i) {
@@ -1481,7 +1482,7 @@ std::ostream & operator<<(std::ostream & o, _vec<Type,dim> const & t) {
 
 // TODO print as fields of .sym, or print as vector?
 template<typename Type, int dim>
-std::ostream & operator<<(std::ostream & o, _sym<Type,dim> const & t) {
+std::ostream & operator<<(std::ostream & o, Tensor::_sym<Type,dim> const & t) {
 	char const * sep = "";
 	o << "{";
 	for (int i = 0; i < t.count; ++i) {
@@ -1492,8 +1493,6 @@ std::ostream & operator<<(std::ostream & o, _sym<Type,dim> const & t) {
 	return o;
 }
 #endif
-
-}
 
 // tostring / ostream
 

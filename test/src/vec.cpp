@@ -6,10 +6,6 @@ using namespace Tensor;
 
 // static tests here:
 
-std::ostream & operator<<(std::ostream & o, float3::iterator const & i) {
-	return o << "here";
-}
-
 void test_vec() {
 	//vector
 
@@ -66,6 +62,15 @@ void test_vec() {
 			TEST_EQ(*i, 7);
 			i++;
 			TEST_EQ(i, f.end());
+		
+			for (auto & i : f) {
+				std::cout << "f iter = " << i << std::endl;
+			}
+			for (auto const & i : f) {
+				std::cout << "f iter = " << i << std::endl;
+			}
+			// TODO verify cbegin/cend
+			// TODO support for rbegin/rend const/not const and crbegin/crend
 		}
 
 		// bracket ctor
@@ -214,6 +219,22 @@ void test_vec() {
 		TEST_EQ(m.ith_dim<1>, 3);
 
 		// read iterator
+#if 0	
+		{
+			auto i = m.begin();
+			TEST_EQ(*i, 1); ++i;
+			TEST_EQ(*i, 2); ++i;
+			TEST_EQ(*i, 3); ++i;
+			TEST_EQ(*i, 4); ++i;
+			TEST_EQ(*i, 5); ++i;
+			TEST_EQ(*i, 6); ++i;
+			TEST_EQ(*i, 7); ++i;
+			TEST_EQ(*i, 8); ++i;
+			TEST_EQ(*i, 9); ++i;
+			TEST_EQ(i, m.end());
+		}
+#endif
+
 		// write iterator (should match read iterator except for symmetric members)
 
 		// TODO matrix subset access
