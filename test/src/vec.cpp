@@ -1,4 +1,5 @@
 #include "Tensor/Vector.h"
+#include "Tensor/Inverse.h"
 #include "Common/Test.h"
 
 using namespace Tensor;
@@ -101,6 +102,8 @@ void test_vec() {
 			{35, 5, 10},
 			{49, 7, 14}
 		));
+
+		// TODO vector subset access
 	
 		// swizzle
 		auto fxxx = f.zyx();
@@ -114,15 +117,87 @@ void test_vec() {
 //		TEST_EQ(f.xy(), float2(4,5));
 //		TEST_EQ(f.yx(), float2(5,4));
 //		TEST_EQ(f.yy(), float2(5,5));
+		
+		/* more tests ...
+		float2 float4
+		int2 int3 int4
+		
+		default-template vectors of dif sizes (5 maybe? ... )
+			assert that no .x exists to verify	
+		*/
 	}
-	
-	/* more tests ...
-	float2 float4
-	int2 int3 int4
-	
-	default-template vectors of dif sizes (5 maybe? ... )
-		assert that no .x exists to verify	
-	
+
+	// matrix
+	{
+		//bracket ctor
+		float3x3 m = {
+			{1,2,3},
+			{4,5,6},
+			{7,8,9},
+		};
+
+		// TODO .x .y .z indexing
+		// TODO .s0 .s1 .s2 indexing
+		// TODO .s[] indexing
+		
+		//m[i][j] indexing
+		TEST_EQ(m[0][0], 1);
+		TEST_EQ(m[0][1], 2);
+		TEST_EQ(m[0][2], 3);
+		TEST_EQ(m[1][0], 4);
+		TEST_EQ(m[1][1], 5);
+		TEST_EQ(m[1][2], 6);
+		TEST_EQ(m[2][0], 7);
+		TEST_EQ(m[2][1], 8);
+		TEST_EQ(m[2][2], 9);
+
+		//m(i)(j) indexing
+		TEST_EQ(m(0)(0), 1);
+		TEST_EQ(m(0)(1), 2);
+		TEST_EQ(m(0)(2), 3);
+		TEST_EQ(m(1)(0), 4);
+		TEST_EQ(m(1)(1), 5);
+		TEST_EQ(m(1)(2), 6);
+		TEST_EQ(m(2)(0), 7);
+		TEST_EQ(m(2)(1), 8);
+		TEST_EQ(m(2)(2), 9);
+		
+		//m(i,j) indexing
+		TEST_EQ(m(0,0), 1);
+		TEST_EQ(m(0,1), 2);
+		TEST_EQ(m(0,2), 3);
+		TEST_EQ(m(1,0), 4);
+		TEST_EQ(m(1,1), 5);
+		TEST_EQ(m(1,2), 6);
+		TEST_EQ(m(2,0), 7);
+		TEST_EQ(m(2,1), 8);
+		TEST_EQ(m(2,2), 9);
+
+		//m(int2(i,j)) indexing
+		TEST_EQ(m(int2(0,0)), 1);
+		TEST_EQ(m(int2(0,1)), 2);
+		TEST_EQ(m(int2(0,2)), 3);
+		TEST_EQ(m(int2(1,0)), 4);
+		TEST_EQ(m(int2(1,1)), 5);
+		TEST_EQ(m(int2(1,2)), 6);
+		TEST_EQ(m(int2(2,0)), 7);
+		TEST_EQ(m(int2(2,1)), 8);
+		TEST_EQ(m(int2(2,2)), 9);
+		
+		// sub-vectors (row)
+		TEST_EQ(m[0], float3(1,2,3));
+		TEST_EQ(m[1], float3(4,5,6));
+		TEST_EQ(m[2], float3(7,8,9));
+
+		// TODO matrix subset access
+
+		// TODO matrix swizzle
+
+		//determinant
+		TEST_EQ(determinant(m), 0);
+	}
+
+	/*
 	matrix
 
 	opertors

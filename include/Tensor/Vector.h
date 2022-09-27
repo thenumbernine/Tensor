@@ -146,13 +146,38 @@ namespace Tensor {
 		return (*this)[i](rest...);\
 	}
 
+#define TENSOR2_ADD_INT_VEC_CALL_INDEX()\
+\
+	/* a(intN(i,...)) base case */\
+	auto & operator()(_vec<int,1> const & i) { return (*this)[i(0)]; }\
+	auto const & operator()(_vec<int,1> const & i) const { return (*this)[i(0)]; }\
+\
+	/* a(intN(i,...)) inductive case */\
+	template<int dim2>\
+	requires (dim2 > 1)\
+	auto & operator()(_vec<int,dim2> const & i) {\
+		constexpr int subdim2 = dim2 - 1;\
+		auto const & subi = (i. template subset<subdim2, 1>());\
+		return (*this)[i(0)](subi);\
+	}\
+\
+	/* a(intN(i,...)) inductive case const */\
+	template<int dim2>\
+	requires (dim2 > 1)\
+	auto const & operator()(_vec<int,dim2> const & i) const {\
+		constexpr int subdim2 = dim2 - 1;\
+		auto const & subi = (i. template subset<subdim2, 1>());\
+		return (*this)[i(0)](subi);\
+	}
+
 #define TENSOR2_ADD_CALL_INDEX()\
 \
 	/* a(i) := a_i */\
 	auto & operator()(int i) { return (*this)[i]; }\
 	auto const & operator()(int i) const { return (*this)[i]; }\
 \
-	TENSOR2_ADD_RECURSIVE_CALL_INDEX()
+	TENSOR2_ADD_RECURSIVE_CALL_INDEX()\
+	TENSOR2_ADD_INT_VEC_CALL_INDEX()
 
 // danger ... danger ...
 #define TENSOR2_ADD_ASSIGN_OP(classname)\
@@ -161,6 +186,34 @@ namespace Tensor {
 			s[i] = o.s[i];\
 		}\
 		return *this;\
+	}
+
+#define TENSOR2_ADD_SUBSET_ACCESS()\
+\
+	/* assumes packed tensor */\
+	template<int subdim, int offset>\
+	_vec<T,subdim> & subset() {\
+		static_assert(offset + subdim <= dim);\
+		return *(_vec<T,subdim>*)(s+offset);\
+	}\
+\
+	/* assumes packed tensor */\
+	template<int subdim, int offset>\
+	_vec<T,subdim> const & subset() const {\
+		static_assert(offset + subdim <= dim);\
+		return *(_vec<T,subdim>*)(s+offset);\
+	}\
+\
+	/* assumes packed tensor */\
+	template<int subdim>\
+	_vec<T,subdim> & subset(int offset) {\
+		return *(_vec<T,subdim>*)(s+offset);\
+	}\
+\
+	/* assumes packed tensor */\
+	template<int subdim>\
+	_vec<T,subdim> const & subset(int offset) const {\
+		return *(_vec<T,subdim>*)(s+offset);\
 	}
 
 //these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
@@ -181,7 +234,9 @@ namespace Tensor {
 	TENSOR2_ADD_VECTOR_BRACKET_INDEX()\
 	TENSOR2_ADD_CALL_INDEX()\
 	TENSOR2_ADD_OPS(classname)\
+	TENSOR2_ADD_SUBSET_ACCESS()\
 \
+	/* assumes InnerType operator* exists */\
 	T volume() const {\
 		T res = s[0];\
 		for (int i = 1; i < count; ++i) {\
@@ -337,6 +392,12 @@ using uint2 = _vec2<unsigned int>;
 using float2 = _vec2<float>;
 using double2 = _vec2<double>;
 
+static_assert(sizeof(bool2) == sizeof(bool) * 2);
+static_assert(sizeof(uchar2) == sizeof(unsigned char) * 2);
+static_assert(sizeof(int2) == sizeof(int) * 2);
+static_assert(sizeof(uint2) == sizeof(unsigned int) * 2);
+static_assert(sizeof(float2) == sizeof(float) * 2);
+static_assert(sizeof(double2) == sizeof(double) * 2);
 static_assert(std::is_same_v<float2::ScalarType, float>);
 static_assert(std::is_same_v<float2::InnerType, float>);
 static_assert(float2::rank == 1);
@@ -436,14 +497,20 @@ using _vec3 = _vec<T,3>;
 using bool3 = _vec3<bool>;
 using uchar3 = _vec3<unsigned char>;
 using int3 = _vec3<int>;
+using uint3 = _vec3<unsigned int>;
 using float3 = _vec3<float>;
 using double3 = _vec3<double>;
 
+static_assert(sizeof(bool3) == sizeof(bool) * 3);
+static_assert(sizeof(uchar3) == sizeof(unsigned char) * 3);
+static_assert(sizeof(int3) == sizeof(int) * 3);
+static_assert(sizeof(uint3) == sizeof(unsigned int) * 3);
+static_assert(sizeof(float3) == sizeof(float) * 3);
+static_assert(sizeof(double3) == sizeof(double) * 3);
 static_assert(std::is_same_v<float3::ScalarType, float>);
 static_assert(std::is_same_v<float3::InnerType, float>);
 static_assert(float3::rank == 1);
 static_assert(float3::dim == 3);
-
 
 template<typename T>
 struct _vec<T,4> {
@@ -553,6 +620,12 @@ using uint4 = _vec4<unsigned int>;
 using float4 = _vec4<float>;
 using double4 = _vec4<double>;
 
+static_assert(sizeof(bool4) == sizeof(bool) * 4);
+static_assert(sizeof(uchar4) == sizeof(unsigned char) * 4);
+static_assert(sizeof(int4) == sizeof(int) * 4);
+static_assert(sizeof(uint4) == sizeof(unsigned int) * 4);
+static_assert(sizeof(float4) == sizeof(float) * 4);
+static_assert(sizeof(double4) == sizeof(double) * 4);
 static_assert(std::is_same_v<float4::ScalarType, float>);
 static_assert(std::is_same_v<float4::InnerType, float>);
 static_assert(float4::rank == 1);
@@ -579,6 +652,12 @@ using int2x2 = _mat2x2<int>;
 using uint2x2 = _mat2x2<uint>;
 using float2x2 = _mat2x2<float>;
 using double2x2 = _mat2x2<double>;
+static_assert(sizeof(bool2x2) == sizeof(bool) * 2 * 2);
+static_assert(sizeof(uchar2x2) == sizeof(unsigned char) * 2 * 2);
+static_assert(sizeof(int2x2) == sizeof(int) * 2 * 2);
+static_assert(sizeof(uint2x2) == sizeof(unsigned int) * 2 * 2);
+static_assert(sizeof(float2x2) == sizeof(float) * 2 * 2);
+static_assert(sizeof(double2x2) == sizeof(double) * 2 * 2);
 
 template<typename T> using _mat2x3 = _vec2<_vec3<T>>;
 using bool2x3 = _mat2x3<bool>;
@@ -587,6 +666,12 @@ using int2x3 = _mat2x3<int>;
 using uint2x3 = _mat2x3<uint>;
 using float2x3 = _mat2x3<float>;
 using double2x3 = _mat2x3<double>;
+static_assert(sizeof(bool2x3) == sizeof(bool) * 2 * 3);
+static_assert(sizeof(uchar2x3) == sizeof(unsigned char) * 2 * 3);
+static_assert(sizeof(int2x3) == sizeof(int) * 2 * 3);
+static_assert(sizeof(uint2x3) == sizeof(unsigned int) * 2 * 3);
+static_assert(sizeof(float2x3) == sizeof(float) * 2 * 3);
+static_assert(sizeof(double2x3) == sizeof(double) * 2 * 3);
 
 template<typename T> using _mat2x4 = _vec2<_vec4<T>>;
 using bool2x4 = _mat2x4<bool>;
@@ -927,6 +1012,7 @@ so the accessors need nested call indexing too
 	Accessor & operator()(int i) { return (*this)[i]; }\
 	ConstAccessor & operator()(int i) const { return (*this)[i]; }\
 \
+	TENSOR2_ADD_INT_VEC_CALL_INDEX()\
 	TENSOR2_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()
 
 
@@ -1168,6 +1254,13 @@ using int2s2 = _sym2<int>;
 using uint2s2 = _sym2<uint>;
 using float2s2 = _sym2<float>;
 using double2s2 = _sym2<double>;
+
+static_assert(sizeof(bool2s2) == sizeof(bool) * 3);
+static_assert(sizeof(uchar2s2) == sizeof(unsigned char) * 3);
+static_assert(sizeof(int2s2) == sizeof(int) * 3);
+static_assert(sizeof(uint2s2) == sizeof(unsigned int) * 3);
+static_assert(sizeof(float2s2) == sizeof(float) * 3);
+static_assert(sizeof(double2s2) == sizeof(double) * 3);
 static_assert(std::is_same_v<typename float2s2::ScalarType, float>);
 
 template<typename T> using _sym3 = _sym<T,3>;
@@ -1177,6 +1270,13 @@ using int3s3 = _sym3<int>;
 using uint3s3 = _sym3<uint>;
 using float3s3 = _sym3<float>;
 using double3s3 = _sym3<double>;
+
+static_assert(sizeof(bool3s3) == sizeof(bool) * 6);
+static_assert(sizeof(uchar3s3) == sizeof(unsigned char) * 6);
+static_assert(sizeof(int3s3) == sizeof(int) * 6);
+static_assert(sizeof(uint3s3) == sizeof(unsigned int) * 6);
+static_assert(sizeof(float3s3) == sizeof(float) * 6);
+static_assert(sizeof(double3s3) == sizeof(double) * 6);
 static_assert(std::is_same_v<typename float3s3::ScalarType, float>);
 
 template<typename T> using _sym4 = _sym<T,4>;
@@ -1186,6 +1286,13 @@ using int4s4 = _sym4<int>;
 using uint4s4 = _sym4<uint>;
 using float4s4 = _sym4<float>;
 using double4s4 = _sym4<double>;
+
+static_assert(sizeof(bool4s4) == sizeof(bool) * 10);
+static_assert(sizeof(uchar4s4) == sizeof(unsigned char) * 10);
+static_assert(sizeof(int4s4) == sizeof(int) * 10);
+static_assert(sizeof(uint4s4) == sizeof(unsigned int) * 10);
+static_assert(sizeof(float4s4) == sizeof(float) * 10);
+static_assert(sizeof(double4s4) == sizeof(double) * 10);
 static_assert(std::is_same_v<typename float4s4::ScalarType, float>);
 
 // ostream

@@ -1,4 +1,5 @@
 #include "Tensor/Vector.h"
+#include "Common/Macros.h"
 #include <functional>
 
 namespace Tensor {
