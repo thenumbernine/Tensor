@@ -158,7 +158,7 @@ void test_vec() {
 		TEST_EQ(h.w, 5);
 
 		Tensor::_vec<float,5> j = {5,6,7,8,9};
-		//can't use xyzw for dim>4
+		//non-specialized: can't use xyzw for dim>4
 		TEST_EQ(j[0], 5);
 		TEST_EQ(j[1], 6);
 		TEST_EQ(j[2], 7);
@@ -298,12 +298,7 @@ void test_vec() {
 
 	opertors
 	make sure operator* works
-	I don't think I have marix *= working yet
-	
-	symmetric
-
-	tensor of vec-symmetric
-	tensor of symmetric-vec
+	I don't think I have marix *= working yet	
 	*/
 
 	{
@@ -314,6 +309,8 @@ void test_vec() {
 		static_assert(m.rank == 2);
 		static_assert(m.ith_dim<0> == 3);
 		static_assert(m.ith_dim<1> == 3);
+	
+		// TODO matrix swizzle
 	}
 
 	// tensor of vec-vec-vec
@@ -324,11 +321,93 @@ void test_vec() {
 		static_assert(t.ith_dim<0> == 2);
 		static_assert(t.ith_dim<1> == 4);
 		static_assert(t.ith_dim<2> == 5);
-	
+
+		//TODO 
 		//tensor * scalar
 		//scalar * tensor
 	
 //		t * 1.f;
 	}
 
+	//symmetric
+	{
+		auto a = Tensor::float3s3(); // default
+		static_assert(a.rank == 2);
+		static_assert(a.ith_dim<0> == 3);
+		static_assert(a.ith_dim<1> == 3);
+		// default ctor
+		for (int i = 0; i < a.ith_dim<0>; ++i) {
+			for (int j = 0; j < a.ith_dim<1>; ++j) {
+				TEST_EQ(a(i,j), 0);
+				TEST_EQ(a(j,i), 0);
+			}
+		}
+
+		// TODO lambda ctor for WRITE INDEXES ONLY 
+		// TODO lambda ctor dim>1 using int,int...
+		auto b = Tensor::float3s3([](Tensor::int2 ij) -> float {
+			return (float)(ij.x+ij.y);
+		});
+		for (int i = 0; i < b.ith_dim<0>; ++i) {
+			for (int j = 0; j < b.ith_dim<1>; ++j) {
+				TEST_EQ(b(i,j), i+j);
+				TEST_EQ(b(j,i), i+j);
+			}
+		}
+		b(0,2) = 7;
+		TEST_EQ(b(2,0), 7);
+
+		// partial index
+		for (int i = 0; i < b.ith_dim<0>; ++i) {
+			for (int j = 0; j < b.ith_dim<1>; ++j) {
+				TEST_EQ(b[i][j], b(i,j));
+			}
+		}
+	
+		// TODO how do GLSL matrix ctor from scalars work? 
+		// do they initialize to full scalars like vecs do?
+		// do they initialize to ident times scalar like math do?
+	}
+	
+	// tensor with intermixed non-vec types:
+	// tensor of vec-symmetric
+	{
+		//this is a T_ijk = T_ikj, i spans 3 dims, j and k span 2 dims
+		using T2S3 = Tensor::_tensori<float, Tensor::index_vec<2>, Tensor::index_sym<3>>;
+		
+		// list ctor
+		T2S3 t = {
+			{1,2,3,4,5,6}, //xx xy yy xz yz zz
+			{7,8,9,0,1,2},
+		};
+		// xyz field access
+		TEST_EQ(t.x.xx, 1);
+		TEST_EQ(t.x.xy, 2);
+		TEST_EQ(t.x.yy, 3);
+		TEST_EQ(t.x.xz, 4);
+		TEST_EQ(t.x.yz, 5);
+		TEST_EQ(t.x.zz, 6);
+		TEST_EQ(t.y.xx, 7);
+		TEST_EQ(t.y.xy, 8);
+		TEST_EQ(t.y.yy, 9);
+		TEST_EQ(t.y.xz, 0);
+		TEST_EQ(t.y.yz, 1);
+		TEST_EQ(t.y.zz, 2);
+	
+		// nested (int,int,int) access
+		TEST_EQ(t(0,0,0), 1);
+		TEST_EQ(t(0,0,1), 2);
+		TEST_EQ(t(0,1,1), 3);
+		TEST_EQ(t(0,0,2), 4);
+		TEST_EQ(t(0,1,2), 5);
+		TEST_EQ(t(0,2,2), 6);
+		TEST_EQ(t(1,0,0), 7);
+		TEST_EQ(t(1,0,1), 8);
+		TEST_EQ(t(1,1,1), 9);
+		TEST_EQ(t(1,0,2), 0);
+		TEST_EQ(t(1,1,2), 1);
+		TEST_EQ(t(1,2,2), 2);
+	
+	}
+	// tensor of symmetric-vec
 }

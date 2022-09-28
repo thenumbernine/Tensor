@@ -287,25 +287,11 @@ namespace Tensor {
 // TODO write iterator so _sym
 // also TODO can't use this in conjunction with the requires to_ostream or you get ambiguous operator
 // the operator<< requires to_fields and _vec having fields probably doesn't help
+// ... not using this
 #define TENSOR_ADD_TO_OSTREAM(classname)\
 	std::ostream & to_ostream(std::ostream & o) const {\
 		return Common::iteratorToOStream(o, *this);\
-	}\
-
-//these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
-#define TENSOR_ADD_OPS(classname)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, +=)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, -=)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, *=)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, /=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, +=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, -=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, *=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, /=)\
-	TENSOR_ADD_UNM(classname)\
-	TENSOR_ADD_DOT(classname)\
-	TENSOR_ADD_CMP_OP(classname)\
-	TENSOR_ADD_SIZE(classname)
+	}
 
 // lambda ctor
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
@@ -371,24 +357,24 @@ namespace Tensor {
 	TENSOR_ADD_LAMBDA_CTOR(classname)\
 	TENSOR_ADD_LIST_CTOR(classname)
 
-// only add these to _vec and specializations
-// ... so ... 'classname' is always '_vec' for this set of macros
-#define TENSOR_VECTOR_CLASS_OPS(classname)\
-	TENSOR_ADD_CTORS(classname)\
-	TENSOR_ADD_VECTOR_BRACKET_INDEX()\
-	TENSOR_ADD_CALL_INDEX()\
-	TENSOR_ADD_OPS(classname)\
-	TENSOR_ADD_SUBSET_ACCESS()\
-\
-	/* assumes InnerType operator* exists */\
-	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
-	T volume() const {\
-		T res = s[0];\
-		for (int i = 1; i < count; ++i) {\
-			res *= s[i];\
-		}\
-		return res;\
-	}\
+//these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
+#define TENSOR_ADD_OPS(classname)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, +=)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, -=)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, *=)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, /=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, +=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, -=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, *=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, /=)\
+	TENSOR_ADD_CTORS(classname) /* ctors, namely lambda ctor, needs read iterators*/ \
+	TENSOR_ADD_READ_ITERATOR(classname)\
+	TENSOR_ADD_UNM(classname)\
+	TENSOR_ADD_DOT(classname)\
+	TENSOR_ADD_CMP_OP(classname)\
+	TENSOR_ADD_SIZE(classname)
+
+#define TENSOR_ADD_READ_ITERATOR(classname)\
 \
 	/* iterators */\
 	template<typename vec_constness>\
@@ -475,6 +461,24 @@ namespace Tensor {
 	const_iterator end() const { return const_iterator::end(*this); }\
 	const_iterator cbegin() const { return const_iterator::begin(*this); }\
 	const_iterator cend() const { return const_iterator::end(*this); }
+
+// only add these to _vec and specializations
+// ... so ... 'classname' is always '_vec' for this set of macros
+#define TENSOR_VECTOR_CLASS_OPS(classname)\
+	TENSOR_ADD_VECTOR_BRACKET_INDEX()\
+	TENSOR_ADD_CALL_INDEX()\
+	TENSOR_ADD_OPS(classname)\
+	TENSOR_ADD_SUBSET_ACCESS()\
+\
+	/* assumes InnerType operator* exists */\
+	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
+	T volume() const {\
+		T res = s[0];\
+		for (int i = 1; i < count; ++i) {\
+			res *= s[i];\
+		}\
+		return res;\
+	}
 
 #if 0	//hmm, this isn't working when it is run
 	//TENSOR_ADD_ASSIGN_OP(classname)
@@ -1551,14 +1555,11 @@ static_assert(sizeof(float4s4) == sizeof(float) * 10);
 static_assert(sizeof(double4s4) == sizeof(double) * 10);
 static_assert(std::is_same_v<typename float4s4::ScalarType, float>);
 
-}
-
 // ostream
 // _vec does have .fields
 // and I do have my default .fields ostream
 // but here's a manual override anyways
 // so that the .fields vec2 vec3 vec4 and the non-.fields other vecs all look the same
-#if 1
 template<typename Type, int dim>
 std::ostream & operator<<(std::ostream & o, Tensor::_vec<Type,dim> const & t) {
 	char const * sep = "";
@@ -1583,9 +1584,10 @@ std::ostream & operator<<(std::ostream & o, Tensor::_sym<Type,dim> const & t) {
 	o << "}";
 	return o;
 }
-#endif
 
-// tostring / ostream
+} // namespace Tensor
+
+// tostring 
 
 namespace std {
 

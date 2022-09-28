@@ -216,11 +216,7 @@ struct Grid {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
-				// TODO why can't I use operator<<?  no, 'using ::operator<<' doen't help
-				// doesn't work:
-				//throw Common::Exception() << "size is " << size << " but dereference is " << deref;
-				// works: ... sometimes ...not always ... hmm
-				throw Common::Exception() << "failed";//"size is " << std::to_string(size) << " but dereference is " << std::to_string(deref);
+				throw Common::Exception() << "size is " << size << " but dereference is " << deref;
 			}
 		}
 #endif
@@ -232,8 +228,7 @@ struct Grid {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
-				// same as above
-				throw Common::Exception() << "failed";//"size is " << std::to_string(size) << " but dereference is " << std::to_string(deref);
+				throw Common::Exception() << "size is " << size << " but dereference is " << deref;
 			}
 		}
 #endif
