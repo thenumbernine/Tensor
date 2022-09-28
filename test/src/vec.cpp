@@ -116,8 +116,8 @@ void test_vec() {
 		TEST_EQ(lenSq(f), 90);
 
 		// length
-		TEST_EQ_EPS(f.length(), sqrt(90), 1e-7);
-		TEST_EQ_EPS(length(f), sqrt(90), 1e-7);
+		TEST_EQ_EPS(f.length(), sqrt(90), 1e-6);
+		TEST_EQ_EPS(length(f), sqrt(90), 1e-6);
 		
 		// cros product
 		TEST_EQ(cross(f,g), Tensor::float3(3, 41, -31))
