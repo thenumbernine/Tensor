@@ -225,6 +225,8 @@ void test_vec() {
 #if 0 // not sure which to use			
 			// iterating in memory order for row-major
 			// also in left-right top-bottom order when read
+			// but you have to increment the last index first and first index last
+			// TODO really?
 			// but lambda init is now m(i,j) == 1 + i(1) + 3 * i(0) ... transposed of typical memory indexing
 			TEST_EQ(*i, 1); ++i;
 			TEST_EQ(*i, 2); ++i;
@@ -239,6 +241,7 @@ void test_vec() {
 #endif
 #if 1
 			//iterating transpose to memory order for row-major
+			// - inc first index first, last index last
 			// but lambda init is now m(i,j) == 1 + i(0) + 3 * i(1)  ... typical memory indexing
 			// I could fulfill both at the same time by making my matrices column-major, like OpenGL does ... tempting ...
 			TEST_EQ(*i, 1); ++i;

@@ -12,11 +12,16 @@ template<typename T>
 struct _quat : public _vec4<T> {
 	using This = _quat;
 	using Super = _vec4<T>;
+	TENSOR_VECTOR_HEADER(4)
+	TENSOR_HEADER()
+	//using ScalarType = Super::ScalarType;	// needed by TENSOR_ADD_LAMBDA_CTOR
+	//using intN = Super::intN;				// needed by TENSOR_ADD_LAMBDA_CTOR
 	using vec3 = _vec3<T>;
 
 	_quat() : Super(0,0,0,1) {}
-	_quat(T const & x, T const & y, T const & z, T const & w)
-	: Super(x,y,z,w) {}
+	_quat(T const & x, T const & y, T const & z, T const & w) : Super(x,y,z,w) {}
+	TENSOR_ADD_CTOR_FOR_GENERIC_VECTORS(_quat, _vec);
+	TENSOR_ADD_LAMBDA_CTOR(_quat);
 
 	//conjugate assuming the quat is unit length
 	_quat unitConj() const {
@@ -25,7 +30,7 @@ struct _quat : public _vec4<T> {
 
 	//conjugate
 	_quat conj() const {
-		return unitConj() / Super::lenSq();
+		return unitConj() / this->lenSq();
 	}
 
 	//angle-axis, where angle is in radians
@@ -115,7 +120,7 @@ _quat<T> operator*(_quat<T> a, _quat<T> b) {
 
 template<typename T>
 _quat<T> normalize(_quat<T> const & v) {
-	return (_quat<T>)normalize(v);
+	return (_quat<T>)(v / v.length());
 }
 
 using quati = _quat<int>;	// I don't judge

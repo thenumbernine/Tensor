@@ -32,6 +32,17 @@ the * operator for tensor/tensor should be an outer+contract, ex:
 	rank-3 a * rank-3 b = a_ijk * b_klm = c_ijlm
 
 
+TODO TODO
+	if I do row-major then 
+		- C bracket ctor is in the same layout as the matrix
+		- C notation matches matrix notation : A[i0][i1] = A_i0_i1
+		- memory layout is transposed from nested index order: A_i0_i1 = A[i1 + i0 * size0]
+	if I do column-major then C inline indexing is transposed
+		- C bracket ctor is transposed from the layout of the matrix
+		- matrix notation is transposed: A[j][i] == A_ij
+		- memory layout matches nested index order: A_i0_i1 = A[i0 + size0 * i1]
+		- OpenGL uses this too.
+
 */
 
 #include "Common/String.h"
@@ -160,20 +171,8 @@ namespace Tensor {
 		return result;\
 	}\
 	T lenSq() const { return dot(*this); }\
-	T length() const { return (T)sqrt(lenSq()); }
-
-// danger ... danger ...
-#define TENSOR_ADD_CTOR_FROM_VEC(classname, othername)\
-	template<typename U, int dim2>\
-	classname(othername<U, dim2> const & v) {\
-		int i = 0;\
-		for (; i < count && i < dim2; ++i) {\
-			s[i] = (T)v[i];\
-		}\
-		for (; i < count; ++i) {\
-			s[i] = {};\
-		}\
-	}
+	T length() const { return (T)sqrt(lenSq()); }\
+	This normalize() const { return (*this) / length(); }
 
 // works for nesting _vec's, not for _sym's
 // I am using operator[] as the de-facto correct reference
@@ -309,11 +308,12 @@ namespace Tensor {
 	TENSOR_ADD_SIZE(classname)
 
 // lambda ctor
+// explicit 'this->' so subclasses can use this macro (like _quat)
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
 	/* use int<rank> as our lambda index: */\
 	classname(std::function<ScalarType(intN)> f) {\
 		/* TODO write-member-only: for (auto i : iterate_index()) {*/\
-		for (auto i = begin(); i != end(); ++i) {\
+		for (auto i = this->begin(); i != this->end(); ++i) {\
 			*i = f(i.index);\
 		}\
 	}\
@@ -322,7 +322,7 @@ namespace Tensor {
 	classname(std::function<ScalarType(int)> f)\
 	requires (rank == 1)\
 	{\
-		for (auto i = begin(); i != end(); ++i) {\
+		for (auto i = this->begin(); i != this->end(); ++i) {\
 			*i = f(i.index[0]);\
 		}\
 	}
@@ -336,19 +336,26 @@ namespace Tensor {
 
 // vector cast operator
 // TODO not sure how to write this to generalize into _sym and others (or if I should try to?)
-#define TENSOR_ADD_GENERIC_CTOR(classname)\
+// explicit 'this->s' so subclasses can use this macro (like _quat)
+#define TENSOR_ADD_CTOR_FOR_GENERIC_VECTORS(classname, othername)\
 	template<int dim2, typename U>\
-	_vec(_vec<U, dim2> const & t) {\
-		for (int i = 0; i < count && i < t.count; ++i) {\
-			s[i] = (U)t.s[i];\
+	classname(othername<U, dim2> const & t) {\
+		int i = 0;\
+		for (; i < count && i < t.count; ++i) {\
+			this->s[i] = (T)t.s[i];\
+		}\
+		for (; i < count; ++i) {\
+			this->s[i] = {};\
 		}\
 	}
 
 #define TENSOR_ADD_CTORS(classname)\
 	TENSOR_ADD_SCALAR_CTOR(classname)\
-	TENSOR_ADD_GENERIC_CTOR(classname)\
+	TENSOR_ADD_CTOR_FOR_GENERIC_VECTORS(classname, classname)\
 	TENSOR_ADD_LAMBDA_CTOR(classname)\
 
+// only add these to _vec and specializations
+// ... so ... 'classname' is always '_vec' for this set of macros
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
 	TENSOR_ADD_CTORS(classname)\
 	TENSOR_ADD_VECTOR_BRACKET_INDEX()\
@@ -369,7 +376,7 @@ namespace Tensor {
 	/* iterators */\
 	template<typename vec_constness>\
 	struct ReadIterator {\
-		using intN = vec_constness::intN;\
+		using intN = typename vec_constness::intN;\
 		vec_constness & owner;\
 		intN index;\
 		ReadIterator(vec_constness & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
@@ -1108,6 +1115,7 @@ _mat<T,dim1,dim2> matrixCompMult(_mat<T,dim1,dim2> const & a, _mat<T,dim1,dim2> 
 }
 
 // vector functions
+// TODO for these, should I call into the member function?
 
 // c := a_i * b_i
 // TODO generalize

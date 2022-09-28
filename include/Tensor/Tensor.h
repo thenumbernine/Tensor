@@ -22,7 +22,7 @@ struct NestedTensor {
 };
 
 template<typename T, int dim, int... dims>
-using _tensor = NestedTensor<T, dim, dims...>::tensor;
+using _tensor = typename NestedTensor<T, dim, dims...>::tensor;
 
 #else
 
