@@ -14,8 +14,6 @@ struct _quat : public _vec4<T> {
 	using Super = _vec4<T>;
 	TENSOR_VECTOR_HEADER(4)
 	TENSOR_HEADER()
-	//using ScalarType = Super::ScalarType;	// needed by TENSOR_ADD_LAMBDA_CTOR
-	//using intN = Super::intN;				// needed by TENSOR_ADD_LAMBDA_CTOR
 	using vec3 = _vec3<T>;
 
 	_quat() : Super(0,0,0,1) {}
@@ -39,7 +37,7 @@ struct _quat : public _vec4<T> {
 		T const c = cos(this->w / 2);
 		T const n = sqrt(this->x * this->x + this->y * this->y + this->z * this->z);
 		T const sn = sin(this->w / 2) / n;
-		return _quat(sn * this->x, sn * this->y, sn * this->z, c);
+		return {sn * this->x, sn * this->y, sn * this->z, c};
 	}
 
 	static T angleAxisEpsilon;
@@ -48,17 +46,8 @@ struct _quat : public _vec4<T> {
 		T const cosHalfAngle = clamp(this->w, (T)-1, (T)1);
 		T const halfAngle = acos(cosHalfAngle);
 		T const scale = sin(halfAngle);
-
-		if (std::abs(scale) <= angleAxisEpsilon) {
-			return _quat(0,0,1,0);
-		}
-		
-		return _quat(
-			this->x / scale,
-			this->y / scale,
-			this->z / scale,
-			2 * halfAngle
-		);
+		if (std::abs(scale) <= angleAxisEpsilon) return _quat(0,0,1,0);
+		return {this->x / scale, this->y / scale, this->z / scale, 2 * halfAngle};
 	}
 
 	static _quat mul(_quat const &q, _quat const &r) {
@@ -80,9 +69,7 @@ struct _quat : public _vec4<T> {
 	}
 
 	vec3 rotate(vec3 const & v) const {
-		_quat vq = v;
-		vq = mul(mul(*this, vq), conjugate());
-		return vec3(vq.x, vq.y, vq.z);
+		return *this * _quat(v) * conjugate();
 	}
 
 	vec3 xAxis() const {
@@ -113,6 +100,7 @@ struct _quat : public _vec4<T> {
 template<typename T>
 T _quat<T>::angleAxisEpsilon = (T)1e-4;
 
+// TODO more math operators, correctly implementing quaternion math (ex: scalar mul, quat inv)
 template<typename T>
 _quat<T> operator*(_quat<T> a, _quat<T> b) {
 	return _quat<T>::mul(a,b);
