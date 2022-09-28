@@ -33,7 +33,7 @@ the * operator for tensor/tensor should be an outer+contract, ex:
 
 
 TODO TODO
-	if I do row-major then 
+	if I do row-major then
 		- C bracket ctor is in the same layout as the matrix
 		- C notation matches matrix notation : A[i0][i1] = A_i0_i1
 		- memory layout is transposed from nested index order: A_i0_i1 = A[i1 + i0 * size0]
@@ -308,11 +308,11 @@ namespace Tensor {
 	TENSOR_ADD_SIZE(classname)
 
 // lambda ctor
-// explicit 'this->' so subclasses can use this macro (like _quat)
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
 	/* use int<rank> as our lambda index: */\
 	classname(std::function<ScalarType(intN)> f) {\
 		/* TODO write-member-only: for (auto i : iterate_index()) {*/\
+		/* use explicit 'this->' so subclasses can use this macro (like _quat) */\
 		for (auto i = this->begin(); i != this->end(); ++i) {\
 			*i = f(i.index);\
 		}\
@@ -324,6 +324,22 @@ namespace Tensor {
 	{\
 		for (auto i = this->begin(); i != this->end(); ++i) {\
 			*i = f(i.index[0]);\
+		}\
+	}
+	
+#define TENSOR_ADD_LIST_CTOR(classname)\
+	classname(std::initializer_list<T> l)\
+	 /* only do list constructor for non-specialized types */\
+	 /*(cuz they already accept lists via matching with their ctor args) */\
+	requires (dim > 4)\
+	{\
+		auto src = l.begin();\
+		auto dst = this->begin();\
+		for (; src != l.end() && dst != this->end(); ++src, ++dst) {\
+			*dst = *src;\
+		}\
+		for (; dst != this->end(); ++dst) {\
+			*dst = {};\
 		}\
 	}
 
@@ -353,6 +369,7 @@ namespace Tensor {
 	TENSOR_ADD_SCALAR_CTOR(classname)\
 	TENSOR_ADD_CTOR_FOR_GENERIC_VECTORS(classname, classname)\
 	TENSOR_ADD_LAMBDA_CTOR(classname)\
+	TENSOR_ADD_LIST_CTOR(classname)
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros

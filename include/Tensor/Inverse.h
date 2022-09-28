@@ -72,7 +72,7 @@ typename M::ScalarType determinant44(M const & a) {
 
 template<typename M>
 typename M::ScalarType determinantNN(M const & a) {
-	using T = M::ScalarType;
+	using T = typename M::ScalarType;
 	constexpr int dim = T::dim;
 	T sign = 1;
 	T sum = {};

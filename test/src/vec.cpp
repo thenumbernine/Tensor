@@ -96,12 +96,12 @@ void test_vec() {
 		TEST_EQ(f/g, Tensor::float3(0.57142857142857, 5.0, 3.5));	// wow, this equality passes while sqrt(90) fails
 		// hmm, do I have vector*vector => scalar default to dot product?
 
-		// op= scalar 
+		// op= scalar
 		{ Tensor::float3 h = f; h += 2; TEST_EQ(h, Tensor::float3(6,7,9)); }
 		{ Tensor::float3 h = f; h -= 3; TEST_EQ(h, Tensor::float3(1,2,4)); }
 		{ Tensor::float3 h = f; h *= 3; TEST_EQ(h, Tensor::float3(12,15,21)); }
 		{ Tensor::float3 h = f; h /= 4; TEST_EQ(h, Tensor::float3(1,1.25,1.75)); }
-		// op= vector 
+		// op= vector
 		{ Tensor::float3 h = f; h += Tensor::float3(3,2,1); TEST_EQ(h, Tensor::float3(7,7,8)); }
 		{ Tensor::float3 h = f; h -= Tensor::float3(5,0,9); TEST_EQ(h, Tensor::float3(-1,5,-2)); }
 		{ Tensor::float3 h = f; h *= Tensor::float3(-1,1,-2); TEST_EQ(h, Tensor::float3(-4,5,-14)); }
@@ -147,8 +147,23 @@ void test_vec() {
 		int2 int3 int4
 		
 		default-template vectors of dif sizes (5 maybe? ... )
-			assert that no .x exists to verify	
+			assert that no .x exists to verify
 		*/
+
+		// verify vec4 list constructor works
+		Tensor::float4 h = {2,3,4,5};
+		TEST_EQ(h.x, 2);
+		TEST_EQ(h.y, 3);
+		TEST_EQ(h.z, 4);
+		TEST_EQ(h.w, 5);
+
+		Tensor::_vec<float,5> j = {5,6,7,8,9};
+		//can't use xyzw for dim>4
+		TEST_EQ(j[0], 5);
+		TEST_EQ(j[1], 6);
+		TEST_EQ(j[2], 7);
+		TEST_EQ(j[3], 8);
+		TEST_EQ(j[4], 9);
 	}
 
 	// matrix
@@ -222,7 +237,7 @@ void test_vec() {
 		// read iterator
 		{
 			auto i = m.begin();
-#if 0 // not sure which to use			
+#if 0 // not sure which to use
 			// iterating in memory order for row-major
 			// also in left-right top-bottom order when read
 			// but you have to increment the last index first and first index last
@@ -309,5 +324,11 @@ void test_vec() {
 		static_assert(t.ith_dim<0> == 2);
 		static_assert(t.ith_dim<1> == 4);
 		static_assert(t.ith_dim<2> == 5);
+	
+		//tensor * scalar
+		//scalar * tensor
+	
+//		t * 1.f;
 	}
+
 }
