@@ -98,9 +98,23 @@ void test_quat() {
 		TEST_QUAT_EQ(r3y, ry*r2y);
 		TEST_QUAT_EQ(r3z, rz*r2z);
 	
-		//verify three rotations is rotationally equivalent (up to conjugate) of a negative rotation
+		//verify three rotations is rotationally equivalent (up to negative) of a conjugate (equals inverse when normalized) rotation
 		TEST_QUAT_EQ(-rx, r3x.conjugate());
 		TEST_QUAT_EQ(-ry, r3y.conjugate());
 		TEST_QUAT_EQ(-rz, r3z.conjugate());
+	
+		//quaterion question: how come this one has a sign flip on the axis while the reverse order doesn't?
+		// hmm because the reverse-order , all the same, demonstrates the 2nd transform not affecting the 1st transform, while in this order the transforms do affect one another
+		TEST_QUAT_EQ(rz*ry, Tensor::quatf(-.5f, .5f, .5f, .5f));
+		TEST_QUAT_EQ(ry*rx, Tensor::quatf(.5f, .5f, -.5f, .5f));
+		TEST_QUAT_EQ(rx*rz, Tensor::quatf(.5f, -.5f, .5f, .5f));
+	
+		TEST_QUAT_EQ(ry*rx*rz, rx);
+		TEST_QUAT_EQ(rz*ry*rx, ry);
+		TEST_QUAT_EQ(rx*rz*ry, rz);
+		
+		TEST_QUAT_EQ(rz*rx*ry, Tensor::quatf(0, sqrt_1_2, sqrt_1_2, 0));
+		TEST_QUAT_EQ(rx*ry*rz, Tensor::quatf(sqrt_1_2, 0, sqrt_1_2, 0));
+		TEST_QUAT_EQ(ry*rz*rx, Tensor::quatf(sqrt_1_2, sqrt_1_2, 0, 0));
 	}
 }
