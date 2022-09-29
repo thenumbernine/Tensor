@@ -11,7 +11,7 @@ void test_vec() {
 	{
 		// default ctor
 		Tensor::float3 f;
-		for (int i = 0; i < f.dim; ++i) {
+		for (int i = 0; i < f.ith_dim<0>; ++i) {
 			TEST_EQ(f.s[i], 0);
 		}
 	}

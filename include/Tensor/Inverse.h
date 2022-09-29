@@ -73,7 +73,9 @@ typename M::ScalarType determinant44(M const & a) {
 template<typename M>
 typename M::ScalarType determinantNN(M const & a) {
 	using T = typename M::ScalarType;
-	constexpr int dim = T::dim;
+	static_assert(M::rank == 2);
+	static_assert(M::template ith_dim<0> == M::template ith_dim<1>);
+	constexpr int dim = M::template ith_dim<0>;
 	T sign = 1;
 	T sum = {};
 	for (int k = 0; k < dim; ++k) {

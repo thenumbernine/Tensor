@@ -18,7 +18,6 @@ T const& clamp(T const &x, T const &min, T const &max) {
 	return x;
 }
 
-// TODO clamp(Tensor, ScalarType, ScalarType) also?
 template<typename T>
 requires (Tensor::is_tensor_v<T>)
 T clamp(T const &x, T const &min, T const &max) {

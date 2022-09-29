@@ -52,26 +52,24 @@ TODO TODO
 
 namespace Tensor {
 
-#define TENSOR_VECTOR_HEADER(dim_)\
+#define TENSOR_VECTOR_HEADER(localDim_)\
 \
 	/* TRUE FOR _vec (NOT FOR _sym) */\
 	/* this is this particular dimension of our vector */\
-	/* M = matrix<T,i,j> == vec<vec<T,j>,i> so M::dim == i and M::InnerType::dim == j  */\
+	/* M = matrix<T,i,j> == vec<vec<T,j>,i> so M::localDim == i and M::InnerType::localDim == j  */\
 	/*  i.e. M::dims = int2(i,j) and M::ith_dim<0> == i and M::ith_dim<1> == j */\
-	/* TODO rename to 'dimForThisNesting' or 'localDim' ... and rename ith_dim to dim */\
-	static constexpr int dim = dim_;\
+	static constexpr int localDim = localDim_;\
 \
 	/* TRUE FOR _vec (NOT FOR _sym) */\
 	/*how much does this structure contribute to the overall rank. */\
 	/* for _vec it is 1, for _sym it is 2 */\
-	/* TODO rename to 'rankForThisNesting' or 'localRank' maybe? */\
-	static constexpr int thisRank = 1;\
+	static constexpr int localRank = 1;\
 \
 	/* TRUE FOR _vec (NOT FOR _sym) */\
 	/*this is the storage size, used for iterting across 's' */\
 	/* for vectors etc it is 's' */\
 	/* for (anti?)symmetric it is N*(N+1)/2 */\
-	static constexpr int count = dim;
+	static constexpr int count = localDim;
 
 #define TENSOR_HEADER()\
 \
@@ -95,7 +93,7 @@ namespace Tensor {
 	/* if we do recursive case in VectorTraits (failing for rank-3 and above): */\
 	/*static constexpr int rank = VectorTraits<This>::rank;*/\
 	/* if we do recursive case here: */\
-	static constexpr int rank = thisRank + VectorTraits<InnerType>::rank;\
+	static constexpr int rank = localRank + VectorTraits<InnerType>::rank;\
 \
 	/* used for vector-dereferencing into the tensor. */\
 	using intN = _vec<int,rank>;\
@@ -139,6 +137,7 @@ namespace Tensor {
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_SIZE(classname)\
+	/* TODO rename ith_dim to dim */\
 	template<int i> static constexpr int ith_dim = VectorTraits<This>::template calc_ith_dim<i>();\
 	static constexpr auto dims() { return VectorTraits<This>::dims(); }
 
@@ -270,14 +269,14 @@ namespace Tensor {
 	/* assumes packed tensor */\
 	template<int subdim, int offset>\
 	_vec<T,subdim> & subset() {\
-		static_assert(offset + subdim <= dim);\
+		static_assert(offset + subdim <= localDim);\
 		return *(_vec<T,subdim>*)(s+offset);\
 	}\
 \
 	/* assumes packed tensor */\
 	template<int subdim, int offset>\
 	_vec<T,subdim> const & subset() const {\
-		static_assert(offset + subdim <= dim);\
+		static_assert(offset + subdim <= localDim);\
 		return *(_vec<T,subdim>*)(s+offset);\
 	}\
 \
@@ -293,7 +292,6 @@ namespace Tensor {
 		return *(_vec<T,subdim>*)(s+offset);\
 	}
 
-// TODO write iterator so _sym
 // also TODO can't use this in conjunction with the requires to_ostream or you get ambiguous operator
 // the operator<< requires to_fields and _vec having fields probably doesn't help
 // ... not using this
@@ -344,7 +342,7 @@ namespace Tensor {
 	classname(std::initializer_list<T> l)\
 	 /* only do list constructor for non-specialized types */\
 	 /*(cuz they already accept lists via matching with their ctor args) */\
-	requires (dim > 4)\
+	requires (localDim > 4)\
 	{\
 		auto src = l.begin();\
 		auto dst = this->begin();\
@@ -633,9 +631,9 @@ ReadIterator vs WriteIterator
 		return res;\
 	}\
 \
-	/* accepts int into .s[] storage, returns _intN<thisRank> of how to index it using operator() */\
-	static _vec<int,thisRank> getLocalReadForWriteIndex(int writeIndex) {\
-		return _vec<int,thisRank>{writeIndex};\
+	/* accepts int into .s[] storage, returns _intN<localRank> of how to index it using operator() */\
+	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
+		return _vec<int,localRank>{writeIndex};\
 	}
 
 #if 0	//hmm, this isn't working when it is run
@@ -674,12 +672,12 @@ struct VectorTraits<T> {
 	using InnerTraits = VectorTraits<InnerType>;
 	using intN = typename T::intN;
 
-	// using rank = thisRank + VectorTraits<InnerType>::rank in _vec
+	// using rank = localRank + VectorTraits<InnerType>::rank in _vec
 	static constexpr int rank = T::rank;
 	// using VectorTraits<This>::rank in _vec
 	// would be nice to do all recursive calcs inside VectorTraits instead of across _vec
 	// but this screws up with _tensor<real,3,3,3> rank3 and above
-	//static constexpr int rank = T::thisRank + InnerTraits::rank;
+	//static constexpr int rank = T::localRank + InnerTraits::rank;
 	
 	static constexpr int numNestings = 1 + InnerTraits::numNestings;
 
@@ -690,10 +688,10 @@ struct VectorTraits<T> {
 	static constexpr int calc_ith_dim() {
 		static_assert(i >= 0, "you tried to get a negative size");
 		static_assert(i < rank, "you tried to get an oob size");
-		if constexpr (i < T::thisRank) {
-			return T::dim;
+		if constexpr (i < T::localRank) {
+			return T::localDim;
 		} else {
-			return InnerTraits::template calc_ith_dim<i - T::thisRank>();
+			return InnerTraits::template calc_ith_dim<i - T::localRank>();
 		}
 	}
 
@@ -701,23 +699,23 @@ struct VectorTraits<T> {
 	static constexpr auto dims() {
 		// if this is a vector-of-scalars, such that the dims would be an int1, just use int
 		if constexpr (T::rank == 1) {
-			return T::dim;
+			return T::localDim;
 		} else {
-			// use an int[dim]
+			// use an int[localDim]
 			intN sizev;
 #if 0
 #error "TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly."
 #else
-			for (int i = 0; i < T::thisRank; ++i) {
-				sizev.s[i] = T::dim;
+			for (int i = 0; i < T::localRank; ++i) {
+				sizev.s[i] = T::localDim;
 			}
-			if constexpr (T::thisRank < rank) {
+			if constexpr (T::localRank < rank) {
 				// special case reading from int
 				if constexpr (InnerType::rank == 1) {
-					sizev.s[T::thisRank] = InnerTraits::dims();
+					sizev.s[T::localRank] = InnerTraits::dims();
 				} else {
 					// assigning sub-vector
-					sizev.template subset<rank-T::thisRank, T::thisRank>()
+					sizev.template subset<rank-T::localRank, T::localRank>()
 						= InnerTraits::dims();
 				}
 			}
@@ -737,10 +735,10 @@ struct VectorTraits<T> {
 	
 	static intN getReadForWriteIndex(intW const & i) {
 		intN res;
-		res.template subset<Type::thisRank, 0>() = Type::getLocalReadForWriteIndex(i[0]);
+		res.template subset<Type::localRank, 0>() = Type::getLocalReadForWriteIndex(i[0]);
 		if constexpr (numNestings > 1) {
-			//static_assert(rank - Type::thisRank == InnerType::rank);
-			res.template subset<rank-Type::thisRank, Type::thisRank>() = InnerTraits::getReadForWriteIndex(i.template subset<numNestings-1,1>());
+			//static_assert(rank - Type::localRank == InnerType::rank);
+			res.template subset<rank-Type::localRank, Type::localRank>() = InnerTraits::getReadForWriteIndex(i.template subset<numNestings-1,1>());
 		}
 		return res;
 	}
@@ -872,7 +870,7 @@ static_assert(sizeof(double2) == sizeof(double) * 2);
 static_assert(std::is_same_v<float2::ScalarType, float>);
 static_assert(std::is_same_v<float2::InnerType, float>);
 static_assert(float2::rank == 1);
-static_assert(float2::dim == 2);
+static_assert(float2::ith_dim<0> == 2);
 static_assert(float2::numNestings == 1);
 
 // size == 3 specialization
@@ -981,7 +979,7 @@ static_assert(sizeof(double3) == sizeof(double) * 3);
 static_assert(std::is_same_v<float3::ScalarType, float>);
 static_assert(std::is_same_v<float3::InnerType, float>);
 static_assert(float3::rank == 1);
-static_assert(float3::dim == 3);
+static_assert(float3::ith_dim<0> == 3);
 static_assert(float3::numNestings == 1);
 
 template<typename T>
@@ -1098,7 +1096,7 @@ static_assert(sizeof(double4) == sizeof(double) * 4);
 static_assert(std::is_same_v<float4::ScalarType, float>);
 static_assert(std::is_same_v<float4::InnerType, float>);
 static_assert(float4::rank == 1);
-static_assert(float4::dim == 4);
+static_assert(float4::ith_dim<0> == 4);
 static_assert(float4::numNestings == 1);
 
 
@@ -1429,10 +1427,10 @@ _mat<T,dim,dim> diagonalMatrix(_vec<T,dim> const & v) {
 
 // symmetric matrices
 
-#define TENSOR_SYMMETRIC_MATRIX_HEADER(dim_)\
-	static constexpr int dim = dim_;\
-	static constexpr int thisRank = 2;\
-	static constexpr int count = (dim * (dim + 1)) >> 1;
+#define TENSOR_SYMMETRIC_MATRIX_HEADER(localDim_)\
+	static constexpr int localDim = localDim_;\
+	static constexpr int localRank = 2;\
+	static constexpr int count = (localDim * (localDim + 1)) >> 1;
 
 template<int dim>
 int symIndex(int i, int j) {
@@ -1459,8 +1457,8 @@ int symIndex(int i, int j) {
 \
 	/* a(i,j) := a_ij = a_ji */\
 	/* this is the direct acces */\
-	InnerType & operator()(int i, int j) { return s[symIndex<dim>(i,j)]; }\
-	InnerType const & operator()(int i, int j) const { return s[symIndex<dim>(i,j)]; }\
+	InnerType & operator()(int i, int j) { return s[symIndex<localDim>(i,j)]; }\
+	InnerType const & operator()(int i, int j) const { return s[symIndex<localDim>(i,j)]; }\
 \
 	struct Accessor {\
 		classname & owner;\
@@ -1500,8 +1498,8 @@ so the accessors need nested call indexing too
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX(classname)\
 \
-	static _vec<int,thisRank> getLocalReadForWriteIndex(int writeIndex) {\
-		_vec<int,thisRank> readIndex;\
+	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
+		_vec<int,localRank> readIndex;\
 		int w = writeIndex+1;\
 		for (int i = 1; w > 0; ++i) {\
 			++readIndex(0);\
