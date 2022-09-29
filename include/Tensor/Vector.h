@@ -138,9 +138,12 @@ namespace Tensor {
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_SIZE(classname)\
-	/* TODO rename dim to dim */\
-	template<int i> static constexpr int dim = VectorTraits<This>::template calc_ith_dim<i>();\
-	static constexpr auto dims() { return VectorTraits<This>::dims(); }
+\
+	template<int i> static constexpr int dim = Traits::template calc_ith_dim<i>();\
+\
+	static constexpr auto dims() { return Traits::dims(); }\
+\
+	template<int i> static constexpr int count = Traits::template NestedType<i>::localCount;
 
 // danger ... danger ...
 #define TENSOR_ADD_CAST_BOOL_OP()\
@@ -487,7 +490,7 @@ ReadIterator vs WriteIterator
 			static bool exec(intW & index) {\
 				/* inc 0 first */\
 				++index[i];\
-				if (index[i] < Traits::template NestedType<i>::localCount) return true;\
+				if (index[i] < This::template count<i>) return true;\
 				if (i < numNestings-1) index[i] = 0;\
 				return false;\
 			}\
@@ -499,7 +502,7 @@ ReadIterator vs WriteIterator
 				/* inc n-1 first */\
 				constexpr int j = numNestings-1-i;\
 				++index[j];\
-				if (index[j] < Traits::template NestedType<j>::localCount) return true;\
+				if (index[j] < This::template count<j>) return true;\
 				if (j > 0) index[j] = 0;\
 				return false;\
 			}\
@@ -565,7 +568,7 @@ ReadIterator vs WriteIterator
 			static WriteIterator end(OwnerConstness & v) {\
 				intR index;\
 				/* inc 0 first */\
-				index[numNestings-1] = Traits::template NestedType<numNestings-1>::localCount;\
+				index[numNestings-1] = This::template count<numNestings-1>;\
 				return WriteIterator(v, index);\
 			}\
 		};\
@@ -855,6 +858,7 @@ static_assert(std::is_same_v<float2::InnerType, float>);
 static_assert(float2::rank == 1);
 static_assert(float2::dim<0> == 2);
 static_assert(float2::numNestings == 1);
+static_assert(float2::count<0> == 2);
 
 // size == 3 specialization
 
@@ -963,6 +967,7 @@ static_assert(std::is_same_v<float3::InnerType, float>);
 static_assert(float3::rank == 1);
 static_assert(float3::dim<0> == 3);
 static_assert(float3::numNestings == 1);
+static_assert(float3::count<0> == 3);
 
 template<typename T>
 struct _vec<T,4> {
@@ -1079,6 +1084,7 @@ static_assert(std::is_same_v<float4::InnerType, float>);
 static_assert(float4::rank == 1);
 static_assert(float4::dim<0> == 4);
 static_assert(float4::numNestings == 1);
+static_assert(float4::count<0> == 4);
 
 
 template<int N> using boolN = _vec<bool, N>;
@@ -1111,6 +1117,8 @@ static_assert(float2x2::rank == 2);
 static_assert(float2x2::dim<0> == 2);
 static_assert(float2x2::dim<1> == 2);
 static_assert(float2x2::numNestings == 2);
+static_assert(float2x2::count<0> == 2);
+static_assert(float2x2::count<1> == 2);
 
 template<typename T> using _mat2x3 = _vec2<_vec3<T>>;
 using bool2x3 = _mat2x3<bool>;
@@ -1129,6 +1137,8 @@ static_assert(float2x3::rank == 2);
 static_assert(float2x3::dim<0> == 2);
 static_assert(float2x3::dim<1> == 3);
 static_assert(float2x3::numNestings == 2);
+static_assert(float2x3::count<0> == 2);
+static_assert(float2x3::count<1> == 3);
 
 template<typename T> using _mat2x4 = _vec2<_vec4<T>>;
 using bool2x4 = _mat2x4<bool>;
@@ -1192,6 +1202,8 @@ static_assert(float4x4::rank == 2);
 static_assert(float4x4::dim<0> == 4);
 static_assert(float4x4::dim<1> == 4);
 static_assert(float4x4::numNestings == 2);
+static_assert(float4x4::count<0> == 4);
+static_assert(float4x4::count<1> == 4);
 
 // vector op vector, matrix op matrix, and tensor op tensor per-component operators
 
@@ -1724,6 +1736,7 @@ static_assert(float2s2::rank == 2);
 static_assert(float2s2::dim<0> == 2);
 static_assert(float2s2::dim<1> == 2);
 static_assert(float2s2::numNestings == 1);
+static_assert(float2s2::count<0> == 3);
 
 template<typename T> using _sym3 = _sym<T,3>;
 using bool3s3 = _sym3<bool>;
@@ -1744,6 +1757,7 @@ static_assert(float3s3::rank == 2);
 static_assert(float3s3::dim<0> == 3);
 static_assert(float3s3::dim<1> == 3);
 static_assert(float3s3::numNestings == 1);
+static_assert(float3s3::count<0> == 6);
 
 template<typename T> using _sym4 = _sym<T,4>;
 using bool4s4 = _sym4<bool>;
@@ -1760,6 +1774,11 @@ static_assert(sizeof(uint4s4) == sizeof(unsigned int) * 10);
 static_assert(sizeof(float4s4) == sizeof(float) * 10);
 static_assert(sizeof(double4s4) == sizeof(double) * 10);
 static_assert(std::is_same_v<typename float4s4::ScalarType, float>);
+static_assert(float4s4::rank == 2);
+static_assert(float4s4::dim<0> == 4);
+static_assert(float4s4::dim<1> == 4);
+static_assert(float4s4::numNestings == 1);
+static_assert(float4s4::count<0> == 10);
 
 // ostream
 // _vec does have .fields
