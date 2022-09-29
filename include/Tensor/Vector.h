@@ -747,14 +747,14 @@ struct VectorTraits<T> {
 		if constexpr (numNestings == 1) {
 			return t.s[index.s[0]];
 		} else {
-			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<rank-1,1>());
+			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());
 		}
 	}
 	static ScalarType const & getByWriteIndex(T const & t, intW const & index) {
 		if constexpr (numNestings == 1) {
 			return t.s[index.s[0]];
 		} else {
-			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<rank-1,1>());
+			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());
 		}
 	}
 
