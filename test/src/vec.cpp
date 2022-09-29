@@ -11,7 +11,7 @@ void test_vec() {
 	{
 		// default ctor
 		Tensor::float3 f;
-		for (int i = 0; i < f.ith_dim<0>; ++i) {
+		for (int i = 0; i < f.dim<0>; ++i) {
 			TEST_EQ(f.s[i], 0);
 		}
 	}
@@ -49,7 +49,7 @@ void test_vec() {
 		
 		//.dims
 		TEST_EQ(f.dims(), 3);
-		TEST_EQ(f.ith_dim<0>, 3);
+		TEST_EQ(f.dim<0>, 3);
 	
 		//iterator
 		{
@@ -189,8 +189,8 @@ void test_vec() {
 		};
 		
 		static_assert(m.rank == 2);
-		static_assert(m.ith_dim<0> == 3);
-		static_assert(m.ith_dim<1> == 3);
+		static_assert(m.dim<0> == 3);
+		static_assert(m.dim<1> == 3);
 
 		// TODO .x .y .z indexing
 		// TODO .s0 .s1 .s2 indexing
@@ -248,8 +248,8 @@ void test_vec() {
 		//dims and rank.  really these are static_assert's, except dims(), but it could be, but I'd have to constexpr some things ...
 		TEST_EQ(m.rank, 2);
 		TEST_EQ(m.dims(), Tensor::int2(3,3));
-		TEST_EQ(m.ith_dim<0>, 3);
-		TEST_EQ(m.ith_dim<1>, 3);
+		TEST_EQ(m.dim<0>, 3);
+		TEST_EQ(m.dim<1>, 3);
 
 		// read iterator
 		{
@@ -323,9 +323,9 @@ void test_vec() {
 		using T = Tensor::_tensor<float, 2, 4, 5>;
 		T t;
 		static_assert(t.rank == 3);
-		static_assert(t.ith_dim<0> == 2);
-		static_assert(t.ith_dim<1> == 4);
-		static_assert(t.ith_dim<2> == 5);
+		static_assert(t.dim<0> == 2);
+		static_assert(t.dim<1> == 4);
+		static_assert(t.dim<2> == 5);
 
 		//TODO 
 		//tensor * scalar
@@ -340,11 +340,11 @@ void test_vec() {
 	{
 		auto a = Tensor::float3s3(); // default
 		static_assert(a.rank == 2);
-		static_assert(a.ith_dim<0> == 3);
-		static_assert(a.ith_dim<1> == 3);
+		static_assert(a.dim<0> == 3);
+		static_assert(a.dim<1> == 3);
 		// default ctor
-		for (int i = 0; i < a.ith_dim<0>; ++i) {
-			for (int j = 0; j < a.ith_dim<1>; ++j) {
+		for (int i = 0; i < a.dim<0>; ++i) {
+			for (int j = 0; j < a.dim<1>; ++j) {
 				TEST_EQ(a(i,j), 0);
 				TEST_EQ(a(j,i), 0);
 			}
@@ -355,8 +355,8 @@ void test_vec() {
 		auto b = Tensor::float3s3([](int i, int j) -> float {
 			return (float)(i+j);
 		});
-		for (int i = 0; i < b.ith_dim<0>; ++i) {
-			for (int j = 0; j < b.ith_dim<1>; ++j) {
+		for (int i = 0; i < b.dim<0>; ++i) {
+			for (int j = 0; j < b.dim<1>; ++j) {
 				TEST_EQ(b(i,j), i+j);
 				TEST_EQ(b(j,i), i+j);
 			}
@@ -382,8 +382,8 @@ void test_vec() {
 		TEST_EQ(b(2,0), 7);
 
 		// partial index
-		for (int i = 0; i < b.ith_dim<0>; ++i) {
-			for (int j = 0; j < b.ith_dim<1>; ++j) {
+		for (int i = 0; i < b.dim<0>; ++i) {
+			for (int j = 0; j < b.dim<1>; ++j) {
 				TEST_EQ(b[i][j], b(i,j));
 			}
 		}

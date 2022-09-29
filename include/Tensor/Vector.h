@@ -57,7 +57,7 @@ namespace Tensor {
 	/* TRUE FOR _vec (NOT FOR _sym) */\
 	/* this is this particular dimension of our vector */\
 	/* M = matrix<T,i,j> == vec<vec<T,j>,i> so M::localDim == i and M::InnerType::localDim == j  */\
-	/*  i.e. M::dims = int2(i,j) and M::ith_dim<0> == i and M::ith_dim<1> == j */\
+	/*  i.e. M::dims = int2(i,j) and M::dim<0> == i and M::dim<1> == j */\
 	static constexpr int localDim = localDim_;\
 \
 	/* TRUE FOR _vec (NOT FOR _sym) */\
@@ -69,7 +69,8 @@ namespace Tensor {
 	/*this is the storage size, used for iterting across 's' */\
 	/* for vectors etc it is 's' */\
 	/* for (anti?)symmetric it is N*(N+1)/2 */\
-	static constexpr int count = localDim;
+	/* TODO make a 'count<int nesting>', same as dim? */\
+	static constexpr int localCount = localDim;
 
 #define TENSOR_HEADER()\
 \
@@ -110,7 +111,7 @@ namespace Tensor {
 
 #define TENSOR_ADD_VECTOR_OP_EQ(classname, op)\
 	classname& operator op(classname const & b) {\
-		for (int i = 0; i < count; ++i) {\
+		for (int i = 0; i < localCount; ++i) {\
 			s[i] op b.s[i];\
 		}\
 		return *this;\
@@ -118,7 +119,7 @@ namespace Tensor {
 
 #define TENSOR_ADD_SCALAR_OP_EQ(classname, op)\
 	classname& operator op(ScalarType const & b) {\
-		for (int i = 0; i < count; ++i) {\
+		for (int i = 0; i < localCount; ++i) {\
 			s[i] op b;\
 		}\
 		return *this;\
@@ -126,7 +127,7 @@ namespace Tensor {
 
 #define TENSOR_ADD_CMP_OP(classname)\
 	bool operator==(classname const & b) const {\
-		for (int i = 0; i < count; ++i) {\
+		for (int i = 0; i < localCount; ++i) {\
 			if (s[i] != b.s[i]) return false;\
 		}\
 		return true;\
@@ -137,34 +138,32 @@ namespace Tensor {
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_SIZE(classname)\
-	/* TODO rename ith_dim to dim */\
-	template<int i> static constexpr int ith_dim = VectorTraits<This>::template calc_ith_dim<i>();\
+	/* TODO rename dim to dim */\
+	template<int i> static constexpr int dim = VectorTraits<This>::template calc_ith_dim<i>();\
 	static constexpr auto dims() { return VectorTraits<This>::dims(); }
 
 // danger ... danger ...
 #define TENSOR_ADD_CAST_BOOL_OP()\
 	operator bool() const {\
-		for (int i = 0; i < count; ++i) {\
+		for (int i = 0; i < localCount; ++i) {\
 			if (s[i] != T()) return true;\
 		}\
 		return false;\
 	}
 
 // danger ... danger ...
-#define TENSOR_ADD_CAST_OP(classname)\
-	template<int dim2, typename U>\
-	operator classname<U, dim2>() const {\
-		classname<U, dim2> res;\
-		for (int i = 0; i < count && i < dim2; ++i) {\
-			res.s[i] = (U)s[i];\
+#define TENSOR_ADD_ASSIGN_OP(classname)\
+	classname & operator=(classname const & o) {\
+		for (int i = 0; i < localCount; ++i) {\
+			s[i] = o.s[i];\
 		}\
-		return res;\
+		return *this;\
 	}
 
 #define TENSOR_ADD_UNM(classname)\
 	classname operator-() const {\
 		classname result;\
-		for (int i = 0; i < count; ++i) {\
+		for (int i = 0; i < localCount; ++i) {\
 			result.s[i] = -s[i];\
 		}\
 		return result;\
@@ -173,7 +172,7 @@ namespace Tensor {
 #define TENSOR_ADD_DOT(classname)\
 	T dot(classname const & b) const {\
 		T result = {};\
-		for (int i = 0; i < count; ++i) {\
+		for (int i = 0; i < localCount; ++i) {\
 			result += s[i] * b.s[i];\
 		}\
 		return result;\
@@ -205,43 +204,43 @@ namespace Tensor {
 #define TENSOR_ADD_INT_VEC_CALL_INDEX()\
 \
 	/* a(intN(i,...)) */\
-	template<int dim2>\
-	auto & operator()(_vec<int,dim2> const & i) {\
-		if constexpr (dim2 == 1) {\
+	template<int N>\
+	auto & operator()(_vec<int,N> const & i) {\
+		if constexpr (N == 1) {\
 			return (*this)[i(0)];\
 		} else {\
-			return (*this)[i(0)](i.template subset<dim2-1, 1>());\
+			return (*this)[i(0)](i.template subset<N-1, 1>());\
 		}\
 	}\
-	template<int dim2>\
-	auto const & operator()(_vec<int,dim2> const & i) const {\
-		if constexpr (dim2 == 1) {\
+	template<int N>\
+	auto const & operator()(_vec<int,N> const & i) const {\
+		if constexpr (N == 1) {\
 			return (*this)[i(0)];\
 		} else {\
-			return (*this)[i(0)](i.template subset<dim2-1, 1>());\
+			return (*this)[i(0)](i.template subset<N-1, 1>());\
 		}\
 	}\
 \
 	/* same but for std::array */\
 	/* NOTICE this is only because _vec::iterator needs a std::array for indexing */\
 	/*  and that is because _vec<T> can't seem to use _vec<int> for indexes, gets an 'incomplete type' error */\
-	template<int dim2>\
-	auto & operator()(std::array<int,dim2> const & i) {\
-		if constexpr (dim2 == 1) {\
+	template<int N>\
+	auto & operator()(std::array<int,N> const & i) {\
+		if constexpr (N == 1) {\
 			return (*this)[i[0]];\
 		} else {\
-			std::array<int,dim2-1> subi;\
-			std::copy(i.begin() + 1, i.begin() + dim2, subi.begin());\
+			std::array<int,N-1> subi;\
+			std::copy(i.begin() + 1, i.begin() + N, subi.begin());\
 			return (*this)[i[0]](subi);\
 		}\
 	}\
-	template<int dim2>\
-	auto const & operator()(std::array<int,dim2> const & i) const {\
-		if constexpr (dim2 == 1) {\
+	template<int N>\
+	auto const & operator()(std::array<int,N> const & i) const {\
+		if constexpr (N == 1) {\
 			return (*this)[i[0]];\
 		} else {\
-			std::array<int,dim2-1> subi;\
-			std::copy(i.begin() + 1, i.begin() + dim2, subi.begin());\
+			std::array<int,N-1> subi;\
+			std::copy(i.begin() + 1, i.begin() + N, subi.begin());\
 			return (*this)[i[0]](subi);\
 		}\
 	}
@@ -254,15 +253,6 @@ namespace Tensor {
 \
 	TENSOR_ADD_RECURSIVE_CALL_INDEX()\
 	TENSOR_ADD_INT_VEC_CALL_INDEX()
-
-// danger ... danger ...
-#define TENSOR_ADD_ASSIGN_OP(classname)\
-	classname & operator=(classname const & o) {\
-		for (int i = 0; i < count; ++i) {\
-			s[i] = o.s[i];\
-		}\
-		return *this;\
-	}
 
 #define TENSOR_ADD_SUBSET_ACCESS()\
 \
@@ -356,7 +346,7 @@ namespace Tensor {
 
 #define TENSOR_ADD_SCALAR_CTOR(classname)\
 	classname(ScalarType const & x) {\
-		for (int i = 0; i < count; ++i) {\
+		for (int i = 0; i < localCount; ++i) {\
 			s[i] = x;\
 		}\
 	}
@@ -365,13 +355,13 @@ namespace Tensor {
 // TODO not sure how to write this to generalize into _sym and others (or if I should try to?)
 // explicit 'this->s' so subclasses can use this macro (like _quat)
 #define TENSOR_ADD_CTOR_FOR_GENERIC_VECTORS(classname, othername)\
-	template<int dim2, typename U>\
-	classname(othername<U, dim2> const & t) {\
+	template<typename U, int N>\
+	classname(othername<U, N> const & t) {\
 		int i = 0;\
-		for (; i < count && i < t.count; ++i) {\
+		for (; i < localCount && i < t.localCount; ++i) {\
 			this->s[i] = (T)t.s[i];\
 		}\
-		for (; i < count; ++i) {\
+		for (; i < localCount; ++i) {\
 			this->s[i] = {};\
 		}\
 	}
@@ -394,7 +384,7 @@ ReadIterator vs WriteIterator
 		static bool exec(intN & index) {\
 			/* inc 0 first */\
 			++index[i];\
-			if (index[i] < This::template ith_dim<i>) return true;\
+			if (index[i] < This::template dim<i>) return true;\
 			if (i < rank-1) index[i] = 0;\
 			return false;\
 		}\
@@ -406,7 +396,7 @@ ReadIterator vs WriteIterator
 			/* inc n-1 first */\
 			constexpr int j = rank-1-i;\
 			++index[j];\
-			if (index[j] < This::template ith_dim<j>) return true;\
+			if (index[j] < This::template dim<j>) return true;\
 			if (j > 0) index[j] = 0;\
 			return false;\
 		}\
@@ -462,9 +452,9 @@ ReadIterator vs WriteIterator
 		static ReadIterator end(OwnerConstness & v) {\
 			intN index;\
 			/* inc 0 first */\
-			index[rank-1] = OwnerConstness::template ith_dim<rank-1>;\
+			index[rank-1] = OwnerConstness::template dim<rank-1>;\
 			/* inc n-1 first */\
-			/*index[0] = OwnerConstness::template ith_dim<0>;*/\
+			/*index[0] = OwnerConstness::template dim<0>;*/\
 			/* end inc */\
 			return ReadIterator(v, index);\
 		}\
@@ -497,7 +487,7 @@ ReadIterator vs WriteIterator
 			static bool exec(intW & index) {\
 				/* inc 0 first */\
 				++index[i];\
-				if (index[i] < Traits::template NestedType<i>::count) return true;\
+				if (index[i] < Traits::template NestedType<i>::localCount) return true;\
 				if (i < numNestings-1) index[i] = 0;\
 				return false;\
 			}\
@@ -509,7 +499,7 @@ ReadIterator vs WriteIterator
 				/* inc n-1 first */\
 				constexpr int j = numNestings-1-i;\
 				++index[j];\
-				if (index[j] < Traits::template NestedType<j>::count) return true;\
+				if (index[j] < Traits::template NestedType<j>::localCount) return true;\
 				if (j > 0) index[j] = 0;\
 				return false;\
 			}\
@@ -517,7 +507,7 @@ ReadIterator vs WriteIterator
 \
 		/* write iterator */\
 		/* - sized to the # of nestings */\
-		/* - range is 0's to each nesting's .count */\
+		/* - range is 0's to each nesting's .localCount */\
 		template<typename OwnerConstness>\
 		struct WriteIterator {\
 			OwnerConstness & owner;\
@@ -575,7 +565,7 @@ ReadIterator vs WriteIterator
 			static WriteIterator end(OwnerConstness & v) {\
 				intR index;\
 				/* inc 0 first */\
-				index[numNestings-1] = Traits::template NestedType<numNestings-1>::count;\
+				index[numNestings-1] = Traits::template NestedType<numNestings-1>::localCount;\
 				return WriteIterator(v, index);\
 			}\
 		};\
@@ -625,7 +615,7 @@ ReadIterator vs WriteIterator
 	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
 	T volume() const {\
 		T res = s[0];\
-		for (int i = 1; i < count; ++i) {\
+		for (int i = 1; i < localCount; ++i) {\
 			res *= s[i];\
 		}\
 		return res;\
@@ -635,11 +625,6 @@ ReadIterator vs WriteIterator
 	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
 		return _vec<int,localRank>{writeIndex};\
 	}
-
-#if 0	//hmm, this isn't working when it is run
-	//TENSOR_ADD_ASSIGN_OP(classname)
-#endif
-
 
 /*
 use the 'rank' field to check and see if we're in a _vec (or a _sym) or not
@@ -770,11 +755,10 @@ struct _vec {
 	TENSOR_VECTOR_HEADER(dim_)
 	TENSOR_HEADER()
 
-	T s[count] = {};
+	T s[localCount] = {};
 	_vec() {}
 	
 	TENSOR_VECTOR_CLASS_OPS(_vec)
-	//TENSOR_ADD_CAST_OP(_vec)
 };
 
 // size == 2 specialization
@@ -794,7 +778,7 @@ struct _vec<T,2> {
 			T s0;
 			T s1;
 		};
-		T s[count];
+		T s[localCount];
 	};
 	_vec() {}
 	_vec(T x_, T y_) : x(x_), y(y_) {}
@@ -805,7 +789,6 @@ struct _vec<T,2> {
 	);
 
 	TENSOR_VECTOR_CLASS_OPS(_vec)
-	//TENSOR_ADD_CAST_OP(_vec)
 
 	// 2-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE2_ij(i, j)\
@@ -870,7 +853,7 @@ static_assert(sizeof(double2) == sizeof(double) * 2);
 static_assert(std::is_same_v<float2::ScalarType, float>);
 static_assert(std::is_same_v<float2::InnerType, float>);
 static_assert(float2::rank == 1);
-static_assert(float2::ith_dim<0> == 2);
+static_assert(float2::dim<0> == 2);
 static_assert(float2::numNestings == 1);
 
 // size == 3 specialization
@@ -892,7 +875,7 @@ struct _vec<T,3> {
 			T s1;
 			T s2;
 		};
-		T s[count];
+		T s[localCount];
 	};
 	_vec() {}
 	_vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
@@ -904,7 +887,6 @@ struct _vec<T,3> {
 	);
 
 	TENSOR_VECTOR_CLASS_OPS(_vec)
-	//TENSOR_ADD_CAST_OP(_vec)
 
 	// 2-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE2_ij(i, j)\
@@ -979,7 +961,7 @@ static_assert(sizeof(double3) == sizeof(double) * 3);
 static_assert(std::is_same_v<float3::ScalarType, float>);
 static_assert(std::is_same_v<float3::InnerType, float>);
 static_assert(float3::rank == 1);
-static_assert(float3::ith_dim<0> == 3);
+static_assert(float3::dim<0> == 3);
 static_assert(float3::numNestings == 1);
 
 template<typename T>
@@ -1001,7 +983,7 @@ struct _vec<T,4> {
 			T s2;
 			T s3;
 		};
-		T s[count];
+		T s[localCount];
 	};
 	_vec() {}
 	_vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
@@ -1014,7 +996,6 @@ struct _vec<T,4> {
 	);
 
 	TENSOR_VECTOR_CLASS_OPS(_vec)
-	//TENSOR_ADD_CAST_OP(_vec)
 
 	// 2-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE2_ij(i, j)\
@@ -1096,16 +1077,16 @@ static_assert(sizeof(double4) == sizeof(double) * 4);
 static_assert(std::is_same_v<float4::ScalarType, float>);
 static_assert(std::is_same_v<float4::InnerType, float>);
 static_assert(float4::rank == 1);
-static_assert(float4::ith_dim<0> == 4);
+static_assert(float4::dim<0> == 4);
 static_assert(float4::numNestings == 1);
 
 
-template<int dim> using boolN = _vec<bool, dim>;
-template<int dim> using ucharN = _vec<unsigned char, dim>;
-template<int dim> using intN = _vec<int, dim>;
-template<int dim> using uintN = _vec<unsigned int, dim>;
-template<int dim> using floatN = _vec<float, dim>;
-template<int dim> using doubleN = _vec<double, dim>;
+template<int N> using boolN = _vec<bool, N>;
+template<int N> using ucharN = _vec<unsigned char, N>;
+template<int N> using intN = _vec<int, N>;
+template<int N> using uintN = _vec<unsigned int, N>;
+template<int N> using floatN = _vec<float, N>;
+template<int N> using doubleN = _vec<double, N>;
 
 
 //convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
@@ -1127,8 +1108,8 @@ static_assert(sizeof(uint2x2) == sizeof(unsigned int) * 2 * 2);
 static_assert(sizeof(float2x2) == sizeof(float) * 2 * 2);
 static_assert(sizeof(double2x2) == sizeof(double) * 2 * 2);
 static_assert(float2x2::rank == 2);
-static_assert(float2x2::ith_dim<0> == 2);
-static_assert(float2x2::ith_dim<1> == 2);
+static_assert(float2x2::dim<0> == 2);
+static_assert(float2x2::dim<1> == 2);
 static_assert(float2x2::numNestings == 2);
 
 template<typename T> using _mat2x3 = _vec2<_vec3<T>>;
@@ -1145,8 +1126,8 @@ static_assert(sizeof(uint2x3) == sizeof(unsigned int) * 2 * 3);
 static_assert(sizeof(float2x3) == sizeof(float) * 2 * 3);
 static_assert(sizeof(double2x3) == sizeof(double) * 2 * 3);
 static_assert(float2x3::rank == 2);
-static_assert(float2x3::ith_dim<0> == 2);
-static_assert(float2x3::ith_dim<1> == 3);
+static_assert(float2x3::dim<0> == 2);
+static_assert(float2x3::dim<1> == 3);
 static_assert(float2x3::numNestings == 2);
 
 template<typename T> using _mat2x4 = _vec2<_vec4<T>>;
@@ -1208,17 +1189,17 @@ using double4x4 = _mat4x4<double>;
 static_assert(std::is_same_v<float4x4::ScalarType, float>);
 static_assert(std::is_same_v<float4x4::InnerType, float4>);
 static_assert(float4x4::rank == 2);
-static_assert(float4x4::ith_dim<0> == 4);
-static_assert(float4x4::ith_dim<1> == 4);
+static_assert(float4x4::dim<0> == 4);
+static_assert(float4x4::dim<1> == 4);
 static_assert(float4x4::numNestings == 2);
 
 // vector op vector, matrix op matrix, and tensor op tensor per-component operators
 
 #define TENSOR_ADD_VECTOR_VECTOR_OP(op)\
-template<typename T, int dim>\
-_vec<T,dim> operator op(_vec<T,dim> const & a, _vec<T,dim> const & b) {\
-	_vec<T,dim> c;\
-	for (int i = 0; i < dim; ++i) {\
+template<typename T, int N>\
+_vec<T,N> operator op(_vec<T,N> const & a, _vec<T,N> const & b) {\
+	_vec<T,N> c;\
+	for (int i = 0; i < N; ++i) {\
 		c[i] = a[i] op b[i];\
 	}\
 	return c;\
@@ -1230,13 +1211,13 @@ TENSOR_ADD_VECTOR_VECTOR_OP(/)
 
 // vector * vector
 //TENSOR_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
-// so it has to be constrained to only T == _vec<T,dim>:ScalarType
+// so it has to be constrained to only T == _vec<T,N>:ScalarType
 // c_i := a_i * b_i
-template<typename T, int dim>
-requires std::is_same_v<typename _vec<T,dim>::ScalarType, T>
-_vec<T,dim> operator*(_vec<T, dim> const & a, _vec<T,dim> const & b) {
-	_vec<T,dim> c;
-	for (int i = 0; i < dim; ++i) {
+template<typename T, int N>
+requires std::is_same_v<typename _vec<T,N>::ScalarType, T>
+_vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
+	_vec<T,N> c;
+	for (int i = 0; i < N; ++i) {
 		c[i] = a[i] * b[i];
 	}
 	return c;
@@ -1244,23 +1225,23 @@ _vec<T,dim> operator*(_vec<T, dim> const & a, _vec<T,dim> const & b) {
 
 
 // vector op scalar, scalar op vector, matrix op scalar, scalar op matrix, tensor op scalar, scalar op tensor operations
-// need to require that T == _vec<T,dim>::ScalarType otherwise this will spill into vector/matrix operations
+// need to require that T == _vec<T,N>::ScalarType otherwise this will spill into vector/matrix operations
 // c_i := a_i * b
 // c_i := a * b_i
 
 #define TENSOR_ADD_VECTOR_SCALAR_OP(op)\
-template<typename T, int dim>\
-_vec<T,dim> operator op(_vec<T,dim> const & a, typename _vec<T,dim>::ScalarType const & b) {\
-	_vec<T,dim> c;\
-	for (int i = 0; i < dim; ++i) {\
+template<typename T, int N>\
+_vec<T,N> operator op(_vec<T,N> const & a, typename _vec<T,N>::ScalarType const & b) {\
+	_vec<T,N> c;\
+	for (int i = 0; i < N; ++i) {\
 		c[i] = a[i] op b;\
 	}\
 	return c;\
 }\
-template<typename T, int dim>\
-_vec<T,dim> operator op(typename _vec<T,dim>::ScalarType const & a, _vec<T,dim> const & b) {\
-	_vec<T,dim> c;\
-	for (int i = 0; i < dim; ++i) {\
+template<typename T, int N>\
+_vec<T,N> operator op(typename _vec<T,N>::ScalarType const & a, _vec<T,N> const & b) {\
+	_vec<T,N> c;\
+	for (int i = 0; i < N; ++i) {\
 		c[i] = a op b[i];\
 	}\
 	return c;\
@@ -1348,33 +1329,33 @@ _mat<T,dim1,dim2> matrixCompMult(_mat<T,dim1,dim2> const & a, _mat<T,dim1,dim2> 
 
 // c := a_i * b_i
 // TODO generalize
-template<typename T, int dim>
-requires std::is_same_v<typename _vec<T,dim>::ScalarType, T>
-T dot(_vec<T,dim> const & a, _vec<T,dim> const & b) {
+template<typename T, int N>
+requires std::is_same_v<typename _vec<T,N>::ScalarType, T>
+T dot(_vec<T,N> const & a, _vec<T,N> const & b) {
 	T sum = {};
-	for (int i = 0; i < dim; ++i) {
+	for (int i = 0; i < N; ++i) {
 		sum += a[i] * b[i];
 	}
 	return sum;
 }
 
-template<typename T, int dim>
-T lenSq(_vec<T,dim> const & v) {
+template<typename T, int N>
+T lenSq(_vec<T,N> const & v) {
 	return dot(v,v);
 }
 
-template<typename T, int dim>
-T length(_vec<T,dim> const & v) {
+template<typename T, int N>
+T length(_vec<T,N> const & v) {
 	return sqrt(lenSq(v));
 }
 
-template<typename T, int dim>
-T distance(_vec<T,dim> const & a, _vec<T,dim> const & b) {
+template<typename T, int N>
+T distance(_vec<T,N> const & a, _vec<T,N> const & b) {
 	return length(b - a);
 }
 
-template<typename T, int dim>
-_vec<T,dim> normalize(_vec<T,dim> const & v) {
+template<typename T, int N>
+_vec<T,N> normalize(_vec<T,N> const & v) {
 	return v / length(v);
 }
 
@@ -1416,10 +1397,10 @@ _mat<T,dim2,dim1> transpose(_mat<T,dim1,dim2> const & a) {
 	return at;
 }
 
-template<typename T, int dim>
-_mat<T,dim,dim> diagonalMatrix(_vec<T,dim> const & v) {
-	_mat<T,dim,dim> a;
-	for (int i = 0; i < dim; ++i) {
+template<typename T, int N>
+_mat<T,N,N> diagonalMatrix(_vec<T,N> const & v) {
+	_mat<T,N,N> a;
+	for (int i = 0; i < N; ++i) {
 		a[i][i] = v[i];
 	}
 	return a;
@@ -1430,11 +1411,11 @@ _mat<T,dim,dim> diagonalMatrix(_vec<T,dim> const & v) {
 #define TENSOR_SYMMETRIC_MATRIX_HEADER(localDim_)\
 	static constexpr int localDim = localDim_;\
 	static constexpr int localRank = 2;\
-	static constexpr int count = (localDim * (localDim + 1)) >> 1;
+	static constexpr int localCount = (localDim * (localDim + 1)) >> 1;
 
-template<int dim>
+template<int N>
 int symIndex(int i, int j) {
-	if (j > i) return symIndex<dim>(j,i);
+	if (j > i) return symIndex<N>(j,i);
 	return ((i * (i + 1)) >> 1) + j;
 }
 
@@ -1516,11 +1497,10 @@ struct _sym {
 	TENSOR_SYMMETRIC_MATRIX_HEADER(dim_)
 	TENSOR_HEADER()
 
-	T s[count] = {};
+	T s[localCount] = {};
 	_sym() {}
 
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
-	//TENSOR_ADD_CAST_OP(_sym)
 };
 
 template<typename T>
@@ -1540,7 +1520,7 @@ struct _sym<T,2> {
 			T s01;
 			T s11;
 		};
-		T s[count];
+		T s[localCount];
 	};
 	_sym() {}
 	_sym(T xx_, T xy_, T yy_) : xx(xx_), xy(xy_), yy(yy_) {}
@@ -1552,7 +1532,6 @@ struct _sym<T,2> {
 	);
 
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
-	//TENSOR_ADD_CAST_OP(_sym)
 };
 
 template<typename T>
@@ -1578,7 +1557,7 @@ struct _sym<T,3> {
 			T s12;
 			T s22;
 		};
-		T s[count];
+		T s[localCount];
 	};
 	_sym() {}
 	_sym(
@@ -1605,7 +1584,6 @@ struct _sym<T,3> {
 	);
 
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
-	//TENSOR_ADD_CAST_OP(_sym)
 };
 
 template<typename T>
@@ -1639,7 +1617,7 @@ struct _sym<T,4> {
 			T s23;
 			T s33;
 		};
-		T s[count];
+		T s[localCount];
 	};
 	_sym() {}
 	_sym(
@@ -1678,16 +1656,15 @@ struct _sym<T,4> {
 	);
 
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
-	//TENSOR_ADD_CAST_OP(_sym)
 };
 
 // symmetric op symmetric
 
 #define TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(op)\
-template<typename T, int dim>\
-_sym<T,dim> operator op(_sym<T,dim> const & a, _sym<T,dim> const & b) {\
-	_sym<T,dim> c;\
-	for (int i = 0; i < c.count; ++i) {\
+template<typename T, int N>\
+_sym<T,N> operator op(_sym<T,N> const & a, _sym<T,N> const & b) {\
+	_sym<T,N> c;\
+	for (int i = 0; i < c.localCount; ++i) {\
 		c.s[i] = a.s[i] op b.s[i];\
 	}\
 	return c;\
@@ -1700,20 +1677,20 @@ TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(/)
 // symmetric op scalar, scalar op symmetric
 
 #define TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(op)\
-template<typename T, int dim>\
-requires std::is_same_v<typename _sym<T,dim>::ScalarType, T>\
-_sym<T,dim> operator op(_sym<T,dim> const & a, T const & b) {\
-	_sym<T,dim> c;\
-	for (int i = 0; i < c.count; ++i) {\
+template<typename T, int N>\
+requires std::is_same_v<typename _sym<T,N>::ScalarType, T>\
+_sym<T,N> operator op(_sym<T,N> const & a, T const & b) {\
+	_sym<T,N> c;\
+	for (int i = 0; i < c.localCount; ++i) {\
 		c.s[i] = a.s[i] op b;\
 	}\
 	return c;\
 }\
-template<typename T, int dim>\
-requires std::is_same_v<typename _sym<T,dim>::ScalarType, T>\
-_sym<T,dim> operator op(T const & a, _sym<T,dim> const & b) {\
-	_sym<T,dim> c;\
-	for (int i = 0; i < c.count; ++i) {\
+template<typename T, int N>\
+requires std::is_same_v<typename _sym<T,N>::ScalarType, T>\
+_sym<T,N> operator op(T const & a, _sym<T,N> const & b) {\
+	_sym<T,N> c;\
+	for (int i = 0; i < c.localCount; ++i) {\
 		c.s[i] = a op b.s[i];\
 	}\
 	return c;\
@@ -1744,8 +1721,8 @@ static_assert(sizeof(float2s2) == sizeof(float) * 3);
 static_assert(sizeof(double2s2) == sizeof(double) * 3);
 static_assert(std::is_same_v<typename float2s2::ScalarType, float>);
 static_assert(float2s2::rank == 2);
-static_assert(float2s2::ith_dim<0> == 2);
-static_assert(float2s2::ith_dim<1> == 2);
+static_assert(float2s2::dim<0> == 2);
+static_assert(float2s2::dim<1> == 2);
 static_assert(float2s2::numNestings == 1);
 
 template<typename T> using _sym3 = _sym<T,3>;
@@ -1764,8 +1741,8 @@ static_assert(sizeof(float3s3) == sizeof(float) * 6);
 static_assert(sizeof(double3s3) == sizeof(double) * 6);
 static_assert(std::is_same_v<typename float3s3::ScalarType, float>);
 static_assert(float3s3::rank == 2);
-static_assert(float3s3::ith_dim<0> == 3);
-static_assert(float3s3::ith_dim<1> == 3);
+static_assert(float3s3::dim<0> == 3);
+static_assert(float3s3::dim<1> == 3);
 static_assert(float3s3::numNestings == 1);
 
 template<typename T> using _sym4 = _sym<T,4>;
@@ -1789,11 +1766,11 @@ static_assert(std::is_same_v<typename float4s4::ScalarType, float>);
 // and I do have my default .fields ostream
 // but here's a manual override anyways
 // so that the .fields vec2 vec3 vec4 and the non-.fields other vecs all look the same
-template<typename Type, int dim>
-std::ostream & operator<<(std::ostream & o, Tensor::_vec<Type,dim> const & t) {
+template<typename Type, int N>
+std::ostream & operator<<(std::ostream & o, Tensor::_vec<Type,N> const & t) {
 	char const * sep = "";
 	o << "{";
-	for (int i = 0; i < t.count; ++i) {
+	for (int i = 0; i < t.localCount; ++i) {
 		o << sep << t.s[i];
 		sep = ", ";
 	}
@@ -1802,11 +1779,11 @@ std::ostream & operator<<(std::ostream & o, Tensor::_vec<Type,dim> const & t) {
 }
 
 // TODO print as fields of .sym, or print as vector?
-template<typename Type, int dim>
-std::ostream & operator<<(std::ostream & o, Tensor::_sym<Type,dim> const & t) {
+template<typename Type, int N>
+std::ostream & operator<<(std::ostream & o, Tensor::_sym<Type,N> const & t) {
 	char const * sep = "";
 	o << "{";
-	for (int i = 0; i < t.count; ++i) {
+	for (int i = 0; i < t.localCount; ++i) {
 		o << sep << t.s[i];
 		sep = ", ";
 	}
@@ -1826,16 +1803,16 @@ std::string to_string(Tensor::_vec<T, n> const & x) {
 }
 
 #if 0	// half baked idea of making std::apply compatible with Tensor::_vec
-// tuple_size, make this match array i.e. storage size, returns count
+// tuple_size, make this match array i.e. storage size, returns localCount
 
-template<typename T, int dim>
-struct tuple_size<Tensor::_vec<T,dim>> { 
-	static constexpr auto value = Tensor::_vec<T,dim>::count;
+template<typename T, int N>
+struct tuple_size<Tensor::_vec<T,N>> { 
+	static constexpr auto value = Tensor::_vec<T,N>::localCount;
 };
 
-template<typename T, int dim>
-struct tuple_size<Tensor::_sym<T,dim>> { 
-	static constexpr auto value = Tensor::_sym<T,dim>::count; 	// (dim*(dim+1))/2
+template<typename T, int N>
+struct tuple_size<Tensor::_sym<T,N>> { 
+	static constexpr auto value = Tensor::_sym<T,N>::localCount; 	// (N*(N+1))/2
 };
 
 // std::get .... all the dif impls ... 
