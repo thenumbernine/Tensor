@@ -344,9 +344,9 @@ void test_vec() {
 		}
 
 		// TODO lambda ctor for WRITE INDEXES ONLY 
-		// TODO lambda ctor dim>1 using int,int...
-		auto b = Tensor::float3s3([](Tensor::int2 ij) -> float {
-			return (float)(ij.x+ij.y);
+		// lambda ctor using int,int...
+		auto b = Tensor::float3s3([](int i, int j) -> float {
+			return (float)(i+j);
 		});
 		for (int i = 0; i < b.ith_dim<0>; ++i) {
 			for (int j = 0; j < b.ith_dim<1>; ++j) {
@@ -354,6 +354,13 @@ void test_vec() {
 				TEST_EQ(b(j,i), i+j);
 			}
 		}
+
+		// lambda ctor using int2
+		TEST_EQ(b, Tensor::float3s3([](Tensor::int2 ij) -> float {
+			return (float)(ij.x+ij.y);
+		}));
+
+		// test symmetry
 		b(0,2) = 7;
 		TEST_EQ(b(2,0), 7);
 

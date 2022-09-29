@@ -508,11 +508,11 @@ struct Tensor {
 	// in order to do that, you need a(nother?) wrapper
 	// though you could get by with this so long as the storage was rank-1 (i.e. Lower or Upper alone)
 
-	BodyType::Type & operator[](int i) {
+	typename BodyType::Type & operator[](int i) {
 		return body[i];
 	}
 
-	BodyType::Type const & operator[](int i) const {
+	typename BodyType::Type const & operator[](int i) const {
 		return body[i];
 	}
 

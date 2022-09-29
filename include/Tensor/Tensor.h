@@ -37,12 +37,12 @@ struct NestedTensorI;
 
 template<typename T, typename Index>
 struct NestedTensorI<T, Index> {
-	using tensor = Index::template type<T>;
+	using tensor = typename Index::template type<T>;
 };
 
 template<typename T, typename Index, typename... Indexes>
 struct NestedTensorI {
-	using tensor = Index::template type<typename NestedTensorI<T, Indexes...>::tensor>;
+	using tensor = typename Index::template type<typename NestedTensorI<T, Indexes...>::tensor>;
 };
 
 template<typename T, typename Index, typename... Indexes>

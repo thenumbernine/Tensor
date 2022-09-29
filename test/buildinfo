@@ -1,3 +1,6 @@
 distName='test'
 distType='app'
 depends = {'../../Common', '..'}
+
+compiler = 'clang++'
+linker = 'clang++'

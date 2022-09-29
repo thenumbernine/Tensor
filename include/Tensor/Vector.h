@@ -295,7 +295,7 @@ namespace Tensor {
 
 // lambda ctor
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
-	/* use int<rank> as our lambda index: */\
+	/* use _vec<int, rank> as our lambda index: */\
 	classname(std::function<ScalarType(intN)> f) {\
 		/* TODO write-member-only: for (auto i : iterate_index()) {*/\
 		/* use explicit 'this->' so subclasses can use this macro (like _quat) */\
@@ -304,15 +304,26 @@ namespace Tensor {
 		}\
 	}\
 \
-	/* only for rank-1, allow int as the lambda index */\
-	classname(std::function<ScalarType(int)> f)\
-	requires (rank == 1)\
-	{\
+	/* use (int...) as the lambda index */\
+	template <typename LambdaType>\
+	classname(LambdaType lambda)\
+	requires (\
+		std::is_same_v<\
+			decltype(Common::tuple_of_same_type<int, rank>()),\
+			typename Common::Function<\
+				typename std::remove_pointer<decltype(+LambdaType())>::type\
+			>::Args\
+		>\
+	) {\
+		using CFuncType = typename std::remove_pointer<decltype(+LambdaType())>::type;\
+		std::function<CFuncType> f(lambda);\
 		for (auto i = this->begin(); i != this->end(); ++i) {\
-			*i = f(i.index[0]);\
+			std::array<int, rank> iarray;\
+			for (int j = 0; j < rank; ++j) iarray[j] = i.index[j];\
+			*i = std::apply(f, iarray);\
 		}\
 	}
-	
+
 #define TENSOR_ADD_LIST_CTOR(classname)\
 	classname(std::initializer_list<T> l)\
 	 /* only do list constructor for non-specialized types */\
@@ -1587,13 +1598,35 @@ std::ostream & operator<<(std::ostream & o, Tensor::_sym<Type,dim> const & t) {
 
 } // namespace Tensor
 
-// tostring 
-
 namespace std {
+
+// tostring 
 
 template<typename T, int n>
 std::string to_string(Tensor::_vec<T, n> const & x) {
 	return Common::objectStringFromOStream(x);
 }
+
+#if 0	// half baked idea of making std::apply compatible with Tensor::_vec
+// tuple_size, make this match array i.e. storage size, returns count
+
+template<typename T, int dim>
+struct tuple_size<Tensor::_vec<T,dim>> { 
+	static constexpr auto value = Tensor::_vec<T,dim>::count;
+};
+
+template<typename T, int dim>
+struct tuple_size<Tensor::_sym<T,dim>> { 
+	static constexpr auto value = Tensor::_sym<T,dim>::count; 	// (dim*(dim+1))/2
+};
+
+// std::get .... all the dif impls ... 
+
+template<std::size_t I, typename T, std::size_t N> constexpr T & get(Tensor::_vec<T,N> & v) noexcept { return v[I]; }
+template<std::size_t I, typename T, std::size_t N> constexpr T && get(Tensor::_vec<T,N> && v) noexcept { return v[I]; }
+template<std::size_t I, typename T, std::size_t N> constexpr T const & get(Tensor::_vec<T,N> const & v) noexcept { return v[I]; }
+template<std::size_t I, typename T, std::size_t N> constexpr T const && get(Tensor::_vec<T,N> const && v) noexcept { return v[I]; }
+
+#endif
 
 }

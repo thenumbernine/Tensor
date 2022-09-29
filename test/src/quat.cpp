@@ -2,6 +2,7 @@
 #include "Common/Test.h"
 
 constexpr float epsilon = 1e-6;
+
 //#define TEST_QUAT_EQ(a,b) TEST_EQ_EPS(Tensor::distance(a,b), 0, epsilon)
 #define TEST_QUAT_EQ(a,b)\
 	{\
@@ -41,7 +42,7 @@ void test_quat() {
 
 	{
 		//90' rotation
-		constexpr float sqrt_1_2 = sqrt(.5);
+		float const sqrt_1_2 = sqrt(.5);
 		auto rx = Tensor::quatf(1,0,0,.5*M_PI).fromAngleAxis();
 		auto ry = Tensor::quatf(0,1,0,.5*M_PI).fromAngleAxis();
 		auto rz = Tensor::quatf(0,0,1,.5*M_PI).fromAngleAxis();
