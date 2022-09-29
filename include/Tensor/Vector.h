@@ -305,9 +305,9 @@ namespace Tensor {
 	}\
 \
 	/* use (int...) as the lambda index */\
+	/* since I can't just accept function(Scalar(int,...)), I need to require the type to match */\
 	template <typename Lambda>\
 	classname(Lambda lambda)\
-	/* since I can't just accept function(Scalar(int,...)) ... */\
 	requires (\
 		std::is_same_v<\
 			Common::FunctionFromLambda<Lambda>,\
@@ -317,8 +317,8 @@ namespace Tensor {
 			>\
 		>\
 	) {\
-		using CFuncType = typename std::remove_pointer<decltype(+LambdaType())>::type;\
-		std::function<CFuncType> f(lambda);\
+		using FuncType = typename Common::FunctionFromLambda<Lambda>::FuncType;\
+		FuncType f(lambda);\
 		for (auto i = this->begin(); i != this->end(); ++i) {\
 			std::array<int, rank> iarray;\
 			for (int j = 0; j < rank; ++j) iarray[j] = i.index[j];\
