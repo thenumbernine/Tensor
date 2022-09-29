@@ -76,7 +76,7 @@ struct PartialDerivativeClass<order, Real, dim, InputType> {
 		FuncType f)
 	{
 		using Coeffs = PartialDerivCoeffs<Real, order>;
-		return OutputType([&](intN<rank+1> dstIndex){
+		return OutputType([&](intN<rank+1> dstIndex) -> Real {
 			int gradIndex = dstIndex(0);
 			intN<rank> srcIndex;
 			for (int i = 0; i < rank; ++i) {
@@ -106,7 +106,7 @@ struct PartialDerivativeClass<order, Real, dim, Real> {
 		FuncType f)
 	{
 		using Coeffs = PartialDerivCoeffs<Real, order>;
-		return OutputType([&](intN<1> dstIndex){
+		return OutputType([&](intN<1> dstIndex) -> Real {
 			int gradIndex = dstIndex(0);
 			Real sum = {};
 			for (int i = 1; i <= (int)numberof(Coeffs::coeffs); ++i) {
@@ -121,8 +121,7 @@ struct PartialDerivativeClass<order, Real, dim, Real> {
 };
 
 template<int order, typename Real, int dim, typename InputType>
-typename PartialDerivativeClass<order, Real, dim, InputType>::OutputType
-partialDerivative(
+auto partialDerivative(
 	intN<dim> const &index,
 	_vec<Real, dim> const &dx,
 	typename PartialDerivativeClass<order, Real, dim, InputType>::FuncType f)

@@ -305,14 +305,16 @@ namespace Tensor {
 	}\
 \
 	/* use (int...) as the lambda index */\
-	template <typename LambdaType>\
-	classname(LambdaType lambda)\
+	template <typename Lambda>\
+	classname(Lambda lambda)\
+	/* since I can't just accept function(Scalar(int,...)) ... */\
 	requires (\
 		std::is_same_v<\
-			decltype(Common::tuple_of_same_type<int, rank>()),\
-			typename Common::Function<\
-				typename std::remove_pointer<decltype(+LambdaType())>::type\
-			>::Args\
+			Common::FunctionFromLambda<Lambda>,\
+			Common::FunctionWithTupleArgs_t<\
+				ScalarType,\
+				Common::tuple_of_same_type<int, rank>\
+			>\
 		>\
 	) {\
 		using CFuncType = typename std::remove_pointer<decltype(+LambdaType())>::type;\
