@@ -174,6 +174,10 @@ void test_vec() {
 			{4,5,6},
 			{7,8,9},
 		};
+		
+		static_assert(m.rank == 2);
+		static_assert(m.ith_dim<0> == 3);
+		static_assert(m.ith_dim<1> == 3);
 
 		// TODO .x .y .z indexing
 		// TODO .s0 .s1 .s2 indexing
@@ -291,26 +295,14 @@ void test_vec() {
 
 		//determinant
 		TEST_EQ(determinant(m), 0);
-	}
+		// TODO opertors
+		// TODO make sure operator* works
+		// TODO I don't think I have marix *= working yet	
+		// TODO verify matrix swizzle
 
-	/*
-	matrix
-
-	opertors
-	make sure operator* works
-	I don't think I have marix *= working yet	
-	*/
-
-	{
-		Tensor::float3x3 m;
-	
-		//TODO verify lambda ctor only covers write operators, i.e. 6 inits instead of 9
-		
-		static_assert(m.rank == 2);
-		static_assert(m.ith_dim<0> == 3);
-		static_assert(m.ith_dim<1> == 3);
-	
-		// TODO matrix swizzle
+		TEST_EQ(m + 0.f, m);
+		TEST_EQ(m * 1.f, m);
+		TEST_EQ(m * 0.f, decltype(m)());
 	}
 
 	// tensor of vec-vec-vec
@@ -326,7 +318,9 @@ void test_vec() {
 		//tensor * scalar
 		//scalar * tensor
 	
-//		t * 1.f;
+		TEST_EQ(t + 0.f, t);
+		TEST_EQ(t * 1.f, t);
+		TEST_EQ(t * 0.f, decltype(t)());
 	}
 
 	//symmetric
@@ -343,7 +337,7 @@ void test_vec() {
 			}
 		}
 
-		// TODO lambda ctor for WRITE INDEXES ONLY 
+		//TODO verify lambda ctor only covers write iterators, i.e. 6 inits instead of 9
 		// lambda ctor using int,int...
 		auto b = Tensor::float3s3([](int i, int j) -> float {
 			return (float)(i+j);
@@ -370,6 +364,10 @@ void test_vec() {
 				TEST_EQ(b[i][j], b(i,j));
 			}
 		}
+		
+		TEST_EQ(a + 0.f, a);
+		TEST_EQ(a * 1.f, a);
+		TEST_EQ(a * 0.f, decltype(a)());
 	
 		// TODO how do GLSL matrix ctor from scalars work? 
 		// do they initialize to full scalars like vecs do?
@@ -415,6 +413,9 @@ void test_vec() {
 		TEST_EQ(t(1,1,2), 1);
 		TEST_EQ(t(1,2,2), 2);
 	
+		TEST_EQ(t + 0.f, t);
+		TEST_EQ(t * 1.f, t);
+		TEST_EQ(t * 0.f, decltype(t)());
 	}
 	// tensor of symmetric-vec
 }

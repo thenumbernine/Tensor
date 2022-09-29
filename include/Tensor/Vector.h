@@ -1051,8 +1051,7 @@ _vec<T,dim> operator*(_vec<T, dim> const & a, _vec<T,dim> const & b) {
 
 #define TENSOR_ADD_VECTOR_SCALAR_OP(op)\
 template<typename T, int dim>\
-requires std::is_same_v<typename _vec<T,dim>::ScalarType, T>\
-_vec<T,dim> operator op(_vec<T,dim> const & a, T const & b) {\
+_vec<T,dim> operator op(_vec<T,dim> const & a, typename _vec<T,dim>::ScalarType const & b) {\
 	_vec<T,dim> c;\
 	for (int i = 0; i < dim; ++i) {\
 		c[i] = a[i] op b;\
@@ -1060,8 +1059,7 @@ _vec<T,dim> operator op(_vec<T,dim> const & a, T const & b) {\
 	return c;\
 }\
 template<typename T, int dim>\
-requires std::is_same_v<typename _vec<T,dim>::ScalarType, T>\
-_vec<T,dim> operator op(T const & a, _vec<T,dim> const & b) {\
+_vec<T,dim> operator op(typename _vec<T,dim>::ScalarType const & a, _vec<T,dim> const & b) {\
 	_vec<T,dim> c;\
 	for (int i = 0; i < dim; ++i) {\
 		c[i] = a op b[i];\
