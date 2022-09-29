@@ -369,6 +369,7 @@ void test_vec() {
 				return (float)(i+j);
 			});
 			TEST_EQ(k, 6);	//for write iterators in lambda ctor ...
+			TEST_EQ(c, b);
 		}
 
 		// lambda ctor using int2

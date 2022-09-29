@@ -58,18 +58,20 @@ namespace Tensor {
 	/* this is this particular dimension of our vector */\
 	/* M = matrix<T,i,j> == vec<vec<T,j>,i> so M::dim == i and M::InnerType::dim == j  */\
 	/*  i.e. M::dims = int2(i,j) and M::ith_dim<0> == i and M::ith_dim<1> == j */\
+	/* TODO rename to 'dimForThisNesting' or 'localDim' ... and rename ith_dim to dim */\
 	static constexpr int dim = dim_;\
 \
 	/* TRUE FOR _vec (NOT FOR _sym) */\
 	/*how much does this structure contribute to the overall rank. */\
 	/* for _vec it is 1, for _sym it is 2 */\
+	/* TODO rename to 'rankForThisNesting' or 'localRank' maybe? */\
 	static constexpr int thisRank = 1;\
 \
 	/* TRUE FOR _vec (NOT FOR _sym) */\
 	/*this is the storage size, used for iterting across 's' */\
 	/* for vectors etc it is 's' */\
 	/* for (anti?)symmetric it is N*(N+1)/2 */\
-	static constexpr int count = dim;\
+	static constexpr int count = dim;
 
 #define TENSOR_HEADER()\
 \
@@ -77,10 +79,13 @@ namespace Tensor {
 	/*  this is the next most nested class, so vector-of-vector is a matrix. */\
 	using InnerType = T;\
 \
+	/* some helper stuff associated with our _vec */\
+	using Traits = VectorTraits<This>;\
+\
 	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the child-most nested class that isn't in our math library. */\
 	/* TODO why can't I use VectorTraits<This> here? */\
-	using ScalarType = typename VectorTraits<T>::ScalarType;\
+	using ScalarType = typename VectorTraits<InnerType>::ScalarType;\
 \
 	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
@@ -93,7 +98,11 @@ namespace Tensor {
 	static constexpr int rank = thisRank + VectorTraits<InnerType>::rank;\
 \
 	/* used for vector-dereferencing into the tensor. */\
-	using intN = _vec<int,rank>;
+	using intN = _vec<int,rank>;\
+\
+	/* how many _vec<_vec<...'s there are ... no extra +'s for multi-rank nestings */\
+	/* so _sym<> has numNestings=1 and rank=2, _vec<> has numNestings=1 and rank=1, _vec_vec<>>==_mat<> has numNestings=2 and rank=2 */\
+	static constexpr int numNestings = Traits::numNestings;
 
 
 //for giving operators to the Cons and Prim vector classes
@@ -297,16 +306,15 @@ namespace Tensor {
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
 	/* use _vec<int, rank> as our lambda index: */\
 	classname(std::function<ScalarType(intN)> f) {\
-		/* TODO write-member-only: for (auto i : iterate_index()) {*/\
-		/* use explicit 'this->' so subclasses can use this macro (like _quat) */\
-		for (auto i = this->begin(); i != this->end(); ++i) {\
-			*i = f(i.index);\
+		auto w = write();\
+		for (auto i = w.begin(); i != w.end(); ++i) {\
+			*i = f(i.readIndex);\
 		}\
 	}\
 \
 	/* use (int...) as the lambda index */\
 	/* since I can't just accept function(Scalar(int,...)), I need to require the type to match */\
-	/* mind you in C++ I can't just say the signature is FunctioNFromLambda<Lambda>::FuncType ... */\
+	/* mind you in C++ I can't just say the signature is FunctionFromLambda<Lambda>::FuncType ... */\
 	/* no ... I have to accept all and then requires that part */\
 	template <typename Lambda>\
 	classname(Lambda lambda)\
@@ -321,10 +329,13 @@ namespace Tensor {
 	) {\
 		using FuncType = typename Common::FunctionFromLambda<Lambda>::FuncType;\
 		FuncType f(lambda);\
-		for (auto i = this->begin(); i != this->end(); ++i) {\
+		auto w = write();\
+		for (auto i = w.begin(); i != w.end(); ++i) {\
+			/* *i = std::apply(f, i.readIndex); ... I need to implement some std::get etc stuff for this to work */\
+			/* so until then I'll copy into a std::array<int> */\
 			std::array<int, rank> iarray;\
 			/*std::copy(iarray.begin(), iarray.end(), i.index.begin());  ... crashing */\
-			for (int j = 0; j < rank; ++j) iarray[j] = i.index[j];\
+			for (int j = 0; j < rank; ++j) iarray[j] = i.readIndex[j];\
 			*i = std::apply(f, iarray);\
 		}\
 	}
@@ -373,32 +384,45 @@ namespace Tensor {
 	TENSOR_ADD_LAMBDA_CTOR(classname)\
 	TENSOR_ADD_LIST_CTOR(classname)
 
-//these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
-#define TENSOR_ADD_OPS(classname)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, +=)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, -=)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, *=)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, /=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, +=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, -=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, *=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, /=)\
-	TENSOR_ADD_CTORS(classname) /* ctors, namely lambda ctor, needs read iterators*/ \
-	TENSOR_ADD_READ_ITERATOR(classname)\
-	TENSOR_ADD_UNM(classname)\
-	TENSOR_ADD_DOT(classname)\
-	TENSOR_ADD_CMP_OP(classname)\
-	TENSOR_ADD_SIZE(classname)
-
-#define TENSOR_ADD_READ_ITERATOR(classname)\
+/*
+TODO InnerIterator (iterator i1 first) vs OuterIterator (iterator iN first)
+ReadIterator vs WriteIterator
+(Based on) ReadIndexIterator vs WriteIndexIterator
+*/
+#define TENSOR_ADD_ITERATOR(classname)\
 \
-	/* iterators */\
-	template<typename vec_constness>\
+	template<int i>\
+	struct ReadIncInner {\
+		static bool exec(intN & index) {\
+			/* inc 0 first */\
+			++index[i];\
+			if (index[i] < This::template ith_dim<i>) return true;\
+			if (i < rank-1) index[i] = 0;\
+			return false;\
+		}\
+	};\
+\
+	template<int i>\
+	struct ReadIncOuter {\
+		static bool exec(intN & index) {\
+			/* inc n-1 first */\
+			constexpr int j = rank-1-i;\
+			++index[j];\
+			if (index[j] < This::template ith_dim<j>) return true;\
+			if (j > 0) index[j] = 0;\
+			return false;\
+		}\
+	};\
+\
+	/* read iterator */\
+	/* - sized to the tensor rank (includes multiple-rank nestings) */\
+	/* - range is 0's to the tensor dims() */\
+	template<typename OwnerConstness>\
 	struct ReadIterator {\
-		using intN = typename vec_constness::intN;\
-		vec_constness & owner;\
+		using intN = typename OwnerConstness::intN;\
+		OwnerConstness & owner;\
 		intN index;\
-		ReadIterator(vec_constness & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
+		ReadIterator(OwnerConstness & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
 		ReadIterator(ReadIterator const & o) : owner(o.owner), index(o.index) {}\
 		ReadIterator(ReadIterator && o) : owner(o.owner), index(o.index) {}\
 		ReadIterator & operator=(ReadIterator const & o) {\
@@ -417,58 +441,37 @@ namespace Tensor {
 		bool operator!=(ReadIterator const & o) const {\
 			return !operator==(o);\
 		}\
-\
-		template<int i>\
-		struct Increment {\
-			static bool exec(ReadIterator &iter) {\
-				/* inc n-1 first */\
-				/*constexpr int j = rank-1-i;*/\
-				/*++iter.index[j];*/\
-				/*if (iter.index[j] < vec_constness::template ith_dim<j>) return true;*/\
-				/*if (j > 0) iter.index[j] = 0;*/\
-				/* inc 0 first */\
-				++iter.index[i];\
-				if (iter.index[i] < vec_constness::template ith_dim<i>) return true;\
-				if (i < rank-1) iter.index[i] = 0;\
-				/* end inc */\
-				return false;\
-			}\
-		};\
-\
-		ReadIterator &operator++() {\
-			Common::ForLoop<0,rank,Increment>::exec(*this);\
-			return *this;\
-		}\
-		ReadIterator &operator++(int) {\
-			Common::ForLoop<0,rank,Increment>::exec(*this);\
-			return *this;\
+		auto & operator*() const {\
+			return owner(index);\
 		}\
 \
-		ScalarType & operator*() const {\
-			if constexpr (rank == 1) {\
-				return owner[index[0]];\
-			} else {\
-				return owner(index);\
-			}\
+		ReadIterator & operator++() {\
+			Common::ForLoop<0,rank,ReadIncInner>::exec(index);\
+			return *this;\
+		}\
+		ReadIterator & operator++(int) {\
+			Common::ForLoop<0,rank,ReadIncInner>::exec(index);\
+			return *this;\
 		}\
 \
 		std::ostream & to_ostream(std::ostream & o) const {\
 			return o << "ReadIterator(owner=" << &owner << ", index=" << index << ")";\
 		}\
 \
-		static ReadIterator begin(vec_constness & v) {\
+		static ReadIterator begin(OwnerConstness & v) {\
 			return ReadIterator(v);\
 		}\
-		static ReadIterator end(vec_constness & v) {\
+		static ReadIterator end(OwnerConstness & v) {\
 			intN index;\
-			/* inc n-1 first */\
-			/*index[0] = vec_constness::template ith_dim<0>;*/\
 			/* inc 0 first */\
-			index[rank-1] = vec_constness::template ith_dim<rank-1>;\
+			index[rank-1] = OwnerConstness::template ith_dim<rank-1>;\
+			/* inc n-1 first */\
+			/*index[0] = OwnerConstness::template ith_dim<0>;*/\
 			/* end inc */\
 			return ReadIterator(v, index);\
 		}\
 	};\
+\
 	using iterator = ReadIterator<This>;\
 	iterator begin() { return iterator::begin(*this); }\
 	iterator end() { return iterator::end(*this); }\
@@ -476,7 +479,141 @@ namespace Tensor {
 	const_iterator begin() const { return const_iterator::begin(*this); }\
 	const_iterator end() const { return const_iterator::end(*this); }\
 	const_iterator cbegin() const { return const_iterator::begin(*this); }\
-	const_iterator cend() const { return const_iterator::end(*this); }
+	const_iterator cend() const { return const_iterator::end(*this); }\
+\
+	template<typename WriteOwnerConstness>\
+	struct Write {\
+		using intW = _vec<int, numNestings>;\
+		using intR = intN;\
+\
+		WriteOwnerConstness & owner;\
+\
+		Write(WriteOwnerConstness & owner_) : owner(owner_) {}\
+		Write(Write const & o) : owner(o.owner) {}\
+		Write(Write && o) : owner(o.owner) {}\
+		Write & operator=(Write const & o) { owner = o.owner; return *this; }\
+		Write & operator=(Write && o) { owner = o.owner; return *this; }\
+\
+		template<int i>\
+		struct WriteIncInner {\
+			static bool exec(intW & index) {\
+				/* inc 0 first */\
+				++index[i];\
+				if (index[i] < Traits::template NestedType<i>::count) return true;\
+				if (i < numNestings-1) index[i] = 0;\
+				return false;\
+			}\
+		};\
+\
+		template<int i>\
+		struct WriteIncOuter {\
+			static bool exec(intW & index) {\
+				/* inc n-1 first */\
+				constexpr int j = numNestings-1-i;\
+				++index[j];\
+				if (index[j] < Traits::template NestedType<j>::count) return true;\
+				if (j > 0) index[j] = 0;\
+				return false;\
+			}\
+		};\
+\
+		/* write iterator */\
+		/* - sized to the # of nestings */\
+		/* - range is 0's to each nesting's .count */\
+		template<typename OwnerConstness>\
+		struct WriteIterator {\
+			OwnerConstness & owner;\
+			intW index;\
+			intR readIndex;\
+			WriteIterator(OwnerConstness & owner_, intW index_ = {})\
+			: owner(owner_),\
+				index(index_),\
+				readIndex(Traits::getReadForWriteIndex(index)) {}\
+			WriteIterator(WriteIterator const & o)\
+				: owner(o.owner),\
+				index(o.index),\
+				readIndex(o.readIndex) {}\
+			WriteIterator(WriteIterator && o)\
+				: owner(o.owner),\
+				index(o.index),\
+				readIndex(o.readIndex) {}\
+			WriteIterator & operator=(WriteIterator const & o) {\
+				owner = o.owner;\
+				index = o.index;\
+				readIndex = o.readIndex;\
+				return *this;\
+			}\
+			WriteIterator & operator=(WriteIterator && o) {\
+				owner = o.owner;\
+				index = o.index;\
+				readIndex = o.readIndex;\
+				return *this;\
+			}\
+			bool operator==(WriteIterator const & o) const {\
+				return &owner == &o.owner && index == o.index;\
+			}\
+			bool operator!=(WriteIterator const & o) const {\
+				return !operator==(o);\
+			}\
+			auto & operator*() {\
+				/* cuz it takes less operations than by-read-index */\
+				return Traits::getByWriteIndex(owner, index);\
+			}\
+\
+			WriteIterator & operator++() {\
+				Common::ForLoop<0,numNestings,WriteIncInner>::exec(index);\
+				readIndex = Traits::getReadForWriteIndex(index);\
+				return *this;\
+			}\
+			WriteIterator & operator++(int) {\
+				Common::ForLoop<0,numNestings,WriteIncInner>::exec(index);\
+				readIndex = Traits::getReadForWriteIndex(index);\
+				return *this;\
+			}\
+\
+			static WriteIterator begin(OwnerConstness & v) {\
+				return WriteIterator(v);\
+			}\
+			static WriteIterator end(OwnerConstness & v) {\
+				intR index;\
+				/* inc 0 first */\
+				index[numNestings-1] = Traits::template NestedType<numNestings-1>::count;\
+				return WriteIterator(v, index);\
+			}\
+		};\
+\
+		/* TODO if .write() was called by a const object, so WriteOwnerConstness is 'This const' */\
+		/* then should .begin() .end() be allowed?  or should they be forced to be 'This const' as well? */\
+		using iterator = WriteIterator<This>;\
+		iterator begin() { return iterator::begin(owner); }\
+		iterator end() { return iterator::end(owner); }\
+		using const_iterator = WriteIterator<This const>;\
+		const_iterator begin() const { return const_iterator::begin(owner); }\
+		const_iterator end() const { return const_iterator::end(owner); }\
+		const_iterator cbegin() const { return const_iterator::begin(owner); }\
+		const_iterator cend() const { return const_iterator::end(owner); }\
+	};\
+\
+	Write<This> write() { return Write<This>(*this); }\
+	/* wait, if Write<This> write() is called by a const object ... then the return type is const ... could I detect that from within Write to forward on to Write's inner class ctor? */\
+	Write<This const> write() const { return Write<This const>(*this); }\
+
+//these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
+#define TENSOR_ADD_OPS(classname)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, +=)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, -=)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, *=)\
+	TENSOR_ADD_VECTOR_OP_EQ(classname, /=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, +=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, -=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, *=)\
+	TENSOR_ADD_SCALAR_OP_EQ(classname, /=)\
+	TENSOR_ADD_CTORS(classname) /* ctors, namely lambda ctor, needs read iterators*/ \
+	TENSOR_ADD_ITERATOR(classname)\
+	TENSOR_ADD_UNM(classname)\
+	TENSOR_ADD_DOT(classname)\
+	TENSOR_ADD_CMP_OP(classname)\
+	TENSOR_ADD_SIZE(classname)
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
@@ -494,6 +631,11 @@ namespace Tensor {
 			res *= s[i];\
 		}\
 		return res;\
+	}\
+\
+	/* accepts int into .s[] storage, returns _intN<thisRank> of how to index it using operator() */\
+	static _vec<int,thisRank> getLocalReadForWriteIndex(int writeIndex) {\
+		return _vec<int,thisRank>{writeIndex};\
 	}
 
 #if 0	//hmm, this isn't working when it is run
@@ -514,18 +656,23 @@ struct _vec;
 // base/scalar case
 template<typename T>
 struct VectorTraits {
+	using Type = T;
 	using InnerType = void;
 	using InnerTraits = void;
 	static constexpr int rank = 0;
+	static constexpr int numNestings = 0; // number of _vec<_vec<..._vec<T, ...>'s 
 	using ScalarType = T;
+	template<int index> using NestedType = void;
 };
 
 // recursive/vec/matrix/tensor case
 template<typename T>
 requires is_tensor_v<T>
 struct VectorTraits<T> {
+	using Type = T;
 	using InnerType = typename T::InnerType;
 	using InnerTraits = VectorTraits<InnerType>;
+	using intN = typename T::intN;
 
 	// using rank = thisRank + VectorTraits<InnerType>::rank in _vec
 	static constexpr int rank = T::rank;
@@ -533,6 +680,8 @@ struct VectorTraits<T> {
 	// would be nice to do all recursive calcs inside VectorTraits instead of across _vec
 	// but this screws up with _tensor<real,3,3,3> rank3 and above
 	//static constexpr int rank = T::thisRank + InnerTraits::rank;
+	
+	static constexpr int numNestings = 1 + InnerTraits::numNestings;
 
 	using ScalarType = typename InnerTraits::ScalarType;
 
@@ -555,7 +704,7 @@ struct VectorTraits<T> {
 			return T::dim;
 		} else {
 			// use an int[dim]
-			typename T::intN sizev;
+			intN sizev;
 #if 0
 #error "TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly."
 #else
@@ -576,6 +725,41 @@ struct VectorTraits<T> {
 			return sizev;
 		}
 	}
+
+	template<int index>
+	using NestedType = std::conditional_t<
+		index == 0,
+		T,
+		typename VectorTraits<InnerType>::template NestedType<index - 1>
+	>;
+
+	using intW = _vec<int,numNestings>;
+	
+	static intN getReadForWriteIndex(intW const & i) {
+		intN res;
+		res.template subset<Type::thisRank, 0>() = Type::getLocalReadForWriteIndex(i[0]);
+		if constexpr (numNestings > 1) {
+			//static_assert(rank - Type::thisRank == InnerType::rank);
+			res.template subset<rank-Type::thisRank, Type::thisRank>() = InnerTraits::getReadForWriteIndex(i.template subset<numNestings-1,1>());
+		}
+		return res;
+	}
+
+	static ScalarType & getByWriteIndex(T & t, intW const & index) {
+		if constexpr (numNestings == 1) {
+			return t.s[index.s[0]];
+		} else {
+			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<rank-1,1>());
+		}
+	}
+	static ScalarType const & getByWriteIndex(T const & t, intW const & index) {
+		if constexpr (numNestings == 1) {
+			return t.s[index.s[0]];
+		} else {
+			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<rank-1,1>());
+		}
+	}
+
 };
 
 // default
@@ -689,6 +873,7 @@ static_assert(std::is_same_v<float2::ScalarType, float>);
 static_assert(std::is_same_v<float2::InnerType, float>);
 static_assert(float2::rank == 1);
 static_assert(float2::dim == 2);
+static_assert(float2::numNestings == 1);
 
 // size == 3 specialization
 
@@ -797,6 +982,7 @@ static_assert(std::is_same_v<float3::ScalarType, float>);
 static_assert(std::is_same_v<float3::InnerType, float>);
 static_assert(float3::rank == 1);
 static_assert(float3::dim == 3);
+static_assert(float3::numNestings == 1);
 
 template<typename T>
 struct _vec<T,4> {
@@ -913,6 +1099,7 @@ static_assert(std::is_same_v<float4::ScalarType, float>);
 static_assert(std::is_same_v<float4::InnerType, float>);
 static_assert(float4::rank == 1);
 static_assert(float4::dim == 4);
+static_assert(float4::numNestings == 1);
 
 
 template<int dim> using boolN = _vec<bool, dim>;
@@ -941,6 +1128,10 @@ static_assert(sizeof(int2x2) == sizeof(int) * 2 * 2);
 static_assert(sizeof(uint2x2) == sizeof(unsigned int) * 2 * 2);
 static_assert(sizeof(float2x2) == sizeof(float) * 2 * 2);
 static_assert(sizeof(double2x2) == sizeof(double) * 2 * 2);
+static_assert(float2x2::rank == 2);
+static_assert(float2x2::ith_dim<0> == 2);
+static_assert(float2x2::ith_dim<1> == 2);
+static_assert(float2x2::numNestings == 2);
 
 template<typename T> using _mat2x3 = _vec2<_vec3<T>>;
 using bool2x3 = _mat2x3<bool>;
@@ -955,6 +1146,10 @@ static_assert(sizeof(int2x3) == sizeof(int) * 2 * 3);
 static_assert(sizeof(uint2x3) == sizeof(unsigned int) * 2 * 3);
 static_assert(sizeof(float2x3) == sizeof(float) * 2 * 3);
 static_assert(sizeof(double2x3) == sizeof(double) * 2 * 3);
+static_assert(float2x3::rank == 2);
+static_assert(float2x3::ith_dim<0> == 2);
+static_assert(float2x3::ith_dim<1> == 3);
+static_assert(float2x3::numNestings == 2);
 
 template<typename T> using _mat2x4 = _vec2<_vec4<T>>;
 using bool2x4 = _mat2x4<bool>;
@@ -1015,8 +1210,9 @@ using double4x4 = _mat4x4<double>;
 static_assert(std::is_same_v<float4x4::ScalarType, float>);
 static_assert(std::is_same_v<float4x4::InnerType, float4>);
 static_assert(float4x4::rank == 2);
-static_assert(float4x4::dim == 4);
-static_assert(float4x4::InnerType::dim == 4);
+static_assert(float4x4::ith_dim<0> == 4);
+static_assert(float4x4::ith_dim<1> == 4);
+static_assert(float4x4::numNestings == 2);
 
 // vector op vector, matrix op matrix, and tensor op tensor per-component operators
 
@@ -1259,17 +1455,7 @@ int symIndex(int i, int j) {
 		return (*this)(i,j)(rest...);\
 	}
 
-
-/*
-for the call index operator
-a 1-param is incomplete, so it should return an accessor (same as operator[])
-but a 2-param is complete
-and a more-than-2 will return call on the []
-and therein risks applying a call to an accessor
-so the accessors need nested call indexing too
-*/
-#define TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
-	TENSOR_ADD_OPS(classname)\
+#define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX(classname)\
 \
 	/* a(i,j) := a_ij = a_ji */\
 	/* this is the direct acces */\
@@ -1300,8 +1486,31 @@ so the accessors need nested call indexing too
 	ConstAccessor & operator()(int i) const { return (*this)[i]; }\
 \
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
-	TENSOR_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()
+	TENSOR_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()\
 
+/*
+for the call index operator
+a 1-param is incomplete, so it should return an accessor (same as operator[])
+but a 2-param is complete
+and a more-than-2 will return call on the []
+and therein risks applying a call to an accessor
+so the accessors need nested call indexing too
+*/
+#define TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
+	TENSOR_ADD_OPS(classname)\
+	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX(classname)\
+\
+	static _vec<int,thisRank> getLocalReadForWriteIndex(int writeIndex) {\
+		_vec<int,thisRank> readIndex;\
+		int w = writeIndex+1;\
+		for (int i = 1; w > 0; ++i) {\
+			++readIndex(0);\
+			w -= i;\
+		}\
+		--readIndex(0);\
+		readIndex(1) = writeIndex - readIndex(0) * (readIndex(0) + 1) / 2;\
+		return readIndex;\
+	}
 
 template<typename T, int dim_>
 struct _sym {
@@ -1536,6 +1745,10 @@ static_assert(sizeof(uint2s2) == sizeof(unsigned int) * 3);
 static_assert(sizeof(float2s2) == sizeof(float) * 3);
 static_assert(sizeof(double2s2) == sizeof(double) * 3);
 static_assert(std::is_same_v<typename float2s2::ScalarType, float>);
+static_assert(float2s2::rank == 2);
+static_assert(float2s2::ith_dim<0> == 2);
+static_assert(float2s2::ith_dim<1> == 2);
+static_assert(float2s2::numNestings == 1);
 
 template<typename T> using _sym3 = _sym<T,3>;
 using bool3s3 = _sym3<bool>;
@@ -1552,6 +1765,10 @@ static_assert(sizeof(uint3s3) == sizeof(unsigned int) * 6);
 static_assert(sizeof(float3s3) == sizeof(float) * 6);
 static_assert(sizeof(double3s3) == sizeof(double) * 6);
 static_assert(std::is_same_v<typename float3s3::ScalarType, float>);
+static_assert(float3s3::rank == 2);
+static_assert(float3s3::ith_dim<0> == 3);
+static_assert(float3s3::ith_dim<1> == 3);
+static_assert(float3s3::numNestings == 1);
 
 template<typename T> using _sym4 = _sym<T,4>;
 using bool4s4 = _sym4<bool>;
