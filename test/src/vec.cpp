@@ -164,6 +164,18 @@ void test_vec() {
 		TEST_EQ(j[2], 7);
 		TEST_EQ(j[3], 8);
 		TEST_EQ(j[4], 9);
+	
+		// iterator copy
+		Tensor::float3 f2;
+		std::copy(f2.begin(), f2.end(), f.begin()); // crashing ...
+		TEST_EQ(f, f2);
+	
+		// iterator copy from somewhere else
+		std::array<float, 3> fa;
+		std::copy(fa.begin(), fa.end(), f.begin());
+		TEST_EQ(fa[0], f[0]);
+		TEST_EQ(fa[1], f[1]);
+		TEST_EQ(fa[2], f[2]);
 	}
 
 	// matrix

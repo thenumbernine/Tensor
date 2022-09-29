@@ -311,7 +311,7 @@ namespace Tensor {
 	requires (\
 		std::is_same_v<\
 			Common::FunctionFromLambda<Lambda>,\
-			Common::FunctionWithTupleArgs_t<\
+			Common::FunctionFromTupleArgs<\
 				ScalarType,\
 				Common::tuple_of_same_type<int, rank>\
 			>\
@@ -321,6 +321,7 @@ namespace Tensor {
 		FuncType f(lambda);\
 		for (auto i = this->begin(); i != this->end(); ++i) {\
 			std::array<int, rank> iarray;\
+			/*std::copy(iarray.begin(), iarray.end(), i.index.begin());  ... crashing */\
 			for (int j = 0; j < rank; ++j) iarray[j] = i.index[j];\
 			*i = std::apply(f, iarray);\
 		}\
@@ -396,8 +397,8 @@ namespace Tensor {
 		vec_constness & owner;\
 		intN index;\
 		ReadIterator(vec_constness & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
-		ReadIterator(ReadIterator const & o) { operator=(o); }\
-		ReadIterator(ReadIterator && o) { operator=(o); }\
+		ReadIterator(ReadIterator const & o) : owner(o.owner), index(o.index) {}\
+		ReadIterator(ReadIterator && o) : owner(o.owner), index(o.index) {}\
 		ReadIterator & operator=(ReadIterator const & o) {\
 			owner = o.owner;\
 			index = o.index;\
