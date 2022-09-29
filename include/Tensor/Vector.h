@@ -306,6 +306,8 @@ namespace Tensor {
 \
 	/* use (int...) as the lambda index */\
 	/* since I can't just accept function(Scalar(int,...)), I need to require the type to match */\
+	/* mind you in C++ I can't just say the signature is FunctioNFromLambda<Lambda>::FuncType ... */\
+	/* no ... I have to accept all and then requires that part */\
 	template <typename Lambda>\
 	classname(Lambda lambda)\
 	requires (\

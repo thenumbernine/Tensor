@@ -5,6 +5,7 @@
 // static tests here:
 
 void test_vec() {
+
 	//vector
 
 	{
@@ -359,6 +360,15 @@ void test_vec() {
 				TEST_EQ(b(i,j), i+j);
 				TEST_EQ(b(j,i), i+j);
 			}
+		}
+
+		{
+			int k = 0;
+			auto c = Tensor::float3s3([&](int i, int j) -> float {
+				++k;
+				return (float)(i+j);
+			});
+			TEST_EQ(k, 6);	//for write iterators in lambda ctor ...
 		}
 
 		// lambda ctor using int2

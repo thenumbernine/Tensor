@@ -21,7 +21,7 @@ void test_v1_iter() {
 
 	//write iterator test
 	{
-		Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Upper<2>, Tensor::Upper<2>>> s([&](Tensor::int2 i){
+		Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Upper<2>, Tensor::Upper<2>>> s([&](Tensor::v1::int2 i){
 			return Real(i(0) + 2 * i(1));
 		});
 		TEST_EQ(s(0,0), 0);
