@@ -93,6 +93,11 @@ template<typename T>
 typename T::ScalarType determinant(T const & a);
 
 template<typename T>
+T determinant(_mat<T,1,1> const & a) {
+	return a.x.x;
+}
+
+template<typename T>
 T determinant(_mat2x2<T> const & a) {
 	return determinant22(a);
 }
@@ -114,6 +119,11 @@ T determinant(_mat<T,dim,dim> const & a) {
 }
 
 // determinant for symmetric
+
+template<typename T>
+T determinant(_sym<T,1> const & a) {
+	return a(0,0);
+}
 
 template<typename T>
 T determinant(_sym2<T> const & a) {
@@ -144,6 +154,11 @@ typename T::ScalarType inverse(
 	T const & a,
 	typename T::ScalarType const & det
 );
+
+template<typename T>
+_mat<T,1,1> inverse(_mat<T,1,1> const & a, T const & det) {
+	return (T)1 / det;	// == 1 / a.x.x;
+}
 
 template<typename T>
 _mat2x2<T> inverse(_mat2x2<T> const & a, T const & det) {
@@ -229,6 +244,11 @@ _mat4x4<T> inverse(_mat4x4<T> const & a, T const & det) {
 
 template<typename T, int dim>
 _sym<T,dim> inverse(_sym<T,dim> const & a, T const & det);
+
+template<typename T>
+_sym<T,1> inverse(_sym<T,1> const & a, T const & det) {
+	return (T)1 / det;	// == 1 / a.xx;	 ... which to use?
+}
 
 // TODO sym2 from mat2 
 template<typename T>
