@@ -74,7 +74,7 @@ functions:
 - `distance(a,b)` = Length of the difference of two tensors.
 	$$distance(a,b) := |b - a|$$
 - `cross(a,b)` = 3D vector cross product.  TODO generalize to something with Levi-Civita permutation tensor.
-	$$cross(a,b)_i := \epsilon_{ijk} b^j c^k$$ 
+	$${cross(a,b)_i} := {\epsilon_{ijk}} b^j c^k$$ 
 - `outer(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.
 	$$outer(a,b)_{IJ} := a_I b_J$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
