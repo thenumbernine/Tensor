@@ -78,9 +78,9 @@ functions:
 - `outer(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.
 	$$outer(a,b)_{IJ} := a_I b_J$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
-	$$determinant(m) := det(m) = \epsilon_I {m^{i_1}}_1 {m^{i_2}}_2 {m^{i_3}}_3 ... {m^{i_n}}_n$$
+	$$determinant(a) := det(a) = \epsilon_I {a^{i_1}}_1 {a^{i_2}}_2 {a^{i_3}}_3 ... {a^{i_n}}_n$$
 - `inverse(m)` = Matrix-inverse, for rank-2 tensors.
-	$${inverse(m)^{i_1}}_{j_1} := \frac{1}{det(m)} \frac{1}{(n-1)!} \delta^I_J {m^{j_2}}_{i_2} {m^{j_3}}_{i_3} ... {m^{j_n}}_{i_n}$$
+	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
 
 ## Familiar Types
 
