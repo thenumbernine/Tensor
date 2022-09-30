@@ -70,8 +70,8 @@ functions:
 - `distance(a,b)` = Length of the difference of two tensors.  $distance(a,b) := |b - a|$.
 - `cross(a,b)` = 3D vector cross product.  $cross(a,b)_i := \epsilon_{ijk} b^j c^k$.  TODO generalize to something with Levi-Civita permutation tensor.
 - `outer(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc. $outer(a,b)_{IJ} := a_I b_J$.
-- `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
-- `inverse(m)` = Matrix-inverse, for rank-2 tensors.
+- `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.  $determinant(m) := det(m) = \epsilon_I {m^{i_1}}_1 {m^{i_2}}_2 {m^{i_3}}_3 ... {m^{i_n}}_n$.
+- `inverse(m)` = Matrix-inverse, for rank-2 tensors. ${inverse(m)^{i_1}}_{j_1} := \frac{1}{det(m)} \frac{1}{(n-1)!} \delta^I_J {m^{j_2}}_{i_2} {m^{j_3}}_{i_3} ... {m^{j_n}}_{i_n}$.
 
 ## Familiar Types
 
