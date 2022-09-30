@@ -64,7 +64,7 @@ template<int order, typename Real, int dim, typename InputType>
 struct PartialDerivativeClass;
 
 template<int order, typename Real, int dim, typename InputType>
-requires is_tensor_v<InputType> && std::is_same_v<Real, typename InputType::ScalarType>
+requires is_tensor_v<InputType> && std::is_same_v<Real, typename InputType::Scalar>
 struct PartialDerivativeClass<order, Real, dim, InputType> {
 	using RealN = _vec<Real, dim>;
 	using OutputType = _vec<InputType, dim>;

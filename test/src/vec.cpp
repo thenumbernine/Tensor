@@ -316,6 +316,13 @@ void test_vec() {
 		TEST_EQ(m + 0.f, m);
 		TEST_EQ(m * 1.f, m);
 		TEST_EQ(m * 0.f, decltype(m)());
+
+		auto m2 = matrixCompMult(m,m);
+		for (int i = 0; i < m.dim<0>; ++i) {
+			for (int j = 0; j < m.dim<1>; ++j) {
+				TEST_EQ(m2(i,j), m(i,j) * m(i,j));
+			}
+		}
 	}
 
 	// tensor of vec-vec-vec

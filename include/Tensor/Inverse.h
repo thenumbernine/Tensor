@@ -14,12 +14,12 @@ T det22elem(T const & a00, T const & a01, T const & a10, T const & a11) {
 }
 
 template<typename T>
-typename T::ScalarType determinant22(T const & a) {
+typename T::Scalar determinant22(T const & a) {
 	return det22elem(a(0,0), a(0,1), a(1,0), a(1,1));
 }
 
 template<typename T>
-typename T::ScalarType determinant33(T const & a) {
+typename T::Scalar determinant33(T const & a) {
 	return a(0,0) * a(1,1) * a(2,2)
 		+ a(0,1) * a(1,2) * a(2,0)
 		+ a(0,2) * a(1,0) * a(2,1)
@@ -29,8 +29,8 @@ typename T::ScalarType determinant33(T const & a) {
 }
 
 template<typename M>
-typename M::ScalarType determinant44(M const & a) {
-	using T = typename M::ScalarType;
+typename M::Scalar determinant44(M const & a) {
+	using T = typename M::Scalar;
 	//autogen'd with symmath
 	T const tmp1 = a(2,2) * a(3,3);
 	T const tmp2 = a(2,3) * a(3,2);
@@ -71,8 +71,8 @@ typename M::ScalarType determinant44(M const & a) {
 }
 
 template<typename M>
-typename M::ScalarType determinantNN(M const & a) {
-	using T = typename M::ScalarType;
+typename M::Scalar determinantNN(M const & a) {
+	using T = typename M::Scalar;
 	static_assert(M::rank == 2);
 	static_assert(M::template dim<0> == M::template dim<1>);
 	constexpr int dim = M::template dim<0>;
@@ -92,7 +92,7 @@ typename M::ScalarType determinantNN(M const & a) {
 }
 
 template<typename T>
-typename T::ScalarType determinant(T const & a);
+typename T::Scalar determinant(T const & a);
 
 template<typename T>
 T determinant(_mat<T,1,1> const & a) {
@@ -152,9 +152,9 @@ T determinant(_sym<T,dim> const & a) {
 // inverse for matrix
 
 template<typename T>
-typename T::ScalarType inverse(
+typename T::Scalar inverse(
 	T const & a,
-	typename T::ScalarType const & det
+	typename T::Scalar const & det
 );
 
 template<typename T>

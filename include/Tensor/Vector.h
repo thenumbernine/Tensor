@@ -56,7 +56,7 @@ namespace Tensor {
 \
 	/* TRUE FOR _vec (NOT FOR _sym) */\
 	/* this is this particular dimension of our vector */\
-	/* M = matrix<T,i,j> == vec<vec<T,j>,i> so M::localDim == i and M::InnerType::localDim == j  */\
+	/* M = matrix<T,i,j> == vec<vec<T,j>,i> so M::localDim == i and M::Inner::localDim == j  */\
 	/*  i.e. M::dims = int2(i,j) and M::dim<0> == i and M::dim<1> == j */\
 	static constexpr int localDim = localDim_;\
 \
@@ -76,7 +76,7 @@ namespace Tensor {
 \
 	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the next most nested class, so vector-of-vector is a matrix. */\
-	using InnerType = T;\
+	using Inner = T;\
 \
 	/* some helper stuff associated with our _vec */\
 	using Traits = VectorTraits<This>;\
@@ -84,7 +84,7 @@ namespace Tensor {
 	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the child-most nested class that isn't in our math library. */\
 	/* TODO why can't I use VectorTraits<This> here? */\
-	using ScalarType = typename VectorTraits<InnerType>::ScalarType;\
+	using Scalar = typename VectorTraits<Inner>::Scalar;\
 \
 	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
@@ -94,7 +94,7 @@ namespace Tensor {
 	/* if we do recursive case in VectorTraits (failing for rank-3 and above): */\
 	/*static constexpr int rank = VectorTraits<This>::rank;*/\
 	/* if we do recursive case here: */\
-	static constexpr int rank = localRank + VectorTraits<InnerType>::rank;\
+	static constexpr int rank = localRank + VectorTraits<Inner>::rank;\
 \
 	/* used for vector-dereferencing into the tensor. */\
 	using intN = _vec<int,rank>;\
@@ -118,7 +118,7 @@ namespace Tensor {
 	}
 
 #define TENSOR_ADD_SCALAR_OP_EQ(classname, op)\
-	classname& operator op(ScalarType const & b) {\
+	classname& operator op(Scalar const & b) {\
 		for (int i = 0; i < localCount; ++i) {\
 			s[i] op b;\
 		}\
@@ -143,7 +143,7 @@ namespace Tensor {
 \
 	static constexpr auto dims() { return Traits::dims(); }\
 \
-	template<int i> static constexpr int count = Traits::template NestedType<i>::localCount;
+	template<int i> static constexpr int count = Traits::template Nested<i>::localCount;
 
 // danger ... danger ...
 #define TENSOR_ADD_CAST_BOOL_OP()\
@@ -296,7 +296,7 @@ namespace Tensor {
 // lambda ctor
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
 	/* use _vec<int, rank> as our lambda index: */\
-	classname(std::function<ScalarType(intN)> f) {\
+	classname(std::function<Scalar(intN)> f) {\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
 			*i = f(i.readIndex);\
@@ -313,13 +313,13 @@ namespace Tensor {
 		std::is_same_v<\
 			Common::FunctionFromLambda<Lambda>,\
 			Common::FunctionFromTupleArgs<\
-				ScalarType,\
+				Scalar,\
 				Common::tuple_of_same_type<int, rank>\
 			>\
 		>\
 	) {\
-		using FuncType = typename Common::FunctionFromLambda<Lambda>::FuncType;\
-		FuncType f(lambda);\
+		using Func = typename Common::FunctionFromLambda<Lambda>::FuncType;\
+		Func f(lambda);\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
 			/* *i = std::apply(f, i.readIndex); ... I need to implement some std::get etc stuff for this to work */\
@@ -348,7 +348,7 @@ namespace Tensor {
 	}
 
 #define TENSOR_ADD_SCALAR_CTOR(classname)\
-	classname(ScalarType const & x) {\
+	classname(Scalar const & x) {\
 		for (int i = 0; i < localCount; ++i) {\
 			s[i] = x;\
 		}\
@@ -614,7 +614,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SUBSET_ACCESS()\
 \
-	/* assumes InnerType operator* exists */\
+	/* assumes Inner operator* exists */\
 	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
 	T volume() const {\
 		T res = s[0];\
@@ -643,12 +643,12 @@ struct _vec;
 template<typename T>
 struct VectorTraits {
 	using Type = T;
-	using InnerType = void;
+	using Inner = void;
 	using InnerTraits = void;
 	static constexpr int rank = 0;
 	static constexpr int numNestings = 0; // number of _vec<_vec<..._vec<T, ...>'s 
-	using ScalarType = T;
-	template<int index> using NestedType = void;
+	using Scalar = T;
+	template<int index> using Nested = void;
 };
 
 // recursive/vec/matrix/tensor case
@@ -656,11 +656,11 @@ template<typename T>
 requires is_tensor_v<T>
 struct VectorTraits<T> {
 	using Type = T;
-	using InnerType = typename T::InnerType;
-	using InnerTraits = VectorTraits<InnerType>;
+	using Inner = typename T::Inner;
+	using InnerTraits = VectorTraits<Inner>;
 	using intN = typename T::intN;
 
-	// using rank = localRank + VectorTraits<InnerType>::rank in _vec
+	// using rank = localRank + VectorTraits<Inner>::rank in _vec
 	static constexpr int rank = T::rank;
 	// using VectorTraits<This>::rank in _vec
 	// would be nice to do all recursive calcs inside VectorTraits instead of across _vec
@@ -669,7 +669,7 @@ struct VectorTraits<T> {
 	
 	static constexpr int numNestings = 1 + InnerTraits::numNestings;
 
-	using ScalarType = typename InnerTraits::ScalarType;
+	using Scalar = typename InnerTraits::Scalar;
 
 	// a function for getting the i'th component of the size vector
 	template<int i>
@@ -699,7 +699,7 @@ struct VectorTraits<T> {
 			}
 			if constexpr (T::localRank < rank) {
 				// special case reading from int
-				if constexpr (InnerType::rank == 1) {
+				if constexpr (Inner::rank == 1) {
 					sizev.s[T::localRank] = InnerTraits::dims();
 				} else {
 					// assigning sub-vector
@@ -713,10 +713,10 @@ struct VectorTraits<T> {
 	}
 
 	template<int index>
-	using NestedType = std::conditional_t<
+	using Nested = std::conditional_t<
 		index == 0,
 		T,
-		typename VectorTraits<InnerType>::template NestedType<index - 1>
+		typename VectorTraits<Inner>::template Nested<index - 1>
 	>;
 
 	using intW = _vec<int,numNestings>;
@@ -725,20 +725,20 @@ struct VectorTraits<T> {
 		intN res;
 		res.template subset<Type::localRank, 0>() = Type::getLocalReadForWriteIndex(i[0]);
 		if constexpr (numNestings > 1) {
-			//static_assert(rank - Type::localRank == InnerType::rank);
+			//static_assert(rank - Type::localRank == Inner::rank);
 			res.template subset<rank-Type::localRank, Type::localRank>() = InnerTraits::getReadForWriteIndex(i.template subset<numNestings-1,1>());
 		}
 		return res;
 	}
 
-	static ScalarType & getByWriteIndex(T & t, intW const & index) {
+	static Scalar & getByWriteIndex(T & t, intW const & index) {
 		if constexpr (numNestings == 1) {
 			return t.s[index.s[0]];
 		} else {
 			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());
 		}
 	}
-	static ScalarType const & getByWriteIndex(T const & t, intW const & index) {
+	static Scalar const & getByWriteIndex(T const & t, intW const & index) {
 		if constexpr (numNestings == 1) {
 			return t.s[index.s[0]];
 		} else {
@@ -853,8 +853,8 @@ static_assert(sizeof(int2) == sizeof(int) * 2);
 static_assert(sizeof(uint2) == sizeof(unsigned int) * 2);
 static_assert(sizeof(float2) == sizeof(float) * 2);
 static_assert(sizeof(double2) == sizeof(double) * 2);
-static_assert(std::is_same_v<float2::ScalarType, float>);
-static_assert(std::is_same_v<float2::InnerType, float>);
+static_assert(std::is_same_v<float2::Scalar, float>);
+static_assert(std::is_same_v<float2::Inner, float>);
 static_assert(float2::rank == 1);
 static_assert(float2::dim<0> == 2);
 static_assert(float2::numNestings == 1);
@@ -962,8 +962,8 @@ static_assert(sizeof(int3) == sizeof(int) * 3);
 static_assert(sizeof(uint3) == sizeof(unsigned int) * 3);
 static_assert(sizeof(float3) == sizeof(float) * 3);
 static_assert(sizeof(double3) == sizeof(double) * 3);
-static_assert(std::is_same_v<float3::ScalarType, float>);
-static_assert(std::is_same_v<float3::InnerType, float>);
+static_assert(std::is_same_v<float3::Scalar, float>);
+static_assert(std::is_same_v<float3::Inner, float>);
 static_assert(float3::rank == 1);
 static_assert(float3::dim<0> == 3);
 static_assert(float3::numNestings == 1);
@@ -1079,8 +1079,8 @@ static_assert(sizeof(int4) == sizeof(int) * 4);
 static_assert(sizeof(uint4) == sizeof(unsigned int) * 4);
 static_assert(sizeof(float4) == sizeof(float) * 4);
 static_assert(sizeof(double4) == sizeof(double) * 4);
-static_assert(std::is_same_v<float4::ScalarType, float>);
-static_assert(std::is_same_v<float4::InnerType, float>);
+static_assert(std::is_same_v<float4::Scalar, float>);
+static_assert(std::is_same_v<float4::Inner, float>);
 static_assert(float4::rank == 1);
 static_assert(float4::dim<0> == 4);
 static_assert(float4::numNestings == 1);
@@ -1196,8 +1196,8 @@ using uint4x4 = _mat4x4<uint>;
 using float4x4 = _mat4x4<float>;
 using double4x4 = _mat4x4<double>;
 
-static_assert(std::is_same_v<float4x4::ScalarType, float>);
-static_assert(std::is_same_v<float4x4::InnerType, float4>);
+static_assert(std::is_same_v<float4x4::Scalar, float>);
+static_assert(std::is_same_v<float4x4::Inner, float4>);
 static_assert(float4x4::rank == 2);
 static_assert(float4x4::dim<0> == 4);
 static_assert(float4x4::dim<1> == 4);
@@ -1223,10 +1223,10 @@ TENSOR_ADD_VECTOR_VECTOR_OP(/)
 
 // vector * vector
 //TENSOR_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
-// so it has to be constrained to only T == _vec<T,N>:ScalarType
+// so it has to be constrained to only T == _vec<T,N>:Scalar
 // c_i := a_i * b_i
 template<typename T, int N>
-requires std::is_same_v<typename _vec<T,N>::ScalarType, T>
+requires std::is_same_v<typename _vec<T,N>::Scalar, T>
 _vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
 	_vec<T,N> c;
 	for (int i = 0; i < N; ++i) {
@@ -1237,13 +1237,13 @@ _vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
 
 
 // vector op scalar, scalar op vector, matrix op scalar, scalar op matrix, tensor op scalar, scalar op tensor operations
-// need to require that T == _vec<T,N>::ScalarType otherwise this will spill into vector/matrix operations
+// need to require that T == _vec<T,N>::Scalar otherwise this will spill into vector/matrix operations
 // c_i := a_i * b
 // c_i := a * b_i
 
 #define TENSOR_ADD_VECTOR_SCALAR_OP(op)\
 template<typename T, int N>\
-_vec<T,N> operator op(_vec<T,N> const & a, typename _vec<T,N>::ScalarType const & b) {\
+_vec<T,N> operator op(_vec<T,N> const & a, typename _vec<T,N>::Scalar const & b) {\
 	_vec<T,N> c;\
 	for (int i = 0; i < N; ++i) {\
 		c[i] = a[i] op b;\
@@ -1251,7 +1251,7 @@ _vec<T,N> operator op(_vec<T,N> const & a, typename _vec<T,N>::ScalarType const 
 	return c;\
 }\
 template<typename T, int N>\
-_vec<T,N> operator op(typename _vec<T,N>::ScalarType const & a, _vec<T,N> const & b) {\
+_vec<T,N> operator op(typename _vec<T,N>::Scalar const & a, _vec<T,N> const & b) {\
 	_vec<T,N> c;\
 	for (int i = 0; i < N; ++i) {\
 		c[i] = a op b[i];\
@@ -1268,7 +1268,7 @@ TENSOR_ADD_VECTOR_SCALAR_OP(/)
 // matrix * matrix operators
 // c_ik := a_ij * b_jk
 template<typename T, int dim1, int dim2, int dim3>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::ScalarType, T>
+requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
 _mat<T,dim1,dim3> operator*(_mat<T,dim1,dim2> const & a, _mat<T,dim2,dim3> const & b) {
 	_mat<T,dim1,dim3> c;
 	for (int i = 0; i < dim1; ++i) {
@@ -1287,7 +1287,7 @@ _mat<T,dim1,dim3> operator*(_mat<T,dim1,dim2> const & a, _mat<T,dim2,dim3> const
 // c_j := a_i * b_ij
 
 template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::ScalarType, T>
+requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
 _vec<T,dim2> operator*(_vec<T,dim1> const & a, _mat<T,dim1,dim2> const & b) {
 	_vec<T,dim2> c;
 	for (int j = 0; j < dim2; ++j) {
@@ -1304,7 +1304,7 @@ _vec<T,dim2> operator*(_vec<T,dim1> const & a, _mat<T,dim1,dim2> const & b) {
 // c_i := a_ij * b_j
 
 template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::ScalarType, T>
+requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
 _vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
 	_vec<T,dim1> c;
 	for (int i = 0; i < dim1; ++i) {
@@ -1324,16 +1324,12 @@ _vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
 //matrixCompMult = component-wise multiplication, GLSL name compat
 // c_ij := a_ij * b_ij
 
-template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::ScalarType, T>
-_mat<T,dim1,dim2> matrixCompMult(_mat<T,dim1,dim2> const & a, _mat<T,dim1,dim2> const & b) {
-	_mat<T,dim1,dim2> c;
-	for (int i = 0; i < dim1; ++i) {
-		for (int j = 0; j < dim2; ++j) {
-			c[i][j] = a[i][j] * b[i][j];
-		}
-	}
-	return c;
+// TODO GLSL sucks, rename this to something that makes sense, and shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
+template<typename T>
+T matrixCompMult(T const & a, T const & b) {
+	return T([&](T::intN i) -> typename T::Scalar {
+		return a(i) * b(i);
+	});
 }
 
 // vector functions
@@ -1342,7 +1338,7 @@ _mat<T,dim1,dim2> matrixCompMult(_mat<T,dim1,dim2> const & a, _mat<T,dim1,dim2> 
 // c := a_i * b_i
 // TODO generalize
 template<typename T, int N>
-requires std::is_same_v<typename _vec<T,N>::ScalarType, T>
+requires std::is_same_v<typename _vec<T,N>::Scalar, T>
 T dot(_vec<T,N> const & a, _vec<T,N> const & b) {
 	T sum = {};
 	for (int i = 0; i < N; ++i) {
@@ -1373,7 +1369,7 @@ _vec<T,N> normalize(_vec<T,N> const & v) {
 
 // c_i := ε_ijk * b_j * c_k
 template<typename T>
-requires std::is_same_v<typename _vec3<T>::ScalarType, T>
+requires std::is_same_v<typename _vec3<T>::Scalar, T>
 _vec3<T> cross(_vec3<T> const & a, _vec3<T> const & b) {
 	return _vec3<T>(
 		a[1] * b[2] - a[2] * b[1],
@@ -1384,7 +1380,7 @@ _vec3<T> cross(_vec3<T> const & a, _vec3<T> const & b) {
 // c_ij := a_i * b_j
 // TODO generalize to tensors c_i1_..ip_j1_..jq = a_i1..ip * b_j1..jq
 template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _vec<T,dim1>::ScalarType, T>
+requires std::is_same_v<typename _vec<T,dim1>::Scalar, T>
 _mat<T,dim1,dim2> outerProduct(_vec<T,dim1> const & a, _vec<T,dim2> const & b) {
 	_mat<T,dim1,dim2> c;
 	for (int i = 0; i < dim1; ++i) {
@@ -1450,14 +1446,14 @@ int symIndex(int i, int j) {
 \
 	/* a(i,j) := a_ij = a_ji */\
 	/* this is the direct acces */\
-	InnerType & operator()(int i, int j) { return s[symIndex<localDim>(i,j)]; }\
-	InnerType const & operator()(int i, int j) const { return s[symIndex<localDim>(i,j)]; }\
+	Inner & operator()(int i, int j) { return s[symIndex<localDim>(i,j)]; }\
+	Inner const & operator()(int i, int j) const { return s[symIndex<localDim>(i,j)]; }\
 \
 	struct Accessor {\
 		classname & owner;\
 		int i;\
 		Accessor(classname & owner_, int i_) : owner(owner_), i(i_) {}\
-		InnerType & operator[](int j) { return owner(i,j); }\
+		Inner & operator[](int j) { return owner(i,j); }\
 		TENSOR_ADD_CALL_INDEX()\
 	};\
 	Accessor operator[](int i) { return Accessor(*this, i); }\
@@ -1466,7 +1462,7 @@ int symIndex(int i, int j) {
 		classname const & owner;\
 		int i;\
 		ConstAccessor(classname const & owner_, int i_) : owner(owner_), i(i_) {}\
-		InnerType const & operator[](int j) { return owner(i,j); }\
+		Inner const & operator[](int j) { return owner(i,j); }\
 		TENSOR_ADD_CALL_INDEX()\
 	};\
 	ConstAccessor operator[](int i) const { return ConstAccessor(*this, i); }\
@@ -1690,7 +1686,7 @@ TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(/)
 
 #define TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(op)\
 template<typename T, int N>\
-requires std::is_same_v<typename _sym<T,N>::ScalarType, T>\
+requires std::is_same_v<typename _sym<T,N>::Scalar, T>\
 _sym<T,N> operator op(_sym<T,N> const & a, T const & b) {\
 	_sym<T,N> c;\
 	for (int i = 0; i < c.localCount; ++i) {\
@@ -1699,7 +1695,7 @@ _sym<T,N> operator op(_sym<T,N> const & a, T const & b) {\
 	return c;\
 }\
 template<typename T, int N>\
-requires std::is_same_v<typename _sym<T,N>::ScalarType, T>\
+requires std::is_same_v<typename _sym<T,N>::Scalar, T>\
 _sym<T,N> operator op(T const & a, _sym<T,N> const & b) {\
 	_sym<T,N> c;\
 	for (int i = 0; i < c.localCount; ++i) {\
@@ -1731,7 +1727,7 @@ static_assert(sizeof(int2s2) == sizeof(int) * 3);
 static_assert(sizeof(uint2s2) == sizeof(unsigned int) * 3);
 static_assert(sizeof(float2s2) == sizeof(float) * 3);
 static_assert(sizeof(double2s2) == sizeof(double) * 3);
-static_assert(std::is_same_v<typename float2s2::ScalarType, float>);
+static_assert(std::is_same_v<typename float2s2::Scalar, float>);
 static_assert(float2s2::rank == 2);
 static_assert(float2s2::dim<0> == 2);
 static_assert(float2s2::dim<1> == 2);
@@ -1752,7 +1748,7 @@ static_assert(sizeof(int3s3) == sizeof(int) * 6);
 static_assert(sizeof(uint3s3) == sizeof(unsigned int) * 6);
 static_assert(sizeof(float3s3) == sizeof(float) * 6);
 static_assert(sizeof(double3s3) == sizeof(double) * 6);
-static_assert(std::is_same_v<typename float3s3::ScalarType, float>);
+static_assert(std::is_same_v<typename float3s3::Scalar, float>);
 static_assert(float3s3::rank == 2);
 static_assert(float3s3::dim<0> == 3);
 static_assert(float3s3::dim<1> == 3);
@@ -1773,7 +1769,7 @@ static_assert(sizeof(int4s4) == sizeof(int) * 10);
 static_assert(sizeof(uint4s4) == sizeof(unsigned int) * 10);
 static_assert(sizeof(float4s4) == sizeof(float) * 10);
 static_assert(sizeof(double4s4) == sizeof(double) * 10);
-static_assert(std::is_same_v<typename float4s4::ScalarType, float>);
+static_assert(std::is_same_v<typename float4s4::Scalar, float>);
 static_assert(float4s4::rank == 2);
 static_assert(float4s4::dim<0> == 4);
 static_assert(float4s4::dim<1> == 4);
@@ -1785,8 +1781,8 @@ static_assert(float4s4::count<0> == 10);
 // and I do have my default .fields ostream
 // but here's a manual override anyways
 // so that the .fields vec2 vec3 vec4 and the non-.fields other vecs all look the same
-template<typename Type, int N>
-std::ostream & operator<<(std::ostream & o, Tensor::_vec<Type,N> const & t) {
+template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, Tensor::_vec<T,N> const & t) {
 	char const * sep = "";
 	o << "{";
 	for (int i = 0; i < t.localCount; ++i) {
@@ -1798,8 +1794,8 @@ std::ostream & operator<<(std::ostream & o, Tensor::_vec<Type,N> const & t) {
 }
 
 // TODO print as fields of .sym, or print as vector?
-template<typename Type, int N>
-std::ostream & operator<<(std::ostream & o, Tensor::_sym<Type,N> const & t) {
+template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, Tensor::_sym<T,N> const & t) {
 	char const * sep = "";
 	o << "{";
 	for (int i = 0; i < t.localCount; ++i) {
