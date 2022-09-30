@@ -112,10 +112,11 @@ TODO:
 - index notation summation?
 	- more flexible inner, outer, exterior, etc multiplications?
 - better function matching for derivatives
-
-- GLSL sucks, rename this to something that makes sense, and shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
-	- in fact, better public typenames?
-
+- shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
+- make transpose a specialization of permuteIndexes()
+- multiply as contraction of indexes
+	- for multiply and for permute, some way to extract the flags for symmetric/not on dif indexes
+	  so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into vec-of-vec
 - move secondderivative from Relativity to Tensor
 - move covariantderivative from Relativity to Tensor
 - move Hydro/Inverse.h's GaussJordan solver into Tensor/Inverse

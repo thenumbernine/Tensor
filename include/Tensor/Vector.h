@@ -1063,21 +1063,6 @@ TENSOR_ADD_VECTOR_VECTOR_OP(+)
 TENSOR_ADD_VECTOR_VECTOR_OP(-)
 TENSOR_ADD_VECTOR_VECTOR_OP(/)
 
-// vector * vector
-//TENSOR_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
-// so it has to be constrained to only T == _vec<T,N>:Scalar
-// c_i := a_i * b_i
-template<typename T, int N>
-requires std::is_same_v<typename _vec<T,N>::Scalar, T>
-_vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
-	_vec<T,N> c;
-	for (int i = 0; i < N; ++i) {
-		c[i] = a[i] * b[i];
-	}
-	return c;
-}
-
-
 // vector op scalar, scalar op vector, matrix op scalar, scalar op matrix, tensor op scalar, scalar op tensor operations
 // need to require that T == _vec<T,N>::Scalar otherwise this will spill into vector/matrix operations
 // c_i := a_i * b
@@ -1106,6 +1091,23 @@ TENSOR_ADD_VECTOR_SCALAR_OP(-)
 TENSOR_ADD_VECTOR_SCALAR_OP(*)
 TENSOR_ADD_VECTOR_SCALAR_OP(/)
 
+// TODO replace all operator* with outer+contract to generalize to any rank
+// maybe generalize further with the # of indexes to contract: 
+// c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
+
+// vector * vector
+//TENSOR_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
+// so it has to be constrained to only T == _vec<T,N>:Scalar
+// c_i := a_i * b_i
+template<typename T, int N>
+requires std::is_same_v<typename _vec<T,N>::Scalar, T>
+_vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
+	_vec<T,N> c;
+	for (int i = 0; i < N; ++i) {
+		c[i] = a[i] * b[i];
+	}
+	return c;
+}
 
 // matrix * matrix operators
 // c_ik := a_ij * b_jk
@@ -1158,10 +1160,6 @@ _vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
 	}
 	return c;
 }
-
-
-// TODO GENERALIZE TO TENSOR MULTIPLICATIONS
-// c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
 
 //element-wise multiplication
 // c_i1_i2_... := a_i1_i2_... * b_i1_i2_...
