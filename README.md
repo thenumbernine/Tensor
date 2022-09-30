@@ -89,7 +89,10 @@ Sorry GLSL, Cg wins this round:
 - `float2, float3, float4` = 1D, 2D, 3D float vector.
 - `float2x2, float2x3, float2x4, float3x2, float3x3, float3x4, float4x2, float4x3, float4x4` = matrix types.
 - `float2s2, float3s3, float4s4` = symmetric matrix types.
-- bool, char, uchar, short, ushort, int, uint, float, double, ldouble, size, intptr, uintptr.
+- ... same with bool, char, uchar, short, ushort, int, uint, float, double, ldouble, size, intptr, uintptr.
+- `_vec2<T>, _vec3<T>, _vec4<T>` = templated fixed-size vectors.
+- `_mat2x2<T>, _mat2x3<T>, _mat2x4<T>, _mat3x2<T>, _mat3x3<T>, _mat3x4<T>, _mat4x2<T>, _mat4x3<T>, _mat4x4<T>` = templated fixed-size matrices.
+- `_sym2<T>, _sym3<T>, _sym4<T>` = templated fixed-size symmetric matrices.
 
 Depends on the "Common" project, for Exception, template metaprograms, etc.
 
