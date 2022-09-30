@@ -1186,7 +1186,7 @@ auto matrixCompMult(T&&... args) {
 // vector functions
 // TODO for these, should I call into the member function?
 
-// c := a_i1_i2_... * b_i1_i2_...
+// c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
 // Should this generalize to a contraction?  or to a Frobenius norm?
 // Frobenius norm, since * will already be contraction
 // TODO let 'a' and 'b' be dif types, so long as rank and dim match i.e. so long as the read-iterator domain matches.
