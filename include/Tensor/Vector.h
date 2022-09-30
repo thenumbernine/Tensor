@@ -137,12 +137,9 @@ namespace Tensor {
 	}
 
 //::dims returns the total nested dimensions as an int-vec
-#define TENSOR_ADD_SIZE(classname)\
-\
+#define TENSOR_ADD_DIMS(classname)\
 	template<int i> static constexpr int dim = Traits::template calc_ith_dim<i>();\
-\
 	static constexpr auto dims() { return Traits::dims(); }\
-\
 	template<int i> static constexpr int count = Traits::template Nested<i>::localCount;
 
 // danger ... danger ...
@@ -172,6 +169,9 @@ namespace Tensor {
 		return result;\
 	}
 
+// vector-dot
+// TODO this is only valid for _vec's 
+// _sym will need to double up on the symmetric components' influences
 #define TENSOR_ADD_DOT(classname)\
 	T dot(classname const & b) const {\
 		T result = {};\
@@ -487,23 +487,23 @@ ReadIterator vs WriteIterator
 \
 		template<int i>\
 		struct WriteIncInner {\
-			static bool exec(intW & index) {\
+			static bool exec(intW & writeIndex) {\
 				/* inc 0 first */\
-				++index[i];\
-				if (index[i] < This::template count<i>) return true;\
-				if (i < numNestings-1) index[i] = 0;\
+				++writeIndex[i];\
+				if (writeIndex[i] < This::template count<i>) return true;\
+				if (i < numNestings-1) writeIndex[i] = 0;\
 				return false;\
 			}\
 		};\
 \
 		template<int i>\
 		struct WriteIncOuter {\
-			static bool exec(intW & index) {\
+			static bool exec(intW & writeIndex) {\
 				/* inc n-1 first */\
 				constexpr int j = numNestings-1-i;\
-				++index[j];\
-				if (index[j] < This::template count<j>) return true;\
-				if (j > 0) index[j] = 0;\
+				++writeIndex[j];\
+				if (writeIndex[j] < This::template count<j>) return true;\
+				if (j > 0) writeIndex[j] = 0;\
 				return false;\
 			}\
 		};\
@@ -514,51 +514,51 @@ ReadIterator vs WriteIterator
 		template<typename OwnerConstness>\
 		struct WriteIterator {\
 			OwnerConstness & owner;\
-			intW index;\
+			intW writeIndex;\
 			intR readIndex;\
-			WriteIterator(OwnerConstness & owner_, intW index_ = {})\
+			WriteIterator(OwnerConstness & owner_, intW writeIndex_ = {})\
 			: owner(owner_),\
-				index(index_),\
-				readIndex(Traits::getReadForWriteIndex(index)) {}\
+				writeIndex(writeIndex_),\
+				readIndex(Traits::getReadForWriteIndex(writeIndex)) {}\
 			WriteIterator(WriteIterator const & o)\
 				: owner(o.owner),\
-				index(o.index),\
+				writeIndex(o.writeIndex),\
 				readIndex(o.readIndex) {}\
 			WriteIterator(WriteIterator && o)\
 				: owner(o.owner),\
-				index(o.index),\
+				writeIndex(o.writeIndex),\
 				readIndex(o.readIndex) {}\
 			WriteIterator & operator=(WriteIterator const & o) {\
 				owner = o.owner;\
-				index = o.index;\
+				writeIndex = o.writeIndex;\
 				readIndex = o.readIndex;\
 				return *this;\
 			}\
 			WriteIterator & operator=(WriteIterator && o) {\
 				owner = o.owner;\
-				index = o.index;\
+				writeIndex = o.writeIndex;\
 				readIndex = o.readIndex;\
 				return *this;\
 			}\
 			bool operator==(WriteIterator const & o) const {\
-				return &owner == &o.owner && index == o.index;\
+				return &owner == &o.owner && writeIndex == o.writeIndex;\
 			}\
 			bool operator!=(WriteIterator const & o) const {\
 				return !operator==(o);\
 			}\
 			auto & operator*() {\
-				/* cuz it takes less operations than by-read-index */\
-				return Traits::getByWriteIndex(owner, index);\
+				/* cuz it takes less operations than by-read-writeIndex */\
+				return Traits::getByWriteIndex(owner, writeIndex);\
 			}\
 \
 			WriteIterator & operator++() {\
-				Common::ForLoop<0,numNestings,WriteIncInner>::exec(index);\
-				readIndex = Traits::getReadForWriteIndex(index);\
+				Common::ForLoop<0,numNestings,WriteIncInner>::exec(writeIndex);\
+				readIndex = Traits::getReadForWriteIndex(writeIndex);\
 				return *this;\
 			}\
 			WriteIterator & operator++(int) {\
-				Common::ForLoop<0,numNestings,WriteIncInner>::exec(index);\
-				readIndex = Traits::getReadForWriteIndex(index);\
+				Common::ForLoop<0,numNestings,WriteIncInner>::exec(writeIndex);\
+				readIndex = Traits::getReadForWriteIndex(writeIndex);\
 				return *this;\
 			}\
 \
@@ -566,10 +566,10 @@ ReadIterator vs WriteIterator
 				return WriteIterator(v);\
 			}\
 			static WriteIterator end(OwnerConstness & v) {\
-				intR index;\
+				intR writeIndex;\
 				/* inc 0 first */\
-				index[numNestings-1] = This::template count<numNestings-1>;\
-				return WriteIterator(v, index);\
+				writeIndex[numNestings-1] = This::template count<numNestings-1>;\
+				return WriteIterator(v, writeIndex);\
 			}\
 		};\
 \
@@ -602,9 +602,8 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_CTORS(classname) /* ctors, namely lambda ctor, needs read iterators*/ \
 	TENSOR_ADD_ITERATOR(classname)\
 	TENSOR_ADD_UNM(classname)\
-	TENSOR_ADD_DOT(classname)\
 	TENSOR_ADD_CMP_OP(classname)\
-	TENSOR_ADD_SIZE(classname)
+	TENSOR_ADD_DIMS(classname)
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
@@ -613,6 +612,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_CALL_INDEX()\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SUBSET_ACCESS()\
+	TENSOR_ADD_DOT(classname)\
 \
 	/* assumes Inner operator* exists */\
 	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
@@ -837,29 +837,6 @@ struct _vec<T,2> {
 
 };
 
-template<typename T>
-using _vec2 = _vec<T,2>;
-
-using bool2 = _vec2<bool>;
-using uchar2 = _vec2<unsigned char>;
-using int2 = _vec2<int>;
-using uint2 = _vec2<unsigned int>;
-using float2 = _vec2<float>;
-using double2 = _vec2<double>;
-
-static_assert(sizeof(bool2) == sizeof(bool) * 2);
-static_assert(sizeof(uchar2) == sizeof(unsigned char) * 2);
-static_assert(sizeof(int2) == sizeof(int) * 2);
-static_assert(sizeof(uint2) == sizeof(unsigned int) * 2);
-static_assert(sizeof(float2) == sizeof(float) * 2);
-static_assert(sizeof(double2) == sizeof(double) * 2);
-static_assert(std::is_same_v<float2::Scalar, float>);
-static_assert(std::is_same_v<float2::Inner, float>);
-static_assert(float2::rank == 1);
-static_assert(float2::dim<0> == 2);
-static_assert(float2::numNestings == 1);
-static_assert(float2::count<0> == 2);
-
 // size == 3 specialization
 
 template<typename T>
@@ -944,30 +921,8 @@ struct _vec<T,3> {
 	TENSOR3_VEC3_ADD_SWIZZLE4()
 };
 
-// TODO specialization for reference types -- don't initialize the s[] array (cuz in C++ you can't)
-
-template<typename T>
-using _vec3 = _vec<T,3>;
-
-using bool3 = _vec3<bool>;
-using uchar3 = _vec3<unsigned char>;
-using int3 = _vec3<int>;
-using uint3 = _vec3<unsigned int>;
-using float3 = _vec3<float>;
-using double3 = _vec3<double>;
-
-static_assert(sizeof(bool3) == sizeof(bool) * 3);
-static_assert(sizeof(uchar3) == sizeof(unsigned char) * 3);
-static_assert(sizeof(int3) == sizeof(int) * 3);
-static_assert(sizeof(uint3) == sizeof(unsigned int) * 3);
-static_assert(sizeof(float3) == sizeof(float) * 3);
-static_assert(sizeof(double3) == sizeof(double) * 3);
-static_assert(std::is_same_v<float3::Scalar, float>);
-static_assert(std::is_same_v<float3::Inner, float>);
-static_assert(float3::rank == 1);
-static_assert(float3::dim<0> == 3);
-static_assert(float3::numNestings == 1);
-static_assert(float3::count<0> == 3);
+// TODO specialization for & types -- don't initialize the s[] array (cuz in C++ you can't)
+/// tho a workaround is just use std::reference<>
 
 template<typename T>
 struct _vec<T,4> {
@@ -1063,147 +1018,11 @@ struct _vec<T,4> {
 	TENSOR3_VEC4_ADD_SWIZZLE4()
 };
 
-template<typename T>
-using _vec4 = _vec<T,4>;
-
-using bool4 = _vec4<bool>;
-using uchar4 = _vec4<unsigned char>;
-using int4 = _vec4<int>;
-using uint4 = _vec4<unsigned int>;
-using float4 = _vec4<float>;
-using double4 = _vec4<double>;
-
-static_assert(sizeof(bool4) == sizeof(bool) * 4);
-static_assert(sizeof(uchar4) == sizeof(unsigned char) * 4);
-static_assert(sizeof(int4) == sizeof(int) * 4);
-static_assert(sizeof(uint4) == sizeof(unsigned int) * 4);
-static_assert(sizeof(float4) == sizeof(float) * 4);
-static_assert(sizeof(double4) == sizeof(double) * 4);
-static_assert(std::is_same_v<float4::Scalar, float>);
-static_assert(std::is_same_v<float4::Inner, float>);
-static_assert(float4::rank == 1);
-static_assert(float4::dim<0> == 4);
-static_assert(float4::numNestings == 1);
-static_assert(float4::count<0> == 4);
-
-
-template<int N> using boolN = _vec<bool, N>;
-template<int N> using ucharN = _vec<unsigned char, N>;
-template<int N> using intN = _vec<int, N>;
-template<int N> using uintN = _vec<unsigned int, N>;
-template<int N> using floatN = _vec<float, N>;
-template<int N> using doubleN = _vec<double, N>;
-
 
 //convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
 // ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed
 // ... also GLSL is column-major so between this and GLSL the indexes have to be transposed.
 template<typename T, int dim1, int dim2> using _mat = _vec<_vec<T, dim2>, dim1>;
-
-template<typename T> using _mat2x2 = _vec2<_vec2<T>>;
-using bool2x2 = _mat2x2<bool>;
-using uchar2x2 = _mat2x2<unsigned char>;
-using int2x2 = _mat2x2<int>;
-using uint2x2 = _mat2x2<uint>;
-using float2x2 = _mat2x2<float>;
-using double2x2 = _mat2x2<double>;
-static_assert(sizeof(bool2x2) == sizeof(bool) * 2 * 2);
-static_assert(sizeof(uchar2x2) == sizeof(unsigned char) * 2 * 2);
-static_assert(sizeof(int2x2) == sizeof(int) * 2 * 2);
-static_assert(sizeof(uint2x2) == sizeof(unsigned int) * 2 * 2);
-static_assert(sizeof(float2x2) == sizeof(float) * 2 * 2);
-static_assert(sizeof(double2x2) == sizeof(double) * 2 * 2);
-static_assert(float2x2::rank == 2);
-static_assert(float2x2::dim<0> == 2);
-static_assert(float2x2::dim<1> == 2);
-static_assert(float2x2::numNestings == 2);
-static_assert(float2x2::count<0> == 2);
-static_assert(float2x2::count<1> == 2);
-
-template<typename T> using _mat2x3 = _vec2<_vec3<T>>;
-using bool2x3 = _mat2x3<bool>;
-using uchar2x3 = _mat2x3<unsigned char>;
-using int2x3 = _mat2x3<int>;
-using uint2x3 = _mat2x3<uint>;
-using float2x3 = _mat2x3<float>;
-using double2x3 = _mat2x3<double>;
-static_assert(sizeof(bool2x3) == sizeof(bool) * 2 * 3);
-static_assert(sizeof(uchar2x3) == sizeof(unsigned char) * 2 * 3);
-static_assert(sizeof(int2x3) == sizeof(int) * 2 * 3);
-static_assert(sizeof(uint2x3) == sizeof(unsigned int) * 2 * 3);
-static_assert(sizeof(float2x3) == sizeof(float) * 2 * 3);
-static_assert(sizeof(double2x3) == sizeof(double) * 2 * 3);
-static_assert(float2x3::rank == 2);
-static_assert(float2x3::dim<0> == 2);
-static_assert(float2x3::dim<1> == 3);
-static_assert(float2x3::numNestings == 2);
-static_assert(float2x3::count<0> == 2);
-static_assert(float2x3::count<1> == 3);
-
-template<typename T> using _mat2x4 = _vec2<_vec4<T>>;
-using bool2x4 = _mat2x4<bool>;
-using uchar2x4 = _mat2x4<unsigned char>;
-using int2x4 = _mat2x4<int>;
-using uint2x4 = _mat2x4<uint>;
-using float2x4 = _mat2x4<float>;
-using double2x4 = _mat2x4<double>;
-
-template<typename T> using _mat3x2 = _vec3<_vec2<T>>;
-using bool3x2 = _mat3x2<bool>;
-using uchar3x2 = _mat3x2<unsigned char>;
-using int3x2 = _mat3x2<int>;
-using uint3x2 = _mat3x2<uint>;
-using float3x2 = _mat3x2<float>;
-using double3x2 = _mat3x2<double>;
-
-template<typename T> using _mat3x3 = _vec3<_vec3<T>>;
-using bool3x3 = _mat3x3<bool>;
-using uchar3x3 = _mat3x3<unsigned char>;
-using int3x3 = _mat3x3<int>;
-using uint3x3 = _mat3x3<uint>;
-using float3x3 = _mat3x3<float>;
-using double3x3 = _mat3x3<double>;
-
-template<typename T> using _mat3x4 = _vec3<_vec4<T>>;
-using bool3x4 = _mat3x4<bool>;
-using uchar3x4 = _mat3x4<unsigned char>;
-using int3x4 = _mat3x4<int>;
-using uint3x4 = _mat3x4<uint>;
-using float3x4 = _mat3x4<float>;
-using double3x4 = _mat3x4<double>;
-
-template<typename T> using _mat4x2 = _vec4<_vec2<T>>;
-using bool4x2 = _mat4x2<bool>;
-using uchar4x2 = _mat4x2<unsigned char>;
-using int4x2 = _mat4x2<int>;
-using uint4x2 = _mat4x2<uint>;
-using float4x2 = _mat4x2<float>;
-using double4x2 = _mat4x2<double>;
-
-template<typename T> using _mat4x3 = _vec4<_vec3<T>>;
-using bool4x3 = _mat4x3<bool>;
-using uchar4x3 = _mat4x3<unsigned char>;
-using int4x3 = _mat4x3<int>;
-using uint4x3 = _mat4x3<uint>;
-using float4x3 = _mat4x3<float>;
-using double4x3 = _mat4x3<double>;
-
-template<typename T> using _mat4x4 = _vec4<_vec4<T>>;
-using bool4x4 = _mat4x4<bool>;
-using uchar4x4 = _mat4x4<unsigned char>;
-using int4x4 = _mat4x4<int>;
-using uint4x4 = _mat4x4<uint>;
-using float4x4 = _mat4x4<float>;
-using double4x4 = _mat4x4<double>;
-
-static_assert(std::is_same_v<float4x4::Scalar, float>);
-static_assert(std::is_same_v<float4x4::Inner, float4>);
-static_assert(float4x4::rank == 2);
-static_assert(float4x4::dim<0> == 4);
-static_assert(float4x4::dim<1> == 4);
-static_assert(float4x4::numNestings == 2);
-static_assert(float4x4::count<0> == 4);
-static_assert(float4x4::count<1> == 4);
 
 // vector op vector, matrix op matrix, and tensor op tensor per-component operators
 
@@ -1321,28 +1140,39 @@ _vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
 // TODO GENERALIZE TO TENSOR MULTIPLICATIONS
 // c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
 
-//matrixCompMult = component-wise multiplication, GLSL name compat
-// c_ij := a_ij * b_ij
-
-// TODO GLSL sucks, rename this to something that makes sense, and shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
+//element-wise multiplication
+// c_i1_i2_... := a_i1_i2_... * b_i1_i2_...
+// Hadamard product / per-element multiplication
+// TODO let 'a' and 'b' be dif types, so long as rank and dim match i.e. so long as the read-iterator domain matches.
+//  pick the result to be the generalization of the two, so if one has sym<> indexes and the other doesn't use the not-sym in the result
 template<typename T>
-T matrixCompMult(T const & a, T const & b) {
+requires is_tensor_v<T>
+T elemMul(T const & a, T const & b) {
 	return T([&](T::intN i) -> typename T::Scalar {
 		return a(i) * b(i);
 	});
 }
 
+// GLSL naming compat
+// TODO only for matrix? meh?
+template<typename... T>
+auto matrixCompMult(T&&... args) {
+	return elemMul(std::forward<T>(args)...);
+}
+
 // vector functions
 // TODO for these, should I call into the member function?
 
-// c := a_i * b_i
-// TODO generalize
-template<typename T, int N>
-requires std::is_same_v<typename _vec<T,N>::Scalar, T>
-T dot(_vec<T,N> const & a, _vec<T,N> const & b) {
-	T sum = {};
-	for (int i = 0; i < N; ++i) {
-		sum += a[i] * b[i];
+// c := a_i1_i2_... * b_i1_i2_...
+// Should this generalize to a contraction?  or to a Frobenius norm?
+// Frobenius norm, since * will already be contraction
+// TODO let 'a' and 'b' be dif types, so long as rank and dim match i.e. so long as the read-iterator domain matches.
+template<typename T>
+requires is_tensor_v<T>
+typename T::Scalar dot(T const & a, T const & b) {
+	typename T::Scalar sum = {};
+	for (auto i = a.begin(); i != a.end(); ++i) {
+		sum += a(i.index) * b(i.index);
 	}
 	return sum;
 }
@@ -1369,9 +1199,9 @@ _vec<T,N> normalize(_vec<T,N> const & v) {
 
 // c_i := ε_ijk * b_j * c_k
 template<typename T>
-requires std::is_same_v<typename _vec3<T>::Scalar, T>
-_vec3<T> cross(_vec3<T> const & a, _vec3<T> const & b) {
-	return _vec3<T>(
+requires std::is_same_v<typename _vec<T,3>::Scalar, T>
+_vec<T,3> cross(_vec<T,3> const & a, _vec<T,3> const & b) {
+	return _vec<T,3>(
 		a[1] * b[2] - a[2] * b[1],
 		a[2] * b[0] - a[0] * b[2],
 		a[0] * b[1] - a[1] * b[0]);
@@ -1520,7 +1350,7 @@ struct _sym<T,2> {
 	union {
 		struct {
 			T xx = {};
-			T xy = {};
+			union { T xy = {}; T yx; };
 			T yy = {};
 		};
 		struct {
@@ -1551,10 +1381,10 @@ struct _sym<T,3> {
 	union {
 		struct {
 			T xx = {};
-			T xy = {};
+			union { T xy = {}; T yx; };
 			T yy = {};
-			T xz = {};
-			T yz = {};
+			union { T xz = {}; T zx; };
+			union { T yz = {}; T zy; };
 			T zz = {};
 		};
 		struct {
@@ -1603,14 +1433,14 @@ struct _sym<T,4> {
 	union {
 		struct {
 			T xx = {};
-			T xy = {};
+			union { T xy = {}; T yx; };
 			T yy = {};
-			T xz = {};
-			T yz = {};
+			union { T xz = {}; T zx; };
+			union { T yz = {}; T zy; };
 			T zz = {};
-			T xw = {};
-			T yw = {};
-			T zw = {};
+			union { T xw = {}; T wx; };
+			union { T yw = {}; T wy; };
+			union { T zw = {}; T wz; };
 			T ww = {};
 		};
 		struct {
@@ -1709,72 +1539,101 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(-)
 TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(*)
 TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 
-// how to name symmetric-optimized storage?
 
-// using float2s2 in place of float2x2 does gieve the hint, but might be hard to read
-// another option is floatSym2
+// specific typed vectors
+
+
+#define TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, dim1)\
+using nick##dim1 = nick##N<dim1>;\
+static_assert(sizeof(nick##dim1) == sizeof(ctype) * dim1);\
+static_assert(std::is_same_v<nick##dim1::Scalar, ctype>);\
+static_assert(std::is_same_v<nick##dim1::Inner, ctype>);\
+static_assert(nick##dim1::rank == 1);\
+static_assert(nick##dim1::dim<0> == dim1);\
+static_assert(nick##dim1::numNestings == 1);\
+static_assert(nick##dim1::count<0> == dim1);
+
+#define TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, dim1, dim2)\
+using nick##dim1##x##dim2 = nick##MxN<dim1,dim2>;\
+static_assert(sizeof(nick##dim1##x##dim2) == sizeof(ctype) * dim1 * dim2);\
+static_assert(nick##dim1##x##dim2::rank == 2);\
+static_assert(nick##dim1##x##dim2::dim<0> == dim1);\
+static_assert(nick##dim1##x##dim2::dim<1> == dim2);\
+static_assert(nick##dim1##x##dim2::numNestings == 2);\
+static_assert(nick##dim1##x##dim2::count<0> == dim1);\
+static_assert(nick##dim1##x##dim2::count<1> == dim2);
+
+#define TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+using nick##dim12##s##dim12 = nick##NsN<dim12>;\
+static_assert(sizeof(nick##dim12##s##dim12) == sizeof(ctype) * dim12 * (dim12 + 1) / 2);\
+static_assert(std::is_same_v<typename nick##dim12##s##dim12::Scalar, ctype>);\
+static_assert(nick##dim12##s##dim12::rank == 2);\
+static_assert(nick##dim12##s##dim12::dim<0> == dim12);\
+static_assert(nick##dim12##s##dim12::dim<1> == dim12);\
+static_assert(nick##dim12##s##dim12::numNestings == 1);\
+static_assert(nick##dim12##s##dim12::count<0> == dim12 * (dim12 + 1) / 2);
+
+
+#define TENSOR_ADD_NICKNAME_TYPE(nick, ctype)\
+/* typed vectors */\
+template<int N> using nick##N = _vec<ctype, N>;\
+TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, 2)\
+TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, 3)\
+TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, 4)\
+/* typed matrices */\
+template<int M, int N> using nick##MxN = _mat<ctype, M, N>;\
+TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 2, 2)\
+TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 2, 3)\
+TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 2, 4)\
+TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 3, 2)\
+TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 3, 3)\
+TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 3, 4)\
+TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 2)\
+TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 3)\
+TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 4)\
+template<int N> using nick##NsN = _sym<ctype, N>;\
+TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2)\
+TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3)\
+TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)
+
+
+#define TENSOR_ADD_UTYPE(x)	TENSOR_ADD_NICKNAME_TYPE(u##x,unsigned x)
+
+
+#define TENSOR_ADD_TYPE(x)	TENSOR_ADD_NICKNAME_TYPE(x,x)
+
+
+TENSOR_ADD_TYPE(bool)
+TENSOR_ADD_TYPE(char)	// TODO 'schar' for 'signed char' or just 'char' for 'signed char' even tho that's not C convention?
+TENSOR_ADD_UTYPE(char)
+TENSOR_ADD_TYPE(short)
+TENSOR_ADD_UTYPE(short)
+TENSOR_ADD_TYPE(int)
+TENSOR_ADD_UTYPE(int)
+TENSOR_ADD_TYPE(float)
+TENSOR_ADD_TYPE(double)
+TENSOR_ADD_NICKNAME_TYPE(size, size_t)
+TENSOR_ADD_NICKNAME_TYPE(intptr, intptr_t)
+TENSOR_ADD_NICKNAME_TYPE(uintptr, uintptr_t)
+TENSOR_ADD_NICKNAME_TYPE(ldouble, long double)
+
+// specific-sized templates
+template<typename T> using _vec2 = _vec<T,2>;
+template<typename T> using _vec3 = _vec<T,3>;
+template<typename T> using _vec4 = _vec<T,4>;
+template<typename T> using _mat2x2 = _vec2<_vec2<T>>;
+template<typename T> using _mat2x3 = _vec2<_vec3<T>>;
+template<typename T> using _mat2x4 = _vec2<_vec4<T>>;
+template<typename T> using _mat3x2 = _vec3<_vec2<T>>;
+template<typename T> using _mat3x3 = _vec3<_vec3<T>>;
+template<typename T> using _mat3x4 = _vec3<_vec4<T>>;
+template<typename T> using _mat4x2 = _vec4<_vec2<T>>;
+template<typename T> using _mat4x3 = _vec4<_vec3<T>>;
+template<typename T> using _mat4x4 = _vec4<_vec4<T>>;
 template<typename T> using _sym2 = _sym<T,2>;
-using bool2s2 = _sym2<bool>;
-using uchar2s2 = _sym2<unsigned char>;
-using int2s2 = _sym2<int>;
-using uint2s2 = _sym2<uint>;
-using float2s2 = _sym2<float>;
-using double2s2 = _sym2<double>;
-
-static_assert(sizeof(bool2s2) == sizeof(bool) * 3);
-static_assert(sizeof(uchar2s2) == sizeof(unsigned char) * 3);
-static_assert(sizeof(int2s2) == sizeof(int) * 3);
-static_assert(sizeof(uint2s2) == sizeof(unsigned int) * 3);
-static_assert(sizeof(float2s2) == sizeof(float) * 3);
-static_assert(sizeof(double2s2) == sizeof(double) * 3);
-static_assert(std::is_same_v<typename float2s2::Scalar, float>);
-static_assert(float2s2::rank == 2);
-static_assert(float2s2::dim<0> == 2);
-static_assert(float2s2::dim<1> == 2);
-static_assert(float2s2::numNestings == 1);
-static_assert(float2s2::count<0> == 3);
-
 template<typename T> using _sym3 = _sym<T,3>;
-using bool3s3 = _sym3<bool>;
-using uchar3s3 = _sym3<unsigned char>;
-using int3s3 = _sym3<int>;
-using uint3s3 = _sym3<uint>;
-using float3s3 = _sym3<float>;
-using double3s3 = _sym3<double>;
-
-static_assert(sizeof(bool3s3) == sizeof(bool) * 6);
-static_assert(sizeof(uchar3s3) == sizeof(unsigned char) * 6);
-static_assert(sizeof(int3s3) == sizeof(int) * 6);
-static_assert(sizeof(uint3s3) == sizeof(unsigned int) * 6);
-static_assert(sizeof(float3s3) == sizeof(float) * 6);
-static_assert(sizeof(double3s3) == sizeof(double) * 6);
-static_assert(std::is_same_v<typename float3s3::Scalar, float>);
-static_assert(float3s3::rank == 2);
-static_assert(float3s3::dim<0> == 3);
-static_assert(float3s3::dim<1> == 3);
-static_assert(float3s3::numNestings == 1);
-static_assert(float3s3::count<0> == 6);
-
 template<typename T> using _sym4 = _sym<T,4>;
-using bool4s4 = _sym4<bool>;
-using uchar4s4 = _sym4<unsigned char>;
-using int4s4 = _sym4<int>;
-using uint4s4 = _sym4<uint>;
-using float4s4 = _sym4<float>;
-using double4s4 = _sym4<double>;
 
-static_assert(sizeof(bool4s4) == sizeof(bool) * 10);
-static_assert(sizeof(uchar4s4) == sizeof(unsigned char) * 10);
-static_assert(sizeof(int4s4) == sizeof(int) * 10);
-static_assert(sizeof(uint4s4) == sizeof(unsigned int) * 10);
-static_assert(sizeof(float4s4) == sizeof(float) * 10);
-static_assert(sizeof(double4s4) == sizeof(double) * 10);
-static_assert(std::is_same_v<typename float4s4::Scalar, float>);
-static_assert(float4s4::rank == 2);
-static_assert(float4s4::dim<0> == 4);
-static_assert(float4s4::dim<1> == 4);
-static_assert(float4s4::numNestings == 1);
-static_assert(float4s4::count<0> == 10);
 
 // ostream
 // _vec does have .fields
@@ -1830,7 +1689,7 @@ struct tuple_size<Tensor::_sym<T,N>> {
 	static constexpr auto value = Tensor::_sym<T,N>::localCount; 	// (N*(N+1))/2
 };
 
-// std::get .... all the dif impls ... 
+// std::get ... all the dif impls ... 
 
 template<std::size_t I, typename T, std::size_t N> constexpr T & get(Tensor::_vec<T,N> & v) noexcept { return v[I]; }
 template<std::size_t I, typename T, std::size_t N> constexpr T && get(Tensor::_vec<T,N> && v) noexcept { return v[I]; }

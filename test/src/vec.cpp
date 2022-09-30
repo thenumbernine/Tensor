@@ -387,6 +387,8 @@ void test_vec() {
 		// test symmetry
 		b(0,2) = 7;
 		TEST_EQ(b(2,0), 7);
+		b.xy = -1;
+		TEST_EQ(b.yx, -1);
 
 		// partial index
 		for (int i = 0; i < b.dim<0>; ++i) {
