@@ -79,4 +79,45 @@ using _tensor = _vec<_tensor<T, dims...>, dim>;
 
 #endif
 
+// math operations
+
+#if 0
+template<typename Scalar>
+struct BuildTensorFromTupleOfInts {
+	template<typename Arg, typename... Args>
+	static auto tensor(Arg dim, Args... dims) {
+		return _vec<
+			decltype(BuildTensorFromTupleOfInts<Scalar>::tensor(dims...)),
+			dim
+		>{};
+	}
+
+	template<>
+	static auto tensor<int>(int dim) {
+		return _vec<Scalar, dim>{};
+	}
+};
+
+// if the m'th or n'th index is a sym then i'll have to replace it with two _Vec's anyways
+//  so for now replace it all with vec's
+template<typename T, int m=0, int n=1>
+auto transposeTensor(T const & t)
+{
+	constexpr auto dims = T::dims();
+	std::swap(dims(m), dims(n));
+	using U = decltype(
+		std::apply(
+			BuildTensorFromTupleOfInts<typename T::Scalar>::tensor,
+			dims
+		)
+	);
+	return U([&](typename T::intN i) {
+		std::swap(i(m), i(n));
+		return t(i);
+	});
+}
+#endif
+
+
+
 }

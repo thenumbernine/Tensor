@@ -81,8 +81,10 @@ functions:
 	$$outer(a,b)_{IJ} := a_I b_J$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
 	$$determinant(a) := det(a) = \epsilon_I {a^{i_1}}_1 {a^{i_2}}_2 {a^{i_3}}_3 ... {a^{i_n}}_n$$
-- `inverse(m)` = Matrix-inverse, for rank-2 tensors.
+- `inverse(m)` = Matrix inverse, for rank-2 tensors.
 	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
+- `transpose(m)` = Matrix transpose, for rank-2 tensors.
+	$$transpose(a)_{ij} = a_{ji}$$
 
 ## Familiar Types
 
@@ -104,3 +106,16 @@ TODO:
 	Intead, make the allocator of each dimension a templated parameter: dynamic vs static.
 	This will give dynamically-sized tensors all the operations of the Tensor template class without having to re-implement them all for Grid.
 	This will allow for flexible allocations: a degree-2 tensor can have one dimension statically allocated and one dimension dynmamically allocated
+
+- index notation summation?
+	- more flexible inner, outer, exterior, etc multiplications?
+- better function matching for derivatives
+
+- GLSL sucks, rename this to something that makes sense, and shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
+	- in fact, better public typenames?
+
+- move secondderivative from Relativity to Tensor
+- move covariantderivative from Relativity to Tensor
+- move Hydro/Inverse.h's GaussJordan solver into Tensor/Inverse
+
+

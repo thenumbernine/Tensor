@@ -347,7 +347,7 @@ namespace Tensor {
 	}
 
 #define TENSOR_ADD_SCALAR_CTOR(classname)\
-	classname(Scalar const & x) {\
+	constexpr classname(Scalar const & x) {\
 		for (int i = 0; i < localCount; ++i) {\
 			s[i] = x;\
 		}\
@@ -358,7 +358,7 @@ namespace Tensor {
 // explicit 'this->s' so subclasses can use this macro (like _quat)
 #define TENSOR_ADD_CTOR_FOR_GENERIC_VECTORS(classname, othername)\
 	template<typename U, int N>\
-	classname(othername<U, N> const & t) {\
+	constexpr classname(othername<U, N> const & t) {\
 		int i = 0;\
 		for (; i < localCount && i < t.localCount; ++i) {\
 			this->s[i] = (T)t.s[i];\
@@ -782,7 +782,7 @@ struct _vec {
 	TENSOR_HEADER()
 
 	T s[localCount] = {};
-	_vec() {}
+	constexpr _vec() {}
 	
 	TENSOR_VECTOR_CLASS_OPS(_vec)
 };
@@ -806,8 +806,8 @@ struct _vec<T,2> {
 		};
 		T s[localCount];
 	};
-	_vec() {}
-	_vec(T x_, T y_) : x(x_), y(y_) {}
+	constexpr _vec() {}
+	constexpr _vec(T x_, T y_) : x(x_), y(y_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -881,8 +881,8 @@ struct _vec<T,3> {
 		};
 		T s[localCount];
 	};
-	_vec() {}
-	_vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
+	constexpr _vec() {}
+	constexpr _vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -968,8 +968,8 @@ struct _vec<T,4> {
 		};
 		T s[localCount];
 	};
-	_vec() {}
-	_vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
+	constexpr _vec() {}
+	constexpr _vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1368,7 +1368,7 @@ struct _sym {
 	TENSOR_HEADER()
 
 	T s[localCount] = {};
-	_sym() {}
+	constexpr _sym() {}
 
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
 };
@@ -1392,8 +1392,8 @@ struct _sym<T,2> {
 		};
 		T s[localCount];
 	};
-	_sym() {}
-	_sym(T xx_, T xy_, T yy_) : xx(xx_), xy(xy_), yy(yy_) {}
+	constexpr _sym() {}
+	constexpr _sym(T xx_, T xy_, T yy_) : xx(xx_), xy(xy_), yy(yy_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("xx", &This::xx),
@@ -1429,8 +1429,8 @@ struct _sym<T,3> {
 		};
 		T s[localCount];
 	};
-	_sym() {}
-	_sym(
+	constexpr _sym() {}
+	constexpr _sym(
 		T const & xx_,
 		T const & xy_,
 		T const & yy_,
@@ -1489,8 +1489,8 @@ struct _sym<T,4> {
 		};
 		T s[localCount];
 	};
-	_sym() {}
-	_sym(
+	constexpr _sym() {}
+	constexpr _sym(
 		T const & xx_,
 		T const & xy_,
 		T const & yy_,

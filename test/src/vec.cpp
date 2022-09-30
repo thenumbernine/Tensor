@@ -126,10 +126,18 @@ void test_vec() {
 		// outer product
 		// hmm, in the old days macros couldn't detect <>'s so you'd have to wrap them in ()'s if the <>'s had ,'s in them
 		// now same persists for {}'s it seems
-		TEST_EQ(outerProduct(f,g), Tensor::float3x3(
+		auto fouterg = outer(f,g);
+		TEST_EQ(fouterg, Tensor::float3x3(
 			{28, 4, 8},
 			{35, 5, 10},
 			{49, 7, 14}
+		));
+
+		auto gouterf = transpose(fouterg);
+		TEST_EQ(gouterf, Tensor::float3x3(
+			{28, 35, 49},
+			{4, 5, 7},
+			{8, 10, 14}
 		));
 
 		// TODO vector subset access

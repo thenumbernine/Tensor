@@ -16,9 +16,9 @@ struct _quat : public _vec4<T> {
 	TENSOR_HEADER()
 	using vec3 = _vec3<T>;
 
-	_quat() : Super(0,0,0,1) {}
-	_quat(T const & w) : Super(0,0,0,w) {}
-	_quat(T const & x, T const & y, T const & z, T const & w) : Super(x,y,z,w) {}
+	constexpr _quat() : Super(0,0,0,1) {}
+	constexpr _quat(T const & w) : Super(0,0,0,w) {}
+	constexpr _quat(T const & x, T const & y, T const & z, T const & w) : Super(x,y,z,w) {}
 	TENSOR_ADD_CTOR_FOR_GENERIC_VECTORS(_quat, _vec)
 	TENSOR_ADD_LAMBDA_CTOR(_quat)
 	TENSOR_ADD_ITERATOR()
