@@ -17,7 +17,7 @@
 - `matrixCompMult(a,b)` for component-wise multiplying two tensors.
 
 `_sym<type, dim>` = symmetric matrices:
-- `.xx .xy .xz .yy .yz .zz` storage, `.yx .zx, .zy` union'd access.
+- `.xx .xy .xz .yy .yz .zz .xw .yw .zw .ww` storage, `.yx .zx, .zy` union'd access.
 
 - Tensors (which are just typedef'd vectors-of-vectors-of-...)
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `vec< ..., dimI>`.
@@ -59,8 +59,10 @@ Iterating
 - read-iterators have `.index` as the int-vector of the index into the tensor.
 - write-iterators have `.readIndex` as the int-vector lookup index and `.writeIndex` as the nested-storage int-vector.
 
-Swizzle:
-- `.xx() .xy() ... .wz() .ww()` 2D, `.xxx() ... .www()` 3D, `.xxxx() ... .wwww()` 4D, will return a vector-of-references.
+Swizzle will return a vector-of-references:
+- 2D: `.xx() .xy() ... .wz() .ww()`
+- 3D: `.xxx() ... .www()`
+- 4D: `.xxxx() ... .wwww()` 
 
 functions:
 - `dot(a,b)` = Frobenius dot.
