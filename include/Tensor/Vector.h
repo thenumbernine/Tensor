@@ -84,6 +84,7 @@ namespace Tensor {
 	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the child-most nested class that isn't in our math library. */\
 	/* TODO why can't I use VectorTraits<This> here? */\
+	/* ... clang complains of operator*= += -= /= having multiple overloads */\
 	using Scalar = typename VectorTraits<Inner>::Scalar;\
 \
 	/*  TRUE FOR ALL TENSORS */\
@@ -109,35 +110,35 @@ namespace Tensor {
 //unions can't inherit.
 //until then...
 
-#define TENSOR_ADD_VECTOR_OP_EQ(classname, op)\
-	classname& operator op(classname const & b) {\
+#define TENSOR_ADD_VECTOR_OP_EQ(op)\
+	This & operator op(This const & b) {\
 		for (int i = 0; i < localCount; ++i) {\
 			s[i] op b.s[i];\
 		}\
 		return *this;\
 	}
 
-#define TENSOR_ADD_SCALAR_OP_EQ(classname, op)\
-	classname& operator op(Scalar const & b) {\
+#define TENSOR_ADD_SCALAR_OP_EQ(op)\
+	This & operator op(Scalar const & b) {\
 		for (int i = 0; i < localCount; ++i) {\
 			s[i] op b;\
 		}\
 		return *this;\
 	}
 
-#define TENSOR_ADD_CMP_OP(classname)\
-	bool operator==(classname const & b) const {\
+#define TENSOR_ADD_CMP_OP()\
+	bool operator==(This const & b) const {\
 		for (int i = 0; i < localCount; ++i) {\
 			if (s[i] != b.s[i]) return false;\
 		}\
 		return true;\
 	}\
-	bool operator!=(classname const & b) const {\
+	bool operator!=(This const & b) const {\
 		return !operator==(b);\
 	}
 
 //::dims returns the total nested dimensions as an int-vec
-#define TENSOR_ADD_DIMS(classname)\
+#define TENSOR_ADD_DIMS()\
 	template<int i> static constexpr int dim = Traits::template calc_ith_dim<i>();\
 	static constexpr auto dims() { return Traits::dims(); }\
 	template<int i> static constexpr int count = Traits::template Nested<i>::localCount;
@@ -152,17 +153,17 @@ namespace Tensor {
 	}
 
 // danger ... danger ...
-#define TENSOR_ADD_ASSIGN_OP(classname)\
-	classname & operator=(classname const & o) {\
+#define TENSOR_ADD_ASSIGN_OP()\
+	This & operator=(This const & o) {\
 		for (int i = 0; i < localCount; ++i) {\
 			s[i] = o.s[i];\
 		}\
 		return *this;\
 	}
 
-#define TENSOR_ADD_UNM(classname)\
-	classname operator-() const {\
-		classname result;\
+#define TENSOR_ADD_UNM()\
+	This operator-() const {\
+		This result;\
 		for (int i = 0; i < localCount; ++i) {\
 			result.s[i] = -s[i];\
 		}\
@@ -172,8 +173,8 @@ namespace Tensor {
 // vector-dot
 // TODO this is only valid for _vec's 
 // _sym will need to double up on the symmetric components' influences
-#define TENSOR_ADD_DOT(classname)\
-	T dot(classname const & b) const {\
+#define TENSOR_ADD_DOT()\
+	T dot(This const & b) const {\
 		T result = {};\
 		for (int i = 0; i < localCount; ++i) {\
 			result += s[i] * b.s[i];\
@@ -288,7 +289,7 @@ namespace Tensor {
 // also TODO can't use this in conjunction with the requires to_ostream or you get ambiguous operator
 // the operator<< requires to_fields and _vec having fields probably doesn't help
 // ... not using this
-#define TENSOR_ADD_TO_OSTREAM(classname)\
+#define TENSOR_ADD_TO_OSTREAM()\
 	std::ostream & to_ostream(std::ostream & o) const {\
 		return Common::iteratorToOStream(o, *this);\
 	}
@@ -335,6 +336,7 @@ namespace Tensor {
 	classname(std::initializer_list<T> l)\
 	 /* only do list constructor for non-specialized types */\
 	 /*(cuz they already accept lists via matching with their ctor args) */\
+	/* a better requires would check for these ctors existence */\
 	requires (localDim > 4)\
 	{\
 		auto src = l.begin();\
@@ -380,7 +382,7 @@ TODO InnerIterator (iterator i1 first) vs OuterIterator (iterator iN first)
 ReadIterator vs WriteIterator
 (Based on) ReadIndexIterator vs WriteIndexIterator
 */
-#define TENSOR_ADD_ITERATOR(classname)\
+#define TENSOR_ADD_ITERATOR()\
 \
 	template<int i>\
 	struct ReadIncInner {\
@@ -589,30 +591,34 @@ ReadIterator vs WriteIterator
 	/* wait, if Write<This> write() is called by a const object ... then the return type is const ... could I detect that from within Write to forward on to Write's inner class ctor? */\
 	Write<This const> write() const { return Write<This const>(*this); }\
 
+#define TENSOR_ADD_RECAST()\
+	/*template<typename NewScalar> */using recast = typename Traits::recast;/*template recast<NewScalar>;*/
+
 //these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
 #define TENSOR_ADD_OPS(classname)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, +=)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, -=)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, *=)\
-	TENSOR_ADD_VECTOR_OP_EQ(classname, /=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, +=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, -=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, *=)\
-	TENSOR_ADD_SCALAR_OP_EQ(classname, /=)\
 	TENSOR_ADD_CTORS(classname) /* ctors, namely lambda ctor, needs read iterators*/ \
-	TENSOR_ADD_ITERATOR(classname)\
-	TENSOR_ADD_UNM(classname)\
-	TENSOR_ADD_CMP_OP(classname)\
-	TENSOR_ADD_DIMS(classname)
+	TENSOR_ADD_VECTOR_OP_EQ(+=)\
+	TENSOR_ADD_VECTOR_OP_EQ(-=)\
+	TENSOR_ADD_VECTOR_OP_EQ(*=)\
+	TENSOR_ADD_VECTOR_OP_EQ(/=)\
+	TENSOR_ADD_SCALAR_OP_EQ(+=)\
+	TENSOR_ADD_SCALAR_OP_EQ(-=)\
+	TENSOR_ADD_SCALAR_OP_EQ(*=)\
+	TENSOR_ADD_SCALAR_OP_EQ(/=)\
+	TENSOR_ADD_ITERATOR()\
+	TENSOR_ADD_UNM()\
+	TENSOR_ADD_CMP_OP()\
+	TENSOR_ADD_DIMS()
+//	TENSOR_ADD_RECAST()
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
+	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_VECTOR_BRACKET_INDEX()\
 	TENSOR_ADD_CALL_INDEX()\
-	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SUBSET_ACCESS()\
-	TENSOR_ADD_DOT(classname)\
+	TENSOR_ADD_DOT()\
 \
 	/* assumes Inner operator* exists */\
 	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
@@ -649,61 +655,97 @@ struct VectorTraits {
 	static constexpr int numNestings = 0; // number of _vec<_vec<..._vec<T, ...>'s 
 	using Scalar = T;
 	template<int index> using Nested = void;
+	
+	/*template<typename NewScalar>*/
+	using recast = void;/*NewScalar*/;
+	
+	struct Hidden {
+		using recast = void;
+	};
 };
 
 // recursive/vec/matrix/tensor case
-template<typename T>
-requires is_tensor_v<T>
-struct VectorTraits<T> {
-	using Type = T;
-	using Inner = typename T::Inner;
+template<
+	template<typename, int> typename Template,
+	typename Inner_,
+	int localDim_
+>
+requires is_tensor_v<Template<Inner_, localDim_>>
+struct VectorTraits<Template<Inner_, localDim_>> {
+	using Inner = Inner_;
+	static constexpr int localDim = localDim_;
+	using Type = Template<Inner_, localDim_>;
+	static_assert(localDim == Type::localDim);
+	static_assert(std::is_same_v<typename Type::Inner, Inner>);
 	using InnerTraits = VectorTraits<Inner>;
-	using intN = typename T::intN;
+	using intN = typename Type::intN;
 
-	// using rank = localRank + VectorTraits<Inner>::rank in _vec
-	static constexpr int rank = T::rank;
+	// using rank = localRank + InnerTraits::rank in _vec
+	static constexpr int rank = Type::rank;
 	// using VectorTraits<This>::rank in _vec
 	// would be nice to do all recursive calcs inside VectorTraits instead of across _vec
 	// but this screws up with _tensor<real,3,3,3> rank3 and above
-	//static constexpr int rank = T::localRank + InnerTraits::rank;
+	//static constexpr int rank = Type::localRank + InnerTraits::rank;
 	
 	static constexpr int numNestings = 1 + InnerTraits::numNestings;
 
-	using Scalar = typename InnerTraits::Scalar;
+	using Scalar = std::conditional_t<
+		(numNestings > 1),
+		typename InnerTraits::Scalar,
+		Inner
+	>;
+
+	/*template<typename NewScalar>*/
+	struct Hidden {
+/*
+		using T = Template<
+			typename InnerTraits::template recast<NewScalar>,
+			localDim
+		>;
+*/
+		using recast = void;
+	};
+	/*template<typename NewScalar>*/
+	using recast = void;/*std::conditional_t<
+		true,
+		// this' evaluation is failing
+		typename Hidden<NewScalar>::T,
+		void
+	>;*/
 
 	// a function for getting the i'th component of the size vector
 	template<int i>
 	static constexpr int calc_ith_dim() {
 		static_assert(i >= 0, "you tried to get a negative size");
 		static_assert(i < rank, "you tried to get an oob size");
-		if constexpr (i < T::localRank) {
-			return T::localDim;
+		if constexpr (i < Type::localRank) {
+			return Type::localDim;
 		} else {
-			return InnerTraits::template calc_ith_dim<i - T::localRank>();
+			return InnerTraits::template calc_ith_dim<i - Type::localRank>();
 		}
 	}
 
 	// .. then for loop iterator in dims() function and just a single exceptional case in the dims() function is needed
 	static constexpr auto dims() {
 		// if this is a vector-of-scalars, such that the dims would be an int1, just use int
-		if constexpr (T::rank == 1) {
-			return T::localDim;
+		if constexpr (Type::rank == 1) {
+			return Type::localDim;
 		} else {
 			// use an int[localDim]
 			intN sizev;
 #if 0
 #error "TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly."
 #else
-			for (int i = 0; i < T::localRank; ++i) {
-				sizev.s[i] = T::localDim;
+			for (int i = 0; i < Type::localRank; ++i) {
+				sizev.s[i] = Type::localDim;
 			}
-			if constexpr (T::localRank < rank) {
+			if constexpr (Type::localRank < rank) {
 				// special case reading from int
 				if constexpr (Inner::rank == 1) {
-					sizev.s[T::localRank] = InnerTraits::dims();
+					sizev.s[Type::localRank] = InnerTraits::dims();
 				} else {
 					// assigning sub-vector
-					sizev.template subset<rank-T::localRank, T::localRank>()
+					sizev.template subset<rank-Type::localRank, Type::localRank>()
 						= InnerTraits::dims();
 				}
 			}
@@ -715,8 +757,8 @@ struct VectorTraits<T> {
 	template<int index>
 	using Nested = std::conditional_t<
 		index == 0,
-		T,
-		typename VectorTraits<Inner>::template Nested<index - 1>
+		Type,
+		typename InnerTraits::template Nested<index - 1>
 	>;
 
 	using intW = _vec<int,numNestings>;
@@ -731,21 +773,20 @@ struct VectorTraits<T> {
 		return res;
 	}
 
-	static Scalar & getByWriteIndex(T & t, intW const & index) {
+	static Scalar & getByWriteIndex(Type & t, intW const & index) {
 		if constexpr (numNestings == 1) {
 			return t.s[index.s[0]];
 		} else {
 			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());
 		}
 	}
-	static Scalar const & getByWriteIndex(T const & t, intW const & index) {
+	static Scalar const & getByWriteIndex(Type const & t, intW const & index) {
 		if constexpr (numNestings == 1) {
 			return t.s[index.s[0]];
 		} else {
 			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());
 		}
 	}
-
 };
 
 // default
@@ -1148,7 +1189,7 @@ _vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
 template<typename T>
 requires is_tensor_v<T>
 T elemMul(T const & a, T const & b) {
-	return T([&](T::intN i) -> typename T::Scalar {
+	return T([&](typename T::intN i) -> typename T::Scalar {
 		return a(i) * b(i);
 	});
 }
@@ -1207,19 +1248,29 @@ _vec<T,3> cross(_vec<T,3> const & a, _vec<T,3> const & b) {
 		a[0] * b[1] - a[1] * b[0]);
 }
 
-// c_ij := a_i * b_j
-// TODO generalize to tensors c_i1_..ip_j1_..jq = a_i1..ip * b_j1..jq
-template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _vec<T,dim1>::Scalar, T>
-_mat<T,dim1,dim2> outerProduct(_vec<T,dim1> const & a, _vec<T,dim2> const & b) {
-	_mat<T,dim1,dim2> c;
-	for (int i = 0; i < dim1; ++i) {
-		for (int j = 0; j < dim2; ++j) {
-			c[i][j] = a[i] * b[j];
-		}
-	}
-	return c;
+#if 0
+// outer product of tensors c_i1_..ip_j1_..jq = a_i1..ip * b_j1..jq
+// for vectors: c_ij := a_i * b_j
+template<typename A, typename B>
+requires (
+	is_tensor_v<A> 
+	&& is_tensor_v<B> 
+	&& std::is_same_v<A::Scalar, B::Scalar>	// TODO meh?
+)
+typename A::template recast<B> outer(A const & a, B const & b) {
+	using AB = typename A::template recast<B>
+	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
+	return AB([&](AB::intN i) -> A::Scalar {
+		return a(i.subset<a.rank, 0>(), i.subset<b.rank, a.rank>());
+	});
 }
+
+// GLSL naming compat
+template<typename... T>
+auto outerProduct(T&&... args) {
+	return outer(std::forward<T>(args)...);
+}
+#endif
 
 // matrix functions
 // TODO generalize to any sort of tensor swizzle
@@ -1272,7 +1323,7 @@ int symIndex(int i, int j) {
 		return (*this)(i,j)(rest...);\
 	}
 
-#define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX(classname)\
+#define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
 \
 	/* a(i,j) := a_ij = a_ji */\
 	/* this is the direct acces */\
@@ -1280,18 +1331,18 @@ int symIndex(int i, int j) {
 	Inner const & operator()(int i, int j) const { return s[symIndex<localDim>(i,j)]; }\
 \
 	struct Accessor {\
-		classname & owner;\
+		This & owner;\
 		int i;\
-		Accessor(classname & owner_, int i_) : owner(owner_), i(i_) {}\
+		Accessor(This & owner_, int i_) : owner(owner_), i(i_) {}\
 		Inner & operator[](int j) { return owner(i,j); }\
 		TENSOR_ADD_CALL_INDEX()\
 	};\
 	Accessor operator[](int i) { return Accessor(*this, i); }\
 \
 	struct ConstAccessor {\
-		classname const & owner;\
+		This const & owner;\
 		int i;\
-		ConstAccessor(classname const & owner_, int i_) : owner(owner_), i(i_) {}\
+		ConstAccessor(This const & owner_, int i_) : owner(owner_), i(i_) {}\
 		Inner const & operator[](int j) { return owner(i,j); }\
 		TENSOR_ADD_CALL_INDEX()\
 	};\
@@ -1315,7 +1366,7 @@ so the accessors need nested call indexing too
 */
 #define TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
 	TENSOR_ADD_OPS(classname)\
-	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX(classname)\
+	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
 \
 	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
 		_vec<int,localRank> readIndex;\

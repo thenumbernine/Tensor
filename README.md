@@ -17,7 +17,7 @@
 - `matrixCompMult(a,b)` for component-wise multiplying two tensors.
 
 `_sym<type, dim>` = symmetric matrices:
-- `.xx .xy .xz .yy .yz .zz`
+- `.xx .xy .xz .yy .yz .zz` storage, `.yx .zx, .zy` union'd access.
 
 - Tensors (which are just typedef'd vectors-of-vectors-of-...)
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `vec< ..., dimI>`.
@@ -43,7 +43,7 @@ Constructors:
 Builtin Indexing / Storage / Unions:
 - `.s[]` element/pointer access.
 - for 1D through 4D: `.x .y .z .w`, `.s0 .s1 .s2 .s2` storage.
-- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing `A_ij`.  This breaks GLSL compatability.
+- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing `A_ij`.  This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
 - `.subset<size>(index), .subset<size,index>()` = return a vector reference to a subset of this vector.
 
 Overloaded Indexing

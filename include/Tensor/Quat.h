@@ -21,7 +21,7 @@ struct _quat : public _vec4<T> {
 	_quat(T const & x, T const & y, T const & z, T const & w) : Super(x,y,z,w) {}
 	TENSOR_ADD_CTOR_FOR_GENERIC_VECTORS(_quat, _vec)
 	TENSOR_ADD_LAMBDA_CTOR(_quat)
-	TENSOR_ADD_ITERATOR(_quat)
+	TENSOR_ADD_ITERATOR()
 
 	//conjugate 
 	// same as inverse if the quat is unit length
