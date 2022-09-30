@@ -85,6 +85,8 @@ functions:
 	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
 - `transpose(m)` = Matrix transpose, for rank-2 tensors.
 	$$transpose(a)_{ij} = a_{ji}$$
+- `diagonal(m)` = Matrix diagonal from vector.
+	$${diagonal(a)_{ij} = \delta_{ij} \cdot a_i$$
 
 ## Familiar Types
 

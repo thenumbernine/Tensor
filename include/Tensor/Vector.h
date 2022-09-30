@@ -1254,21 +1254,54 @@ auto outerProduct(T&&... args) {
 }
 
 // matrix functions
-// TODO generalize to any sort of tensor swizzle
 
-template<typename T, int dim1, int dim2>
-_mat<T,dim2,dim1> transpose(_mat<T,dim1,dim2> const & a) {
-	_mat<T,dim2,dim1> at;
-	for (int i = 0; i < dim2; ++i) {
-		for (int j = 0; j < dim1; ++j) {
-			at[i][j] = a[j][i];
+// transpose ... right now only 2 indexes but for any rank tensor
+// also the result doesn't respect storage optimizations, so the result will be a rank-n _vec
+
+template<
+	typename Src, 	// source tensor
+	int i, 			// current index
+	int rank,		// final index
+	// TODO instead of two, use this: https://stackoverflow.com/a/50471331
+	int m,			// swap #1
+	int n			// swap #2
+>
+struct TensorWithMatchingDims {
+	static constexpr int getdim() {
+		if constexpr (i == m) {
+			return Src::template dim<n>;
+		} else if constexpr (i == n) {
+			return Src::template dim<m>;
+		} else {
+			return Src::template dim<i>;
 		}
 	}
-	return at;
+	using T = _vec<
+		typename TensorWithMatchingDims<Src, i+1, rank, m, n>::T,
+		getdim()
+	>;
+};
+// final case
+template<typename Src, int i, int m, int n>
+struct TensorWithMatchingDims<Src, i, i, m, n> {
+	using T = typename Src::Scalar;
+};
+
+// if the m'th or n'th index is a sym then i'll have to replace it with two _Vec's anyways
+//  so for now replace it all with vec's
+template<int m=0, int n=1, typename T>
+auto transpose(T const & t) {
+	using U = typename TensorWithMatchingDims<T, 0, T::rank, m, n>::T;
+	return U([&](typename T::intN i) {
+		std::swap(i(m), i(n));
+		return t(i);
+	});
 }
 
+// diagonal matrix from vector
+
 template<typename T, int N>
-_mat<T,N,N> diagonalMatrix(_vec<T,N> const & v) {
+_mat<T,N,N> diagonal(_vec<T,N> const & v) {
 	_mat<T,N,N> a;
 	for (int i = 0; i < N; ++i) {
 		a[i][i] = v[i];
