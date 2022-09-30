@@ -63,15 +63,24 @@ Swizzle:
 - `.xx() .xy() ... .wz() .ww()` 2D, `.xxx() ... .www()` 3D, `.xxxx() ... .wwww()` 4D, will return a vector-of-references.
 
 functions:
-- `dot(a,b)` = Frobenius dot.  $$dot(a,b) := a^I \cdot b_I$$.
-- `lenSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).  $$lenSq(a) := |a|^2 = a^I a_I$$.
-- `length(a)` = For vectors this is the length.  It is the sqrt of the self-dot.  $$length(a) := |a| = \sqrt{a^I a_I}$$.
-- `normalize(a)` = For vectors this returns a unit.  It is a tensor divided by its sqrt-of-self-dot. $$normalize(a) := a / |a|$$.
-- `distance(a,b)` = Length of the difference of two tensors.  $$distance(a,b) := |b - a|$$.
-- `cross(a,b)` = 3D vector cross product.  $$cross(a,b)_i := \epsilon_{ijk} b^j c^k$$ .  TODO generalize to something with Levi-Civita permutation tensor.
-- `outer(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc. $$outer(a,b)_{IJ} := a_I b_J$$.
-- `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.  $$determinant(m) := det(m) = \epsilon_I {m^{i_1}}_1 {m^{i_2}}_2 {m^{i_3}}_3 ... {m^{i_n}}_n$$.
-- `inverse(m)` = Matrix-inverse, for rank-2 tensors. $${inverse(m)^{i_1}}_{j_1} := \frac{1}{det(m)} \frac{1}{(n-1)!} \delta^I_J {m^{j_2}}_{i_2} {m^{j_3}}_{i_3} ... {m^{j_n}}_{i_n}$$.
+- `dot(a,b)` = Frobenius dot.
+	$$dot(a,b) := a^I \cdot b_I$$
+- `lenSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
+	$$lenSq(a) := |a|^2 = a^I a_I$$
+- `length(a)` = For vectors this is the length.  It is the sqrt of the self-dot.
+	$$length(a) := |a| = \sqrt{a^I a_I}$$
+- `normalize(a)` = For vectors this returns a unit.  It is a tensor divided by its sqrt-of-self-dot
+	$$normalize(a) := a / |a|$$
+- `distance(a,b)` = Length of the difference of two tensors.
+	$$distance(a,b) := |b - a|$$
+- `cross(a,b)` = 3D vector cross product.  TODO generalize to something with Levi-Civita permutation tensor.
+	$$cross(a,b)_i := \epsilon_{ijk} b^j c^k$$ 
+- `outer(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.
+	$$outer(a,b)_{IJ} := a_I b_J$$
+- `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
+	$$determinant(m) := det(m) = \epsilon_I {m^{i_1}}_1 {m^{i_2}}_2 {m^{i_3}}_3 ... {m^{i_n}}_n$$
+- `inverse(m)` = Matrix-inverse, for rank-2 tensors.
+	$${inverse(m)^{i_1}}_{j_1} := \frac{1}{det(m)} \frac{1}{(n-1)!} \delta^I_J {m^{j_2}}_{i_2} {m^{j_3}}_{i_3} ... {m^{j_n}}_{i_n}$$
 
 ## Familiar Types
 
