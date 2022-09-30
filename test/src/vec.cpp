@@ -123,7 +123,6 @@ void test_vec() {
 		// cros product
 		TEST_EQ(cross(f,g), Tensor::float3(3, 41, -31))
 
-#if 0
 		// outer product
 		// hmm, in the old days macros couldn't detect <>'s so you'd have to wrap them in ()'s if the <>'s had ,'s in them
 		// now same persists for {}'s it seems
@@ -132,7 +131,6 @@ void test_vec() {
 			{35, 5, 10},
 			{49, 7, 14}
 		));
-#endif
 
 		// TODO vector subset access
 	

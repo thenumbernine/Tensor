@@ -10,8 +10,8 @@ namespace Tensor {
 
 template<typename T>
 struct _quat : public _vec4<T> {
-	using This = _quat;
 	using Super = _vec4<T>;
+	using This = _quat;
 	TENSOR_VECTOR_HEADER(4)
 	TENSOR_HEADER()
 	using vec3 = _vec3<T>;

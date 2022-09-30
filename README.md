@@ -69,12 +69,9 @@ functions:
 - `normalize(a)` = For vectors this returns a unit.  It is a tensor divided by its sqrt-of-self-dot.
 - `distance(a,b)` = `length()` of the difference of two tensors.
 - `cross(a,b)` = 3D vector cross product.  TODO generalize to something with Levi-Civita permutation tensor.
-- outer(a,b)
+- `outer(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`
-- inverse(m)
-
-Desired set of multiplication operations:
-- outer(ta, tb) = tensor outer product
+- `inverse(m)` = Matrix-inverse, for rank-2 tensors.
 
 ## Familiar Types
 

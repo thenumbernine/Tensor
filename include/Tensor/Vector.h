@@ -80,12 +80,14 @@ namespace Tensor {
 \
 	/* some helper stuff associated with our _vec */\
 	using Traits = VectorTraits<This>;\
+	using InnerTraits = VectorTraits<Inner>;\
 \
 	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the child-most nested class that isn't in our math library. */\
 	/* TODO why can't I use VectorTraits<This> here? */\
 	/* ... clang complains of operator*= += -= /= having multiple overloads */\
-	using Scalar = typename VectorTraits<Inner>::Scalar;\
+	/* maybe because of circular ref?  _vec::Traits = VectorTraits<...>, VectorTraits<...>::Type = _vec ...*/\
+	using Scalar = typename InnerTraits::Scalar;\
 \
 	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
@@ -95,14 +97,15 @@ namespace Tensor {
 	/* if we do recursive case in VectorTraits (failing for rank-3 and above): */\
 	/*static constexpr int rank = VectorTraits<This>::rank;*/\
 	/* if we do recursive case here: */\
-	static constexpr int rank = localRank + VectorTraits<Inner>::rank;\
+	static constexpr int rank = localRank + InnerTraits::rank;\
 \
 	/* used for vector-dereferencing into the tensor. */\
 	using intN = _vec<int,rank>;\
 \
 	/* how many _vec<_vec<...'s there are ... no extra +'s for multi-rank nestings */\
 	/* so _sym<> has numNestings=1 and rank=2, _vec<> has numNestings=1 and rank=1, _vec_vec<>>==_mat<> has numNestings=2 and rank=2 */\
-	static constexpr int numNestings = Traits::numNestings;
+	static constexpr int numNestings = Traits::numNestings;\
+	/*static constexpr int numNestings = 1 + InnerTraits::numNestings;*/
 
 
 //for giving operators to the Cons and Prim vector classes
@@ -262,28 +265,22 @@ namespace Tensor {
 \
 	/* assumes packed tensor */\
 	template<int subdim, int offset>\
-	_vec<T,subdim> & subset() {\
-		static_assert(offset + subdim <= localDim);\
-		return *(_vec<T,subdim>*)(s+offset);\
+	_vec<Inner,subdim> & subset() {\
+		static_assert(offset + subdim <= localCount);\
+		return *(_vec<Inner,subdim>*)(s+offset);\
 	}\
-\
-	/* assumes packed tensor */\
 	template<int subdim, int offset>\
-	_vec<T,subdim> const & subset() const {\
-		static_assert(offset + subdim <= localDim);\
-		return *(_vec<T,subdim>*)(s+offset);\
+	_vec<Inner,subdim> const & subset() const {\
+		static_assert(offset + subdim <= localCount);\
+		return *(_vec<Inner,subdim>*)(s+offset);\
 	}\
-\
-	/* assumes packed tensor */\
 	template<int subdim>\
-	_vec<T,subdim> & subset(int offset) {\
-		return *(_vec<T,subdim>*)(s+offset);\
+	_vec<Inner,subdim> & subset(int offset) {\
+		return *(_vec<Inner,subdim>*)(s+offset);\
 	}\
-\
-	/* assumes packed tensor */\
 	template<int subdim>\
-	_vec<T,subdim> const & subset(int offset) const {\
-		return *(_vec<T,subdim>*)(s+offset);\
+	_vec<Inner,subdim> const & subset(int offset) const {\
+		return *(_vec<Inner,subdim>*)(s+offset);\
 	}
 
 // also TODO can't use this in conjunction with the requires to_ostream or you get ambiguous operator
@@ -591,8 +588,22 @@ ReadIterator vs WriteIterator
 	/* wait, if Write<This> write() is called by a const object ... then the return type is const ... could I detect that from within Write to forward on to Write's inner class ctor? */\
 	Write<This const> write() const { return Write<This const>(*this); }\
 
-#define TENSOR_ADD_RECAST()\
-	/*template<typename NewScalar> */using recast = typename Traits::recast;/*template recast<NewScalar>;*/
+#define TENSOR_ADD_RECAST(classname)\
+\
+	template<typename NewInner>\
+	struct Recast_DontEvalInner {\
+		static auto getType() {\
+			if constexpr (numNestings == 1) {\
+				return NewInner();\
+			} else {\
+				return typename Inner::template recast<NewInner>();\
+			}\
+		}\
+	};\
+	template<typename NewInner> using recast = classname<\
+		decltype(Recast_DontEvalInner<NewInner>::getType()),\
+		localCount\
+	>;
 
 //these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
 #define TENSOR_ADD_OPS(classname)\
@@ -608,8 +619,8 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_ITERATOR()\
 	TENSOR_ADD_UNM()\
 	TENSOR_ADD_CMP_OP()\
-	TENSOR_ADD_DIMS()
-//	TENSOR_ADD_RECAST()
+	TENSOR_ADD_DIMS()\
+	TENSOR_ADD_RECAST(classname)
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
@@ -655,28 +666,17 @@ struct VectorTraits {
 	static constexpr int numNestings = 0; // number of _vec<_vec<..._vec<T, ...>'s 
 	using Scalar = T;
 	template<int index> using Nested = void;
-	
-	/*template<typename NewScalar>*/
-	using recast = void;/*NewScalar*/;
-	
-	struct Hidden {
-		using recast = void;
-	};
 };
 
 // recursive/vec/matrix/tensor case
 template<
-	template<typename, int> typename Template,
-	typename Inner_,
-	int localDim_
+	typename Type_
 >
-requires is_tensor_v<Template<Inner_, localDim_>>
-struct VectorTraits<Template<Inner_, localDim_>> {
-	using Inner = Inner_;
-	static constexpr int localDim = localDim_;
-	using Type = Template<Inner_, localDim_>;
-	static_assert(localDim == Type::localDim);
-	static_assert(std::is_same_v<typename Type::Inner, Inner>);
+requires is_tensor_v<Type_>
+struct VectorTraits<Type_> {
+	using Type = Type_;
+	using Inner = typename Type::Inner;
+	static constexpr int localDim = Type::localDim;
 	using InnerTraits = VectorTraits<Inner>;
 	using intN = typename Type::intN;
 
@@ -694,24 +694,6 @@ struct VectorTraits<Template<Inner_, localDim_>> {
 		typename InnerTraits::Scalar,
 		Inner
 	>;
-
-	/*template<typename NewScalar>*/
-	struct Hidden {
-/*
-		using T = Template<
-			typename InnerTraits::template recast<NewScalar>,
-			localDim
-		>;
-*/
-		using recast = void;
-	};
-	/*template<typename NewScalar>*/
-	using recast = void;/*std::conditional_t<
-		true,
-		// this' evaluation is failing
-		typename Hidden<NewScalar>::T,
-		void
-	>;*/
 
 	// a function for getting the i'th component of the size vector
 	template<int i>
@@ -1248,20 +1230,20 @@ _vec<T,3> cross(_vec<T,3> const & a, _vec<T,3> const & b) {
 		a[0] * b[1] - a[1] * b[0]);
 }
 
-#if 0
 // outer product of tensors c_i1_..ip_j1_..jq = a_i1..ip * b_j1..jq
 // for vectors: c_ij := a_i * b_j
 template<typename A, typename B>
 requires (
 	is_tensor_v<A> 
 	&& is_tensor_v<B> 
-	&& std::is_same_v<A::Scalar, B::Scalar>	// TODO meh?
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
 typename A::template recast<B> outer(A const & a, B const & b) {
-	using AB = typename A::template recast<B>
+	using AB = typename A::template recast<B>;
 	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
-	return AB([&](AB::intN i) -> A::Scalar {
-		return a(i.subset<a.rank, 0>(), i.subset<b.rank, a.rank>());
+	return AB([&](typename AB::intN i) -> typename A::Scalar {
+		static_assert(decltype(i)::template dim<0> == A::rank + B::rank);
+		return a(i.template subset<A::rank, 0>()) * b(i.template subset<B::rank, A::rank>());
 	});
 }
 
@@ -1270,7 +1252,6 @@ template<typename... T>
 auto outerProduct(T&&... args) {
 	return outer(std::forward<T>(args)...);
 }
-#endif
 
 // matrix functions
 // TODO generalize to any sort of tensor swizzle
