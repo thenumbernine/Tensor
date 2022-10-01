@@ -1320,6 +1320,7 @@ inline constexpr int triangleSize(int n) {
 	return (n * (n + 1)) / 2;
 }
 
+/// TODO enforce i<j instead of j<i so we store rows and so stored indexes are increasing i.e. x_y x_z y_y y_z rather than decreasing
 template<int N>
 int symIndex(int i, int j) {
 	if (j > i) return symIndex<N>(j,i);
@@ -1425,9 +1426,9 @@ struct _sym<T,2> {
 
 	union {
 		struct {
-			T xx = {};
-			union { T xy = {}; T yx; };
-			T yy = {};
+			T x_x = {};
+			union { T x_y = {}; T y_x; };
+			T y_y = {};
 		};
 		struct {
 			T s00;
@@ -1437,12 +1438,12 @@ struct _sym<T,2> {
 		T s[localCount];
 	};
 	constexpr _sym() {}
-	constexpr _sym(T xx_, T xy_, T yy_) : xx(xx_), xy(xy_), yy(yy_) {}
+	constexpr _sym(T x_x_, T x_y_, T y_y_) : x_x(x_x_), x_y(x_y_), y_y(y_y_) {}
 
 	static constexpr auto fields = std::make_tuple(
-		std::make_pair("xx", &This::xx),
-		std::make_pair("xy", &This::xy),
-		std::make_pair("yy", &This::yy)
+		std::make_pair("x_x", &This::x_x),
+		std::make_pair("x_y", &This::x_y),
+		std::make_pair("y_y", &This::y_y)
 	);
 
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
@@ -1456,12 +1457,12 @@ struct _sym<T,3> {
 
 	union {
 		struct {
-			T xx = {};
-			union { T xy = {}; T yx; };
-			T yy = {};
-			union { T xz = {}; T zx; };
-			union { T yz = {}; T zy; };
-			T zz = {};
+			T x_x = {};
+			union { T x_y = {}; T y_x; };
+			T y_y = {};
+			union { T x_z = {}; T z_x; };
+			union { T y_z = {}; T z_y; };
+			T z_z = {};
 		};
 		struct {
 			T s00;
@@ -1475,26 +1476,26 @@ struct _sym<T,3> {
 	};
 	constexpr _sym() {}
 	constexpr _sym(
-		T const & xx_,
-		T const & xy_,
-		T const & yy_,
-		T const & xz_,
-		T const & yz_,
-		T const & zz_
-	) : xx(xx_),
-		xy(xy_),
-		yy(yy_),
-		xz(xz_),
-		yz(yz_),
-		zz(zz_) {}
+		T const & x_x_,
+		T const & x_y_,
+		T const & y_y_,
+		T const & x_z_,
+		T const & y_z_,
+		T const & z_z_
+	) : x_x(x_x_),
+		x_y(x_y_),
+		y_y(y_y_),
+		x_z(x_z_),
+		y_z(y_z_),
+		z_z(z_z_) {}
 
 	static constexpr auto fields = std::make_tuple(
-		std::make_pair("xx", &This::xx),
-		std::make_pair("xy", &This::xy),
-		std::make_pair("yy", &This::yy),
-		std::make_pair("xz", &This::xz),
-		std::make_pair("yz", &This::yz),
-		std::make_pair("zz", &This::zz)
+		std::make_pair("x_x", &This::x_x),
+		std::make_pair("x_y", &This::x_y),
+		std::make_pair("y_y", &This::y_y),
+		std::make_pair("x_z", &This::x_z),
+		std::make_pair("y_z", &This::y_z),
+		std::make_pair("z_z", &This::z_z)
 	);
 
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
@@ -1508,16 +1509,16 @@ struct _sym<T,4> {
 
 	union {
 		struct {
-			T xx = {};
-			union { T xy = {}; T yx; };
-			T yy = {};
-			union { T xz = {}; T zx; };
-			union { T yz = {}; T zy; };
-			T zz = {};
-			union { T xw = {}; T wx; };
-			union { T yw = {}; T wy; };
-			union { T zw = {}; T wz; };
-			T ww = {};
+			T x_x = {};
+			union { T x_y = {}; T y_x; };
+			T y_y = {};
+			union { T x_z = {}; T z_x; };
+			union { T y_z = {}; T z_y; };
+			T z_z = {};
+			union { T x_w = {}; T w_x; };
+			union { T y_w = {}; T w_y; };
+			union { T z_w = {}; T w_z; };
+			T w_w = {};
 		};
 		struct {
 			T s00;
@@ -1535,38 +1536,38 @@ struct _sym<T,4> {
 	};
 	constexpr _sym() {}
 	constexpr _sym(
-		T const & xx_,
-		T const & xy_,
-		T const & yy_,
-		T const & xz_,
-		T const & yz_,
-		T const & zz_,
-		T const & xw_,
-		T const & yw_,
-		T const & zw_,
-		T const & ww_
-	) : xx(xx_),
-		xy(xy_),
-		yy(yy_),
-		xz(xz_),
-		yz(yz_),
-		zz(zz_),
-		xw(xw_),
-		yw(yw_),
-		zw(zw_),
-		ww(ww_) {}
+		T const & x_x_,
+		T const & x_y_,
+		T const & y_y_,
+		T const & x_z_,
+		T const & y_z_,
+		T const & z_z_,
+		T const & x_w_,
+		T const & y_w_,
+		T const & z_w_,
+		T const & w_w_
+	) : x_x(x_x_),
+		x_y(x_y_),
+		y_y(y_y_),
+		x_z(x_z_),
+		y_z(y_z_),
+		z_z(z_z_),
+		x_w(x_w_),
+		y_w(y_w_),
+		z_w(z_w_),
+		w_w(w_w_) {}
 
 	static constexpr auto fields = std::make_tuple(
-		std::make_pair("xx", &This::xx),
-		std::make_pair("xy", &This::xy),
-		std::make_pair("yy", &This::yy),
-		std::make_pair("xz", &This::xz),
-		std::make_pair("yz", &This::yz),
-		std::make_pair("zz", &This::zz),
-		std::make_pair("xw", &This::xw),
-		std::make_pair("yw", &This::yw),
-		std::make_pair("zw", &This::zw),
-		std::make_pair("ww", &This::ww)
+		std::make_pair("x_x", &This::x_x),
+		std::make_pair("x_y", &This::x_y),
+		std::make_pair("y_y", &This::y_y),
+		std::make_pair("x_z", &This::x_z),
+		std::make_pair("y_z", &This::y_z),
+		std::make_pair("z_z", &This::z_z),
+		std::make_pair("x_w", &This::x_w),
+		std::make_pair("y_w", &This::y_w),
+		std::make_pair("z_w", &This::z_w),
+		std::make_pair("w_w", &This::w_w)
 	);
 
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
@@ -1623,25 +1624,25 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim - 1);
 
+// make sure this (and the using) is set before the specific-named accessors
 #define TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
+\
 	/* a(i,j) := a_ij = -a_ji */\
 	/* this is the direct acces */\
 	AntiSymRef<Inner> operator()(int i, int j) {\
-		using A = AntiSymRef<Inner>;\
-		if (i == j) return A();\
+		if (i == j) return AntiSymRef<Inner>();\
 		if (j > i) {\
-			return AntiSymRef(std::ref(s[symIndex<localDim-1>(j-1,i)]), A::NEGATIVE);\
+			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRef<Inner>::NEGATIVE);\
 		} else {\
-			return AntiSymRef(std::ref(s[symIndex<localDim-1>(i-1,j)]), A::NEGATIVE);\
+			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRef<Inner>::POSITIVE);\
 		}\
 	}\
 	AntiSymRef<Inner const> operator()(int i, int j) const {\
-		using A = AntiSymRef<Inner const>;\
-		if (i == j) return A();\
+		if (i == j) return AntiSymRef<Inner const>();\
 		if (j > i) {\
-			return AntiSymRef(std::ref(s[symIndex<localDim-1>(j-1,i)]), A::NEGATIVE);\
+			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRef<Inner const>::NEGATIVE);\
 		} else {\
-			return AntiSymRef(std::ref(s[symIndex<localDim-1>(i-1,j)]), A::NEGATIVE);\
+			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRef<Inner const>::POSITIVE);\
 		}\
 	}\
 
@@ -1649,6 +1650,19 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()
 
+/*
+for asym because I need to return reference-wrappers to support the + vs - depending on the index
+this means I could expose some elements as fields and some as methods to return references
+but that seems inconsistent
+so next thought, expose all as methods to return references
+but then if I'm not using any fields then I don't need any specializations
+so no specialized sizes for _asym
+
+TODO maybe I should use upper-triangle instead of lower-triangle for my sym()
+ then indexes are increasing ...
+... including the fixed antisym field names
+ also with row-vectors, that makes the sym ctor intuitie too 
+*/
 template<typename T, int dim_>
 struct _asym {
 	using This = _asym;
@@ -1656,10 +1670,24 @@ struct _asym {
 	TENSOR_HEADER()
 
 	T s[localCount] = {};
-	constexpr _asym() {}
 	
+	constexpr _asym() {}
+
+	//don't need cuz scalar ctor in TENSOR_ADD_SCALAR_CTOR
+	//constexpr _asym(T y_x_) requires (dim_ == 2) : s{y_x_} {}
+
+	AntiSymRef<Inner> x_x() { return (*this)(0,0); } // zero
+	AntiSymRef<Inner> x_y() { return (*this)(0,1); } // -y_x
+	AntiSymRef<Inner> y_x() { return (*this)(1,0); } // y_x 
+	AntiSymRef<Inner> y_y() { return (*this)(1,1); } // zero
+	AntiSymRef<Inner const> x_x() const { return (*this)(0,0); } // zero
+	AntiSymRef<Inner const> x_y() const { return (*this)(0,1); } // -y_x
+	AntiSymRef<Inner const> y_x() const { return (*this)(1,0); } // y_x
+	AntiSymRef<Inner const> y_y() const { return (*this)(1,1); } // zero
+
 	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(_asym)
 };
+
 
 // specific typed vectors
 

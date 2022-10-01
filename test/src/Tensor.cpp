@@ -396,8 +396,8 @@ void test_Tensor() {
 		// test symmetry
 		b(0,2) = 7;
 		TEST_EQ(b(2,0), 7);
-		b.xy = -1;
-		TEST_EQ(b.yx, -1);
+		b.x_y = -1;
+		TEST_EQ(b.y_x, -1);
 
 		// partial index
 		for (int i = 0; i < b.dim<0>; ++i) {
@@ -417,9 +417,21 @@ void test_Tensor() {
 
 	// antisymmetric matrix
 	{
-		auto f = Tensor::_asym<float,3>();
-		f(0,0) = 1;
+		auto f = Tensor::_asym<float,2>{
+			/*y_x=*/1
+		};
+		// () access
+		f(0,0) = 1; //cannot write to diagonals
 		TEST_EQ(f(0,0), 0);
+		TEST_EQ(f(0,1), -1);
+		TEST_EQ(f(1,0), 1);
+		TEST_EQ(f(1,1), 0);
+		
+		TEST_EQ(f.x_x(), 0);
+		TEST_EQ(f.y_x(), 1);
+		TEST_EQ(f.x_y(), -1);
+		TEST_EQ(f.y_y(), 0);
+		// field access
 	}
 
 	// tensor with intermixed non-vec types:
@@ -430,22 +442,22 @@ void test_Tensor() {
 		
 		// list ctor
 		T2S3 t = {
-			{1,2,3,4,5,6}, //xx xy yy xz yz zz
+			{1,2,3,4,5,6}, //x_x x_y y_y x_z y_z z_z
 			{7,8,9,0,1,2},
 		};
 		// xyz field access
-		TEST_EQ(t.x.xx, 1);
-		TEST_EQ(t.x.xy, 2);
-		TEST_EQ(t.x.yy, 3);
-		TEST_EQ(t.x.xz, 4);
-		TEST_EQ(t.x.yz, 5);
-		TEST_EQ(t.x.zz, 6);
-		TEST_EQ(t.y.xx, 7);
-		TEST_EQ(t.y.xy, 8);
-		TEST_EQ(t.y.yy, 9);
-		TEST_EQ(t.y.xz, 0);
-		TEST_EQ(t.y.yz, 1);
-		TEST_EQ(t.y.zz, 2);
+		TEST_EQ(t.x.x_x, 1);
+		TEST_EQ(t.x.x_y, 2);
+		TEST_EQ(t.x.y_y, 3);
+		TEST_EQ(t.x.x_z, 4);
+		TEST_EQ(t.x.y_z, 5);
+		TEST_EQ(t.x.z_z, 6);
+		TEST_EQ(t.y.x_x, 7);
+		TEST_EQ(t.y.x_y, 8);
+		TEST_EQ(t.y.y_y, 9);
+		TEST_EQ(t.y.x_z, 0);
+		TEST_EQ(t.y.y_z, 1);
+		TEST_EQ(t.y.z_z, 2);
 	
 		// nested (int,int,int) access
 		TEST_EQ(t(0,0,0), 1);

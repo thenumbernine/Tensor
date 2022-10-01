@@ -140,4 +140,5 @@ parallel:
 - move covariantderivative from Relativity to Tensor
 - move Hydro/Inverse.h's GaussJordan solver into Tensor/Inverse
 
-
+- change sym and asym fields from xx xy xz etc to x_x x_y x_z so they don't collide with swizzles (which are present in dense-matrices)
+- change sym and asym to access upper-triangular instead of lower-triangular
