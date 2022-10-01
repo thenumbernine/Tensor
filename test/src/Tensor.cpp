@@ -422,51 +422,54 @@ void test_Tensor() {
 
 		b = Tensor::float3s3{0,1,2,3,4,5};
 		
-		// testing (int,int) access
-		TEST_EQ(b(0,0), 0);
-		TEST_EQ(b(0,1), 1);
-		TEST_EQ(b(0,2), 3);
-		TEST_EQ(b(1,0), 1);
-		TEST_EQ(b(1,1), 2);
-		TEST_EQ(b(1,2), 4);
-		TEST_EQ(b(2,0), 3);
-		TEST_EQ(b(2,1), 4);
-		TEST_EQ(b(2,2), 5);
+		auto verifyAccess = []<typename T>(T & b){
+			// testing (int,int) access
+			TEST_EQ(b(0,0), 0);
+			TEST_EQ(b(0,1), 1);
+			TEST_EQ(b(0,2), 3);
+			TEST_EQ(b(1,0), 1);
+			TEST_EQ(b(1,1), 2);
+			TEST_EQ(b(1,2), 4);
+			TEST_EQ(b(2,0), 3);
+			TEST_EQ(b(2,1), 4);
+			TEST_EQ(b(2,2), 5);
+			
+			// testing fields 
+			TEST_EQ(b.x_x, 0);
+			TEST_EQ(b.x_y, 1);
+			TEST_EQ(b.x_z, 3);
+			TEST_EQ(b.y_x, 1);
+			TEST_EQ(b.y_y, 2);
+			TEST_EQ(b.y_z, 4);
+			TEST_EQ(b.z_x, 3);
+			TEST_EQ(b.z_y, 4);
+			TEST_EQ(b.z_z, 5);
+
+			// [][] access
+			TEST_EQ(b[0][0], 0);
+			TEST_EQ(b[0][1], 1);
+			TEST_EQ(b[0][2], 3);
+			TEST_EQ(b[1][0], 1);
+			TEST_EQ(b[1][1], 2);
+			TEST_EQ(b[1][2], 4);
+			TEST_EQ(b[2][0], 3);
+			TEST_EQ(b[2][1], 4);
+			TEST_EQ(b[2][2], 5);
+
+			// ()() access
+			TEST_EQ(b(0)(0), 0);
+			TEST_EQ(b(0)(1), 1);
+			TEST_EQ(b(0)(2), 3);
+			TEST_EQ(b(1)(0), 1);
+			TEST_EQ(b(1)(1), 2);
+			TEST_EQ(b(1)(2), 4);
+			TEST_EQ(b(2)(0), 3);
+			TEST_EQ(b(2)(1), 4);
+			TEST_EQ(b(2)(2), 5);
+		};
+		verifyAccess.template operator()<decltype(b)>(b);
+		verifyAccess.template operator()<decltype(b) const>(b);
 		
-		// testing fields 
-		TEST_EQ(b.x_x, 0);
-		TEST_EQ(b.x_y, 1);
-		TEST_EQ(b.x_z, 3);
-		TEST_EQ(b.y_x, 1);
-		TEST_EQ(b.y_y, 2);
-		TEST_EQ(b.y_z, 4);
-		TEST_EQ(b.z_x, 3);
-		TEST_EQ(b.z_y, 4);
-		TEST_EQ(b.z_z, 5);
-
-		// [][] access
-		TEST_EQ(b[0][0], 0);
-		TEST_EQ(b[0][1], 1);
-		TEST_EQ(b[0][2], 3);
-		TEST_EQ(b[1][0], 1);
-		TEST_EQ(b[1][1], 2);
-		TEST_EQ(b[1][2], 4);
-		TEST_EQ(b[2][0], 3);
-		TEST_EQ(b[2][1], 4);
-		TEST_EQ(b[2][2], 5);
-
-		// ()() access
-		TEST_EQ(b(0)(0), 0);
-		TEST_EQ(b(0)(1), 1);
-		TEST_EQ(b(0)(2), 3);
-		TEST_EQ(b(1)(0), 1);
-		TEST_EQ(b(1)(1), 2);
-		TEST_EQ(b(1)(2), 4);
-		TEST_EQ(b(2)(0), 3);
-		TEST_EQ(b(2)(1), 4);
-		TEST_EQ(b(2)(2), 5);
-
-	
 		/*
 		storing matrix 
 			0 1 2
@@ -537,7 +540,7 @@ void test_Tensor() {
 		[-1  0  3]
 		[-2 -3  0]
 		*/
-		auto f = Tensor::_asym<float,3>{
+		auto f = Tensor::float3a3{
 			/*x_y=*/1,
 			/*x_z=*/2,
 			/*y_z=*/3
@@ -546,49 +549,53 @@ void test_Tensor() {
 		f(0,0) = 1; //cannot write to diagonals
 		f(1,1) = 2;
 		f(2,2) = 3;
-		
-		TEST_EQ(f(0,0), 0);
-		TEST_EQ(f(0,1), 1);
-		TEST_EQ(f(0,2), 2);
-		TEST_EQ(f(1,0), -1);
-		TEST_EQ(f(1,1), 0);
-		TEST_EQ(f(1,2), 3);
-		TEST_EQ(f(2,0), -2);
-		TEST_EQ(f(2,1), -3);
-		TEST_EQ(f(2,2), 0);
-		
-		// "field" method access
-		TEST_EQ(f.x_x(), 0);
-		TEST_EQ(f.x_y(), 1);
-		TEST_EQ(f.x_z(), 2);
-		TEST_EQ(f.y_x(), -1);
-		TEST_EQ(f.y_y(), 0);
-		TEST_EQ(f.y_z(), 3);
-		TEST_EQ(f.z_x(), -2);
-		TEST_EQ(f.z_y(), -3);
-		TEST_EQ(f.z_z(), 0);
 
-		// [][] access
-		TEST_EQ(f[0][0], 0);
-		TEST_EQ(f[0][1], 1);
-		TEST_EQ(f[0][2], 2);
-		TEST_EQ(f[1][0], -1);
-		TEST_EQ(f[1][1], 0);
-		TEST_EQ(f[1][2], 3);
-		TEST_EQ(f[2][0], -2);
-		TEST_EQ(f[2][1], -3);
-		TEST_EQ(f[2][2], 0);
+		auto verifyAccess = []<typename T>(T & f){
+			TEST_EQ(f(0,0), 0);
+			TEST_EQ(f(0,1), 1);
+			TEST_EQ(f(0,2), 2);
+			TEST_EQ(f(1,0), -1);
+			TEST_EQ(f(1,1), 0);
+			TEST_EQ(f(1,2), 3);
+			TEST_EQ(f(2,0), -2);
+			TEST_EQ(f(2,1), -3);
+			TEST_EQ(f(2,2), 0);
+			
+			// "field" method access
+			TEST_EQ(f.x_x(), 0);
+			TEST_EQ(f.x_y(), 1);
+			TEST_EQ(f.x_z(), 2);
+			TEST_EQ(f.y_x(), -1);
+			TEST_EQ(f.y_y(), 0);
+			TEST_EQ(f.y_z(), 3);
+			TEST_EQ(f.z_x(), -2);
+			TEST_EQ(f.z_y(), -3);
+			TEST_EQ(f.z_z(), 0);
 
-		// ()() access
-		TEST_EQ(f(0)(0), 0);
-		TEST_EQ(f(0)(1), 1);
-		TEST_EQ(f(0)(2), 2);
-		TEST_EQ(f(1)(0), -1);
-		TEST_EQ(f(1)(1), 0);
-		TEST_EQ(f(1)(2), 3);
-		TEST_EQ(f(2)(0), -2);
-		TEST_EQ(f(2)(1), -3);
-		TEST_EQ(f(2)(2), 0);
+			// [][] access
+			TEST_EQ(f[0][0], 0);
+			TEST_EQ(f[0][1], 1);
+			TEST_EQ(f[0][2], 2);
+			TEST_EQ(f[1][0], -1);
+			TEST_EQ(f[1][1], 0);
+			TEST_EQ(f[1][2], 3);
+			TEST_EQ(f[2][0], -2);
+			TEST_EQ(f[2][1], -3);
+			TEST_EQ(f[2][2], 0);
+
+			// ()() access
+			TEST_EQ(f(0)(0), 0);
+			TEST_EQ(f(0)(1), 1);
+			TEST_EQ(f(0)(2), 2);
+			TEST_EQ(f(1)(0), -1);
+			TEST_EQ(f(1)(1), 0);
+			TEST_EQ(f(1)(2), 3);
+			TEST_EQ(f(2)(0), -2);
+			TEST_EQ(f(2)(1), -3);
+			TEST_EQ(f(2)(2), 0);
+		};
+		verifyAccess.template operator()<decltype(f)>(f);
+		verifyAccess.template operator()<decltype(f) const>(f);
 	}
 
 	// tensor with intermixed non-vec types:

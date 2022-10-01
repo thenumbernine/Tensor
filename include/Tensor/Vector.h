@@ -1714,8 +1714,8 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 \
 		/*TENSOR_ADD_RANK1_CALL_INDEX()*/\
 		/* ... instead ... */\
-		AntiSymRef<Inner> operator()(int i) { return (*this)[i]; }\
-		AntiSymRef<Inner> operator()(int i) const { return (*this)[i]; }\
+		AntiSymRef<Inner const> operator()(int i) { return (*this)[i]; }\
+		AntiSymRef<Inner const> operator()(int i) const { return (*this)[i]; }\
 \
 	};\
 	ConstAccessor operator[](int i) const { return ConstAccessor(*this, i); }\
