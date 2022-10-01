@@ -1265,7 +1265,7 @@ template<
 	int m,			// swap #1
 	int n			// swap #2
 >
-struct TensorWithMatchingDims {
+struct TransposeResultWithAllIndexesExpanded {
 	static constexpr int getdim() {
 		if constexpr (i == m) {
 			return Src::template dim<n>;
@@ -1276,13 +1276,13 @@ struct TensorWithMatchingDims {
 		}
 	}
 	using T = _vec<
-		typename TensorWithMatchingDims<Src, i+1, rank, m, n>::T,
+		typename TransposeResultWithAllIndexesExpanded<Src, i+1, rank, m, n>::T,
 		getdim()
 	>;
 };
 // final case
 template<typename Src, int i, int m, int n>
-struct TensorWithMatchingDims<Src, i, i, m, n> {
+struct TransposeResultWithAllIndexesExpanded<Src, i, i, m, n> {
 	using T = typename Src::Scalar;
 };
 
@@ -1290,12 +1290,37 @@ struct TensorWithMatchingDims<Src, i, i, m, n> {
 //  so for now replace it all with vec's
 template<int m=0, int n=1, typename T>
 auto transpose(T const & t) {
-	using U = typename TensorWithMatchingDims<T, 0, T::rank, m, n>::T;
+	using U = typename TransposeResultWithAllIndexesExpanded<T, 0, T::rank, m, n>::T;
 	return U([&](typename T::intN i) {
 		std::swap(i(m), i(n));
 		return t(i);
 	});
 }
+
+// annnnnd this was so useful here's the non-transpose case
+// TODO make a template that expands the i'th index
+
+template<
+	typename Src, 	// source tensor
+	int i, 			// current index
+	int rank		// final index
+>
+struct ExpandAllIndexesImpl {
+	static constexpr int getdim() {
+		return Src::template dim<i>;
+	}
+	using T = _vec<
+		typename ExpandAllIndexesImpl<Src, i+1, rank>::T,
+		getdim()
+	>;
+};
+// final case
+template<typename Src, int i>
+struct ExpandAllIndexesImpl<Src, i, i> {
+	using T = typename Src::Scalar;
+};
+template<typename Src>
+using ExpandAllIndexes = typename ExpandAllIndexesImpl<Src, 0, Src::rank>::T;
 
 // trace of a matrix
 
@@ -1319,6 +1344,21 @@ _mat<T,N,N> diagonal(_vec<T,N> const & v) {
 	return a;
 }
 
+// rank-2 optimized storage
+
+#define TENSOR_RANK2_ADD_RECURSIVE_CALL_INDEX()\
+\
+	/* a(i1,i2,...) := a_i1_i2_... */\
+	template<typename... Rest>\
+	auto & operator()(int i, int j, Rest... rest) {\
+		return (*this)(i,j)(rest...);\
+	}\
+\
+	template<typename... Rest>\
+	auto const & operator()(int i, int j, Rest... rest) const {\
+		return (*this)(i,j)(rest...);\
+	}
+
 // symmetric matrices
 
 inline constexpr int triangleSize(int n) {
@@ -1336,27 +1376,20 @@ int symIndex(int i, int j) {
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim);
 
-//also symmetric has to define 1-arg operator()
-// that means I can't use the default so i have to make a 2-arg recursive case
-#define TENSOR_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()\
-\
-	/* a(i1,i2,...) := a_i1_i2_... */\
-	template<typename... Rest>\
-	auto & operator()(int i, int j, Rest... rest) {\
-		return (*this)(i,j)(rest...);\
-	}\
-\
-	template<typename... Rest>\
-	auto const & operator()(int i, int j, Rest... rest) const {\
-		return (*this)(i,j)(rest...);\
-	}
-
+// NOTICE this almost matches TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX
+// except this uses &'s where _asym uses AntiSymRef 
 #define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
 \
 	/* a(i,j) := a_ij = a_ji */\
 	/* this is the direct acces */\
-	Inner & operator()(int i, int j) { return s[symIndex<localDim>(i,j)]; }\
-	Inner const & operator()(int i, int j) const { return s[symIndex<localDim>(i,j)]; }\
+	/* symmetric has to define 1-arg operator() */\
+	/* that means I can't use the default so i have to make a 2-arg recursive case */\
+	Inner & operator()(int i, int j) {\
+		return s[symIndex<localDim>(i,j)];\
+	}\
+	Inner const & operator()(int i, int j) const {\
+		return s[symIndex<localDim>(i,j)];\
+	}\
 \
 	struct Accessor {\
 		This & owner;\
@@ -1378,24 +1411,24 @@ int symIndex(int i, int j) {
 \
 	/* a(i) := a_i */\
 	/* this is incomplete so it returns the operator[] which returns the accessor */\
-	Accessor & operator()(int i) { return (*this)[i]; }\
-	ConstAccessor & operator()(int i) const { return (*this)[i]; }\
+	Accessor operator()(int i) { return (*this)[i]; }\
+	ConstAccessor operator()(int i) const { return (*this)[i]; }\
 \
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
-	TENSOR_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()
+	TENSOR_RANK2_ADD_RECURSIVE_CALL_INDEX()
 
-// currently set to lower-triangular
-// swap iread 0 and 1 to get upper-triangular
+// currently set to upper-triangular
+// swap iread 0 and 1 to get lower-triangular
 #define TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	static _vec<int,2> getLocalReadForWriteIndex(int writeIndex) {\
 		_vec<int,2> iread;\
 		int w = writeIndex+1;\
 		for (int i = 1; w > 0; ++i) {\
-			++iread(1);\
+			++iread(0);\
 			w -= i;\
 		}\
-		--iread(1);\
-		iread(0) = writeIndex - triangleSize(iread(1));\
+		--iread(0);\
+		iread(1) = writeIndex - triangleSize(iread(0));\
 		return iread;\
 	}
 
@@ -1631,6 +1664,8 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 	static constexpr int localCount = triangleSize(localDim - 1);
 
 // make sure this (and the using) is set before the specific-named accessors
+// NOTICE this almost matches TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX
+// except this uses AntiSymRef where _sym uses &'s
 #define TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
 \
 	/* a(i,j) := a_ij = -a_ji */\
@@ -1651,10 +1686,68 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}\
+\
+	struct Accessor {\
+		This & owner;\
+		int i;\
+		Accessor(This & owner_, int i_) : owner(owner_), i(i_) {}\
+		AntiSymRef<Inner> operator[](int j) { return owner(i,j); }\
+\
+		/* TODO ... these return Inner& access ... */\
+		/* but ... we can't do that in _asym because its () []'s return AntiSym ... */\
+		/* so how to fix it? */\
+		/* one way is: make everything return a wrapper of some sort, like reference_wrapper */\
+		/* another way: some requires/if constexpr's to see if the nested class is using a & or an AntiSymRef ... */\
+		/*TENSOR_ADD_RANK1_CALL_INDEX()*/\
+		/* ...inlined and with proper return type: */\
+		AntiSymRef<Inner> operator()(int i) { return (*this)[i]; }\
+		AntiSymRef<Inner> operator()(int i) const { return (*this)[i]; }\
+\
+	};\
+	Accessor operator[](int i) { return Accessor(*this, i); }\
+\
+	struct ConstAccessor {\
+		This const & owner;\
+		int i;\
+		ConstAccessor(This const & owner_, int i_) : owner(owner_), i(i_) {}\
+		AntiSymRef<Inner const> operator[](int j) { return owner(i,j); }\
+\
+		/*TENSOR_ADD_RANK1_CALL_INDEX()*/\
+		/* ... instead ... */\
+		AntiSymRef<Inner> operator()(int i) { return (*this)[i]; }\
+		AntiSymRef<Inner> operator()(int i) const { return (*this)[i]; }\
+\
+	};\
+	ConstAccessor operator[](int i) const { return ConstAccessor(*this, i); }\
+\
+	/* a(i) := a_i */\
+	/* this is incomplete so it returns the operator[] which returns the accessor */\
+	Accessor operator()(int i) { return (*this)[i]; }\
+	ConstAccessor operator()(int i) const { return (*this)[i]; }\
+\
+	/* in order to do this, you would need some conditions for seeing if the nested return type is AntiSymRef or Scalar */\
+	/*TENSOR_ADD_INT_VEC_CALL_INDEX()*/\
+	TENSOR_RANK2_ADD_RECURSIVE_CALL_INDEX()
+
+#define TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
+	static _vec<int,2> getLocalReadForWriteIndex(int writeIndex) {\
+		_vec<int,2> iread;\
+		int w = writeIndex+1;\
+		for (int i = 1; w > 0; ++i) {\
+			++iread(0);\
+			w -= i;\
+		}\
+		--iread(0);\
+		iread(1) = writeIndex - triangleSize(iread(0));\
+		++iread(1); /* for antisymmetric, skip past diagonals*/\
+		return iread;\
+	}
+
 
 #define TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(classname)\
 	TENSOR_ADD_OPS(classname)\
-	TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()
+	TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
+	TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()
 
 /*
 for asym because I need to return reference-wrappers to support the + vs - depending on the index
@@ -1674,17 +1767,50 @@ struct _asym {
 	constexpr _asym() {}
 
 	//don't need cuz scalar ctor in TENSOR_ADD_SCALAR_CTOR
-	//constexpr _asym(T y_x_) requires (dim_ == 2) : s{y_x_} {}
+	//constexpr _asym(T x_y_) requires (dim_ == 2) : s{x_y_} {}
+	
+	// TODO how about vararg, require they all match and match the dim, and then array init?
+	// for every-case (and every tensor type) ... could go in a macro
+	constexpr _asym(T xy, T xz, T yz) requires (dim_ == 3) : s{xy, xz, yz} {}
+	constexpr _asym(T xy, T xz, T yz, T xw, T yw, T zw, T ww) requires (dim_ == 4) : s{xy, xz, yz, xw, yw, zw, ww} {}
 
-	AntiSymRef<Inner		> x_x() 		{ return (*this)(0,0); } // zero
-	AntiSymRef<Inner const	> x_x() const 	{ return (*this)(0,0); } // zero
-	// TODO requires dim>1
-	AntiSymRef<Inner		> x_y() 		{ return (*this)(0,1); } // x_y
-	AntiSymRef<Inner const	> x_y() const 	{ return (*this)(0,1); } // x_y
-	AntiSymRef<Inner		> y_x() 		{ return (*this)(1,0); } // -x_y 
-	AntiSymRef<Inner const	> y_x() const 	{ return (*this)(1,0); } // -x_y
-	AntiSymRef<Inner		> y_y() 		{ return (*this)(1,1); } // zero
-	AntiSymRef<Inner const	> y_y() const 	{ return (*this)(1,1); } // zero
+	// I figured I could do the union/struct thing like in _sym, but then half would be methods that returned refs and the other half would be fields..
+	// so if I just make everything methods then there is some consistancy.
+	AntiSymRef<Inner		> x_x() 		requires (dim_ > 0) { return (*this)(0,0); }
+	AntiSymRef<Inner const	> x_x() const 	requires (dim_ > 0) { return (*this)(0,0); }
+	
+	AntiSymRef<Inner		> x_y() 		requires (dim_ > 1) { return (*this)(0,1); }
+	AntiSymRef<Inner const	> x_y() const 	requires (dim_ > 1) { return (*this)(0,1); }
+	AntiSymRef<Inner		> y_x() 		requires (dim_ > 1) { return (*this)(1,0); }
+	AntiSymRef<Inner const	> y_x() const 	requires (dim_ > 1) { return (*this)(1,0); }
+	AntiSymRef<Inner		> y_y() 		requires (dim_ > 1) { return (*this)(1,1); }
+	AntiSymRef<Inner const	> y_y() const 	requires (dim_ > 1) { return (*this)(1,1); }
+	
+	AntiSymRef<Inner		> x_z() 		requires (dim_ > 2) { return (*this)(0,2); }
+	AntiSymRef<Inner const	> x_z() const 	requires (dim_ > 2) { return (*this)(0,2); }
+	AntiSymRef<Inner		> z_x() 		requires (dim_ > 2) { return (*this)(2,0); }
+	AntiSymRef<Inner const	> z_x() const 	requires (dim_ > 2) { return (*this)(2,0); }
+	AntiSymRef<Inner		> y_z() 		requires (dim_ > 2) { return (*this)(1,2); }
+	AntiSymRef<Inner const	> y_z() const 	requires (dim_ > 2) { return (*this)(1,2); }
+	AntiSymRef<Inner		> z_y() 		requires (dim_ > 2) { return (*this)(2,1); }
+	AntiSymRef<Inner const	> z_y() const 	requires (dim_ > 2) { return (*this)(2,1); }
+	AntiSymRef<Inner		> z_z() 		requires (dim_ > 2) { return (*this)(2,2); }
+	AntiSymRef<Inner const	> z_z() const 	requires (dim_ > 2) { return (*this)(2,2); }
+	
+	AntiSymRef<Inner		> x_w() 		requires (dim_ > 3) { return (*this)(0,3); }
+	AntiSymRef<Inner const	> x_w() const 	requires (dim_ > 3) { return (*this)(0,3); }
+	AntiSymRef<Inner		> w_x() 		requires (dim_ > 3) { return (*this)(3,0); }
+	AntiSymRef<Inner const	> w_x() const 	requires (dim_ > 3) { return (*this)(3,0); }
+	AntiSymRef<Inner		> y_w() 		requires (dim_ > 3) { return (*this)(1,3); }
+	AntiSymRef<Inner const	> y_w() const 	requires (dim_ > 3) { return (*this)(1,3); }
+	AntiSymRef<Inner		> w_y() 		requires (dim_ > 3) { return (*this)(3,1); }
+	AntiSymRef<Inner const	> w_y() const 	requires (dim_ > 3) { return (*this)(3,1); }
+	AntiSymRef<Inner		> z_w() 		requires (dim_ > 3) { return (*this)(2,3); }
+	AntiSymRef<Inner const	> z_w() const 	requires (dim_ > 3) { return (*this)(2,3); }
+	AntiSymRef<Inner		> w_z() 		requires (dim_ > 3) { return (*this)(3,2); }
+	AntiSymRef<Inner const	> w_z() const 	requires (dim_ > 3) { return (*this)(3,2); }
+	AntiSymRef<Inner		> w_w() 		requires (dim_ > 2) { return (*this)(3,3); }
+	AntiSymRef<Inner const	> w_w() const 	requires (dim_ > 2) { return (*this)(3,3); }
 
 	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(_asym)
 };

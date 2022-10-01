@@ -2,6 +2,8 @@
 #include "Tensor/Inverse.h"
 #include "Common/Test.h"
 
+// TODO test everything a second time but with const access
+
 // static tests here:
 
 void test_Tensor() {
@@ -393,7 +395,6 @@ void test_Tensor() {
 			}
 		}
 
-		//TODO verify lambda ctor only covers write iterators, i.e. 6 inits instead of 9
 		// lambda ctor using int,int...
 		auto b = Tensor::float3s3([](int i, int j) -> float {
 			return (float)(i+j);
@@ -419,9 +420,59 @@ void test_Tensor() {
 			return (float)(ij.x+ij.y);
 		}));
 
+		b = Tensor::float3s3{0,1,2,3,4,5};
+		
+		// testing (int,int) access
+		TEST_EQ(b(0,0), 0);
+		TEST_EQ(b(0,1), 1);
+		TEST_EQ(b(0,2), 3);
+		TEST_EQ(b(1,0), 1);
+		TEST_EQ(b(1,1), 2);
+		TEST_EQ(b(1,2), 4);
+		TEST_EQ(b(2,0), 3);
+		TEST_EQ(b(2,1), 4);
+		TEST_EQ(b(2,2), 5);
+		
+		// testing fields 
+		TEST_EQ(b.x_x, 0);
+		TEST_EQ(b.x_y, 1);
+		TEST_EQ(b.x_z, 3);
+		TEST_EQ(b.y_x, 1);
+		TEST_EQ(b.y_y, 2);
+		TEST_EQ(b.y_z, 4);
+		TEST_EQ(b.z_x, 3);
+		TEST_EQ(b.z_y, 4);
+		TEST_EQ(b.z_z, 5);
+
+		// [][] access
+		TEST_EQ(b[0][0], 0);
+		TEST_EQ(b[0][1], 1);
+		TEST_EQ(b[0][2], 3);
+		TEST_EQ(b[1][0], 1);
+		TEST_EQ(b[1][1], 2);
+		TEST_EQ(b[1][2], 4);
+		TEST_EQ(b[2][0], 3);
+		TEST_EQ(b[2][1], 4);
+		TEST_EQ(b[2][2], 5);
+
+		// ()() access
+		TEST_EQ(b(0)(0), 0);
+		TEST_EQ(b(0)(1), 1);
+		TEST_EQ(b(0)(2), 3);
+		TEST_EQ(b(1)(0), 1);
+		TEST_EQ(b(1)(1), 2);
+		TEST_EQ(b(1)(2), 4);
+		TEST_EQ(b(2)(0), 3);
+		TEST_EQ(b(2)(1), 4);
+		TEST_EQ(b(2)(2), 5);
 
 	
 		/*
+		storing matrix 
+			0 1 2
+			3 4 5
+			6 7 8
+		... in a symmetric tensor
 		if storage / write iterate is lower-triangular then this will be 
 		   0 3 6
 		   3 4 7
@@ -434,7 +485,7 @@ void test_Tensor() {
 		b = Tensor::float3s3([](int i, int j) -> float {
 			return 3 * i + j;
 		});
-#if 0 // upper triangular
+#if 1 // upper triangular
 		// test storage order
 		TEST_EQ(b.s[0], 0);	// xx
 		TEST_EQ(b.s[1], 3); // xy
@@ -481,21 +532,63 @@ void test_Tensor() {
 
 	// antisymmetric matrix
 	{
-		auto f = Tensor::_asym<float,2>{
-			/*y_x=*/1
+		/*
+		[ 0  1  2]
+		[-1  0  3]
+		[-2 -3  0]
+		*/
+		auto f = Tensor::_asym<float,3>{
+			/*x_y=*/1,
+			/*x_z=*/2,
+			/*y_z=*/3
 		};
-		// () access
+		// (int,int) access
 		f(0,0) = 1; //cannot write to diagonals
+		f(1,1) = 2;
+		f(2,2) = 3;
+		
 		TEST_EQ(f(0,0), 0);
 		TEST_EQ(f(0,1), 1);
+		TEST_EQ(f(0,2), 2);
 		TEST_EQ(f(1,0), -1);
 		TEST_EQ(f(1,1), 0);
+		TEST_EQ(f(1,2), 3);
+		TEST_EQ(f(2,0), -2);
+		TEST_EQ(f(2,1), -3);
+		TEST_EQ(f(2,2), 0);
 		
+		// "field" method access
 		TEST_EQ(f.x_x(), 0);
-		TEST_EQ(f.y_x(), -1);
 		TEST_EQ(f.x_y(), 1);
+		TEST_EQ(f.x_z(), 2);
+		TEST_EQ(f.y_x(), -1);
 		TEST_EQ(f.y_y(), 0);
-		// field access
+		TEST_EQ(f.y_z(), 3);
+		TEST_EQ(f.z_x(), -2);
+		TEST_EQ(f.z_y(), -3);
+		TEST_EQ(f.z_z(), 0);
+
+		// [][] access
+		TEST_EQ(f[0][0], 0);
+		TEST_EQ(f[0][1], 1);
+		TEST_EQ(f[0][2], 2);
+		TEST_EQ(f[1][0], -1);
+		TEST_EQ(f[1][1], 0);
+		TEST_EQ(f[1][2], 3);
+		TEST_EQ(f[2][0], -2);
+		TEST_EQ(f[2][1], -3);
+		TEST_EQ(f[2][2], 0);
+
+		// ()() access
+		TEST_EQ(f(0)(0), 0);
+		TEST_EQ(f(0)(1), 1);
+		TEST_EQ(f(0)(2), 2);
+		TEST_EQ(f(1)(0), -1);
+		TEST_EQ(f(1)(1), 0);
+		TEST_EQ(f(1)(2), 3);
+		TEST_EQ(f(2)(0), -2);
+		TEST_EQ(f(2)(1), -3);
+		TEST_EQ(f(2)(2), 0);
 	}
 
 	// tensor with intermixed non-vec types:
@@ -552,7 +645,107 @@ void test_Tensor() {
 			static_assert(c.numNestings == 2);
 		}
 	}
-	// tensor of symmetric-vec
+	
+	// TODO tensor of symmetric-vec
+
+	// TODO antisymmetric of vector
+	{
+	}
+
+	//antisymmetric of antisymmetric
+	{
+		using Real = double;
+		using Riemann2 = Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<2>>;
+		//using Riemann2 = Tensor::_asym<Tensor::_asym<Real, 2>, 2>;	// R_[ij][kl]
+		//using Riemann2 = Tensor::_sym<Tensor::_asym<Real, 2>, 2>;	// ... R_(ij)[kl] ... 
+		// how would I define R_( [ij] [kl ) ... i.e. R_ijkl = R_klij and R_ijkl = -R_jikl ?
+		auto r = Riemann2{{1}};
+		static_assert(Riemann2::rank == 4);
+		static_assert(Riemann2::dim<0> == 2);
+		static_assert(Riemann2::dim<1> == 2);
+		static_assert(Riemann2::dim<2> == 2);
+		static_assert(Riemann2::dim<3> == 2);
+		static_assert(Riemann2::numNestings == 2);
+		static_assert(Riemann2::count<0> == 1);
+		static_assert(Riemann2::count<1> == 1);
+		static_assert(sizeof(Riemann2) == sizeof(Real));
+		auto r00 = r(0,0);	// this type will be a ZERO AntiSymRef wrapper around ... nothing ... 
+		ECHO(r00);
+		TEST_EQ(r00, (Tensor::AntiSymRef<Tensor::_asym<Real, 2>>()));	// r(0,0) is this type
+		TEST_EQ(r00, (Tensor::_asym<Real, 2>{}));	// ... and r(0,0)'s operator== accepts its wrapped type
+		TEST_EQ(r00(0,0), (Tensor::AntiSymRef<Real>()));	// r(0,0)(0,0) is this
+		TEST_EQ(r00(0,0).how, Tensor::AntiSymRefHow::ZERO);
+		TEST_EQ(r00(0,0), 0.);
+		TEST_EQ(r00(0,1), 0.);
+		TEST_EQ(r00(1,0), 0.);
+		TEST_EQ(r00(1,1), 0.);
+		auto r01 = r(0,1);	// this will point to the positive r.x_y element
+		TEST_EQ(r01, (Tensor::_asym<Real, 2>{1}));
+		TEST_EQ(r01(0,0), 0);	//why would this get a bad ref?
+		TEST_EQ(r01(0,1), 1);
+		TEST_EQ(r01(1,0), -1);
+		TEST_EQ(r01(1,1), 0);
+		auto r10 = r(1,0);
+		TEST_EQ(r10, (Tensor::_asym<Real, 2>{-1}));
+		TEST_EQ(r10(0,0), 0);
+		TEST_EQ(r10(0,1), -1);
+		TEST_EQ(r10(1,0), 1);
+		TEST_EQ(r10(1,1), 0);
+		auto r11 = r(1,1);
+		TEST_EQ(r11(0,0), 0.);
+		TEST_EQ(r11(0,1), 0.);
+		TEST_EQ(r11(1,0), 0.);
+		TEST_EQ(r11(1,1), 0.);
+		int e = 0;
+		for (int i = 0; i < 2; ++i) {
+			for (int j = 0; j < i; ++j) {
+				for (int k = 0; k < 2; ++k) {
+					for (int l = 0; l < k; ++l) {
+						r(i,j)(k,l) = ++e;
+					}
+				}
+			}
+		}
+		ECHO(r);
+
+#if 0
+		for (int i = 0; i < 2; ++i) {
+			for (int j = 0; j < 2; ++j) {
+				for (int k = 0; k < 2; ++k) {
+					for (int l = 0; l < 2; ++l) {
+						ECHO(r(i,j,k,l));
+					}
+				}
+			}
+		}
+#endif
+
+	}
+	{
+		using Riemann3 = Tensor::_tensori<double, Tensor::index_asym<3>, Tensor::index_asym<3>>;
+		//auto r = Riemann3{{1,2,3},{4,5,6},{7,8,9}};
+		static_assert(Riemann3::rank == 4);
+		static_assert(Riemann3::dim<0> == 3);
+		static_assert(Riemann3::dim<1> == 3);
+		static_assert(Riemann3::dim<2> == 3);
+		static_assert(Riemann3::dim<3> == 3);
+		static_assert(Riemann3::numNestings == 2);
+		static_assert(Riemann3::count<0> == 3);	//3x3 antisymmetric has 3 unique components
+		static_assert(Riemann3::count<1> == 3);
+		//TODO some future work: R_ijkl = R_klij, so it's also symmetri between 1&2 and 3&4 ...
+		// ... and optimizing for those should put us at only 6 unique values instead of 9
+		static_assert(sizeof(Riemann3) == sizeof(double) * 9);
+
+// TODO change tensor generic ctor to (requires tensors  and) accept any type, iterate over write elements, assign one by one.
+
+//		auto m = Tensor::ExpandAllIndexes<Riemann3>([&](Tensor::int4 i) -> double {
+//			return r(i);
+//		});
+	}
+
+	{
+		// TODO verify 3- nestings deep of antisym works
+	}
 
 	// old libraries' tests
 	{
@@ -615,71 +808,6 @@ void test_Tensor() {
 
 		TEST_EQ(m, (Matrix{{1,0,0},{0,1,0},{0,0,1}}));
 		TEST_EQ(Tensor::determinant(m), 1);
-		
-
-		//using RiemannTensor = Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<2>>;
-		using RiemannTensor = Tensor::_asym<Tensor::_asym<Real, 2>, 2>;	// R_[ij][kl]
-		//using RiemannTensor = Tensor::_sym<Tensor::_asym<Real, 2>, 2>;	// ... R_(ij)[kl] ... 
-		// how would I define R_( [ij] [kl ) ... i.e. R_ijkl = R_klij and R_ijkl = -R_jikl ?
-		auto r = RiemannTensor{{1}};
-		static_assert(RiemannTensor::rank == 4);
-		static_assert(RiemannTensor::dim<0> == 2);
-		static_assert(RiemannTensor::dim<1> == 2);
-		static_assert(RiemannTensor::dim<2> == 2);
-		static_assert(RiemannTensor::dim<3> == 2);
-		static_assert(RiemannTensor::numNestings == 2);
-		static_assert(RiemannTensor::count<0> == 1);
-		static_assert(RiemannTensor::count<1> == 1);
-		static_assert(sizeof(RiemannTensor) == sizeof(Real));
-		auto r00 = r(0,0);	// this type will be a ZERO AntiSymRef wrapper around ... nothing ... 
-		ECHO(r00);
-		TEST_EQ(r00, (Tensor::AntiSymRef<Tensor::_asym<Real, 2>>()));	// r(0,0) is this type
-		TEST_EQ(r00, (Tensor::_asym<Real, 2>{}));	// ... and r(0,0)'s operator== accepts its wrapped type
-		TEST_EQ(r00(0,0), (Tensor::AntiSymRef<Real>()));	// r(0,0)(0,0) is this
-		TEST_EQ(r00(0,0).how, Tensor::AntiSymRefHow::ZERO);
-		TEST_EQ(r00(0,0), 0.);
-		TEST_EQ(r00(0,1), 0.);
-		TEST_EQ(r00(1,0), 0.);
-		TEST_EQ(r00(1,1), 0.);
-		auto r01 = r(0,1);	// this will point to the positive r.x_y element
-		TEST_EQ(r01, (Tensor::_asym<Real, 2>{1}));
-		TEST_EQ(r01(0,0), 0);	//why would this get a bad ref?
-		TEST_EQ(r01(0,1), 1);
-		TEST_EQ(r01(1,0), -1);
-		TEST_EQ(r01(1,1), 0);
-		auto r10 = r(1,0);
-		TEST_EQ(r10, (Tensor::_asym<Real, 2>{-1}));
-		TEST_EQ(r10(0,0), 0);
-		TEST_EQ(r10(0,1), -1);
-		TEST_EQ(r10(1,0), 1);
-		TEST_EQ(r10(1,1), 0);
-		auto r11 = r(1,1);
-		TEST_EQ(r11(0,0), 0.);
-		TEST_EQ(r11(0,1), 0.);
-		TEST_EQ(r11(1,0), 0.);
-		TEST_EQ(r11(1,1), 0.);
-		int e = 0;
-		for (int i = 0; i < 2; ++i) {
-			for (int j = 0; j < i; ++j) {
-				for (int k = 0; k < 2; ++k) {
-					for (int l = 0; l < k; ++l) {
-						r(i,j)(k,l) = ++e;
-					}
-				}
-			}
-		}
-		ECHO(r);
-#if 0
-		for (int i = 0; i < 2; ++i) {
-			for (int j = 0; j < 2; ++j) {
-				for (int k = 0; k < 2; ++k) {
-					for (int l = 0; l < 2; ++l) {
-						ECHO(r(i,j,k,l));
-					}
-				}
-			}
-		}
-#endif
 	}
 
 	// more old tests
