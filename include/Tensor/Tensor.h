@@ -53,6 +53,9 @@ using _tensori = typename NestedTensorI<T, Index, Indexes...>::tensor;
 
 // naive _tensor based only on scalar type and dimensions
 
+// TODO can I accept template args as int or Index?
+// maybe vararg function return type and decltype()?
+
 template<typename T, int dim, int... dims>
 struct NestedTensor {
 	using tensor = _vec<typename NestedTensor<T, dims...>::tensor, dim>;

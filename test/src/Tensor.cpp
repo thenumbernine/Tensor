@@ -5,7 +5,6 @@
 // static tests here:
 
 void test_Tensor() {
-
 	//vector
 
 	{
@@ -618,34 +617,98 @@ void test_Tensor() {
 		TEST_EQ(Tensor::determinant(m), 1);
 		
 
-		using RiemannTensor = Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<2>>;
-	#if 0	//not yet working
-		using RiemannTensorStats = RiemannTensor::TensorStats;
-		using RiemannTensorStatsInnerType = RiemannTensorStats::InnerType;
-		using RiemannTensorStatsInnerBodyType = RiemannTensorStatsInnerType::BodyType;
-		RiemannTensor r;
-		std::cout << "size " << r.size() << std::endl;
-		std::cout << "rank " << r.rank << std::endl;
+		//using RiemannTensor = Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<2>>;
+		using RiemannTensor = Tensor::_asym<Tensor::_asym<Real, 2>, 2>;	// R_[ij][kl]
+		//using RiemannTensor = Tensor::_sym<Tensor::_asym<Real, 2>, 2>;	// ... R_(ij)[kl] ... 
+		// how would I define R_( [ij] [kl ) ... i.e. R_ijkl = R_klij and R_ijkl = -R_jikl ?
+		auto r = RiemannTensor{{1}};
+		static_assert(RiemannTensor::rank == 4);
+		static_assert(RiemannTensor::dim<0> == 2);
+		static_assert(RiemannTensor::dim<1> == 2);
+		static_assert(RiemannTensor::dim<2> == 2);
+		static_assert(RiemannTensor::dim<3> == 2);
+		static_assert(RiemannTensor::numNestings == 2);
+		static_assert(RiemannTensor::count<0> == 1);
+		static_assert(RiemannTensor::count<1> == 1);
+		static_assert(sizeof(RiemannTensor) == sizeof(Real));
+		auto r00 = r(0,0);	// this type will be a ZERO AntiSymRef wrapper around ... nothing ... 
+		ECHO(r00);
+		TEST_EQ(r00, (Tensor::AntiSymRef<Tensor::_asym<Real, 2>>()));	// r(0,0) is this type
+		TEST_EQ(r00, (Tensor::_asym<Real, 2>{}));	// ... and r(0,0)'s operator== accepts its wrapped type
+		TEST_EQ(r00(0,0), (Tensor::AntiSymRef<Real>()));	// r(0,0)(0,0) is this
+		TEST_EQ(r00(0,0).how, Tensor::AntiSymRefHow::ZERO);
+		TEST_EQ(r00(0,0), 0.);
+		TEST_EQ(r00(0,1), 0.);
+		TEST_EQ(r00(1,0), 0.);
+		TEST_EQ(r00(1,1), 0.);
+		auto r01 = r(0,1);	// this will point to the positive r.x_y element
+		TEST_EQ(r01, (Tensor::_asym<Real, 2>{1}));
+		TEST_EQ(r01(0,0), 0);	//why would this get a bad ref?
+		TEST_EQ(r01(0,1), 1);
+		TEST_EQ(r01(1,0), -1);
+		TEST_EQ(r01(1,1), 0);
+		auto r10 = r(1,0);
+		TEST_EQ(r10, (Tensor::_asym<Real, 2>{-1}));
+		TEST_EQ(r10(0,0), 0);
+		TEST_EQ(r10(0,1), -1);
+		TEST_EQ(r10(1,0), 1);
+		TEST_EQ(r10(1,1), 0);
+		auto r11 = r(1,1);
+		TEST_EQ(r11(0,0), 0.);
+		TEST_EQ(r11(0,1), 0.);
+		TEST_EQ(r11(1,0), 0.);
+		TEST_EQ(r11(1,1), 0.);
 		int e = 0;
 		for (int i = 0; i < 2; ++i) {
 			for (int j = 0; j < i; ++j) {
 				for (int k = 0; k < 2; ++k) {
 					for (int l = 0; l < k; ++l) {
-						((RiemannTensorStatsInnerBodyType&)(r.body(i,j)))(k,l) = ++e;
+						r(i,j)(k,l) = ++e;
 					}
 				}
 			}
 		}
+		ECHO(r);
+#if 0
 		for (int i = 0; i < 2; ++i) {
 			for (int j = 0; j < 2; ++j) {
 				for (int k = 0; k < 2; ++k) {
 					for (int l = 0; l < 2; ++l) {
-						std::cout << "r_" << i << j << k << l << " = " << ((RiemannTensorStatsInnerBodyType&)(r.body(i,j)))(k,l) << std::endl;
+						ECHO(r(i,j,k,l));
 					}
 				}
 			}
 		}
-	#endif
+#endif
+	}
 
+	// more old tests
+	// TODO these are static_assert's
+	{
+		using Real = double;
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<3>>::rank)== 1);
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<3>>::dim<0>)== 3);
+
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>>::rank)== 1);
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>>::dim<0>)== 4);
+
+		static_assert((Tensor::_tensori<Real, Tensor::index_sym<3>>::rank)== 2);
+		static_assert((Tensor::_tensori<Real, Tensor::index_sym<3>>::dim<0>)== 3);
+		static_assert((Tensor::_tensori<Real, Tensor::index_sym<3>>::dim<1>)== 3);
+
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<5>, Tensor::index_vec<6>>::rank)== 2);
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<5>, Tensor::index_vec<6>>::dim<0>)== 5);
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<5>, Tensor::index_vec<6>>::dim<1>)== 6);
+
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::rank)== 3);
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::dim<0>)== 4);
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::dim<1>)== 3);
+		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::dim<2>)== 3);
+
+		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::rank)== 4);
+		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<0>)== 2);
+		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<1>)== 2);
+		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<2>)== 3);
+		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<3>)== 3);
 	}
 }

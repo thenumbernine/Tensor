@@ -287,7 +287,8 @@ namespace Tensor {
 
 // also TODO can't use this in conjunction with the requires to_ostream or you get ambiguous operator
 // the operator<< requires to_fields and _vec having fields probably doesn't help
-// ... not using this
+// ... not using this with tensors
+// ... but for now I am using it with _vec::ReadIterator, because it lets me define a member instead of a function outside a nested class.
 #define TENSOR_ADD_TO_OSTREAM()\
 	std::ostream & to_ostream(std::ostream & o) const {\
 		return Common::iteratorToOStream(o, *this);\
@@ -652,13 +653,6 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_DOT()\
 	TENSOR_ADD_VOLUME()\
 	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()
-
-/*
-use the 'rank' field to check and see if we're in a _vec (or a _sym) or not
- TODO use something more specific to this file in case other classes elsewhere use 'rank'
-*/
-template<typename T>
-constexpr bool is_tensor_v = requires(T const & t) { T::rank; };
 
 template<typename T, int dim_>
 struct _vec;
@@ -1644,17 +1638,17 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 	AntiSymRef<Inner> operator()(int i, int j) {\
 		if (i == j) return AntiSymRef<Inner>();\
 		if (i < j) {\
-			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRef<Inner>::POSITIVE);\
+			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRefHow::POSITIVE);\
 		} else {\
-			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRef<Inner>::NEGATIVE);\
+			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}\
 	AntiSymRef<Inner const> operator()(int i, int j) const {\
 		if (i == j) return AntiSymRef<Inner const>();\
 		if (i < j) {\
-			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRef<Inner const>::POSITIVE);\
+			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRefHow::POSITIVE);\
 		} else {\
-			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRef<Inner const>::NEGATIVE);\
+			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}\
 
@@ -1729,6 +1723,16 @@ static_assert(nick##dim12##s##dim12::dim<1> == dim12);\
 static_assert(nick##dim12##s##dim12::numNestings == 1);\
 static_assert(nick##dim12##s##dim12::count<0> == triangleSize(dim12));
 
+#define TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+using nick##dim12##a##dim12 = nick##NaN<dim12>;\
+static_assert(sizeof(nick##dim12##a##dim12) == sizeof(ctype) * triangleSize(dim12-1));\
+static_assert(std::is_same_v<typename nick##dim12##a##dim12::Scalar, ctype>);\
+static_assert(nick##dim12##a##dim12::rank == 2);\
+static_assert(nick##dim12##a##dim12::dim<0> == dim12);\
+static_assert(nick##dim12##a##dim12::dim<1> == dim12);\
+static_assert(nick##dim12##a##dim12::numNestings == 1);\
+static_assert(nick##dim12##a##dim12::count<0> == triangleSize(dim12-1));
+
 
 #define TENSOR_ADD_NICKNAME_TYPE(nick, ctype)\
 /* typed vectors */\
@@ -1747,10 +1751,16 @@ TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 3, 4)\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 2)\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 3)\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 4)\
+/* typed symmetric matrices */\
 template<int N> using nick##NsN = _sym<ctype, N>;\
 TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2)\
 TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3)\
-TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)
+TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)\
+/* typed antisymmetric matrices */\
+template<int N> using nick##NaN = _asym<ctype, N>;\
+TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2)\
+TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3)\
+TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)
 
 
 #define TENSOR_ADD_UTYPE(x)	TENSOR_ADD_NICKNAME_TYPE(u##x,unsigned x)
@@ -1797,7 +1807,7 @@ template<typename T> using _sym4 = _sym<T,4>;
 // but here's a manual override anyways
 // so that the .fields vec2 vec3 vec4 and the non-.fields other vecs all look the same
 template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, Tensor::_vec<T,N> const & t) {
+std::ostream & operator<<(std::ostream & o, _vec<T,N> const & t) {
 	char const * sep = "";
 	o << "{";
 	for (int i = 0; i < t.localCount; ++i) {
@@ -1810,7 +1820,19 @@ std::ostream & operator<<(std::ostream & o, Tensor::_vec<T,N> const & t) {
 
 // TODO print as fields of .sym, or print as vector?
 template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, Tensor::_sym<T,N> const & t) {
+std::ostream & operator<<(std::ostream & o, _sym<T,N> const & t) {
+	char const * sep = "";
+	o << "{";
+	for (int i = 0; i < t.localCount; ++i) {
+		o << sep << t.s[i];
+		sep = ", ";
+	}
+	o << "}";
+	return o;
+}
+
+template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, _asym<T,N> const & t) {
 	char const * sep = "";
 	o << "{";
 	for (int i = 0; i < t.localCount; ++i) {
