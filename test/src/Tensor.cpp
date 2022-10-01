@@ -4,7 +4,7 @@
 
 // static tests here:
 
-void test_vec() {
+void test_Tensor() {
 
 	//vector
 

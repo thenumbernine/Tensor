@@ -26,11 +26,13 @@
 - `::Inner` = the next most nested vector/matrix/symmetric.
 - `::rank` = for determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
 - `::dim<i>` = get the i'th dimension size , where i is from 0 to rank-1.
+- `::dims()` = get a int-vector with all the dimensions.
 - `::localDim` = get the dimension size of the current class, equal to `dim<0>`.
 - `::numNestings` = get the number of nested classes.
 - `::count<i>` = get the storage size of the i'th nested class.
 - `::localCount` = get the storage size of the current class, equal to `count<0>`.
-
+- `::replaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most replaced by T.
+- `::Nested<i>` = get the i'th nested type from our tensor type.
 
 Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.
@@ -87,6 +89,7 @@ functions:
 	$$transpose(a)_{ij} = a_{ji}$$
 - `diagonal(m)` = Matrix diagonal from vector.
 	$${diagonal(a)_{ij} = \delta_{ij} \cdot a_i$$
+- `trace(m)` = Matrix trace = matrix contraction between two indexes.
 
 ## Familiar Types
 
@@ -109,9 +112,25 @@ TODO:
 	This will give dynamically-sized tensors all the operations of the Tensor template class without having to re-implement them all for Grid.
 	This will allow for flexible allocations: a degree-2 tensor can have one dimension statically allocated and one dimension dynmamically allocated
 
-- index notation summation?
-	- more flexible inner, outer, exterior, etc multiplications?
-- better function matching for derivatives
+- 1) ability to expand specific-rank of a tensor from sym (or antisym) into vec-of-vec
+parallel:
+- 1) how about antisym(rank-2)
+	- for a n x n antisym we have only n*(n-1)/2 instead of symmetric n*(n+1)/2
+	- once we have this, why not rank-3 rank-4 etc sym or antisym ... I'm sure there's some math on how to calculate the unique # of vars
+	- first this starts with a negative-ref wrapper, which initializes with another variable, and always read/writes the negative of its source.
+- 2) "expandStorage<>" ... for our nested tensor-of-index-of-sym-of...etc ... need a template option for taking one specific index, and - for whatever sturcuture is there (vec, sym, antisym) turning it into vecs-of-vecs 
+	- then do this when you transpose() it, when you operator* it, any time you need to produce an output type based on input types whose dimensions might overlap optimized storage structures.
+		- or better, make a permuteOrder() function, have this "expandStorage<>" on all its passed indexes, then have it run across the permute indexes.
+
+- GetNestedForIndex<i> = 
+	- then use this for 'dim<i> = GetNestedForIndex<i>::dim`.
+	- then ExpandStorage<i> would .... ?
+
+- more flexible exterior product (cross, wedge, determinant)
+- more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
+	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "replaceScalar" the nesting-minus-one of A with the nesting-1 of B
+- index notation summation?  mind you that it shoud preserve non-summed index memory-optimization structures.
+- better function matching for derivatives?
 - shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
 - make transpose a specialization of permuteIndexes()
 - multiply as contraction of indexes

@@ -596,11 +596,11 @@ ReadIterator vs WriteIterator
 			if constexpr (numNestings == 1) {\
 				return NewInner();\
 			} else {\
-				return typename Inner::template recast<NewInner>();\
+				return typename Inner::template replaceScalar<NewInner>();\
 			}\
 		}\
 	};\
-	template<typename NewInner> using recast = classname<\
+	template<typename NewInner> using replaceScalar = classname<\
 		decltype(Recast_DontEvalInner<NewInner>::getType()),\
 		localCount\
 	>;
@@ -1236,8 +1236,8 @@ requires (
 	&& is_tensor_v<B> 
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
-typename A::template recast<B> outer(A const & a, B const & b) {
-	using AB = typename A::template recast<B>;
+typename A::template replaceScalar<B> outer(A const & a, B const & b) {
+	using AB = typename A::template replaceScalar<B>;
 	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
 	return AB([&](typename AB::intN i) -> typename A::Scalar {
 		static_assert(decltype(i)::template dim<0> == A::rank + B::rank);

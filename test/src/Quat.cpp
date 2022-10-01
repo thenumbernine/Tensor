@@ -19,7 +19,7 @@ constexpr float epsilon = 1e-6;
 		std::cout << msg << std::endl;\
 	}
 
-void test_quat() {
+void test_Quat() {
 	{
 		//verify identity
 		Tensor::quatf q;
