@@ -187,6 +187,34 @@ void test_Tensor() {
 		TEST_EQ(fa[2], f[2]);
 	}
 
+	//old libraries' tests
+	{
+		{
+			//arg ctor works
+			Tensor::float3 a(1,2,3);
+			
+			//bracket ctor works
+			Tensor::float3 b = {4,5,6};
+
+			//access
+			TEST_EQ(a(0), 1);
+			TEST_EQ(a[0], 1);
+
+			//make sure GenericArray functionality works
+			TEST_EQ(Tensor::float3(1), Tensor::float3(1,1,1));
+			
+			// new lib doesn't support this ... but should it?
+			//TEST_EQ(Tensor::float3(1,2), Tensor::float3(1,2,0));
+			
+			TEST_EQ(b + a, Tensor::float3(5,7,9));
+			TEST_EQ(b - a, Tensor::float3(3,3,3));
+			TEST_EQ(b * a, Tensor::float3(4, 10, 18));
+			TEST_EQ(Tensor::float3(2,4,6)/Tensor::float3(1,2,3), Tensor::float3(2,2,2));
+			TEST_EQ(b * 2., Tensor::float3(8, 10, 12));
+			TEST_EQ(Tensor::float3(2,4,6)/2., Tensor::float3(1,2,3));	
+		}
+	}
+
 	// matrix
 	{
 		//bracket ctor
@@ -513,6 +541,111 @@ void test_Tensor() {
 		TEST_EQ(t + 0.f, t);
 		TEST_EQ(t * 1.f, t);
 		TEST_EQ(t * 0.f, decltype(t)());
+	
+		// verify that the outer of a vector and a sym is just that
+		{
+			auto a = Tensor::float3(1,2,3);
+			static_assert(a.rank == 1);
+			auto b = Tensor::float3s3(1,2,3,4,5,6);
+			static_assert(b.rank == 2);
+			auto c = outer(a,b);
+			static_assert(c.rank == 3);
+			static_assert(c.numNestings == 2);
+		}
 	}
 	// tensor of symmetric-vec
+
+	// old libraries' tests
+	{
+		using Real = double;
+		using Vector = Tensor::_tensor<Real,3>;
+		
+		Vector v = {1,2,3};
+		TEST_EQ(v, Tensor::double3(1,2,3));
+		
+		using Metric = Tensor::_tensori<Real,Tensor::index_sym<3>>;
+		Metric g;
+		for (int i = 0; i < 3; ++i) {
+			g(i,i) = 1;
+		}
+		TEST_EQ(g, Metric(1,0,1,0,0,1));
+
+		using Matrix = Tensor::_tensor<Real,3,3>;
+		Matrix h;
+		int index = 0;
+		for (int i = 0; i < 3; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				h(i,j) = ++index;
+			}
+		}
+		TEST_EQ(h, (Matrix{{1,2,3},{4,5,6},{7,8,9}}));
+
+		//iterator access
+		int j = 0;
+		Tensor::_tensor<Real, 3,3,3> ta;
+		for (auto i = ta.begin(); i != ta.end(); ++i) {
+			*i = j++;
+		}
+		for (int i = 0; i < 3; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				for (int k = 0; k < 3; ++k) {
+					TEST_EQ(ta(i,j,k), i + 3 * (j + 3 * k));
+				}
+			}
+		}
+
+		//subtensor access not working
+		Tensor::_tensor<Real,3,3> tb;
+		for (auto i = tb.begin(); i != tb.end(); ++i) *i = 2.f;
+		TEST_EQ(tb, Matrix(2.f));
+		ta(0) = tb;
+		TEST_EQ(ta, (Tensor::_tensor<Real,3,3,3>{{{2, 2, 2}, {2, 2, 2}, {2, 2, 2}}, {{1, 10, 19}, {4, 13, 22}, {7, 16, 25}}, {{2, 11, 20}, {5, 14, 23}, {8, 17, 26}}} ));
+		Tensor::_tensor<Real, 3> tc;
+		for (auto i = tc.begin(); i != tc.end(); ++i) *i = 3.;
+		TEST_EQ(Tensor::double3(3), tc);
+		ta(0,0) = tc;
+		TEST_EQ(ta, (Tensor::_tensor<Real,3,3,3>{{{3, 3, 3}, {2, 2, 2}, {2, 2, 2}}, {{1, 10, 19}, {4, 13, 22}, {7, 16, 25}}, {{2, 11, 20}, {5, 14, 23}, {8, 17, 26}}}));
+
+		//inverse
+		Matrix m;
+		for (int i = 0; i < 3; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				m(i,j) = i == j ? 1 : 0;
+			}
+		}
+
+		TEST_EQ(m, (Matrix{{1,0,0},{0,1,0},{0,0,1}}));
+		TEST_EQ(Tensor::determinant(m), 1);
+		
+
+		using RiemannTensor = Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<2>>;
+	#if 0	//not yet working
+		using RiemannTensorStats = RiemannTensor::TensorStats;
+		using RiemannTensorStatsInnerType = RiemannTensorStats::InnerType;
+		using RiemannTensorStatsInnerBodyType = RiemannTensorStatsInnerType::BodyType;
+		RiemannTensor r;
+		std::cout << "size " << r.size() << std::endl;
+		std::cout << "rank " << r.rank << std::endl;
+		int e = 0;
+		for (int i = 0; i < 2; ++i) {
+			for (int j = 0; j < i; ++j) {
+				for (int k = 0; k < 2; ++k) {
+					for (int l = 0; l < k; ++l) {
+						((RiemannTensorStatsInnerBodyType&)(r.body(i,j)))(k,l) = ++e;
+					}
+				}
+			}
+		}
+		for (int i = 0; i < 2; ++i) {
+			for (int j = 0; j < 2; ++j) {
+				for (int k = 0; k < 2; ++k) {
+					for (int l = 0; l < 2; ++l) {
+						std::cout << "r_" << i << j << k << l << " = " << ((RiemannTensorStatsInnerBodyType&)(r.body(i,j)))(k,l) << std::endl;
+					}
+				}
+			}
+		}
+	#endif
+
+	}
 }
