@@ -1303,6 +1303,17 @@ auto transpose(T const & t) {
 	});
 }
 
+// trace of a matrix
+
+template<typename T, int N>
+_mat<T,N,N> trace(_vec<T,N> const & v) {
+	T sum = v(0,0);
+	for (int i = 1; i < N; ++i) {
+		sum += v(i,i);
+	}
+	return sum;
+}
+
 // diagonal matrix from vector
 
 template<typename T, int N>
@@ -1320,11 +1331,10 @@ inline constexpr int triangleSize(int n) {
 	return (n * (n + 1)) / 2;
 }
 
-/// TODO enforce i<j instead of j<i so we store rows and so stored indexes are increasing i.e. x_y x_z y_y y_z rather than decreasing
 template<int N>
 int symIndex(int i, int j) {
-	if (j > i) return symIndex<N>(j,i);
-	return j + triangleSize(i);
+	if (i > j) return symIndex<N>(j,i);
+	return i + triangleSize(j);
 }
 
 #define TENSOR_SYMMETRIC_MATRIX_HEADER(localDim_)\
@@ -1380,17 +1390,19 @@ int symIndex(int i, int j) {
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	TENSOR_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()
 
+// currently set to lower-triangular
+// swap iread 0 and 1 to get upper-triangular
 #define TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
-		_vec<int,localRank> readIndex;\
+	static _vec<int,2> getLocalReadForWriteIndex(int writeIndex) {\
+		_vec<int,2> iread;\
 		int w = writeIndex+1;\
 		for (int i = 1; w > 0; ++i) {\
-			++readIndex(0);\
+			++iread(1);\
 			w -= i;\
 		}\
-		--readIndex(0);\
-		readIndex(1) = writeIndex - triangleSize(readIndex(0));\
-		return readIndex;\
+		--iread(1);\
+		iread(0) = writeIndex - triangleSize(iread(1));\
+		return iread;\
 	}
 
 /*
@@ -1631,18 +1643,18 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 	/* this is the direct acces */\
 	AntiSymRef<Inner> operator()(int i, int j) {\
 		if (i == j) return AntiSymRef<Inner>();\
-		if (j > i) {\
-			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRef<Inner>::NEGATIVE);\
+		if (i < j) {\
+			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRef<Inner>::POSITIVE);\
 		} else {\
-			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRef<Inner>::POSITIVE);\
+			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRef<Inner>::NEGATIVE);\
 		}\
 	}\
 	AntiSymRef<Inner const> operator()(int i, int j) const {\
 		if (i == j) return AntiSymRef<Inner const>();\
-		if (j > i) {\
-			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRef<Inner const>::NEGATIVE);\
+		if (i < j) {\
+			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRef<Inner const>::POSITIVE);\
 		} else {\
-			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRef<Inner const>::POSITIVE);\
+			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRef<Inner const>::NEGATIVE);\
 		}\
 	}\
 
@@ -1657,11 +1669,6 @@ but that seems inconsistent
 so next thought, expose all as methods to return references
 but then if I'm not using any fields then I don't need any specializations
 so no specialized sizes for _asym
-
-TODO maybe I should use upper-triangle instead of lower-triangle for my sym()
- then indexes are increasing ...
-... including the fixed antisym field names
- also with row-vectors, that makes the sym ctor intuitie too 
 */
 template<typename T, int dim_>
 struct _asym {
@@ -1670,20 +1677,20 @@ struct _asym {
 	TENSOR_HEADER()
 
 	T s[localCount] = {};
-	
 	constexpr _asym() {}
 
 	//don't need cuz scalar ctor in TENSOR_ADD_SCALAR_CTOR
 	//constexpr _asym(T y_x_) requires (dim_ == 2) : s{y_x_} {}
 
-	AntiSymRef<Inner> x_x() { return (*this)(0,0); } // zero
-	AntiSymRef<Inner> x_y() { return (*this)(0,1); } // -y_x
-	AntiSymRef<Inner> y_x() { return (*this)(1,0); } // y_x 
-	AntiSymRef<Inner> y_y() { return (*this)(1,1); } // zero
-	AntiSymRef<Inner const> x_x() const { return (*this)(0,0); } // zero
-	AntiSymRef<Inner const> x_y() const { return (*this)(0,1); } // -y_x
-	AntiSymRef<Inner const> y_x() const { return (*this)(1,0); } // y_x
-	AntiSymRef<Inner const> y_y() const { return (*this)(1,1); } // zero
+	AntiSymRef<Inner		> x_x() 		{ return (*this)(0,0); } // zero
+	AntiSymRef<Inner const	> x_x() const 	{ return (*this)(0,0); } // zero
+	// TODO requires dim>1
+	AntiSymRef<Inner		> x_y() 		{ return (*this)(0,1); } // x_y
+	AntiSymRef<Inner const	> x_y() const 	{ return (*this)(0,1); } // x_y
+	AntiSymRef<Inner		> y_x() 		{ return (*this)(1,0); } // -x_y 
+	AntiSymRef<Inner const	> y_x() const 	{ return (*this)(1,0); } // -x_y
+	AntiSymRef<Inner		> y_y() 		{ return (*this)(1,1); } // zero
+	AntiSymRef<Inner const	> y_y() const 	{ return (*this)(1,1); } // zero
 
 	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(_asym)
 };

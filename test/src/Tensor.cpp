@@ -377,7 +377,6 @@ void test_Tensor() {
 				TEST_EQ(b(j,i), i+j);
 			}
 		}
-
 		{
 			int k = 0;
 			auto c = Tensor::float3s3([&](int i, int j) -> float {
@@ -392,6 +391,44 @@ void test_Tensor() {
 		TEST_EQ(b, Tensor::float3s3([](Tensor::int2 ij) -> float {
 			return (float)(ij.x+ij.y);
 		}));
+
+
+	
+		/*
+		if storage / write iterate is lower-triangular then this will be 
+		   0 3 6
+		   3 4 7
+		   6 7 8
+		if it is upper-triangular:
+			0 1 2
+			1 4 5
+			2 5 8
+		*/
+		b = Tensor::float3s3([](int i, int j) -> float {
+			return 3 * i + j;
+		});
+#if 0 // upper triangular
+		// test storage order
+		TEST_EQ(b.s[0], 0);	// xx
+		TEST_EQ(b.s[1], 3); // xy
+		TEST_EQ(b.s[2], 4); // yy
+		TEST_EQ(b.s[3], 6); // xz
+		TEST_EQ(b.s[4], 7); // yz
+		TEST_EQ(b.s[5], 8); // zz
+		// test arg ctor 
+		TEST_EQ(b, Tensor::float3s3(0,3,4,6,7,8));
+#else // lower triangular
+		// test storage order
+		TEST_EQ(b.s[0], 0);	// xx
+		TEST_EQ(b.s[1], 1); // xy
+		TEST_EQ(b.s[2], 4); // yy
+		TEST_EQ(b.s[3], 2); // xz
+		TEST_EQ(b.s[4], 5); // yz
+		TEST_EQ(b.s[5], 8); // zz
+		// test arg ctor 
+		TEST_EQ(b, Tensor::float3s3(0,1,4,2,5,8));
+#endif
+
 
 		// test symmetry
 		b(0,2) = 7;
@@ -423,13 +460,13 @@ void test_Tensor() {
 		// () access
 		f(0,0) = 1; //cannot write to diagonals
 		TEST_EQ(f(0,0), 0);
-		TEST_EQ(f(0,1), -1);
-		TEST_EQ(f(1,0), 1);
+		TEST_EQ(f(0,1), 1);
+		TEST_EQ(f(1,0), -1);
 		TEST_EQ(f(1,1), 0);
 		
 		TEST_EQ(f.x_x(), 0);
-		TEST_EQ(f.y_x(), 1);
-		TEST_EQ(f.x_y(), -1);
+		TEST_EQ(f.y_x(), -1);
+		TEST_EQ(f.x_y(), 1);
 		TEST_EQ(f.y_y(), 0);
 		// field access
 	}

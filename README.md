@@ -87,9 +87,10 @@ functions:
 	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
 - `transpose(m)` = Matrix transpose, for rank-2 tensors.
 	$$transpose(a)_{ij} = a_{ji}$$
+- `trace(m)` = Matrix trace = matrix contraction between two indexes.
+	$$trace(a) = {a^i}_i$$
 - `diagonal(m)` = Matrix diagonal from vector.
 	$${diagonal(a)_{ij} = \delta_{ij} \cdot a_i$$
-- `trace(m)` = Matrix trace = matrix contraction between two indexes.
 
 ## Familiar Types
 
@@ -139,5 +140,3 @@ parallel:
 - move secondderivative from Relativity to Tensor
 - move covariantderivative from Relativity to Tensor
 - move Hydro/Inverse.h's GaussJordan solver into Tensor/Inverse
-
-- change sym and asym to access upper-triangular instead of lower-triangular
