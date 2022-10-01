@@ -650,45 +650,47 @@ void test_Tensor() {
 		TEST_EQ(t(1,0,2), 0);
 		TEST_EQ(t(1,1,2), 1);
 		TEST_EQ(t(1,2,2), 2);
-	
+
+		// operators
 		TEST_EQ(t + 0.f, t);
 		TEST_EQ(t * 1.f, t);
 		TEST_EQ(t * 0.f, decltype(t)());
-	
-		// verify that the outer of a vector and a sym is just that
-		{
-			auto a = Tensor::float2(2,3);
-			//ECHO(a);
-			static_assert(a.numNestings == 1);
-			static_assert(a.count<0> == 2);
-			static_assert(a.rank == 1);
-			static_assert(a.dim<0> == 2);
-			auto b = Tensor::float3s3(6,5,4,3,2,1);
-			//ECHO(b);
-			static_assert(b.numNestings == 1);
-			static_assert(b.count<0> == 6);
-			static_assert(b.rank == 2);
-			static_assert(b.dim<0> == 3);
-			static_assert(b.dim<1> == 3);
-			auto c = outer(a,b);
-			//ECHO(c);
-			static_assert(c.numNestings == 2);
-			static_assert(c.count<0> == a.count<0>);
-			static_assert(c.count<1> == b.count<0>);
-			static_assert(c.rank == 3);
-			static_assert(c.dim<0> == 2);
-			static_assert(c.dim<1> == 3);
-			static_assert(c.dim<2> == 3);
-			auto d = outer(b,a);
-			//ECHO(d);
-			static_assert(d.numNestings == 2);
-			static_assert(d.count<0> == b.count<0>);
-			static_assert(d.count<1> == a.count<0>);
-			static_assert(d.rank == 3);
-			static_assert(d.dim<0> == 3);
-			static_assert(d.dim<1> == 3);
-			static_assert(d.dim<2> == 2);
-		}
+	}
+	{
+		using T3S3 = Tensor::_tensori<float, Tensor::index_vec<3>, Tensor::index_sym<3>>;
+		auto t = T3S3([](int i, int j, int k) -> float { return i+j+k; });
+		auto verifyAccess = []<typename T>(T & t){
+			for (int i = 0; i < T::template dim<0>; ++i) {
+				for (int j = 0; j < T::template dim<1>; ++j) {
+					for (int k = 0; k < T::template dim<2>; ++k) {
+						float e=i+j+k;
+					
+						//()()() and any possible merged ()'s
+						TEST_EQ(t(i)(j)(k), e);
+						TEST_EQ(t(i)(j,k), e);
+						//_vec's operator()(int...) returns Scalar&
+						//  but vec-of-sym needs to return a sym-Accessor object
+						//TEST_EQ(t(i,j)(k), e);
+						TEST_EQ(t(i,j,k), e);
+						//[]()() ...
+						TEST_EQ(t[i](j)(k), e);
+						TEST_EQ(t[i](j,k), e);
+						//()[]()
+						TEST_EQ(t(i)[j](k), e);
+						//()()[]
+						TEST_EQ(t(i)(j)[k], e);
+						//TEST_EQ(t(i,j)[k], e); // same problem as t(i,j)(k)
+						// [][]() []()[] ()[][] [][][]
+						TEST_EQ(t[i][j](k), e);
+						TEST_EQ(t[i](j)[k], e);
+						TEST_EQ(t(i)[j][k], e);
+						TEST_EQ(t[i][j][k], e);
+					}
+				}
+			}
+		};
+		verifyAccess.template operator()<decltype(t)>(t);
+		verifyAccess.template operator()<decltype(t) const>(t);
 	}
 	
 	// symmetric-of-vector
@@ -700,10 +702,25 @@ void test_Tensor() {
 				for (int j = 0; j < T::template dim<1>; ++j) {
 					for (int k = 0; k < T::template dim<2>; ++k) {
 						float e=i+j+k;
+						//()()()
 						TEST_EQ(t(i)(j)(k), e);
 						TEST_EQ(t(i)(j,k), e);
 						TEST_EQ(t(i,j)(k), e);
 						TEST_EQ(t(i,j,k), e);
+						//[]()() ...
+						TEST_EQ(t[i](j)(k), e);
+						TEST_EQ(t[i](j,k), e);
+						//()[]()
+						TEST_EQ(t(i)[j](k), e);
+						//()()[]
+						TEST_EQ(t(i)(j)[k], e);
+						TEST_EQ(t(i,j)[k], e);
+						// [][]() []()[] ()[][] [][][]
+						TEST_EQ(t[i][j](k), e);
+						TEST_EQ(t[i](j)[k], e);
+						TEST_EQ(t(i)[j][k], e);
+						TEST_EQ(t[i][j][k], e);
+				
 					}
 				}
 			}
@@ -931,5 +948,40 @@ void test_Tensor() {
 		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<1>)== 2);
 		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<2>)== 3);
 		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<3>)== 3);
+	}
+
+	// verify that the outer of a vector and a sym is just that
+	{
+		auto a = Tensor::float2(2,3);
+		//ECHO(a);
+		static_assert(a.numNestings == 1);
+		static_assert(a.count<0> == 2);
+		static_assert(a.rank == 1);
+		static_assert(a.dim<0> == 2);
+		auto b = Tensor::float3s3(6,5,4,3,2,1);
+		//ECHO(b);
+		static_assert(b.numNestings == 1);
+		static_assert(b.count<0> == 6);
+		static_assert(b.rank == 2);
+		static_assert(b.dim<0> == 3);
+		static_assert(b.dim<1> == 3);
+		auto c = outer(a,b);
+		//ECHO(c);
+		static_assert(c.numNestings == 2);
+		static_assert(c.count<0> == a.count<0>);
+		static_assert(c.count<1> == b.count<0>);
+		static_assert(c.rank == 3);
+		static_assert(c.dim<0> == 2);
+		static_assert(c.dim<1> == 3);
+		static_assert(c.dim<2> == 3);
+		auto d = outer(b,a);
+		//ECHO(d);
+		static_assert(d.numNestings == 2);
+		static_assert(d.count<0> == b.count<0>);
+		static_assert(d.count<1> == a.count<0>);
+		static_assert(d.rank == 3);
+		static_assert(d.dim<0> == 3);
+		static_assert(d.dim<1> == 3);
+		static_assert(d.dim<2> == 2);
 	}
 }
