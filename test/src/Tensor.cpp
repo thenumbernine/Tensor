@@ -352,6 +352,7 @@ void test_Tensor() {
 	}
 
 	//symmetric
+	
 	{
 		auto a = Tensor::float3s3(); // default
 		static_assert(a.rank == 2);
@@ -413,7 +414,14 @@ void test_Tensor() {
 		// do they initialize to full scalars like vecs do?
 		// do they initialize to ident times scalar like math do?
 	}
-	
+
+	// antisymmetric matrix
+	{
+		auto f = Tensor::_asym<float,3>();
+		f(0,0) = 1;
+		TEST_EQ(f(0,0), 0);
+	}
+
 	// tensor with intermixed non-vec types:
 	// tensor of vec-symmetric
 	{

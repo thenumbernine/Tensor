@@ -45,6 +45,7 @@ TODO TODO
 
 */
 
+#include "Tensor/AntiSymRef.h"	// used in _asym
 #include "Common/String.h"
 #include <tuple>
 #include <functional>	//reference_wrapper, also function<> is by Partial
@@ -252,7 +253,8 @@ namespace Tensor {
 		}\
 	}
 
-#define TENSOR_ADD_CALL_INDEX()\
+// used for single-rank objects: _vec, and _sym::Accessor
+#define TENSOR_ADD_RANK1_CALL_INDEX()\
 \
 	/* a(i) := a_i */\
 	auto & operator()(int i) { return (*this)[i]; }\
@@ -605,6 +607,24 @@ ReadIterator vs WriteIterator
 		localCount\
 	>;
 
+// vector.volume() == the volume of a size reprensted by the vector
+#define TENSOR_ADD_VOLUME()\
+	/* assumes Inner operator* exists */\
+	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
+	T volume() const {\
+		T res = s[0];\
+		for (int i = 1; i < localCount; ++i) {\
+			res *= s[i];\
+		}\
+		return res;\
+	}
+
+#define TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()\
+	/* accepts int into .s[] storage, returns _intN<localRank> of how to index it using operator() */\
+	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
+		return _vec<int,localRank>{writeIndex};\
+	}
+
 //these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
 #define TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_CTORS(classname) /* ctors, namely lambda ctor, needs read iterators*/ \
@@ -627,24 +647,11 @@ ReadIterator vs WriteIterator
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_VECTOR_BRACKET_INDEX()\
-	TENSOR_ADD_CALL_INDEX()\
+	TENSOR_ADD_RANK1_CALL_INDEX()\
 	TENSOR_ADD_SUBSET_ACCESS()\
 	TENSOR_ADD_DOT()\
-\
-	/* assumes Inner operator* exists */\
-	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
-	T volume() const {\
-		T res = s[0];\
-		for (int i = 1; i < localCount; ++i) {\
-			res *= s[i];\
-		}\
-		return res;\
-	}\
-\
-	/* accepts int into .s[] storage, returns _intN<localRank> of how to index it using operator() */\
-	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
-		return _vec<int,localRank>{writeIndex};\
-	}
+	TENSOR_ADD_VOLUME()\
+	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()
 
 /*
 use the 'rank' field to check and see if we're in a _vec (or a _sym) or not
@@ -1309,16 +1316,20 @@ _mat<T,N,N> diagonal(_vec<T,N> const & v) {
 
 // symmetric matrices
 
-#define TENSOR_SYMMETRIC_MATRIX_HEADER(localDim_)\
-	static constexpr int localDim = localDim_;\
-	static constexpr int localRank = 2;\
-	static constexpr int localCount = (localDim * (localDim + 1)) >> 1;
+inline constexpr int triangleSize(int n) {
+	return (n * (n + 1)) / 2;
+}
 
 template<int N>
 int symIndex(int i, int j) {
 	if (j > i) return symIndex<N>(j,i);
-	return ((i * (i + 1)) >> 1) + j;
+	return j + triangleSize(i);
 }
+
+#define TENSOR_SYMMETRIC_MATRIX_HEADER(localDim_)\
+	static constexpr int localDim = localDim_;\
+	static constexpr int localRank = 2;\
+	static constexpr int localCount = triangleSize(localDim);
 
 //also symmetric has to define 1-arg operator()
 // that means I can't use the default so i have to make a 2-arg recursive case
@@ -1347,7 +1358,7 @@ int symIndex(int i, int j) {
 		int i;\
 		Accessor(This & owner_, int i_) : owner(owner_), i(i_) {}\
 		Inner & operator[](int j) { return owner(i,j); }\
-		TENSOR_ADD_CALL_INDEX()\
+		TENSOR_ADD_RANK1_CALL_INDEX()\
 	};\
 	Accessor operator[](int i) { return Accessor(*this, i); }\
 \
@@ -1356,7 +1367,7 @@ int symIndex(int i, int j) {
 		int i;\
 		ConstAccessor(This const & owner_, int i_) : owner(owner_), i(i_) {}\
 		Inner const & operator[](int j) { return owner(i,j); }\
-		TENSOR_ADD_CALL_INDEX()\
+		TENSOR_ADD_RANK1_CALL_INDEX()\
 	};\
 	ConstAccessor operator[](int i) const { return ConstAccessor(*this, i); }\
 \
@@ -1366,7 +1377,20 @@ int symIndex(int i, int j) {
 	ConstAccessor & operator()(int i) const { return (*this)[i]; }\
 \
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
-	TENSOR_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()\
+	TENSOR_SYMMETRIC_ADD_RECURSIVE_CALL_INDEX()
+
+#define TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
+	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
+		_vec<int,localRank> readIndex;\
+		int w = writeIndex+1;\
+		for (int i = 1; w > 0; ++i) {\
+			++readIndex(0);\
+			w -= i;\
+		}\
+		--readIndex(0);\
+		readIndex(1) = writeIndex - triangleSize(readIndex(0));\
+		return readIndex;\
+	}
 
 /*
 for the call index operator
@@ -1379,18 +1403,7 @@ so the accessors need nested call indexing too
 #define TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
-\
-	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
-		_vec<int,localRank> readIndex;\
-		int w = writeIndex+1;\
-		for (int i = 1; w > 0; ++i) {\
-			++readIndex(0);\
-			w -= i;\
-		}\
-		--readIndex(0);\
-		readIndex(1) = writeIndex - readIndex(0) * (readIndex(0) + 1) / 2;\
-		return readIndex;\
-	}
+	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()
 
 template<typename T, int dim_>
 struct _sym {
@@ -1603,6 +1616,51 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(*)
 TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 
 
+// antisymmetric matrices
+
+#define TENSOR_ANTISYMMETRIC_MATRIX_HEADER(localDim_)\
+	static constexpr int localDim = localDim_;\
+	static constexpr int localRank = 2;\
+	static constexpr int localCount = triangleSize(localDim - 1);
+
+#define TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
+	/* a(i,j) := a_ij = -a_ji */\
+	/* this is the direct acces */\
+	AntiSymRef<Inner> operator()(int i, int j) {\
+		using A = AntiSymRef<Inner>;\
+		if (i == j) return A();\
+		if (j > i) {\
+			return AntiSymRef(std::ref(s[symIndex<localDim-1>(j-1,i)]), A::NEGATIVE);\
+		} else {\
+			return AntiSymRef(std::ref(s[symIndex<localDim-1>(i-1,j)]), A::NEGATIVE);\
+		}\
+	}\
+	AntiSymRef<Inner const> operator()(int i, int j) const {\
+		using A = AntiSymRef<Inner const>;\
+		if (i == j) return A();\
+		if (j > i) {\
+			return AntiSymRef(std::ref(s[symIndex<localDim-1>(j-1,i)]), A::NEGATIVE);\
+		} else {\
+			return AntiSymRef(std::ref(s[symIndex<localDim-1>(i-1,j)]), A::NEGATIVE);\
+		}\
+	}\
+
+#define TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(classname)\
+	TENSOR_ADD_OPS(classname)\
+	TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()
+
+template<typename T, int dim_>
+struct _asym {
+	using This = _asym;
+	TENSOR_ANTISYMMETRIC_MATRIX_HEADER(dim_)
+	TENSOR_HEADER()
+
+	T s[localCount] = {};
+	constexpr _asym() {}
+	
+	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(_asym)
+};
+
 // specific typed vectors
 
 
@@ -1628,13 +1686,13 @@ static_assert(nick##dim1##x##dim2::count<1> == dim2);
 
 #define TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
 using nick##dim12##s##dim12 = nick##NsN<dim12>;\
-static_assert(sizeof(nick##dim12##s##dim12) == sizeof(ctype) * dim12 * (dim12 + 1) / 2);\
+static_assert(sizeof(nick##dim12##s##dim12) == sizeof(ctype) * triangleSize(dim12));\
 static_assert(std::is_same_v<typename nick##dim12##s##dim12::Scalar, ctype>);\
 static_assert(nick##dim12##s##dim12::rank == 2);\
 static_assert(nick##dim12##s##dim12::dim<0> == dim12);\
 static_assert(nick##dim12##s##dim12::dim<1> == dim12);\
 static_assert(nick##dim12##s##dim12::numNestings == 1);\
-static_assert(nick##dim12##s##dim12::count<0> == dim12 * (dim12 + 1) / 2);
+static_assert(nick##dim12##s##dim12::count<0> == triangleSize(dim12));
 
 
 #define TENSOR_ADD_NICKNAME_TYPE(nick, ctype)\
