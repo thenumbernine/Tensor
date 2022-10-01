@@ -17,7 +17,7 @@
 - `matrixCompMult(a,b)` for component-wise multiplying two tensors.
 
 `_sym<type, dim>` = symmetric matrices:
-- `.xx .xy .xz .yy .yz .zz .xw .yw .zw .ww` storage, `.yx .zx, .zy` union'd access.
+- `.x_x .x_y .x_z .y_y .y_z .z_z .x_w .y_w .z_w .w_w` storage, `.y_x .z_x, .z_y` union'd access.
 
 - Tensors (which are just typedef'd vectors-of-vectors-of-...)
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `vec< ..., dimI>`.
@@ -140,5 +140,4 @@ parallel:
 - move covariantderivative from Relativity to Tensor
 - move Hydro/Inverse.h's GaussJordan solver into Tensor/Inverse
 
-- change sym and asym fields from xx xy xz etc to x_x x_y x_z so they don't collide with swizzles (which are present in dense-matrices)
 - change sym and asym to access upper-triangular instead of lower-triangular
