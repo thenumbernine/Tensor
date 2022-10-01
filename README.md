@@ -26,7 +26,7 @@
 - `::Inner` = the next most nested vector/matrix/symmetric.
 - `::rank` = for determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
 - `::dim<i>` = get the i'th dimension size , where i is from 0 to rank-1.
-- `::dims()` = get a int-vector with all the dimensions.
+- `::dims` = get a int-vector with all the dimensions.  For rank-1 this is just an int.  Maybe I'll change it to be intN for all ranks, not sure.
 - `::localDim` = get the dimension size of the current class, equal to `dim<0>`.
 - `::numNestings` = get the number of nested classes.
 - `::count<i>` = get the storage size of the i'th nested class.
@@ -140,5 +140,3 @@ parallel:
 - move secondderivative from Relativity to Tensor
 - move covariantderivative from Relativity to Tensor
 - move Hydro/Inverse.h's GaussJordan solver into Tensor/Inverse
-
--- assign like tensors of dif internals

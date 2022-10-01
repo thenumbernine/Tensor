@@ -49,7 +49,7 @@ void test_Tensor() {
 		TEST_EQ(f[2], 7);
 		
 		//.dims
-		TEST_EQ(f.dims(), 3);
+		TEST_EQ(f.dims, 3);
 		TEST_EQ(f.dim<0>, 3);
 	
 		//iterator
@@ -282,9 +282,9 @@ void test_Tensor() {
 		TEST_EQ(m[1], Tensor::float3(4,5,6));
 		TEST_EQ(m[2], Tensor::float3(7,8,9));
 
-		//dims and rank.  really these are static_assert's, except dims(), but it could be, but I'd have to constexpr some things ...
+		//dims and rank.  really these are static_assert's, except dims, but it could be, but I'd have to constexpr some things ...
 		TEST_EQ(m.rank, 2);
-		TEST_EQ(m.dims(), Tensor::int2(3,3));
+		TEST_EQ(m.dims, Tensor::int2(3,3));
 		TEST_EQ(m.dim<0>, 3);
 		TEST_EQ(m.dim<1>, 3);
 
@@ -612,9 +612,11 @@ void test_Tensor() {
 		}
 
 		// TODO verify that 'float3a3::ExpandStorage<0> == float3x3' & same with <1> 
-//		Tensor::float3x3 b = f;
-//		ECHO(b);
-//exit(0);
+
+		// verify assignment to expanded type
+		// TODO won't work until you get intN dereference in _asym
+		//Tensor::float3x3 b = f;
+		//ECHO(b);
 	}
 
 	// tensor with intermixed non-vec types:

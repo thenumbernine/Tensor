@@ -147,29 +147,34 @@ namespace Tensor {
 	template<int i> static constexpr int dim = Traits::template calc_ith_dim<i>();\
 \
 	/* .. then for loop iterator in dims() function and just a single exceptional case in the dims() function is needed */\
-	static constexpr auto dims() {\
+	static constexpr auto calc_dims() {\
 		/* if this is a vector-of-scalars, such that the dims would be an int1, just use int */\
 		if constexpr (rank == 1) {\
 			return localDim;\
 		} else {\
 			/* use an int[localDim] */\
-			intN sizev;\
+			intN dimv;\
 /* TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly. */\
+/* TODO can I change the template unroll metaprogram to use constexpr lambdas? */\
 			for (int i = 0; i < localRank; ++i) {\
-				sizev.s[i] = localDim;\
+				dimv.s[i] = localDim;\
 			}\
 			if constexpr (localRank < rank) {\
 				/* special case reading from int */\
 				if constexpr (Inner::rank == 1) {\
-					sizev.s[localRank] = Inner::dims();\
+					dimv.s[localRank] = Inner::calc_dims();\
 				} else {\
 					/* assigning sub-vector */\
-					sizev.template subset<rank-localRank, localRank>() = Inner::dims();\
+					auto innerDim = Inner::calc_dims();\
+					for (int i = 0; i < rank-localRank; ++i) {\
+						dimv.s[i+localRank] = innerDim.s[i];\
+					}\
 				}\
 			}\
-			return sizev;\
+			return dimv;\
 		}\
 	}\
+	static constexpr auto dims = calc_dims();\
 \
 	template<int i> static constexpr int count = Traits::template Nested<i>::localCount;
 
@@ -289,6 +294,8 @@ namespace Tensor {
 	TENSOR_ADD_RECURSIVE_CALL_INDEX()\
 	TENSOR_ADD_INT_VEC_CALL_INDEX()
 
+// TODO get rid of this, then I can use s[] as std::array
+// ... or will getting rid of dependency on this fix the crash when switching to std::array?
 #define TENSOR_ADD_SUBSET_ACCESS()\
 \
 	/* assumes packed tensor */\
@@ -391,7 +398,7 @@ namespace Tensor {
 	constexpr classname(U const & t) {\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
-			/* TODO if i.readIndex is in This's bounds ... */\
+			/* TODO ensure if i.readIndex is in This's bounds ... */\
 			*i = (Scalar)t(i.readIndex);\
 		}\
 	}
@@ -1969,7 +1976,9 @@ std::string to_string(Tensor::_vec<T, n> const & x) {
 	return Common::objectStringFromOStream(x);
 }
 
-#if 0	// half baked idea of making std::apply compatible with Tensor::_vec
+#if 0
+// half baked idea of making std::apply compatible with Tensor::_vec
+// I would just use std::array as the internal storage of _vec, but subset() does some memory casting which maybe I shouldn't be doing .. */\
 // tuple_size, make this match array i.e. storage size, returns localCount
 
 template<typename T, int N>
