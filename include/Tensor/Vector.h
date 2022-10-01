@@ -131,20 +131,46 @@ namespace Tensor {
 	}
 
 #define TENSOR_ADD_CMP_OP()\
-	bool operator==(This const & b) const {\
+	constexpr bool operator==(This const & b) const {\
 		for (int i = 0; i < localCount; ++i) {\
 			if (s[i] != b.s[i]) return false;\
 		}\
 		return true;\
 	}\
-	bool operator!=(This const & b) const {\
+	constexpr bool operator!=(This const & b) const {\
 		return !operator==(b);\
 	}
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_DIMS()\
+\
 	template<int i> static constexpr int dim = Traits::template calc_ith_dim<i>();\
-	static constexpr auto dims() { return Traits::dims(); }\
+\
+	/* .. then for loop iterator in dims() function and just a single exceptional case in the dims() function is needed */\
+	static constexpr auto dims() {\
+		/* if this is a vector-of-scalars, such that the dims would be an int1, just use int */\
+		if constexpr (rank == 1) {\
+			return localDim;\
+		} else {\
+			/* use an int[localDim] */\
+			intN sizev;\
+/* TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly. */\
+			for (int i = 0; i < localRank; ++i) {\
+				sizev.s[i] = localDim;\
+			}\
+			if constexpr (localRank < rank) {\
+				/* special case reading from int */\
+				if constexpr (Inner::rank == 1) {\
+					sizev.s[localRank] = Inner::dims();\
+				} else {\
+					/* assigning sub-vector */\
+					sizev.template subset<rank-localRank, localRank>() = Inner::dims();\
+				}\
+			}\
+			return sizev;\
+		}\
+	}\
+\
 	template<int i> static constexpr int count = Traits::template Nested<i>::localCount;
 
 // danger ... danger ...
@@ -257,7 +283,7 @@ namespace Tensor {
 #define TENSOR_ADD_RANK1_CALL_INDEX()\
 \
 	/* a(i) := a_i */\
-	auto & operator()(int i) { return (*this)[i]; }\
+	auto       & operator()(int i)       { return (*this)[i]; }\
 	auto const & operator()(int i) const { return (*this)[i]; }\
 \
 	TENSOR_ADD_RECURSIVE_CALL_INDEX()\
@@ -359,21 +385,20 @@ namespace Tensor {
 // vector cast operator
 // TODO not sure how to write this to generalize into _sym and others (or if I should try to?)
 // explicit 'this->s' so subclasses can use this macro (like _quat)
-#define TENSOR_ADD_CTOR_FOR_GENERIC_VECTORS(classname, othername)\
-	template<typename U, int N>\
-	constexpr classname(othername<U, N> const & t) {\
-		int i = 0;\
-		for (; i < localCount && i < t.localCount; ++i) {\
-			this->s[i] = (T)t.s[i];\
-		}\
-		for (; i < localCount; ++i) {\
-			this->s[i] = {};\
+#define TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname, othername)\
+	template<typename U>\
+	requires (is_tensor_v<U> && rank == U::rank)\
+	constexpr classname(U const & t) {\
+		auto w = write();\
+		for (auto i = w.begin(); i != w.end(); ++i) {\
+			/* TODO if i.readIndex is in This's bounds ... */\
+			*i = (Scalar)t(i.readIndex);\
 		}\
 	}
 
 #define TENSOR_ADD_CTORS(classname)\
 	TENSOR_ADD_SCALAR_CTOR(classname)\
-	TENSOR_ADD_CTOR_FOR_GENERIC_VECTORS(classname, classname)\
+	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname, classname)\
 	TENSOR_ADD_LAMBDA_CTOR(classname)\
 	TENSOR_ADD_LIST_CTOR(classname)
 
@@ -428,10 +453,10 @@ ReadIterator vs WriteIterator
 			index = o.index;\
 			return *this;\
 		}\
-		bool operator==(ReadIterator const & o) const {\
+		constexpr bool operator==(ReadIterator const & o) const {\
 			return &owner == &o.owner && index == o.index;\
 		}\
-		bool operator!=(ReadIterator const & o) const {\
+		constexpr bool operator!=(ReadIterator const & o) const {\
 			return !operator==(o);\
 		}\
 		auto & operator*() const {\
@@ -542,10 +567,10 @@ ReadIterator vs WriteIterator
 				readIndex = o.readIndex;\
 				return *this;\
 			}\
-			bool operator==(WriteIterator const & o) const {\
+			constexpr bool operator==(WriteIterator const & o) const {\
 				return &owner == &o.owner && writeIndex == o.writeIndex;\
 			}\
-			bool operator!=(WriteIterator const & o) const {\
+			constexpr bool operator!=(WriteIterator const & o) const {\
 				return !operator==(o);\
 			}\
 			auto & operator*() {\
@@ -628,6 +653,8 @@ ReadIterator vs WriteIterator
 
 //these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
 #define TENSOR_ADD_OPS(classname)\
+	TENSOR_ADD_DIMS() /* needed by TENSOR_ADD_CTORS */\
+	TENSOR_ADD_ITERATOR() /* needed by TENSOR_ADD_CTORS */\
 	TENSOR_ADD_CTORS(classname) /* ctors, namely lambda ctor, needs read iterators*/ \
 	TENSOR_ADD_VECTOR_OP_EQ(+=)\
 	TENSOR_ADD_VECTOR_OP_EQ(-=)\
@@ -637,10 +664,8 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_SCALAR_OP_EQ(-=)\
 	TENSOR_ADD_SCALAR_OP_EQ(*=)\
 	TENSOR_ADD_SCALAR_OP_EQ(/=)\
-	TENSOR_ADD_ITERATOR()\
 	TENSOR_ADD_UNM()\
 	TENSOR_ADD_CMP_OP()\
-	TENSOR_ADD_DIMS()\
 	TENSOR_ADD_RECAST(classname)
 
 // only add these to _vec and specializations
@@ -705,35 +730,6 @@ struct VectorTraits<Type_> {
 			return Type::localDim;
 		} else {
 			return InnerTraits::template calc_ith_dim<i - Type::localRank>();
-		}
-	}
-
-	// .. then for loop iterator in dims() function and just a single exceptional case in the dims() function is needed
-	static constexpr auto dims() {
-		// if this is a vector-of-scalars, such that the dims would be an int1, just use int
-		if constexpr (Type::rank == 1) {
-			return Type::localDim;
-		} else {
-			// use an int[localDim]
-			intN sizev;
-#if 0
-#error "TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly."
-#else
-			for (int i = 0; i < Type::localRank; ++i) {
-				sizev.s[i] = Type::localDim;
-			}
-			if constexpr (Type::localRank < rank) {
-				// special case reading from int
-				if constexpr (Inner::rank == 1) {
-					sizev.s[Type::localRank] = InnerTraits::dims();
-				} else {
-					// assigning sub-vector
-					sizev.template subset<rank-Type::localRank, Type::localRank>()
-						= InnerTraits::dims();
-				}
-			}
-#endif
-			return sizev;
 		}
 	}
 

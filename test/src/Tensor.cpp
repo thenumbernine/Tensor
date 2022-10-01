@@ -610,6 +610,11 @@ void test_Tensor() {
 				}
 			}
 		}
+
+		// TODO verify that 'float3a3::ExpandStorage<0> == float3x3' & same with <1> 
+//		Tensor::float3x3 b = f;
+//		ECHO(b);
+//exit(0);
 	}
 
 	// tensor with intermixed non-vec types:
@@ -720,7 +725,6 @@ void test_Tensor() {
 						TEST_EQ(t[i](j)[k], e);
 						TEST_EQ(t(i)[j][k], e);
 						TEST_EQ(t[i][j][k], e);
-				
 					}
 				}
 			}
@@ -740,14 +744,52 @@ void test_Tensor() {
 						for (int l = 0; l < T::template dim<3>; ++l) {
 							float e =i+j+k+l;
 							TEST_EQ(t(i)(j)(k)(l), e);
+							TEST_EQ(t(i,j)(k)(l), e);
+							TEST_EQ(t(i,j)(k,l), e);
 							// TODO replace _sym's Accessor's TENSOR_ADD_RANK1_CALL_INDEX with stuff that returns objects instead of object-refs
 							//TEST_EQ(t(i)(j,k)(l), e);
-							TEST_EQ(t(i,j)(k)(l), e);
 							TEST_EQ(t(i)(j)(k,l), e);
-							TEST_EQ(t(i,j)(k,l), e);
 							TEST_EQ(t(i)(j,k,l), e);
 							//TEST_EQ(t(i,j,k)(l), e);
 							TEST_EQ(t(i,j,k,l), e);
+
+							TEST_EQ(t[i](j)(k)(l), e);
+							//TEST_EQ(t[i](j,k)(l), e);
+							TEST_EQ(t[i](j)(k,l), e);
+							TEST_EQ(t[i](j,k,l), e);
+							
+							TEST_EQ(t(i)[j](k)(l), e);
+							TEST_EQ(t(i)[j](k,l), e);
+							
+							TEST_EQ(t(i)(j)[k](l), e);
+							TEST_EQ(t(i,j)[k](l), e);
+							
+							TEST_EQ(t(i)(j)(k)[l], e);
+							TEST_EQ(t(i,j)(k)[l], e);
+							//TEST_EQ(t(i)(j,k)[l], e);
+							TEST_EQ(t(i,j)(k)[l], e);
+							
+							TEST_EQ(t[i][j](k)(l), e);
+							TEST_EQ(t[i][j](k,l), e);
+							
+							TEST_EQ(t[i](j)[k](l), e);
+							
+							TEST_EQ(t[i](j)(k)[l], e);
+							//TEST_EQ(t[i](j,k)[l], e);
+							
+							TEST_EQ(t(i)[j][k](l), e);
+							
+							TEST_EQ(t(i)[j](k)[l], e);
+							
+							TEST_EQ(t(i)(j)[k][l], e);
+							TEST_EQ(t(i,j)[k][l], e);
+							
+							TEST_EQ(t[i][j][k](l), e);
+							TEST_EQ(t[i][j](k)[l], e);
+							TEST_EQ(t[i](j)[k][l], e);
+							TEST_EQ(t(i)[j][k][l], e);
+							
+							TEST_EQ(t[i][j][k][l], e);
 						}
 					}
 				}
