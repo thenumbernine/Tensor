@@ -258,30 +258,6 @@ namespace Tensor {
 		} else {\
 			return (*this)[i(0)](i.template subset<N-1, 1>());\
 		}\
-	}\
-\
-	/* same but for std::array */\
-	/* NOTICE this is only because _vec::iterator needs a std::array for indexing */\
-	/*  and that is because _vec<T> can't seem to use _vec<int> for indexes, gets an 'incomplete type' error */\
-	template<int N>\
-	auto & operator()(std::array<int,N> const & i) {\
-		if constexpr (N == 1) {\
-			return (*this)[i[0]];\
-		} else {\
-			std::array<int,N-1> subi;\
-			std::copy(i.begin() + 1, i.begin() + N, subi.begin());\
-			return (*this)[i[0]](subi);\
-		}\
-	}\
-	template<int N>\
-	auto const & operator()(std::array<int,N> const & i) const {\
-		if constexpr (N == 1) {\
-			return (*this)[i[0]];\
-		} else {\
-			std::array<int,N-1> subi;\
-			std::copy(i.begin() + 1, i.begin() + N, subi.begin());\
-			return (*this)[i[0]](subi);\
-		}\
 	}
 
 // used for single-rank objects: _vec, and _sym::Accessor
@@ -294,28 +270,27 @@ namespace Tensor {
 	TENSOR_ADD_RECURSIVE_CALL_INDEX()\
 	TENSOR_ADD_INT_VEC_CALL_INDEX()
 
-// TODO get rid of this, then I can use s[] as std::array
-// ... or will getting rid of dependency on this fix the crash when switching to std::array?
+// TODO is this safe?
 #define TENSOR_ADD_SUBSET_ACCESS()\
 \
 	/* assumes packed tensor */\
 	template<int subdim, int offset>\
 	_vec<Inner,subdim> & subset() {\
 		static_assert(offset + subdim <= localCount);\
-		return *(_vec<Inner,subdim>*)(s+offset);\
+		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}\
 	template<int subdim, int offset>\
 	_vec<Inner,subdim> const & subset() const {\
 		static_assert(offset + subdim <= localCount);\
-		return *(_vec<Inner,subdim>*)(s+offset);\
+		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}\
 	template<int subdim>\
 	_vec<Inner,subdim> & subset(int offset) {\
-		return *(_vec<Inner,subdim>*)(s+offset);\
+		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}\
 	template<int subdim>\
 	_vec<Inner,subdim> const & subset(int offset) const {\
-		return *(_vec<Inner,subdim>*)(s+offset);\
+		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}
 
 // also TODO can't use this in conjunction with the requires to_ostream or you get ambiguous operator
@@ -356,12 +331,7 @@ namespace Tensor {
 		Func f(lambda);\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
-			/* *i = std::apply(f, i.readIndex); ... I need to implement some std::get etc stuff for this to work */\
-			/* so until then I'll copy into a std::array<int> */\
-			std::array<int, rank> iarray;\
-			/*std::copy(iarray.begin(), iarray.end(), i.index.begin());  ... crashing */\
-			for (int j = 0; j < rank; ++j) iarray[j] = i.readIndex[j];\
-			*i = std::apply(f, iarray);\
+			*i = std::apply(f, i.readIndex.s);\
 		}\
 	}
 
@@ -399,7 +369,10 @@ namespace Tensor {
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
 			/* TODO ensure if i.readIndex is in This's bounds ... */\
-			*i = (Scalar)t(i.readIndex);\
+			/* TODO get operator()(intN<>) access working for _asym ... */\
+			/**i = (Scalar)t(i.readIndex);*/\
+			/* until then ... */\
+			*i = std::apply(t, i.readIndex.s);\
 		}\
 	}
 
@@ -785,7 +758,7 @@ struct _vec {
 	TENSOR_VECTOR_HEADER(dim_)
 	TENSOR_HEADER()
 
-	T s[localCount] = {};
+	std::array<T,localCount> s = {};
 	constexpr _vec() {}
 	
 	TENSOR_VECTOR_CLASS_OPS(_vec)
@@ -801,14 +774,14 @@ struct _vec<T,2> {
 
 	union {
 		struct {
-			T x = {};
-			T y = {};
+			T x;
+			T y;
 		};
 		struct {
 			T s0;
 			T s1;
 		};
-		T s[localCount];
+		std::array<T,localCount> s = {};
 	};
 	constexpr _vec() {}
 	constexpr _vec(T x_, T y_) : x(x_), y(y_) {}
@@ -874,16 +847,16 @@ struct _vec<T,3> {
 
 	union {
 		struct {
-			T x = {};
-			T y = {};
-			T z = {};
+			T x;
+			T y;
+			T z;
 		};
 		struct {
 			T s0;
 			T s1;
 			T s2;
 		};
-		T s[localCount];
+		std::array<T, localCount> s = {};
 	};
 	constexpr _vec() {}
 	constexpr _vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
@@ -959,10 +932,10 @@ struct _vec<T,4> {
 
 	union {
 		struct {
-			T x = {};
-			T y = {};
-			T z = {};
-			T w = {};
+			T x;
+			T y;
+			T z;
+			T w;
 		};
 		struct {
 			T s0;
@@ -970,7 +943,7 @@ struct _vec<T,4> {
 			T s2;
 			T s3;
 		};
-		T s[localCount];
+		std::array<T, localCount> s = {};
 	};
 	constexpr _vec() {}
 	constexpr _vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
@@ -1443,7 +1416,7 @@ struct _sym {
 	TENSOR_SYMMETRIC_MATRIX_HEADER(dim_)
 	TENSOR_HEADER()
 
-	T s[localCount] = {};
+	std::array<T,localCount> s = {};
 	constexpr _sym() {}
 
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
@@ -1457,16 +1430,16 @@ struct _sym<T,2> {
 
 	union {
 		struct {
-			T x_x = {};
-			union { T x_y = {}; T y_x; };
-			T y_y = {};
+			T x_x;
+			union { T x_y; T y_x; };
+			T y_y;
 		};
 		struct {
 			T s00;
 			T s01;
 			T s11;
 		};
-		T s[localCount];
+		std::array<T, localCount> s = {};
 	};
 	constexpr _sym() {}
 	constexpr _sym(T x_x_, T x_y_, T y_y_) : x_x(x_x_), x_y(x_y_), y_y(y_y_) {}
@@ -1488,12 +1461,12 @@ struct _sym<T,3> {
 
 	union {
 		struct {
-			T x_x = {};
-			union { T x_y = {}; T y_x; };
-			T y_y = {};
-			union { T x_z = {}; T z_x; };
-			union { T y_z = {}; T z_y; };
-			T z_z = {};
+			T x_x;
+			union { T x_y; T y_x; };
+			T y_y;
+			union { T x_z; T z_x; };
+			union { T y_z; T z_y; };
+			T z_z;
 		};
 		struct {
 			T s00;
@@ -1503,7 +1476,7 @@ struct _sym<T,3> {
 			T s12;
 			T s22;
 		};
-		T s[localCount];
+		std::array<T,localCount> s = {};
 	};
 	constexpr _sym() {}
 	constexpr _sym(
@@ -1540,16 +1513,16 @@ struct _sym<T,4> {
 
 	union {
 		struct {
-			T x_x = {};
-			union { T x_y = {}; T y_x; };
-			T y_y = {};
-			union { T x_z = {}; T z_x; };
-			union { T y_z = {}; T z_y; };
-			T z_z = {};
-			union { T x_w = {}; T w_x; };
-			union { T y_w = {}; T w_y; };
-			union { T z_w = {}; T w_z; };
-			T w_w = {};
+			T x_x;
+			union { T x_y; T y_x; };
+			T y_y;
+			union { T x_z; T z_x; };
+			union { T y_z; T z_y; };
+			T z_z;
+			union { T x_w; T w_x; };
+			union { T y_w; T w_y; };
+			union { T z_w; T w_z; };
+			T w_w;
 		};
 		struct {
 			T s00;
@@ -1563,7 +1536,7 @@ struct _sym<T,4> {
 			T s23;
 			T s33;
 		};
-		T s[localCount];
+		std::array<T, localCount> s = {};
 	};
 	constexpr _sym() {}
 	constexpr _sym(
@@ -1759,7 +1732,7 @@ struct _asym {
 	TENSOR_ANTISYMMETRIC_MATRIX_HEADER(dim_)
 	TENSOR_HEADER()
 
-	T s[localCount] = {};
+	std::array<T, localCount> s = {};
 	constexpr _asym() {}
 
 	//don't need cuz scalar ctor in TENSOR_ADD_SCALAR_CTOR

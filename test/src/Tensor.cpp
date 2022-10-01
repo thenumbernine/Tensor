@@ -615,8 +615,8 @@ void test_Tensor() {
 
 		// verify assignment to expanded type
 		// TODO won't work until you get intN dereference in _asym
-		//Tensor::float3x3 b = f;
-		//ECHO(b);
+		Tensor::float3x3 b = f;
+		TEST_EQ(b, (Tensor::float3x3{{0, -2, -3}, {2, 0, -4}, {3, 4, 0}}));
 	}
 
 	// tensor with intermixed non-vec types:
