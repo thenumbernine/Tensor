@@ -605,7 +605,7 @@ ReadIterator vs WriteIterator
 	};\
 	template<typename NewInner> using replaceScalar = classname<\
 		decltype(Recast_DontEvalInner<NewInner>::getType()),\
-		localCount\
+		localDim\
 	>;
 
 // vector.volume() == the volume of a size reprensted by the vector
@@ -1346,19 +1346,6 @@ _mat<T,N,N> diagonal(_vec<T,N> const & v) {
 
 // rank-2 optimized storage
 
-#define TENSOR_RANK2_ADD_RECURSIVE_CALL_INDEX()\
-\
-	/* a(i1,i2,...) := a_i1_i2_... */\
-	template<typename... Rest>\
-	auto & operator()(int i, int j, Rest... rest) {\
-		return (*this)(i,j)(rest...);\
-	}\
-\
-	template<typename... Rest>\
-	auto const & operator()(int i, int j, Rest... rest) const {\
-		return (*this)(i,j)(rest...);\
-	}
-
 // symmetric matrices
 
 inline constexpr int triangleSize(int n) {
@@ -1376,6 +1363,19 @@ int symIndex(int i, int j) {
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim);
 
+#define TENSOR_SYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
+\
+	/* a(i1,i2,...) := a_i1_i2_... */\
+	template<typename... Rest>\
+	auto & operator()(int i, int j, Rest... rest) {\
+		return (*this)(i,j)(rest...);\
+	}\
+\
+	template<typename... Rest>\
+	auto const & operator()(int i, int j, Rest... rest) const {\
+		return (*this)(i,j)(rest...);\
+	}
+
 // NOTICE this almost matches TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX
 // except this uses &'s where _asym uses AntiSymRef 
 #define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
@@ -1384,38 +1384,27 @@ int symIndex(int i, int j) {
 	/* this is the direct acces */\
 	/* symmetric has to define 1-arg operator() */\
 	/* that means I can't use the default so i have to make a 2-arg recursive case */\
-	Inner & operator()(int i, int j) {\
-		return s[symIndex<localDim>(i,j)];\
-	}\
-	Inner const & operator()(int i, int j) const {\
-		return s[symIndex<localDim>(i,j)];\
-	}\
+	Inner 		& operator()(int i, int j) 		 { return s[symIndex<localDim>(i,j)]; }\
+	Inner const & operator()(int i, int j) const { return s[symIndex<localDim>(i,j)]; }\
 \
+	template<typename OwnerConstness>\
 	struct Accessor {\
-		This & owner;\
+		OwnerConstness & owner;\
 		int i;\
-		Accessor(This & owner_, int i_) : owner(owner_), i(i_) {}\
-		Inner & operator[](int j) { return owner(i,j); }\
+		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
+		auto & operator[](int j) const { return owner(i,j); }\
 		TENSOR_ADD_RANK1_CALL_INDEX()\
 	};\
-	Accessor operator[](int i) { return Accessor(*this, i); }\
-\
-	struct ConstAccessor {\
-		This const & owner;\
-		int i;\
-		ConstAccessor(This const & owner_, int i_) : owner(owner_), i(i_) {}\
-		Inner const & operator[](int j) { return owner(i,j); }\
-		TENSOR_ADD_RANK1_CALL_INDEX()\
-	};\
-	ConstAccessor operator[](int i) const { return ConstAccessor(*this, i); }\
+	auto operator[](int i) 		 { return Accessor<This		 >(*this, i); }\
+	auto operator[](int i) const { return Accessor<This const>(*this, i); }\
 \
 	/* a(i) := a_i */\
 	/* this is incomplete so it returns the operator[] which returns the accessor */\
-	Accessor operator()(int i) { return (*this)[i]; }\
-	ConstAccessor operator()(int i) const { return (*this)[i]; }\
+	auto operator()(int i) 		 { return (*this)[i]; }\
+	auto operator()(int i) const { return (*this)[i]; }\
 \
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
-	TENSOR_RANK2_ADD_RECURSIVE_CALL_INDEX()
+	TENSOR_SYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()
 
 // currently set to upper-triangular
 // swap iread 0 and 1 to get lower-triangular
@@ -1663,6 +1652,20 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim - 1);
 
+// have these return auto (not ref, not const) cuz they will return AntiSymRef of some sort of inner, possibly inner-const
+#define TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
+\
+	/* a(i1,i2,...) := a_i1_i2_... */\
+	template<typename... Rest>\
+	auto operator()(int i, int j, Rest... rest) {\
+		return (*this)(i,j)(rest...);\
+	}\
+\
+	template<typename... Rest>\
+	auto operator()(int i, int j, Rest... rest) const {\
+		return (*this)(i,j)(rest...);\
+	}
+
 // make sure this (and the using) is set before the specific-named accessors
 // NOTICE this almost matches TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX
 // except this uses AntiSymRef where _sym uses &'s
@@ -1687,11 +1690,14 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 		}\
 	}\
 \
+	template<typename OwnerConstness>\
 	struct Accessor {\
-		This & owner;\
+		OwnerConstness & owner;\
 		int i;\
-		Accessor(This & owner_, int i_) : owner(owner_), i(i_) {}\
-		AntiSymRef<Inner> operator[](int j) { return owner(i,j); }\
+		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
+\
+		/* this is AntiSymRef<Inner> for OwnerConstness==This, this is AntiSymRef<Inner const> for OwnerConstness==This const*/\
+		auto operator[](int j) { return owner(i,j); }\
 \
 		/* TODO ... these return Inner& access ... */\
 		/* but ... we can't do that in _asym because its () []'s return AntiSym ... */\
@@ -1700,34 +1706,21 @@ TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
 		/* another way: some requires/if constexpr's to see if the nested class is using a & or an AntiSymRef ... */\
 		/*TENSOR_ADD_RANK1_CALL_INDEX()*/\
 		/* ...inlined and with proper return type: */\
-		AntiSymRef<Inner> operator()(int i) { return (*this)[i]; }\
-		AntiSymRef<Inner> operator()(int i) const { return (*this)[i]; }\
+		auto operator()(int i) 		 { return (*this)[i]; }\
+		auto operator()(int i) const { return (*this)[i]; }\
 \
 	};\
-	Accessor operator[](int i) { return Accessor(*this, i); }\
-\
-	struct ConstAccessor {\
-		This const & owner;\
-		int i;\
-		ConstAccessor(This const & owner_, int i_) : owner(owner_), i(i_) {}\
-		AntiSymRef<Inner const> operator[](int j) { return owner(i,j); }\
-\
-		/*TENSOR_ADD_RANK1_CALL_INDEX()*/\
-		/* ... instead ... */\
-		AntiSymRef<Inner const> operator()(int i) { return (*this)[i]; }\
-		AntiSymRef<Inner const> operator()(int i) const { return (*this)[i]; }\
-\
-	};\
-	ConstAccessor operator[](int i) const { return ConstAccessor(*this, i); }\
+	auto operator[](int i) 		 { return Accessor<This		 >(*this, i); }\
+	auto operator[](int i) const { return Accessor<This const>(*this, i); }\
 \
 	/* a(i) := a_i */\
 	/* this is incomplete so it returns the operator[] which returns the accessor */\
-	Accessor operator()(int i) { return (*this)[i]; }\
-	ConstAccessor operator()(int i) const { return (*this)[i]; }\
+	auto operator()(int i) 		 { return (*this)[i]; }\
+	auto operator()(int i) const { return (*this)[i]; }\
 \
 	/* in order to do this, you would need some conditions for seeing if the nested return type is AntiSymRef or Scalar */\
 	/*TENSOR_ADD_INT_VEC_CALL_INDEX()*/\
-	TENSOR_RANK2_ADD_RECURSIVE_CALL_INDEX()
+	TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()
 
 #define TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	static _vec<int,2> getLocalReadForWriteIndex(int writeIndex) {\

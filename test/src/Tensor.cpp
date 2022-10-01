@@ -596,10 +596,24 @@ void test_Tensor() {
 		};
 		verifyAccess.template operator()<decltype(f)>(f);
 		verifyAccess.template operator()<decltype(f) const>(f);
+
+		// verify antisymmetric writes work
+		for (int i = 0; i < f.dim<0>; ++i) {
+			for (int j = 0; j < f.dim<1>; ++j) {
+				float k = 1 + i + j;
+				f(i,j) = k;
+				if (i != j) {
+					TEST_EQ(f(i,j), k);
+					TEST_EQ(f(j,i), -k);
+				} else {
+					TEST_EQ(f(i,j), 0);
+				}
+			}
+		}
 	}
 
 	// tensor with intermixed non-vec types:
-	// tensor of vec-symmetric
+	// vector-of-symmetric
 	{
 		//this is a T_ijk = T_ikj, i spans 3 dims, j and k span 2 dims
 		using T2S3 = Tensor::_tensori<float, Tensor::index_vec<2>, Tensor::index_sym<3>>;
@@ -643,17 +657,88 @@ void test_Tensor() {
 	
 		// verify that the outer of a vector and a sym is just that
 		{
-			auto a = Tensor::float3(1,2,3);
+			auto a = Tensor::float2(2,3);
+			//ECHO(a);
+			static_assert(a.numNestings == 1);
+			static_assert(a.count<0> == 2);
 			static_assert(a.rank == 1);
-			auto b = Tensor::float3s3(1,2,3,4,5,6);
+			static_assert(a.dim<0> == 2);
+			auto b = Tensor::float3s3(6,5,4,3,2,1);
+			//ECHO(b);
+			static_assert(b.numNestings == 1);
+			static_assert(b.count<0> == 6);
 			static_assert(b.rank == 2);
+			static_assert(b.dim<0> == 3);
+			static_assert(b.dim<1> == 3);
 			auto c = outer(a,b);
-			static_assert(c.rank == 3);
+			//ECHO(c);
 			static_assert(c.numNestings == 2);
+			static_assert(c.count<0> == a.count<0>);
+			static_assert(c.count<1> == b.count<0>);
+			static_assert(c.rank == 3);
+			static_assert(c.dim<0> == 2);
+			static_assert(c.dim<1> == 3);
+			static_assert(c.dim<2> == 3);
+			auto d = outer(b,a);
+			//ECHO(d);
+			static_assert(d.numNestings == 2);
+			static_assert(d.count<0> == b.count<0>);
+			static_assert(d.count<1> == a.count<0>);
+			static_assert(d.rank == 3);
+			static_assert(d.dim<0> == 3);
+			static_assert(d.dim<1> == 3);
+			static_assert(d.dim<2> == 2);
 		}
 	}
 	
-	// TODO tensor of symmetric-vec
+	// symmetric-of-vector
+	{
+		using TS33 = Tensor::_tensori<float, Tensor::index_sym<3>, Tensor::index_vec<3>>;
+		auto t = TS33([](int i, int j, int k) -> float { return i+j+k; });
+		auto verifyAccess = []<typename T>(T & t){
+			for (int i = 0; i < T::template dim<0>; ++i) {
+				for (int j = 0; j < T::template dim<1>; ++j) {
+					for (int k = 0; k < T::template dim<2>; ++k) {
+						float e=i+j+k;
+						TEST_EQ(t(i)(j)(k), e);
+						TEST_EQ(t(i)(j,k), e);
+						TEST_EQ(t(i,j)(k), e);
+						TEST_EQ(t(i,j,k), e);
+					}
+				}
+			}
+		};
+		verifyAccess.template operator()<decltype(t)>(t);
+		verifyAccess.template operator()<decltype(t) const>(t);
+	}
+
+	// symmetric-of-symmetric
+	{
+		using TS3S3 = Tensor::_tensori<float, Tensor::index_sym<3>, Tensor::index_sym<3>>;
+		auto t = TS3S3([](int i, int j, int k, int l) -> float { return i+j+k+l; });
+		auto verifyAccess = []<typename T>(T & t){
+			for (int i = 0; i < T::template dim<0>; ++i) {
+				for (int j = 0; j < T::template dim<1>; ++j) {
+					for (int k = 0; k < T::template dim<2>; ++k) {
+						for (int l = 0; l < T::template dim<3>; ++l) {
+							float e =i+j+k+l;
+							TEST_EQ(t(i)(j)(k)(l), e);
+							// TODO replace _sym's Accessor's TENSOR_ADD_RANK1_CALL_INDEX with stuff that returns objects instead of object-refs
+							//TEST_EQ(t(i)(j,k)(l), e);
+							TEST_EQ(t(i,j)(k)(l), e);
+							TEST_EQ(t(i)(j)(k,l), e);
+							TEST_EQ(t(i,j)(k,l), e);
+							TEST_EQ(t(i)(j,k,l), e);
+							//TEST_EQ(t(i,j,k)(l), e);
+							TEST_EQ(t(i,j,k,l), e);
+						}
+					}
+				}
+			}
+		};
+		verifyAccess.template operator()<decltype(t)>(t);
+		verifyAccess.template operator()<decltype(t) const>(t);
+	}
 
 	// TODO antisymmetric of vector
 	{
@@ -703,45 +788,46 @@ void test_Tensor() {
 		TEST_EQ(r11(0,1), 0.);
 		TEST_EQ(r11(1,0), 0.);
 		TEST_EQ(r11(1,1), 0.);
-		int e = 0;
-		for (int i = 0; i < 2; ++i) {
-			for (int j = 0; j < i; ++j) {
-				for (int k = 0; k < 2; ++k) {
-					for (int l = 0; l < k; ++l) {
-						r(i,j)(k,l) = ++e;
-					}
-				}
-			}
-		}
-		ECHO(r);
-
-#if 0
-		for (int i = 0; i < 2; ++i) {
-			for (int j = 0; j < 2; ++j) {
-				for (int k = 0; k < 2; ++k) {
-					for (int l = 0; l < 2; ++l) {
-						ECHO(r(i,j,k,l));
-					}
-				}
-			}
-		}
-#endif
-
 	}
 	{
-		using Riemann3 = Tensor::_tensori<double, Tensor::index_asym<3>, Tensor::index_asym<3>>;
-		//auto r = Riemann3{{1,2,3},{4,5,6},{7,8,9}};
+		constexpr int N = 3;
+		using Riemann3 = Tensor::_tensori<double, Tensor::index_asym<N>, Tensor::index_asym<N>>;
+		auto r = Riemann3();
 		static_assert(Riemann3::rank == 4);
-		static_assert(Riemann3::dim<0> == 3);
-		static_assert(Riemann3::dim<1> == 3);
-		static_assert(Riemann3::dim<2> == 3);
-		static_assert(Riemann3::dim<3> == 3);
+		static_assert(Riemann3::dim<0> == N);
+		static_assert(Riemann3::dim<1> == N);
+		static_assert(Riemann3::dim<2> == N);
+		static_assert(Riemann3::dim<3> == N);
 		static_assert(Riemann3::numNestings == 2);
 		static_assert(Riemann3::count<0> == 3);	//3x3 antisymmetric has 3 unique components
 		static_assert(Riemann3::count<1> == 3);
 		//TODO some future work: R_ijkl = R_klij, so it's also symmetri between 1&2 and 3&4 ...
 		// ... and optimizing for those should put us at only 6 unique values instead of 9
 		static_assert(sizeof(Riemann3) == sizeof(double) * 9);
+
+		double e = 0;
+		for (int i = 0; i < N; ++i) {
+			for (int j = 0; j < i; ++j) {
+				for (int k = 0; k < N; ++k) {
+					for (int l = 0; l < N; ++l) {
+						r(i,j)(k,l) = ++e;
+						if (i == j || k == l) {
+							TEST_EQ(r(i,j)(k,l), 0);
+						} else {
+							TEST_EQ(r(i,j)(k,l), e);
+							TEST_EQ(r(i,j)(l,k), -e);
+							TEST_EQ(r(j,i)(k,l), -e);
+							TEST_EQ(r(j,i)(l,k), e);
+							
+							TEST_EQ(r(i,j,k,l), e);
+							TEST_EQ(r(i,j,l,k), -e);
+							TEST_EQ(r(j,i,k,l), -e);
+							TEST_EQ(r(j,i,l,k), e);
+						}
+					}
+				}
+			}
+		}
 
 // TODO change tensor generic ctor to (requires tensors  and) accept any type, iterate over write elements, assign one by one.
 

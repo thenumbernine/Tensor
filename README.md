@@ -140,3 +140,5 @@ parallel:
 - move secondderivative from Relativity to Tensor
 - move covariantderivative from Relativity to Tensor
 - move Hydro/Inverse.h's GaussJordan solver into Tensor/Inverse
+
+-- assign like tensors of dif internals
