@@ -68,7 +68,7 @@ Swizzle will return a vector-of-references:
 - 4D: `.xxxx() ... .wwww()` 
 
 functions:
-- `elemMul(a,b)` = per-element multiplication.
+- `elemMul(a,b), matrixCompMult(a,b)` = per-element multiplication.
 	$$elemMul(a,b)_I := a_I \cdot b_I$$
 - `dot(a,b)` = Frobenius dot.
 	$$dot(a,b) := a^I \cdot b_I$$
@@ -82,13 +82,13 @@ functions:
 	$$distance(a,b) := |b - a|$$
 - `cross(a,b)` = 3D vector cross product.  TODO generalize to something with Levi-Civita permutation tensor.
 	$${cross(a,b)_i} := {\epsilon_{ijk}} b^j c^k$$ 
-- `outer(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a sym and a sym produces a sym-of-syms.
+- `outer(a,b), outerProduct(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a sym and a sym produces a sym-of-syms.
 	$$outer(a,b)_{IJ} := a_I b_J$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
 	$$determinant(a) := det(a) = \epsilon_I {a^{i_1}}_1 {a^{i_2}}_2 {a^{i_3}}_3 ... {a^{i_n}}_n$$
 - `inverse(m)` = Matrix inverse, for rank-2 tensors.
 	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
-- `transpose<from=0,to=1>(m)` = Transpose indexes `from` and `to`.  This will preserve storage optimizations, so transposing 0,1 of a sym-of-vec will produce a sym-of-vec, but transposing 0,2 or 1,2 of a sym-of-vec will produce a vec-of-vec-of-vec.
+- `transpose<from=0,to=1>(a)` = Transpose indexes `from` and `to`.  This will preserve storage optimizations, so transposing 0,1 of a sym-of-vec will produce a sym-of-vec, but transposing 0,2 or 1,2 of a sym-of-vec will produce a vec-of-vec-of-vec.
 	$$transpose(a)_{{i_1}...{i_p}...{i_q}...{i_n}} = a_{{i_1}...{i_q}...{i_p}...{i_n}}$$
 - `trace(m)` = Matrix trace = matrix contraction between two indexes.
 	$$trace(a) = {a^i}_i$$
@@ -96,8 +96,10 @@ functions:
 	$${diagonal(a)_{ij} = \delta_{ij} \cdot a_i$$
 
 Tensor Template Helpers (subject to change)
-- `GetNestingForIthIndex<i>` = get the tensor type associated with the i'th index.  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
-- `ExpandIthIndex<i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
+- `is_tensor_v<T>` = is it a tensor storage type?
+- `GetNestingForIthIndex<T,i>` = get the tensor type associated with the i'th index.  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
+- `ExpandIthIndex<T,i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
+- `ExpandAllIndexes<T>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
 
 ## Familiar Types
 

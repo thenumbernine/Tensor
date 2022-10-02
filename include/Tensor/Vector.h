@@ -1531,6 +1531,19 @@ struct index_asym {
 	using type = _asym<T,dim>;
 };
 
+// hmm, I'm trying to use these index_*'s in combination with is_instance_v<T, index_*<dim>::template type> but it's failing, so here they are specialized
+template <typename T> struct is_vec : public std::false_type {};
+template<typename T, int i> struct is_vec<_vec<T,i>> : public std::true_type {};
+template<typename T> constexpr bool is_vec_v = is_vec<T>::value;
+
+template <typename T> struct is_sym : public std::false_type {};
+template<typename T, int i> struct is_sym<_sym<T,i>> : public std::true_type {};
+template<typename T> constexpr bool is_sym_v = is_sym<T>::value;
+
+template <typename T> struct is_asym : public std::false_type {};
+template<typename T, int i> struct is_asym<_asym<T,i>> : public std::true_type {};
+template<typename T> constexpr bool is_asym_v = is_asym<T>::value;
+
 // can I shorthand this? what is the syntax?
 // this has a template and not a type on the lhs so I think no?
 //template<int dim> using _vecR = index_vec<dim>::type;
@@ -1865,6 +1878,7 @@ auto outerProduct(T&&... args) {
 
 // matrix functions
 
+#if 0
 //https://stackoverflow.com/a/50471331
 template<typename T, std::size_t N, typename... Ts>
 constexpr std::array<T, N> permute(
@@ -1884,7 +1898,7 @@ constexpr std::array<T, N> permute(
 	}
 }
 // TODO how to unpack a tuple-of-ints into an argument list
-
+#endif
 
 // transpose ... right now only 2 indexes but for any rank tensor
 // also the result doesn't respect storage optimizations, so the result will be a rank-n _vec
@@ -1929,8 +1943,8 @@ auto transpose(T const & t) {
 		return t;
 	} else if constexpr(
 		// don't reshape internal structure if we're using a symmetric matrix
-		GetNestingForIthIndex<T,m> == GetNestingForIthIndex<T,n> 
-		&& is_instance_v<T, index_sym<T::localDim>::template type>
+		GetNestingForIthIndex<T,m> == GetNestingForIthIndex<T,n>
+		&& is_sym_v<T>
 	) {
 		return t;
 	} else {
