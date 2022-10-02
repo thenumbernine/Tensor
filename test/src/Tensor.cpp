@@ -126,32 +126,13 @@ namespace StaticTests {
 		>
 	);
 #endif	
-#if 0 // TODO why?	
-	static_assert(
-		std::is_same_v<
-			decltype(
-				transpose<0,1>(_tensori<int, index_sym<3>, index_vec<3>>())
-			),
-			_tensori<int, index_sym<3>, index_vec<3>>()
-		>
-	);
-	static_assert(
-		std::is_same_v<
-			decltype(
-				transpose<0,2>(_tensori<int, index_sym<3>, index_vec<3>>())
-			),
-			_tensor<int,3,3,3>
-		>
-	);
-	static_assert(
-		std::is_same_v<
-			decltype(
-				transpose<1,2>(_tensori<int, index_sym<3>, index_vec<3>>())
-			),
-			_tensor<int,3,3,3>
-		>
-	);
-#endif
+	namespace Test2 {
+		using T = _tensori<int, index_sym<3>, index_vec<3>>;
+		using R = _tensorr<int, 3,3>;
+		static_assert(std::is_same_v<decltype(transpose<0,1>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<0,2>(T())), R>);
+		static_assert(std::is_same_v<decltype(transpose<1,2>(T())), R>);
+	}
 }
 
 /*
@@ -199,31 +180,6 @@ math functions:
 void test_Tensor() {
 	//vector
 	
-	using namespace Tensor;
-	using T = _tensori<int, index_sym<3>, index_vec<3>>;
-	auto t = T();
-	ECHO(t);
-	auto t01 = transpose<0,1>(t);
-	ECHO(t01);
-	auto t02 = transpose<0,2>(t);
-	ECHO(t02);
-	auto t12 = transpose<1,2>(t);
-	ECHO(t12);
-	ECHO(t01.dims);
-	ECHO(t02.dims);
-	ECHO(t12.dims);
-	ECHO((GetNestingForIthIndex<T,0>));
-	ECHO((GetNestingForIthIndex<T,1>));
-	ECHO((GetNestingForIthIndex<T,2>));
-	ECHO((is_sym_v<T>));
-	ECHO((is_sym_v<decltype(t01)>));
-	ECHO((is_sym_v<decltype(t02)>));
-	ECHO((is_sym_v<decltype(t12)>));
-	ECHO(std::is_same_v<T, decltype(t01)>);
-	ECHO(std::is_same_v<T, decltype(t02)>);
-	ECHO(std::is_same_v<T, decltype(t12)>);
-	
-#if 0
 	{
 		// default ctor
 		Tensor::float3 f;
@@ -1255,5 +1211,4 @@ so a.s == {0,1,2,4,5,8};
 		static_assert(d.dim<1> == 3);
 		static_assert(d.dim<2> == 2);
 	}
-#endif
 }
