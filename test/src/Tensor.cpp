@@ -49,30 +49,41 @@ void test_Tensor() {
 	
 	using namespace Tensor;
 
-	static_assert(
-		std::is_same_v<
-			_vec<int,3>,
-			_vec<int,3>::Nested<0>
-		>
-	);
-	static_assert(
-		std::is_same_v<
-			int,
-			_vec<int,3>::Nested<1>
-		>
-	);
-
 	using T = ExpandIthIndex<
-		_vec<int,3>, // works
-		//_tensor<int,3,3>, // works
-		//_sym<int,3>, // failing
-		//_tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 
-		0
+		//_vec<int,3>, 0 // works
+		//_tensor<int,3,3>, 0 // works
+		_tensor<int,3,3>, 1 // works
+		//_sym<int,3>, 0 // works 
+		//_sym<int,3>, 1 // works
+		//_asym<int,3>, 0 // works
+		//_asym<int,3>, 1 // 
+		//_tensori<int,index_sym<3>,index_vec<3>>, 0 // works
+		//_tensori<int,index_sym<3>,index_vec<3>>, 1 // works
+		//_tensori<int,index_sym<3>,index_vec<3>>, 2 // works
+		//_tensori<int,index_asym<3>,index_vec<3>>, 0 // works
+		//_tensori<int,index_asym<3>,index_vec<3>>, 1 // works
+		//_tensori<int,index_asym<3>,index_vec<3>>, 2 // works
+		//_tensori<int,index_vec<3>,index_sym<3>>, 0 // works
+		//_tensori<int,index_vec<3>,index_sym<3>>, 1 // works
+		//_tensori<int,index_vec<3>,index_sym<3>>, 2 // works
+		//_tensori<int,index_vec<3>,index_asym<3>>, 0 // works
+		//_tensori<int,index_vec<3>,index_asym<3>>, 1 // works
+		//_tensori<int,index_vec<3>,index_asym<3>>, 2 // works
+		//_tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 0 // works
+		//_tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 1 // works
+		//_tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 2 // works
+		//_tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 3 // works
+		//_tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>, 0 // 
+		
+		//_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 0
+		//_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 1
 	>;
 	T t;
-	//static_assert(T::rank == 4);
+	//static_assert(T::rank == 2);
+//	static_assert(std::is_type_v<T, _tensorr<int,3,4>>);
 	ECHO(t);
-
+// 3 3 3 3 = 81
+// 3 6 3 = 54 
 #if 0
 	{
 		// default ctor

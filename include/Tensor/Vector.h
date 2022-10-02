@@ -53,6 +53,12 @@ TODO TODO
 
 namespace Tensor {
 
+// Template<> is used for rearranging internal structure when performing linear operations on tensors
+// Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
+#define TENSOR_FIRST(classname)\
+	using This = classname;\
+	template<typename T2, int dim2> using Template = classname<T2,dim2>;
+
 #define TENSOR_VECTOR_HEADER(localDim_)\
 \
 	/* TRUE FOR _vec (NOT FOR _sym) */\
@@ -73,6 +79,7 @@ namespace Tensor {
 	/* TODO make a 'count<int nesting>', same as dim? */\
 	static constexpr int localCount = localDim;
 
+// TODO rename this to indicate it comes after TENSOR_*_HEADER()
 #define TENSOR_HEADER()\
 \
 	/*  TRUE FOR ALL TENSORS */\
@@ -691,9 +698,7 @@ struct VectorTraits {
 };
 
 // recursive/vec/matrix/tensor case
-template<
-	typename Type_
->
+template<typename Type_>
 requires is_tensor_v<Type_>
 struct VectorTraits<Type_> {
 	using Type = Type_;
@@ -759,11 +764,10 @@ struct VectorTraits<Type_> {
 
 // default
 
+// this is this class.  useful for templates.  you'd be surprised.
 template<typename T, int dim_>
 struct _vec {
-	// this is this class.  useful for templates.  you'd be surprised.
-	using This = _vec;
-
+	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(dim_)
 	TENSOR_HEADER()
 
@@ -777,8 +781,8 @@ struct _vec {
 
 template<typename T>
 struct _vec<T,2> {
-	using This = _vec;
-	TENSOR_VECTOR_HEADER(2);
+	TENSOR_FIRST(_vec)
+	TENSOR_VECTOR_HEADER(2)
 	TENSOR_HEADER()
 
 	union {
@@ -850,8 +854,8 @@ struct _vec<T,2> {
 
 template<typename T>
 struct _vec<T,3> {
-	using This = _vec;
-	TENSOR_VECTOR_HEADER(3);
+	TENSOR_FIRST(_vec)
+	TENSOR_VECTOR_HEADER(3)
 	TENSOR_HEADER()
 
 	union {
@@ -935,7 +939,7 @@ struct _vec<T,3> {
 
 template<typename T>
 struct _vec<T,4> {
-	using This = _vec;
+	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(4);
 	TENSOR_HEADER()
 
@@ -1119,7 +1123,7 @@ so the accessors need nested call indexing too
 
 template<typename T, int dim_>
 struct _sym {
-	using This = _sym;
+	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(dim_)
 	TENSOR_HEADER()
 
@@ -1131,7 +1135,7 @@ struct _sym {
 
 template<typename T>
 struct _sym<T,2> {
-	using This = _sym;
+	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(2)
 	TENSOR_HEADER()
 
@@ -1162,7 +1166,7 @@ struct _sym<T,2> {
 
 template<typename T>
 struct _sym<T,3> {
-	using This = _sym;
+	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(3)
 	TENSOR_HEADER()
 
@@ -1214,7 +1218,7 @@ struct _sym<T,3> {
 
 template<typename T>
 struct _sym<T,4> {
-	using This = _sym;
+	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(4)
 	TENSOR_HEADER()
 
@@ -1435,7 +1439,7 @@ so no specialized sizes for _asym
 */
 template<typename T, int dim_>
 struct _asym {
-	using This = _asym;
+	TENSOR_FIRST(_asym)
 	TENSOR_ANTISYMMETRIC_MATRIX_HEADER(dim_)
 	TENSOR_HEADER()
 
@@ -1625,45 +1629,41 @@ struct ExpandIthIndexImpl {
 				return Src();
 			} else {
 				// return a dense-tensor of depth 'localRank' with inner type 'Src::Inner'
-				return _tensorr<
-					typename Src::Inner,
-					Src::localDim,
-					Src::localRank
-				>();
+				return _tensorr<typename Src::Inner, Src::localDim, Src::localRank>();
 			}
 		} else {
-			return ExpandIthIndexImpl<typename Src::Inner, index - Src::localRank>::value();
+			return 
+				typename Src::template Template<
+					decltype(ExpandIthIndexImpl<typename Src::Inner, index - Src::localRank>::value()),
+					Src::localDim
+				>();
 		}
 	}
 };
 template<typename Src, int index>
 using ExpandIthIndex = decltype(ExpandIthIndexImpl<Src, index>::value());
-
-#if 0
 static_assert(std::is_same_v<ExpandIthIndex<_vec<int,3>, 0>, _tensor<int,3>>);
-static_assert(std::is_same_v<ExpandIthIndex<_sym<int,3>, 0>, _tensor<int,3,3>>);
-static_assert(std::is_same_v<ExpandIthIndex<_sym<int,3>, 1>, _tensor<int,3,3>>);
-static_assert(std::is_same_v<
-	ExpandIthIndex<
-		_tensori<int,index_vec<3>,index_vec<3>,index_vec<3>,index_vec<3>>, 
-		0
-	>,
-	_tensorr<int,3,4>
->);
-static_assert(std::is_same_v<
-	ExpandIthIndex<
-		_tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 
-		0
-	>,
-	_tensorr<int,3,4>
->);
-static_assert(std::is_same_v<
-	ExpandIthIndex<
-		_tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>, 
-		0
-	>,
-	_tensorr<int,3,4>
->);
+static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3>, 0>, _tensorr<int,3,2>>);
+#if 0
+static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3>, 1>, _tensorr<int,3,2>>);
+static_assert(std::is_same_v<ExpandIthIndex<_sym<int,3>, 0>, _tensorr<int,3,2>>);
+static_assert(std::is_same_v<ExpandIthIndex<_sym<int,3>, 1>, _tensorr<int,3,2>>);
+static_assert(std::is_same_v<ExpandIthIndex<_asym<int,3>, 0>, _tensorr<int,3,2>>);
+static_assert(std::is_same_v<ExpandIthIndex<_asym<int,3>, 1>, _tensorr<int,3,2>>);
+
+static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3,3>, 0>, _tensorr<int,3,3>>);
+static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3,3>, 1>, _tensorr<int,3,3>>);
+static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3,3>, 2>, _tensorr<int,3,3>>);
+static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>>, 0>, _tensorr<int,3,3>>);
+static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>>, 1>, _tensorr<int,3,3>>);
+static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>>, 2>, _tensorr<int,3,3>>);
+static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_vec<3>,index_sym<3>>, 0>, _tensorr<int,3,3>>);
+static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_vec<3>,index_sym<3>>, 1>, _tensorr<int,3,3>>);
+static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_vec<3>,index_sym<3>>, 2>, _tensorr<int,3,3>>);
+
+static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_vec<3>,index_vec<3>,index_vec<3>,index_vec<3>>, 0>, _tensorr<int,3,4>>);
+static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 0>, _tensorr<int,3,4>>);
+static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>, 0>, _tensorr<int,3,4>>);
 static_assert(std::is_same_v<
 	ExpandIthIndex<
 		_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 
