@@ -180,7 +180,7 @@ namespace Tensor {
 	struct NestedImpl {\
 		static constexpr auto value() {\
 			static_assert(index >= 0);\
-			if constexpr (index >= rank) {\
+			if constexpr (index >= numNestings) {\
 				return Scalar();\
 			} else if constexpr (index == 0) {\
 				return This();\
@@ -1626,7 +1626,7 @@ struct ExpandIthIndexImpl {
 			} else {
 				// return a dense-tensor of depth 'localRank' with inner type 'Src::Inner'
 				return _tensorr<
-					typename Src::template Nested<Src::localRank>,
+					typename Src::Inner,
 					Src::localDim,
 					Src::localRank
 				>();
@@ -2141,6 +2141,22 @@ template<typename T> using _sym4 = _sym<T,4>;
 template<typename T> using _asym2 = _asym<T,2>;
 template<typename T> using _asym3 = _asym<T,3>;
 template<typename T> using _asym4 = _asym<T,4>;
+
+
+// TODO put this in the name-gen macros?
+
+static_assert(std::is_same_v<int3::Nested<0>, int3>);
+static_assert(std::is_same_v<int3::Nested<1>, int>);
+static_assert(std::is_same_v<int3s3::Nested<0>, int3s3>);
+static_assert(std::is_same_v<int3s3::Nested<1>, int>);
+static_assert(std::is_same_v<int3a3::Nested<0>, int3a3>);
+static_assert(std::is_same_v<int3a3::Nested<1>, int>);
+static_assert(std::is_same_v<int3x3::Nested<0>, int3x3>);
+static_assert(std::is_same_v<int3x3::Nested<1>, int3>);
+static_assert(std::is_same_v<int3x3::Nested<2>, int>);
+
+
+
 
 
 // ostream
