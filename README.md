@@ -9,19 +9,26 @@
 ## Reference:
 
 `_vec<type, dim>` = vectors:
+- `.s[]` element/pointer access.
+- for 1D through 4D: `.x .y .z .w`, `.s0 .s1 .s2 .s2` storage.
+- `.subset<size>(index), .subset<size,index>()` = return a vector reference to a subset of this vector.
 - `operator + - * /` scalar/vector, vector/scalar, and per-element vector/vector operations.  Including vector/vector multiply for GLSL compat, though I might change this.
 
 `_mat<type, dim1, dim2>` = `_vec<_vec<type,dim2>,dim1>` = matrices:
 - `operator + - /` scalar/matrix, matrix/scalar, and per-element matrix/matrix operations.
 - `vector * matrix` as row-multplication, `matrix * vector` as column-multiplication, and `matrix * matrix` as matrix-multiplication.  Once again, GLSL compat.
-- `matrixCompMult(a,b)` for component-wise multiplying two tensors.
+- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing `A_ij`.  This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
 
 `_sym<type, dim>` = symmetric matrices:
 - `.x_x .x_y .x_z .y_y .y_z .z_z .x_w .y_w .z_w .w_w` storage, `.y_x .z_x, .z_y` union'd access.
 
+`_asym<type, dim>` = antisymmetric matrices:
+- `.x_x() .w_w()` access methods
+
 - Tensors (which are just typedef'd vectors-of-vectors-of-...)
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `vec< ..., dimI>`.
-- `_tensori<type, index_vec<dim1>, ..., index_sym<dimI>, ...>` = construct a tensor with specific indexes vector storage and specific pairs of indexes symmetric storage.
+- `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific pairs of indexes symmetric storage.  `I1 I2` etc are one of the following: `index_vec<dim>` for a single index of dimension `dim`, `index_sym<dimI>` for two symmetric indexes of dimension `dim`, or `index_asym<dim>` for two antisymmetric indexes of dimension `dim`.
+- `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 - `::Scalar` = get the scalar type used for this tensor.
 - `::Inner` = the next most nested vector/matrix/symmetric.
 - `::rank` = for determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
@@ -41,12 +48,6 @@ Constructors:
 - `(function<Scalar(int i1, ...)>)` = initialize with a lambda that accepts the index of the matrix as a list of int arguments and returns the value for that index.
 - `(function<Scalar(intN i)>)` = initialize with a lambda, same as above except the index is stored as an int-vector in `i`.
 - `(tensor t)` = initialize from another tensor.  Truncate dimensions.  Uninitialized elements are set to {}.
-
-Builtin Indexing / Storage / Unions:
-- `.s[]` element/pointer access.
-- for 1D through 4D: `.x .y .z .w`, `.s0 .s1 .s2 .s2` storage.
-- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing `A_ij`.  This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
-- `.subset<size>(index), .subset<size,index>()` = return a vector reference to a subset of this vector.
 
 Overloaded Indexing
 - `(int i1, ...)` = dereference based on a list of ints.  Math `a_ij` = `a.s[i].s[j]` in code.
@@ -81,18 +82,22 @@ functions:
 	$$distance(a,b) := |b - a|$$
 - `cross(a,b)` = 3D vector cross product.  TODO generalize to something with Levi-Civita permutation tensor.
 	$${cross(a,b)_i} := {\epsilon_{ijk}} b^j c^k$$ 
-- `outer(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.
+- `outer(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a sym and a sym produces a sym-of-syms.
 	$$outer(a,b)_{IJ} := a_I b_J$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
 	$$determinant(a) := det(a) = \epsilon_I {a^{i_1}}_1 {a^{i_2}}_2 {a^{i_3}}_3 ... {a^{i_n}}_n$$
 - `inverse(m)` = Matrix inverse, for rank-2 tensors.
 	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
-- `transpose(m)` = Matrix transpose, for rank-2 tensors.
-	$$transpose(a)_{ij} = a_{ji}$$
+- `transpose<from=0,to=1>(m)` = Transpose indexes `from` and `to`.  This will preserve storage optimizations, so transposing 0,1 of a sym-of-vec will produce a sym-of-vec, but transposing 0,2 or 1,2 of a sym-of-vec will produce a vec-of-vec-of-vec.
+	$$transpose(a)_{{i_1}...{i_p}...{i_q}...{i_n}} = a_{{i_1}...{i_q}...{i_p}...{i_n}}$$
 - `trace(m)` = Matrix trace = matrix contraction between two indexes.
 	$$trace(a) = {a^i}_i$$
 - `diagonal(m)` = Matrix diagonal from vector.
 	$${diagonal(a)_{ij} = \delta_{ij} \cdot a_i$$
+
+Tensor Template Helpers (subject to change)
+- `GetNestingForIthIndex<i>` = get the tensor type associated with the i'th index.  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
+- `ExpandIthIndex<i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
 
 ## Familiar Types
 

@@ -1531,9 +1531,18 @@ struct index_asym {
 	using type = _asym<T,dim>;
 };
 
+// can I shorthand this? what is the syntax?
+// this has a template and not a type on the lhs so I think no?
+//template<int dim> using _vecR = index_vec<dim>::type;
+//template<int dim> using _symR = index_sym<dim>::type;
+//template<int dim> using _asymR = index_asym<dim>::type;
+
+// useful helper macros, same as above but with transposed order
+
 // _tensori:
 // tensor which allows custom nested storage, such as symmetric indexes
 
+// TODO I could switch this to a list of templates-of-<type,int> for nestings ... hmm ... how ugly would that look?
 template<typename T, typename Index, typename... Indexes>
 struct _tensori_impl {
 	using tensor = typename Index::template type<typename _tensori_impl<T, Indexes...>::tensor>;
@@ -1915,11 +1924,23 @@ struct TransposeResultWithAllIndexesExpanded<Src, i, i, m, n> {
 //  so for now replace it all with vec's
 template<int m=0, int n=1, typename T>
 auto transpose(T const & t) {
-	using U = typename TransposeResultWithAllIndexesExpanded<T, 0, T::rank, m, n>::T;
-	return U([&](typename T::intN i) {
-		std::swap(i(m), i(n));
-		return t(i);
-	});
+	if constexpr (m == n) {
+		//don't reshape if we're flipping the same index with itself
+		return t;
+	} else if constexpr(
+		// don't reshape internal structure if we're using a symmetric matrix
+		GetNestingForIthIndex<T,m> == GetNestingForIthIndex<T,n> 
+		&& is_instance_v<T, index_sym<T::localDim>::template type>
+	) {
+		return t;
+	} else {
+		using E = ExpandIthIndex<ExpandIthIndex<T, m>, n>;
+		using U = typename TransposeResultWithAllIndexesExpanded<E, 0, E::rank, m, n>::T;
+		return U([&](typename T::intN i) {
+			std::swap(i(m), i(n));
+			return t(i);
+		});
+	}
 }
 
 // trace of a matrix

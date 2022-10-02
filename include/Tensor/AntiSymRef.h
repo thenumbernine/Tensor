@@ -25,14 +25,10 @@ namespace {
     template <template <typename...> typename U, typename...Ts>
     struct is_instance_impl<U<Ts...>, U> : public std::true_type {};
 }
-
 template <typename T, template <typename ...> typename U>
 using is_instance = is_instance_impl<std::decay_t<T>, U>;
-
 template <typename T, template <typename ...> typename U>
 constexpr bool is_instance_v = is_instance<T, U>::value;
-
-
 
 typedef enum {
 	POSITIVE, // == 0 // so that how1 ^ how2 produces the sign for AntiSymRef1-of-AntiSymRef2

@@ -93,6 +93,55 @@ namespace StaticTests {
 	static_assert(std::is_same_v<int3x3::Nested<0>, int3x3>);
 	static_assert(std::is_same_v<int3x3::Nested<1>, int3>);
 	static_assert(std::is_same_v<int3x3::Nested<2>, int>);
+
+	static_assert(
+		std::is_same_v<
+			decltype(
+				transpose(float3x3())
+			),
+			float3x3
+		>
+	);
+	static_assert(
+		std::is_same_v<
+			decltype(
+				transpose(float3s3())
+			),
+			float3s3
+		>
+	);
+	static_assert(
+		std::is_same_v<
+			decltype(
+				transpose(float3a3())
+			),
+			float3x3
+		>
+	);
+	static_assert(
+		std::is_same_v<
+			decltype(
+				transpose<0,1>(_tensori<int, index_sym<3>, index_vec<3>>())
+			),
+			_tensor<int,3,3,3>
+		>
+	);
+	static_assert(
+		std::is_same_v<
+			decltype(
+				transpose<0,2>(_tensori<int, index_sym<3>, index_vec<3>>())
+			),
+			_tensor<int,3,3,3>
+		>
+	);
+	static_assert(
+		std::is_same_v<
+			decltype(
+				transpose<1,2>(_tensori<int, index_sym<3>, index_vec<3>>())
+			),
+			_tensor<int,3,3,3>
+		>
+	);
 }
 
 /*
