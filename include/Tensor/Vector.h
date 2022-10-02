@@ -1212,7 +1212,7 @@ int symIndex(int i, int j) {
 	}
 
 // NOTICE this almost matches TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX
-// except this uses &'s where _asym uses AntiSymRef 
+// except this uses &'s where _asym uses AntiSymRef
 #define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
 \
 	/* a(i,j) := a_ij = a_ji */\
@@ -1637,8 +1637,8 @@ struct _asym {
 	AntiSymRef<Inner const	> z_w() const 	requires (dim_ > 3) { return (*this)(2,3); }
 	AntiSymRef<Inner		> w_z() 		requires (dim_ > 3) { return (*this)(3,2); }
 	AntiSymRef<Inner const	> w_z() const 	requires (dim_ > 3) { return (*this)(3,2); }
-	AntiSymRef<Inner		> w_w() 		requires (dim_ > 2) { return (*this)(3,3); }
-	AntiSymRef<Inner const	> w_w() const 	requires (dim_ > 2) { return (*this)(3,3); }
+	AntiSymRef<Inner		> w_w() 		requires (dim_ > 3) { return (*this)(3,3); }
+	AntiSymRef<Inner const	> w_w() const 	requires (dim_ > 3) { return (*this)(3,3); }
 
 	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(_asym)
 };
