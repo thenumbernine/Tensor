@@ -1122,7 +1122,11 @@ so a.s == {0,1,2,4,5,8};
 		for (int i = 0; i < 3; ++i) {
 			for (int j = 0; j < 3; ++j) {
 				for (int k = 0; k < 3; ++k) {
-					TEST_EQ(ta(i,j,k), i + 3 * (j + 3 * k));
+					if constexpr (std::is_same_v<Tensor::int2::iterator::ReadInc<0>, Tensor::int2::ReadIncOuter<0>>) {
+						TEST_EQ(ta(i,j,k), k + 3 * (j + 3 * i));
+					} else if constexpr (std::is_same_v<Tensor::int2::iterator::ReadInc<0>, Tensor::int2::ReadIncInner<0>>) {
+						TEST_EQ(ta(i,j,k), i + 3 * (j + 3 * k));
+					}
 				}
 			}
 		}
@@ -1132,12 +1136,20 @@ so a.s == {0,1,2,4,5,8};
 		for (auto i = tb.begin(); i != tb.end(); ++i) *i = 2.f;
 		TEST_EQ(tb, Matrix(2.f));
 		ta(0) = tb;
-		TEST_EQ(ta, (Tensor::_tensor<Real,3,3,3>{{{2, 2, 2}, {2, 2, 2}, {2, 2, 2}}, {{1, 10, 19}, {4, 13, 22}, {7, 16, 25}}, {{2, 11, 20}, {5, 14, 23}, {8, 17, 26}}} ));
+		TEST_EQ(ta, (Tensor::_tensor<Real,3,3,3>{
+			{{2, 2, 2}, {2, 2, 2}, {2, 2, 2}},
+			ta(1),//{{1, 10, 19}, {4, 13, 22}, {7, 16, 25}}, // these are whatever the original ta was
+			ta(2),//{{2, 11, 20}, {5, 14, 23}, {8, 17, 26}}
+		} ));
 		Tensor::_tensor<Real, 3> tc;
 		for (auto i = tc.begin(); i != tc.end(); ++i) *i = 3.;
 		TEST_EQ(Tensor::double3(3), tc);
 		ta(0,0) = tc;
-		TEST_EQ(ta, (Tensor::_tensor<Real,3,3,3>{{{3, 3, 3}, {2, 2, 2}, {2, 2, 2}}, {{1, 10, 19}, {4, 13, 22}, {7, 16, 25}}, {{2, 11, 20}, {5, 14, 23}, {8, 17, 26}}}));
+		TEST_EQ(ta, (Tensor::_tensor<Real,3,3,3>{
+			{{3, 3, 3}, {2, 2, 2}, {2, 2, 2}},
+			ta(1),//{{1, 10, 19}, {4, 13, 22}, {7, 16, 25}},
+			ta(2),//{{2, 11, 20}, {5, 14, 23}, {8, 17, 26}}
+		}));
 
 		//inverse
 		Matrix m;

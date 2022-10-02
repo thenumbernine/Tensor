@@ -521,25 +521,36 @@ ReadIterator vs WriteIterator
 */
 #define TENSOR_ADD_ITERATOR()\
 \
+	/* inc 0 first */\
 	template<int i>\
 	struct ReadIncInner {\
 		static bool exec(intN & index) {\
-			/* inc 0 first */\
 			++index[i];\
 			if (index[i] < This::template dim<i>) return true;\
 			if (i < rank-1) index[i] = 0;\
 			return false;\
 		}\
+		static constexpr intN end() {\
+			intN index;\
+			index[rank-1] = This::template dim<rank-1>;\
+			return index;\
+		}\
 	};\
+\
+	/* inc n-1 first */\
 	template<int i>\
 	struct ReadIncOuter {\
 		static bool exec(intN & index) {\
-			/* inc n-1 first */\
 			constexpr int j = rank-1-i;\
 			++index[j];\
 			if (index[j] < This::template dim<j>) return true;\
 			if (j > 0) index[j] = 0;\
 			return false;\
+		}\
+		static constexpr intN end() {\
+			intN index;\
+			index[0] = This::template dim<0>;\
+			return index;\
 		}\
 	};\
 \
@@ -575,9 +586,9 @@ ReadIterator vs WriteIterator
 		}\
 \
 		/* not in memory order, but ... meh idk why */\
-		template<int i> using ReadInc = ReadIncInner<i>;\
+		/*template<int i> using ReadInc = ReadIncInner<i>;*/\
 		/* in memory order */\
-		/*template<int i> using ReadInc = ReadIncOuter<i>*/;\
+		template<int i> using ReadInc = ReadIncOuter<i>;\
 \
 		ReadIterator & operator++() {\
 			Common::ForLoop<0,rank,ReadInc>::exec(index);\
@@ -596,13 +607,7 @@ ReadIterator vs WriteIterator
 			return ReadIterator(v);\
 		}\
 		static ReadIterator end(OwnerConstness & v) {\
-			intN index;\
-			/* inc 0 first */\
-			index[rank-1] = OwnerConstness::template dim<rank-1>;\
-			/* inc n-1 first */\
-			/*index[0] = OwnerConstness::template dim<0>;*/\
-			/* end inc */\
-			return ReadIterator(v, index);\
+			return ReadIterator(v, ReadInc<0>::end());\
 		}\
 	};\
 \
