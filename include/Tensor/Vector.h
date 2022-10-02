@@ -176,7 +176,23 @@ namespace Tensor {
 	}\
 	static constexpr auto dims = calc_dims();\
 \
-	template<int i> static constexpr int count = Traits::template Nested<i>::localCount;
+	template<int index>\
+	struct NestedImpl {\
+		static constexpr auto value() {\
+			static_assert(index >= 0);\
+			if constexpr (index >= rank) {\
+				return Scalar();\
+			} else if constexpr (index == 0) {\
+				return This();\
+			} else {\
+				return typename Inner::template Nested<index-1>();\
+			}\
+		}\
+	};\
+	template<int index>\
+	using Nested = decltype(NestedImpl<index>::value());\
+\
+	template<int i> static constexpr int count = Nested<i>::localCount;
 
 // danger ... danger ...
 #define TENSOR_ADD_CAST_BOOL_OP()\
@@ -672,7 +688,6 @@ struct VectorTraits {
 	static constexpr int rank = 0;
 	static constexpr int numNestings = 0; // number of _vec<_vec<..._vec<T, ...>'s 
 	using Scalar = T;
-	template<int index> using Nested = void;
 };
 
 // recursive/vec/matrix/tensor case
@@ -713,13 +728,6 @@ struct VectorTraits<Type_> {
 			return InnerTraits::template calc_ith_dim<i - Type::localRank>();
 		}
 	}
-
-	template<int index>
-	using Nested = std::conditional_t<
-		index == 0,
-		Type,
-		typename InnerTraits::template Nested<index - 1>
-	>;
 
 	using intW = _vec<int,numNestings>;
 	
@@ -1618,7 +1626,7 @@ struct ExpandIthIndexImpl {
 			} else {
 				// return a dense-tensor of depth 'localRank' with inner type 'Src::Inner'
 				return _tensorr<
-					typename Src::Traits::template Nested<Src::localRank>,
+					typename Src::template Nested<Src::localRank>,
 					Src::localDim,
 					Src::localRank
 				>();

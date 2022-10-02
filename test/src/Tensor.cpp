@@ -51,8 +51,14 @@ void test_Tensor() {
 
 	static_assert(
 		std::is_same_v<
-			_vec<int,3>::Traits::Nested<0>,
-			_vec<int,3>
+			_vec<int,3>,
+			_vec<int,3>::Nested<0>
+		>
+	);
+	static_assert(
+		std::is_same_v<
+			int,
+			_vec<int,3>::Nested<1>
 		>
 	);
 
