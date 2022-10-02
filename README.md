@@ -43,14 +43,15 @@
 - `::Nested<i>` = get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
 - `::numNestingsToIndex<i>` = gets the number of nestings deep that the index 'i' is located.
 - `::InnerForIndex<i>` = get the type associated with the i'th index, where i is from 0 to rank-1.  Equivalent to `::Nested<numNestingsToIndex<i>>`  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
-- `::ReplaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most replaced by T.
+- `::ReplaceInner<T>` = replaces this tensor's Inner with a new type, T.
+- `::ReplaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
+- `::ExpandIthIndex<i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  So a sym's ExpandIthIndex<0> or <1> would produce a vec-of-vec.  a sym-of-vec's ExpandIthIndex<2> would return the same type, and a vec-of-sym's ExpandIthIndex<0> would return the same type.
 
 Tensor Template Helpers (subject to change)
 - `is_tensor_v<T>` = is it a tensor storage type?
 - `is_vec_v<T>` = is it a _vec<T,N>?
 - `is_sym_v<T>` = is it a _sym<T,N>?
 - `is_asym_v<T>` = is it a _asym<T,N>?
-- `ExpandIthIndex<T,i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
 - `ExpandAllIndexes<T>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
 
 

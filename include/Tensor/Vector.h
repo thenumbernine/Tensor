@@ -132,7 +132,30 @@ namespace Tensor {
 			}\
 		};\
 	};\
-	static constexpr int numNestings = NumNestingImpl::value();
+	static constexpr int numNestings = NumNestingImpl::value();\
+\
+	/* expand the storage of the i'th index */\
+	template<int index>\
+	struct ExpandIthIndexImpl {\
+		static constexpr auto value() {\
+			static_assert(index >= 0 && index < rank);\
+			if constexpr (index < localRank) {\
+				if constexpr (localRank == 1) {\
+					/* nothing changes */\
+					return This();\
+				} else {\
+					/* return a dense-tensor of depth 'localRank' with inner type 'Inner' */\
+					return _tensorr<Inner, localDim, localRank>();\
+				}\
+			} else {\
+				return ReplaceInner<\
+					decltype(Inner::template ExpandIthIndexImpl<index - localRank>::value())\
+				>();\
+			}\
+		}\
+	};\
+	template<int index>\
+	using ExpandIthIndex = decltype(ExpandIthIndexImpl<index>::value());
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_DIMS()\
@@ -804,6 +827,22 @@ struct VectorTraits<Type_> {
 		}
 	}
 };
+
+// type of a tensor with specific rank and dimension (for all indexes)
+// used by some _vec members
+
+template<typename Scalar, int dim, int rank>
+struct _tensorr_impl {
+	using T = _vec<typename _tensorr_impl<Scalar, dim, rank-1>::T, dim>;
+};
+template<typename Scalar, int dim> 
+struct _tensorr_impl<Scalar, dim, 0> {
+	using T = Scalar;
+};
+template<typename Src, int dim, int rank>
+using _tensorr = typename _tensorr_impl<Src, dim, rank>::T;
+
+
 
 // default
 
@@ -1632,48 +1671,6 @@ struct _tensor_impl<T, dim> {
 template<typename T, int dim, int... dims>
 using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
 
-// type of a tensor with specific rank and dimension (for all indexes)
-
-template<typename Scalar, int dim, int rank>
-struct _tensorr_impl {
-	using T = _vec<typename _tensorr_impl<Scalar, dim, rank-1>::T, dim>;
-};
-template<typename Scalar, int dim> 
-struct _tensorr_impl<Scalar, dim, 0> {
-	using T = Scalar;
-};
-template<typename Src, int dim, int rank>
-using _tensorr = typename _tensorr_impl<Src, dim, rank>::T;
-
-// expand i'th index
-
-template<
-	typename Src,	// source tensor
-	int index		// index to expand
->
-struct ExpandIthIndexImpl {
-	static constexpr auto value() {
-		static_assert(index >= 0 && index < Src::rank);
-		if constexpr (index < Src::localRank) {
-			if constexpr (Src::localRank == 1) {
-				// nothing changes
-				return Src();
-			} else {
-				// return a dense-tensor of depth 'localRank' with inner type 'Src::Inner'
-				return _tensorr<typename Src::Inner, Src::localDim, Src::localRank>();
-			}
-		} else {
-			return 
-				typename Src::template Template<
-					decltype(ExpandIthIndexImpl<typename Src::Inner, index - Src::localRank>::value()),
-					Src::localDim
-				>();
-		}
-	}
-};
-template<typename Src, int index>
-using ExpandIthIndex = decltype(ExpandIthIndexImpl<Src, index>::value());
-
 // expand all indexes 
 
 template<
@@ -1975,7 +1972,7 @@ auto transpose(T const & t) {
 	) {
 		return t;
 	} else {
-		using E = ExpandIthIndex<ExpandIthIndex<T, m>, n>;
+		using E = typename T::template ExpandIthIndex<m>::template ExpandIthIndex<n>;
 		using U = typename TransposeResultWithAllIndexesExpanded<E, 0, E::rank, m, n>::T;
 		return U([&](typename T::intN i) {
 			std::swap(i(m), i(n));
