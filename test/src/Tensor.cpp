@@ -180,6 +180,29 @@ math functions:
 	diagonal
 */
 
+template<typename T>
+void operatorScalarTest(T const & t) {
+	using S = typename T::Scalar;
+	TEST_EQ(t + (S)0, t);
+	TEST_EQ((S)1 + t, t + T((S)1));
+	TEST_EQ(t + T(), t);
+	TEST_EQ(t - T(), t);
+	TEST_EQ((S)0 - t, -t);
+	TEST_EQ(t - (S)0, t);
+	TEST_EQ(t - (S)1, t - T((S)1));
+	TEST_EQ(t - t, T());
+	TEST_EQ(t - t * (S)2, -t);
+	TEST_EQ(t - (S)2 * t, -t);
+	TEST_EQ(t * (S)1, t);
+	TEST_EQ(t * (S)-1, -t);
+	TEST_EQ((S)-1 * t, -t);
+	TEST_EQ(t * (S)2, t + t);
+	TEST_EQ(t * (S)0, T());
+	TEST_EQ(t / (S)1, t);
+	TEST_EQ(t / (S).5, (S)2 * t);
+	//TEST_EQ(t / t, T((S)1)); // if t(I) == 0 then this gives nan ... so ... 
+	TEST_EQ(t / T((S)1), t);
+}
 
 void test_Tensor() {
 	//vector
@@ -537,17 +560,12 @@ void test_Tensor() {
 		// TODO matrix subset access
 
 		// TODO matrix swizzle
+	
+		// operators
+		operatorScalarTest(m);
 
-		//determinant
-		TEST_EQ(determinant(m), 0);
-		// TODO opertors
-		// TODO make sure operator* works
+		// TODO make sure operator* matrix/vector, matrix/matrix, vector/matrix works
 		// TODO I don't think I have marix *= working yet	
-		// TODO verify matrix swizzle
-
-		TEST_EQ(m + 0.f, m);
-		TEST_EQ(m * 1.f, m);
-		TEST_EQ(m * 0.f, decltype(m)());
 
 		auto m2 = elemMul(m,m);
 		for (int i = 0; i < m.dim<0>; ++i) {
@@ -555,6 +573,10 @@ void test_Tensor() {
 				TEST_EQ(m2(i,j), m(i,j) * m(i,j));
 			}
 		}
+		
+		//determinant
+		
+		TEST_EQ(determinant(m), 0);
 	}
 
 	//symmetric
@@ -699,9 +721,7 @@ so a.s == {0,1,2,4,5,8};
 		}
 		
 		// operators
-		TEST_EQ(a + 0.f, a);
-		TEST_EQ(a * 1.f, a);
-		TEST_EQ(a * 0.f, decltype(a)());
+		operatorScalarTest(a);
 	}
 
 	// antisymmetric matrix
@@ -798,14 +818,11 @@ so a.s == {0,1,2,4,5,8};
 		static_assert(t.dim<0> == 2);
 		static_assert(t.dim<1> == 4);
 		static_assert(t.dim<2> == 5);
+		
+		// operators
+		operatorScalarTest(t);
 
-		//TODO 
-		//tensor * scalar
-		//scalar * tensor
-	
-		TEST_EQ(t + 0.f, t);
-		TEST_EQ(t * 1.f, t);
-		TEST_EQ(t * 0.f, decltype(t)());
+		//TODO tensor mul
 	}
 
 
@@ -849,9 +866,7 @@ so a.s == {0,1,2,4,5,8};
 		TEST_EQ(t(1,2,2), 2);
 
 		// operators
-		TEST_EQ(t + 0.f, t);
-		TEST_EQ(t * 1.f, t);
-		TEST_EQ(t * 0.f, decltype(t)());
+		operatorScalarTest(t);
 	}
 	{
 		using T3S3 = Tensor::_tensori<float, Tensor::index_vec<3>, Tensor::index_sym<3>>;

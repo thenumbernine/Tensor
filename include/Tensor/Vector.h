@@ -1436,50 +1436,6 @@ struct _sym<T,4> {
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
 };
 
-// symmetric op symmetric
-
-#define TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(op)\
-template<typename T, int N>\
-_sym<T,N> operator op(_sym<T,N> const & a, _sym<T,N> const & b) {\
-	_sym<T,N> c;\
-	for (int i = 0; i < c.localCount; ++i) {\
-		c.s[i] = a.s[i] op b.s[i];\
-	}\
-	return c;\
-}
-
-TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(+)
-TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(-)
-TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(/)
-
-// symmetric op scalar, scalar op symmetric
-
-#define TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(op)\
-template<typename T, int N>\
-requires std::is_same_v<typename _sym<T,N>::Scalar, T>\
-_sym<T,N> operator op(_sym<T,N> const & a, T const & b) {\
-	_sym<T,N> c;\
-	for (int i = 0; i < c.localCount; ++i) {\
-		c.s[i] = a.s[i] op b;\
-	}\
-	return c;\
-}\
-template<typename T, int N>\
-requires std::is_same_v<typename _sym<T,N>::Scalar, T>\
-_sym<T,N> operator op(T const & a, _sym<T,N> const & b) {\
-	_sym<T,N> c;\
-	for (int i = 0; i < c.localCount; ++i) {\
-		c.s[i] = a op b.s[i];\
-	}\
-	return c;\
-}
-
-TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(+)
-TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(-)
-TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(*)
-TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(/)
-
-
 // antisymmetric matrices
 
 #define TENSOR_ANTISYMMETRIC_MATRIX_HEADER(localDim_)\
@@ -1737,6 +1693,33 @@ struct _tensor_impl<T, dim> {
 template<typename T, int dim, int... dims>
 using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
 
+// tensor operations
+
+//  tensor/scalar sum and scalar/tensor sum
+
+#define TENSOR_ADD_SCALAR_OP(op)\
+template<typename T>\
+requires (is_tensor_v<T>)\
+T operator op(T const & a, typename T::Scalar const & b) {\
+	return T([&](auto... is) -> typename T::Scalar {\
+		return a(is...) op b;\
+	});\
+}\
+\
+template<typename T>\
+requires (is_tensor_v<T>)\
+T operator op(typename T::Scalar const & a, T const & b) {\
+	return T([&](auto... is) -> typename T::Scalar {\
+		return a op b(is...);\
+	});\
+}
+
+TENSOR_ADD_SCALAR_OP(+)
+TENSOR_ADD_SCALAR_OP(-)
+TENSOR_ADD_SCALAR_OP(/)
+
+//  tensor/tensor sum.  works with arbitrary storage.  so sym+asym = mat
+
 // vector op vector, matrix op matrix, and tensor op tensor per-component operators
 
 #define TENSOR_ADD_VECTOR_VECTOR_OP(op)\
@@ -1749,7 +1732,7 @@ _vec<T,N> operator op(_vec<T,N> const & a, _vec<T,N> const & b) {\
 	return c;\
 }
 
-TENSOR_ADD_VECTOR_VECTOR_OP(+)
+TENSOR_ADD_VECTOR_VECTOR_OP(+) // TODO merge all these into an is_tensor_v rule
 TENSOR_ADD_VECTOR_VECTOR_OP(-)
 TENSOR_ADD_VECTOR_VECTOR_OP(/)
 
@@ -1776,10 +1759,7 @@ _vec<T,N> operator op(typename _vec<T,N>::Scalar const & a, _vec<T,N> const & b)
 	return c;\
 }
 
-TENSOR_ADD_VECTOR_SCALAR_OP(+)
-TENSOR_ADD_VECTOR_SCALAR_OP(-)
 TENSOR_ADD_VECTOR_SCALAR_OP(*)
-TENSOR_ADD_VECTOR_SCALAR_OP(/)
 
 // TODO replace all operator* with outer+contract to generalize to any rank
 // maybe generalize further with the # of indexes to contract: 
@@ -1850,6 +1830,47 @@ _vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
 	}
 	return c;
 }
+
+// symmetric op symmetric
+
+#define TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(op)\
+template<typename T, int N>\
+_sym<T,N> operator op(_sym<T,N> const & a, _sym<T,N> const & b) {\
+	_sym<T,N> c;\
+	for (int i = 0; i < c.localCount; ++i) {\
+		c.s[i] = a.s[i] op b.s[i];\
+	}\
+	return c;\
+}
+
+TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(+) // TODO merge all these into an is_tensor_v rule
+TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(-)
+TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(/)
+
+// symmetric op scalar, scalar op symmetric
+
+#define TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(op)\
+template<typename T, int N>\
+requires std::is_same_v<typename _sym<T,N>::Scalar, T>\
+_sym<T,N> operator op(_sym<T,N> const & a, T const & b) {\
+	_sym<T,N> c;\
+	for (int i = 0; i < c.localCount; ++i) {\
+		c.s[i] = a.s[i] op b;\
+	}\
+	return c;\
+}\
+template<typename T, int N>\
+requires std::is_same_v<typename _sym<T,N>::Scalar, T>\
+_sym<T,N> operator op(T const & a, _sym<T,N> const & b) {\
+	_sym<T,N> c;\
+	for (int i = 0; i < c.localCount; ++i) {\
+		c.s[i] = a op b.s[i];\
+	}\
+	return c;\
+}
+
+TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(*)
+
 
 //element-wise multiplication
 // c_i1_i2_... := a_i1_i2_... * b_i1_i2_...

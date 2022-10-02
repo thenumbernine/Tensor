@@ -81,9 +81,9 @@ Swizzle will return a vector-of-references:
 - 4D: `.xxxx() ... .wwww()` 
 
 functions:
-- `elemMul(a,b), matrixCompMult(a,b)` = per-element multiplication.
+- `elemMul(a,b), matrixCompMult(a,b)` = per-element multiplication aka Hadamard product.
 	$$elemMul(a,b)_I := a_I \cdot b_I$$
-- `dot(a,b)` = Frobenius dot.
+- `dot(a,b)` = Frobenius dot.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	$$dot(a,b) := a^I \cdot b_I$$
 - `lenSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
 	$$lenSq(a) := |a|^2 = a^I a_I$$
@@ -93,7 +93,7 @@ functions:
 	$$normalize(a) := a / |a|$$
 - `distance(a,b)` = Length of the difference of two tensors.
 	$$distance(a,b) := |b - a|$$
-- `cross(a,b)` = 3D vector cross product.  TODO generalize to something with Levi-Civita permutation tensor.
+- `cross(a,b)` = 3D vector cross product.
 	$${cross(a,b)_i} := {\epsilon_{ijk}} b^j c^k$$ 
 - `outer(a,b), outerProduct(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a sym and a sym produces a sym-of-syms.
 	$$outer(a,b)_{IJ} := a_I b_J$$
@@ -125,10 +125,11 @@ Sorry GLSL, Cg wins this round:
 Depends on the "Common" project, for Exception, template metaprograms, etc.
 
 TODO:
-- finishing up antisym , it needs intN access, and a loooot of wrapper classes.  same with sym maybe too.
+- finishing up antisym , it needs intN access, and a loooot of wrapper classes.  
 	- once we have this, why not rank-3 rank-4 etc sym or antisym ... I'm sure there's some math on how to calculate the unique # of vars
+- sym needs some index help when it's mixing accessors and normal derefs. one signature is Scalar&, the other is Accessor
 
-- more flexible exterior product (cross, wedge, determinant)
+- more flexible exterior product (cross, wedge, determinant).  Generalize to something with Levi-Civita permutation tensor.
 - more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
 	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "ReplaceScalar" the nesting-minus-one of A with the nesting-1 of B
 - make a permuteOrder() function, have this "ExpandIthIndex<>" on all its passed indexes, then have it run across the permute indexes.
@@ -152,5 +153,6 @@ TODO:
 	This will give dynamically-sized tensors all the operations of the Tensor template class without having to re-implement them all for Grid.
 	This will allow for flexible allocations: a degree-2 tensor can have one dimension statically allocated and one dimension dynmamically allocated
 
-- double check that I can't ue "requires' with fields and put all vector-specialization in one class
+- double check that I can't use "requires' with fields and put all vector-specialization in one class
 - should I even keep separate member functions for .dot() etc?
+- __complex__ support.  Especially in norms.
