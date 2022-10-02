@@ -81,7 +81,7 @@ Swizzle will return a vector-of-references:
 - 4D: `.xxxx() ... .wwww()` 
 
 functions:
-- `elemMul(a,b), matrixCompMult(a,b)` = per-element multiplication aka Hadamard product.
+- `elemMul(a,b), matrixCompMult(a,b), hadamard(a,b)` = per-element multiplication aka Hadamard product.
 	$$elemMul(a,b)_I := a_I \cdot b_I$$
 - `dot(a,b)` = Frobenius dot.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	$$dot(a,b) := a^I \cdot b_I$$

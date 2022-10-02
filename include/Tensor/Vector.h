@@ -454,7 +454,7 @@ namespace Tensor {
 			Common::FunctionFromLambda<Lambda>,\
 			Common::FunctionFromTupleArgs<\
 				Scalar,\
-				Common::tuple_of_same_type<int, rank>\
+				Common::tuple_rep_t<int, rank>\
 			>\
 		>\
 	) {\
@@ -1865,6 +1865,12 @@ auto matrixCompMult(T&&... args) {
 	return elemMul(std::forward<T>(args)...);
 }
 
+// more name compat
+template<typename... T>
+auto hadamard(T&&... args) {
+	return elemMul(std::forward<T>(args)...);
+}
+
 // vector functions
 // TODO for these, should I call into the member function?
 
@@ -1996,6 +2002,7 @@ struct TransposeResultWithAllIndexesExpanded<Src, i, i, m, n> {
 // if the m'th or n'th index is a sym then i'll have to replace it with two _Vec's anyways
 //  so for now replace it all with vec's
 template<int m=0, int n=1, typename T>
+requires (is_tensor_v<T>)
 auto transpose(T const & t) {
 	if constexpr (m == n) {
 		//don't reshape if we're flipping the same index with itself
@@ -2015,6 +2022,7 @@ auto transpose(T const & t) {
 		});
 	}
 }
+
 
 // trace of a matrix
 // TODO generalize to contract<m,n,T> , trace a rank-2 specialization
@@ -2038,8 +2046,6 @@ _mat<T,N,N> diagonal(_vec<T,N> const & v) {
 	}
 	return a;
 }
-
-
 
 // specific typed vectors
 
