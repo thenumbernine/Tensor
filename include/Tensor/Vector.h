@@ -1697,7 +1697,7 @@ using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
 
 //  tensor/scalar sum and scalar/tensor sum
 
-#define TENSOR_ADD_SCALAR_OP(op)\
+#define TENSOR_SCALAR_OP(op)\
 template<typename T>\
 requires (is_tensor_v<T>)\
 T operator op(T const & a, typename T::Scalar const & b) {\
@@ -1716,11 +1716,12 @@ T operator op(typename T::Scalar const & a, T const & b) {\
 
 //  tensor/tensor op
 
-TENSOR_ADD_SCALAR_OP(+)
-TENSOR_ADD_SCALAR_OP(-)
-TENSOR_ADD_SCALAR_OP(/)
+TENSOR_SCALAR_OP(+)
+TENSOR_SCALAR_OP(-)
+TENSOR_SCALAR_OP(/)
+TENSOR_SCALAR_OP(*)
 
-#define TENSOR_ADD_TENSOR_OP(op)\
+#define TENSOR_TENSOR_OP(op)\
 \
 /* works with arbitrary storage.  so sym+asym = mat */\
 /* TODO PRESERVE MATCHING STORAGE OPTIMIZATIONS */\
@@ -1748,9 +1749,9 @@ T operator op(T const & a, T const & b) {\
 	});\
 }
 
-TENSOR_ADD_TENSOR_OP(+)
-TENSOR_ADD_TENSOR_OP(-)
-TENSOR_ADD_TENSOR_OP(/)
+TENSOR_TENSOR_OP(+)
+TENSOR_TENSOR_OP(-)
+TENSOR_TENSOR_OP(/)
 
 // vector op scalar, scalar op vector, matrix op scalar, scalar op matrix, tensor op scalar, scalar op tensor operations
 // need to require that T == _vec<T,N>::Scalar otherwise this will spill into vector/matrix operations
@@ -1840,48 +1841,6 @@ _vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
 			sum += a[i][j] * b[j];
 		}
 		c[i] = sum;
-	}
-	return c;
-}
-
-// symmetric op scalar, scalar op symmetric
-
-template<typename T, int N>
-requires std::is_same_v<typename _sym<T,N>::Scalar, T>
-_sym<T,N> operator*(_sym<T,N> const & a, T const & b) {
-	_sym<T,N> c;
-	for (int i = 0; i < c.localCount; ++i) {
-		c.s[i] = a.s[i] * b;
-	}
-	return c;
-}
-template<typename T, int N>
-requires std::is_same_v<typename _sym<T,N>::Scalar, T>
-_sym<T,N> operator*(T const & a, _sym<T,N> const & b) {
-	_sym<T,N> c;
-	for (int i = 0; i < c.localCount; ++i) {
-		c.s[i] = a * b.s[i];
-	}
-	return c;
-}
-
-// antisymmetric op scalar, scalar op antisymmetric
-
-template<typename T, int N>
-requires std::is_same_v<typename _asym<T,N>::Scalar, T>
-_asym<T,N> operator*(_asym<T,N> const & a, T const & b) {
-	_asym<T,N> c;
-	for (int i = 0; i < c.localCount; ++i) {
-		c.s[i] = a.s[i] * b;
-	}
-	return c;
-}
-template<typename T, int N>
-requires std::is_same_v<typename _asym<T,N>::Scalar, T>
-_asym<T,N> operator*(T const & a, _asym<T,N> const & b) {
-	_asym<T,N> c;
-	for (int i = 0; i < c.localCount; ++i) {
-		c.s[i] = a * b.s[i];
 	}
 	return c;
 }
