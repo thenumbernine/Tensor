@@ -531,7 +531,6 @@ ReadIterator vs WriteIterator
 			return false;\
 		}\
 	};\
-\
 	template<int i>\
 	struct ReadIncOuter {\
 		static bool exec(intN & index) {\
@@ -575,12 +574,17 @@ ReadIterator vs WriteIterator
 			return owner(index);\
 		}\
 \
+		/* not in memory order, but ... meh idk why */\
+		template<int i> using ReadInc = ReadIncInner<i>;\
+		/* in memory order */\
+		/*template<int i> using ReadInc = ReadIncOuter<i>*/;\
+\
 		ReadIterator & operator++() {\
-			Common::ForLoop<0,rank,ReadIncInner>::exec(index);\
+			Common::ForLoop<0,rank,ReadInc>::exec(index);\
 			return *this;\
 		}\
 		ReadIterator & operator++(int) {\
-			Common::ForLoop<0,rank,ReadIncInner>::exec(index);\
+			Common::ForLoop<0,rank,ReadInc>::exec(index);\
 			return *this;\
 		}\
 \
@@ -634,7 +638,6 @@ ReadIterator vs WriteIterator
 				return false;\
 			}\
 		};\
-\
 		template<int i>\
 		struct WriteIncOuter {\
 			static bool exec(intW & writeIndex) {\
@@ -690,13 +693,18 @@ ReadIterator vs WriteIterator
 				return Traits::getByWriteIndex(owner, writeIndex);\
 			}\
 \
+			/* not in memory order, but ... meh idk why */\
+			template<int i> using WriteInc = WriteIncInner<i>;\
+			/* in memory order */\
+			/*template<int i> using WriteInc = WriteIncOuter<i>*/;\
+\
 			WriteIterator & operator++() {\
-				Common::ForLoop<0,numNestings,WriteIncInner>::exec(writeIndex);\
+				Common::ForLoop<0,numNestings,WriteInc>::exec(writeIndex);\
 				readIndex = Traits::getReadForWriteIndex(writeIndex);\
 				return *this;\
 			}\
 			WriteIterator & operator++(int) {\
-				Common::ForLoop<0,numNestings,WriteIncInner>::exec(writeIndex);\
+				Common::ForLoop<0,numNestings,WriteInc>::exec(writeIndex);\
 				readIndex = Traits::getReadForWriteIndex(writeIndex);\
 				return *this;\
 			}\

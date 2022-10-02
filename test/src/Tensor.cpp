@@ -493,39 +493,39 @@ void test_Tensor() {
 		// read iterator
 		{
 			auto i = m.begin();
-#if 0 // not sure which to use
-			// iterating in memory order for row-major
-			// also in left-right top-bottom order when read
-			// but you have to increment the last index first and first index last
-			// TODO really?
-			// but lambda init is now m(i,j) == 1 + i(1) + 3 * i(0) ... transposed of typical memory indexing
-			TEST_EQ(*i, 1); ++i;
-			TEST_EQ(*i, 2); ++i;
-			TEST_EQ(*i, 3); ++i;
-			TEST_EQ(*i, 4); ++i;
-			TEST_EQ(*i, 5); ++i;
-			TEST_EQ(*i, 6); ++i;
-			TEST_EQ(*i, 7); ++i;
-			TEST_EQ(*i, 8); ++i;
-			TEST_EQ(*i, 9); ++i;
-			TEST_EQ(i, m.end());
-#endif
-#if 1
-			//iterating transpose to memory order for row-major
-			// - inc first index first, last index last
-			// but lambda init is now m(i,j) == 1 + i(0) + 3 * i(1)  ... typical memory indexing
-			// I could fulfill both at the same time by making my matrices column-major, like OpenGL does ... tempting ...
-			TEST_EQ(*i, 1); ++i;
-			TEST_EQ(*i, 4); ++i;
-			TEST_EQ(*i, 7); ++i;
-			TEST_EQ(*i, 2); ++i;
-			TEST_EQ(*i, 5); ++i;
-			TEST_EQ(*i, 8); ++i;
-			TEST_EQ(*i, 3); ++i;
-			TEST_EQ(*i, 6); ++i;
-			TEST_EQ(*i, 9); ++i;
-			TEST_EQ(i, m.end());
-#endif
+			if constexpr (std::is_same_v<Tensor::int2::iterator::ReadInc<0>, Tensor::int2::ReadIncOuter<0>>) {
+// TODO WARNING setting WriteInc to WriteIncOuter is crashing, probably cuz it's used in write-ctors, and those are used elsewhere
+				// iterating in memory order for row-major
+				// also in left-right top-bottom order when read
+				// but you have to increment the last index first and first index last
+				// TODO really?
+				// but lambda init is now m(i,j) == 1 + i(1) + 3 * i(0) ... transposed of typical memory indexing
+				TEST_EQ(*i, 1); ++i;
+				TEST_EQ(*i, 2); ++i;
+				TEST_EQ(*i, 3); ++i;
+				TEST_EQ(*i, 4); ++i;
+				TEST_EQ(*i, 5); ++i;
+				TEST_EQ(*i, 6); ++i;
+				TEST_EQ(*i, 7); ++i;
+				TEST_EQ(*i, 8); ++i;
+				TEST_EQ(*i, 9); ++i;
+				TEST_EQ(i, m.end());
+			} else if constexpr (std::is_same_v<Tensor::int2::iterator::ReadInc<0>, Tensor::int2::ReadIncInner<0>>) {
+				//iterating transpose to memory order for row-major
+				// - inc first index first, last index last
+				// but lambda init is now m(i,j) == 1 + i(0) + 3 * i(1)  ... typical memory indexing
+				// I could fulfill both at the same time by making my matrices column-major, like OpenGL does ... tempting ...
+				TEST_EQ(*i, 1); ++i;
+				TEST_EQ(*i, 4); ++i;
+				TEST_EQ(*i, 7); ++i;
+				TEST_EQ(*i, 2); ++i;
+				TEST_EQ(*i, 5); ++i;
+				TEST_EQ(*i, 8); ++i;
+				TEST_EQ(*i, 3); ++i;
+				TEST_EQ(*i, 6); ++i;
+				TEST_EQ(*i, 9); ++i;
+				TEST_EQ(i, m.end());
+			}
 		}
 	
 		// write iterator (should match read iterator except for symmetric members)
