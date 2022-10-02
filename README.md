@@ -25,6 +25,8 @@
 `_asym<type, dim>` = antisymmetric matrices:
 - `.x_x() .w_w()` access methods
 
+`_quat<type>` = quaternion.  Subclass of `_vec4<type>`.
+
 - Tensors (which are just typedef'd vectors-of-vectors-of-...)
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `vec< ..., dimI>`.
 - `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific pairs of indexes symmetric storage.  `I1 I2` etc are one of the following: `index_vec<dim>` for a single index of dimension `dim`, `index_sym<dimI>` for two symmetric indexes of dimension `dim`, or `index_asym<dim>` for two antisymmetric indexes of dimension `dim`.
@@ -41,7 +43,16 @@
 - `::Nested<i>` = get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
 - `::numNestingsToIndex<i>` = gets the number of nestings deep that the index 'i' is located.
 - `::InnerForIndex<i>` = get the type associated with the i'th index, where i is from 0 to rank-1.  Equivalent to `::Nested<numNestingsToIndex<i>>`  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
-- `::replaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most replaced by T.
+- `::ReplaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most replaced by T.
+
+Tensor Template Helpers (subject to change)
+- `is_tensor_v<T>` = is it a tensor storage type?
+- `is_vec_v<T>` = is it a _vec<T,N>?
+- `is_sym_v<T>` = is it a _sym<T,N>?
+- `is_asym_v<T>` = is it a _asym<T,N>?
+- `ExpandIthIndex<T,i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
+- `ExpandAllIndexes<T>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
+
 
 Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.
@@ -97,14 +108,6 @@ functions:
 - `diagonal(m)` = Matrix diagonal from vector.
 	$${diagonal(a)_{ij} = \delta_{ij} \cdot a_i$$
 
-Tensor Template Helpers (subject to change)
-- `is_tensor_v<T>` = is it a tensor storage type?
-- `is_vec_v<T>` = is it a _vec<T,N>?
-- `is_sym_v<T>` = is it a _sym<T,N>?
-- `is_asym_v<T>` = is it a _asym<T,N>?
-- `ExpandIthIndex<T,i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
-- `ExpandAllIndexes<T>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
-
 ## Familiar Types
 
 Sorry GLSL, Cg wins this round:
@@ -131,7 +134,7 @@ TODO:
 
 - more flexible exterior product (cross, wedge, determinant)
 - more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
-	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "replaceScalar" the nesting-minus-one of A with the nesting-1 of B
+	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "ReplaceScalar" the nesting-minus-one of A with the nesting-1 of B
 	- ExpandIthIndex when you when you operator* it or any time you need to produce an output type based on input types whose dimensions might overlap optimized storage structures.
 		- or better, make a permuteOrder() function, have this "ExpandIthIndex<>" on all its passed indexes, then have it run across the permute indexes.
 - index notation summation?  mind you that it shoud preserve non-summed index memory-optimization structures.

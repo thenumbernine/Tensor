@@ -4,14 +4,23 @@
 #include "Tensor/clamp.h"
 #include <cmath>
 
-// TODO any vec& member return types will have to be overloaded
+// TODO any vec& member return types, like operator+=, will have to be overloaded
+//  and it looks like I can't crtp the operator+= members due to _vec having unions?
 
 namespace Tensor {
 
 template<typename T>
 struct _quat : public _vec4<T> {
 	using Super = _vec4<T>;
+
+	//TENSOR_FIRST(_quat)
+	//TENSOR_FIRST expects a <T,size> for the current template ... so here it is for _quat
 	using This = _quat;
+	template<typename T2> using Template = _quat<T2>;
+
+	//TENSOR_REPLACE_INNER is also atypical because no dimension template arg
+	template <typename NewInner> using ReplaceInner = Template<NewInner>;
+
 	TENSOR_VECTOR_HEADER(4)
 	TENSOR_HEADER()
 	using vec3 = _vec3<T>;
@@ -23,7 +32,8 @@ struct _quat : public _vec4<T> {
 	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(_quat, _vec)
 	TENSOR_ADD_LAMBDA_CTOR(_quat)
 	TENSOR_ADD_ITERATOR()
-
+	TENSOR_ADD_REPLACE_SCALAR()
+	
 	//conjugate 
 	// same as inverse if the quat is unit length
 	_quat conjugate() const {

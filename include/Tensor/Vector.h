@@ -132,8 +132,7 @@ namespace Tensor {
 			}\
 		};\
 	};\
-	static constexpr int numNestings = NumNestingImpl::value();\
-
+	static constexpr int numNestings = NumNestingImpl::value();
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_DIMS()\
@@ -659,13 +658,14 @@ ReadIterator vs WriteIterator
 \
 	Write<This> write() { return Write<This>(*this); }\
 	/* wait, if Write<This> write() is called by a const object ... then the return type is const ... could I detect that from within Write to forward on to Write's inner class ctor? */\
-	Write<This const> write() const { return Write<This const>(*this); }\
+	Write<This const> write() const { return Write<This const>(*this); }
 
-// I would put it in TENSOR_HEADER()
-//  except _quat can't handle this, because it only uses one template arg.
-// I guess alongside 'Template' I could provide a single-arg template with the localDim already curried, then _quat would work too.
+// _quat can't handle
+#define TENSOR_ADD_REPLACE_INNER()\
+	template <typename NewInner>\
+	using ReplaceInner = Template<NewInner, localDim>;
+
 #define TENSOR_ADD_REPLACE_SCALAR()\
-\
 	template<typename NewScalar>\
 	struct ReplaceScalarImpl {\
 		static auto getType() {\
@@ -677,7 +677,7 @@ ReadIterator vs WriteIterator
 		}\
 	};\
 	template<typename NewScalar>\
-	using ReplaceScalar = Template<decltype(ReplaceScalarImpl<NewScalar>::getType()), localDim>;
+	using ReplaceScalar = ReplaceInner<decltype(ReplaceScalarImpl<NewScalar>::getType())>;
 
 // vector.volume() == the volume of a size reprensted by the vector
 // assumes Inner operator* exists
@@ -712,6 +712,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_SCALAR_OP_EQ(/=)\
 	TENSOR_ADD_UNM()\
 	TENSOR_ADD_CMP_OP()\
+	TENSOR_ADD_REPLACE_INNER()\
 	TENSOR_ADD_REPLACE_SCALAR()
 
 // only add these to _vec and specializations
