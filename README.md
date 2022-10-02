@@ -156,3 +156,4 @@ TODO:
 - double check that I can't use "requires' with fields and put all vector-specialization in one class
 - should I even keep separate member functions for .dot() etc?
 - __complex__ support.  Especially in norms.
+- preserve storage optimizations between tensor op tensor per-elem operations.  right now its just expanding all storage optimizations.

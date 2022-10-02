@@ -1714,52 +1714,65 @@ T operator op(typename T::Scalar const & a, T const & b) {\
 	});\
 }
 
+//  tensor/tensor op
+
 TENSOR_ADD_SCALAR_OP(+)
 TENSOR_ADD_SCALAR_OP(-)
 TENSOR_ADD_SCALAR_OP(/)
 
-//  tensor/tensor sum.  works with arbitrary storage.  so sym+asym = mat
-
-// vector op vector, matrix op matrix, and tensor op tensor per-component operators
-
-#define TENSOR_ADD_VECTOR_VECTOR_OP(op)\
-template<typename T, int N>\
-_vec<T,N> operator op(_vec<T,N> const & a, _vec<T,N> const & b) {\
-	_vec<T,N> c;\
-	for (int i = 0; i < N; ++i) {\
-		c[i] = a[i] op b[i];\
-	}\
-	return c;\
+#define TENSOR_ADD_TENSOR_OP(op)\
+\
+/* works with arbitrary storage.  so sym+asym = mat */\
+/* TODO PRESERVE MATCHING STORAGE OPTIMIZATIONS */\
+template<typename A, typename B>\
+requires (\
+	is_tensor_v<A>\
+	&& is_tensor_v<B>\
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	/* TODO meh? */\
+	&& A::dims == B::dims\
+	&& !std::is_same_v<A, B> /* because that is caught next, until I get this to preserve storage opts...*/\
+)\
+typename A::template ExpandAllIndexes<> operator op(A const & a, B const & b) {\
+	return typename A::template ExpandAllIndexes<>(\
+		[&](auto... is) -> typename A::Scalar {\
+			return a(is...) op b(is...);\
+		});\
+}\
+\
+/* until I get down preserving the storage, lets match to like types */\
+template<typename T>\
+requires (is_tensor_v<T>)\
+T operator op(T const & a, T const & b) {\
+	return T([&](auto... is) -> typename T::Scalar {\
+		return a(is...) op b(is...);\
+	});\
 }
 
-TENSOR_ADD_VECTOR_VECTOR_OP(+) // TODO merge all these into an is_tensor_v rule
-TENSOR_ADD_VECTOR_VECTOR_OP(-)
-TENSOR_ADD_VECTOR_VECTOR_OP(/)
+TENSOR_ADD_TENSOR_OP(+)
+TENSOR_ADD_TENSOR_OP(-)
+TENSOR_ADD_TENSOR_OP(/)
 
 // vector op scalar, scalar op vector, matrix op scalar, scalar op matrix, tensor op scalar, scalar op tensor operations
 // need to require that T == _vec<T,N>::Scalar otherwise this will spill into vector/matrix operations
 // c_i := a_i * b
 // c_i := a * b_i
 
-#define TENSOR_ADD_VECTOR_SCALAR_OP(op)\
-template<typename T, int N>\
-_vec<T,N> operator op(_vec<T,N> const & a, typename _vec<T,N>::Scalar const & b) {\
-	_vec<T,N> c;\
-	for (int i = 0; i < N; ++i) {\
-		c[i] = a[i] op b;\
-	}\
-	return c;\
-}\
-template<typename T, int N>\
-_vec<T,N> operator op(typename _vec<T,N>::Scalar const & a, _vec<T,N> const & b) {\
-	_vec<T,N> c;\
-	for (int i = 0; i < N; ++i) {\
-		c[i] = a op b[i];\
-	}\
-	return c;\
+template<typename T, int N>
+_vec<T,N> operator*(_vec<T,N> const & a, typename _vec<T,N>::Scalar const & b) {
+	_vec<T,N> c;
+	for (int i = 0; i < N; ++i) {
+		c[i] = a[i] * b;
+	}
+	return c;
 }
-
-TENSOR_ADD_VECTOR_SCALAR_OP(*)
+template<typename T, int N>
+_vec<T,N> operator*(typename _vec<T,N>::Scalar const & a, _vec<T,N> const & b) {
+	_vec<T,N> c;
+	for (int i = 0; i < N; ++i) {
+		c[i] = a * b[i];
+	}
+	return c;
+}
 
 // TODO replace all operator* with outer+contract to generalize to any rank
 // maybe generalize further with the # of indexes to contract: 
@@ -1831,46 +1844,47 @@ _vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
 	return c;
 }
 
-// symmetric op symmetric
-
-#define TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(op)\
-template<typename T, int N>\
-_sym<T,N> operator op(_sym<T,N> const & a, _sym<T,N> const & b) {\
-	_sym<T,N> c;\
-	for (int i = 0; i < c.localCount; ++i) {\
-		c.s[i] = a.s[i] op b.s[i];\
-	}\
-	return c;\
-}
-
-TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(+) // TODO merge all these into an is_tensor_v rule
-TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(-)
-TENSOR_ADD_SYMMETRIC_SYMMETRIC_OP(/)
-
 // symmetric op scalar, scalar op symmetric
 
-#define TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(op)\
-template<typename T, int N>\
-requires std::is_same_v<typename _sym<T,N>::Scalar, T>\
-_sym<T,N> operator op(_sym<T,N> const & a, T const & b) {\
-	_sym<T,N> c;\
-	for (int i = 0; i < c.localCount; ++i) {\
-		c.s[i] = a.s[i] op b;\
-	}\
-	return c;\
-}\
-template<typename T, int N>\
-requires std::is_same_v<typename _sym<T,N>::Scalar, T>\
-_sym<T,N> operator op(T const & a, _sym<T,N> const & b) {\
-	_sym<T,N> c;\
-	for (int i = 0; i < c.localCount; ++i) {\
-		c.s[i] = a op b.s[i];\
-	}\
-	return c;\
+template<typename T, int N>
+requires std::is_same_v<typename _sym<T,N>::Scalar, T>
+_sym<T,N> operator*(_sym<T,N> const & a, T const & b) {
+	_sym<T,N> c;
+	for (int i = 0; i < c.localCount; ++i) {
+		c.s[i] = a.s[i] * b;
+	}
+	return c;
+}
+template<typename T, int N>
+requires std::is_same_v<typename _sym<T,N>::Scalar, T>
+_sym<T,N> operator*(T const & a, _sym<T,N> const & b) {
+	_sym<T,N> c;
+	for (int i = 0; i < c.localCount; ++i) {
+		c.s[i] = a * b.s[i];
+	}
+	return c;
 }
 
-TENSOR_ADD_SYMMETRIC_MATRIX_SCALAR_OP(*)
+// antisymmetric op scalar, scalar op antisymmetric
 
+template<typename T, int N>
+requires std::is_same_v<typename _asym<T,N>::Scalar, T>
+_asym<T,N> operator*(_asym<T,N> const & a, T const & b) {
+	_asym<T,N> c;
+	for (int i = 0; i < c.localCount; ++i) {
+		c.s[i] = a.s[i] * b;
+	}
+	return c;
+}
+template<typename T, int N>
+requires std::is_same_v<typename _asym<T,N>::Scalar, T>
+_asym<T,N> operator*(T const & a, _asym<T,N> const & b) {
+	_asym<T,N> c;
+	for (int i = 0; i < c.localCount; ++i) {
+		c.s[i] = a * b.s[i];
+	}
+	return c;
+}
 
 //element-wise multiplication
 // c_i1_i2_... := a_i1_i2_... * b_i1_i2_...
