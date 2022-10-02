@@ -275,7 +275,8 @@ namespace Tensor {
 			return dimv;\
 		}\
 	}\
-	static constexpr auto dims = DimsImpl();
+	static constexpr auto dims = DimsImpl();\
+	/* TODO index_sequence of dims? */
 
 //for giving operators to tensor classes
 //how can you add correctly-typed ops via crtp to a union?
@@ -2019,8 +2020,10 @@ auto transpose(T const & t) {
 		&& is_sym_v<T>
 	) {
 		return t;
-	} else {
-		using E = typename T::template ExpandIthIndex<m>::template ExpandIthIndex<n>;
+	} else if constexpr(m > n) {
+		return transpose<n,m,T>(t);
+	} else {	// m < n and they are different storage nestings
+		using E = typename T::template ExpandIthIndex<n>::template ExpandIthIndex<m>;
 		using U = typename TransposeResultWithAllIndexesExpanded<E, 0, E::rank, m, n>::T;
 		return U([&](typename T::intN i) {
 			std::swap(i(m), i(n));
