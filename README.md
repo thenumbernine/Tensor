@@ -46,14 +46,13 @@
 - `::ReplaceInner<T>` = replaces this tensor's Inner with a new type, T.
 - `::ReplaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
 - `::ExpandIthIndex<i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  So a sym's ExpandIthIndex<0> or <1> would produce a vec-of-vec.  a sym-of-vec's ExpandIthIndex<2> would return the same type, and a vec-of-sym's ExpandIthIndex<0> would return the same type.
+- `::ExpandAllIndexes<>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.
 
 Tensor Template Helpers (subject to change)
 - `is_tensor_v<T>` = is it a tensor storage type?
 - `is_vec_v<T>` = is it a _vec<T,N>?
 - `is_sym_v<T>` = is it a _sym<T,N>?
 - `is_asym_v<T>` = is it a _asym<T,N>?
-- `ExpandAllIndexes<T>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
-
 
 Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.
@@ -129,21 +128,20 @@ TODO:
 - finishing up antisym , it needs intN access, and a loooot of wrapper classes.  same with sym maybe too.
 	- once we have this, why not rank-3 rank-4 etc sym or antisym ... I'm sure there's some math on how to calculate the unique # of vars
 
-- better / member names for:
-- - ExpandIthIndex = idk
-- - ExpandAllIndexes = idk
-
 - more flexible exterior product (cross, wedge, determinant)
 - more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
 	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "ReplaceScalar" the nesting-minus-one of A with the nesting-1 of B
-	- ExpandIthIndex when you when you operator* it or any time you need to produce an output type based on input types whose dimensions might overlap optimized storage structures.
-		- or better, make a permuteOrder() function, have this "ExpandIthIndex<>" on all its passed indexes, then have it run across the permute indexes.
+- make a permuteOrder() function, have this "ExpandIthIndex<>" on all its passed indexes, then have it run across the permute indexes.
+	- mind you that for transposes then you can respect symmetry and you don't need to expand those indexes.
 - index notation summation?  mind you that it shoud preserve non-summed index memory-optimization structures.
 - make transpose a specialization of permuteIndexes()
 - multiply as contraction of indexes
 	- for multiply and for permute, some way to extract the flags for symmetric/not on dif indexes
 	  so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into vec-of-vec
 - shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
+- merge `::ExpandIthIndex<i> ::ExpandAllIndexes<>` into `::ExpandIndexes<int...>`
+
+
 - better function matching for derivatives?
 - move secondderivative from Relativity to Tensor
 - move covariantderivative from Relativity to Tensor

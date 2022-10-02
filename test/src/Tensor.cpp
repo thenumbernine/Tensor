@@ -83,6 +83,10 @@ namespace StaticTests {
 	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandIthIndex<1>, _tensori<int,index_vec<3>,index_vec<3>,index_asym<3>>>);
 	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandIthIndex<2>, _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>>);
 	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandIthIndex<3>, _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>>);
+	
+	static_assert(std::is_same_v<_vec<int,3>::ExpandAllIndexes<>, _vec<int,3>>);
+	static_assert(std::is_same_v<_tensor<int,3,3>::ExpandAllIndexes<>, _tensor<int,3,3>>);
+	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandAllIndexes<>, _tensorr<int,3,4>>);
 
 	static_assert(std::is_same_v<int3::Nested<0>, int3>);
 	static_assert(std::is_same_v<int3::Nested<1>, int>);

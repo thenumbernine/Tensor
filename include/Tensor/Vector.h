@@ -135,6 +135,7 @@ namespace Tensor {
 	static constexpr int numNestings = NumNestingImpl::value();\
 \
 	/* expand the storage of the i'th index */\
+	/* TODO support a list-of-indexes, then ExpandAll can just pass the whole sequence */\
 	template<int index>\
 	struct ExpandIthIndexImpl {\
 		static constexpr auto value() {\
@@ -148,14 +149,58 @@ namespace Tensor {
 					return _tensorr<Inner, localDim, localRank>();\
 				}\
 			} else {\
-				return ReplaceInner<\
-					decltype(Inner::template ExpandIthIndexImpl<index - localRank>::value())\
-				>();\
+				using NewInner = decltype(Inner::template ExpandIthIndexImpl<index - localRank>::value());\
+				return ReplaceInner<NewInner>();\
 			}\
 		}\
 	};\
 	template<int index>\
-	using ExpandIthIndex = decltype(ExpandIthIndexImpl<index>::value());
+	using ExpandIthIndex = decltype(ExpandIthIndexImpl<index>::value());\
+\
+	/* expand all indexes */\
+	/* has to go after dim<> */\
+	template<typename DEFER>\
+	struct ExpandAllIndexesImpl {\
+		template<typename DEFER2>\
+		static constexpr auto condrank1() {\
+			/* nothing changes */\
+			static_assert(std::is_same_v<Scalar, Inner>);\
+			static_assert(numNestings == 1);\
+			return std::optional<This>();\
+		}\
+		template<typename DEFER2>\
+		static constexpr auto condnest1() {\
+			static_assert(rank > 1);\
+			static_assert(localRank == rank);\
+			/* WHY FAILING *//*static_assert(std::is_same_v<Scalar, Inner>);*/\
+			return std::optional<_tensorr<Inner, localDim, localRank>>();\
+		}\
+		template<typename DEFER2>\
+		static constexpr auto condelse() {\
+			/* return a dense-tensor of depth 'localRank' with inner type 'Inner' */\
+			using NewInner = typename decltype(\
+					Inner::template ExpandAllIndexesImpl<DEFER2>::value()\
+				)::value_type;\
+			return std::optional<_tensorr<NewInner, localDim, localRank>>();\
+		}\
+		/* need to break up cases into separate, templated methods */\
+		/* https://stackoverflow.com/q/38304847 */\
+		static constexpr auto value() {\
+			if constexpr (rank == 1) {\
+				return condrank1<DEFER>();\
+			} else if constexpr (numNestings == 1) {\
+				return condnest1<DEFER>();\
+			} else {\
+				return condelse<DEFER>();\
+			}\
+		}\
+	};\
+	/* you can't simply set this as a 'using' or it'll try to evaluate too much and compile-error. */\
+	/* so wrap it in this default-template to prevent that */\
+	template<typename DEFER = void>\
+	using ExpandAllIndexes = typename decltype(\
+		ExpandAllIndexesImpl<DEFER>::value()\
+	)::value_type;
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_DIMS()\
@@ -1670,31 +1715,6 @@ struct _tensor_impl<T, dim> {
 
 template<typename T, int dim, int... dims>
 using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
-
-// expand all indexes 
-
-template<
-	typename Src, 	// source tensor
-	int i, 			// current index
-	int rank		// final index
->
-struct ExpandAllIndexesImpl {
-	static constexpr int getdim() {
-		return Src::template dim<i>;
-	}
-	using T = _vec<
-		typename ExpandAllIndexesImpl<Src, i+1, rank>::T,
-		getdim()
-	>;
-};
-template<typename Src, int rank>
-struct ExpandAllIndexesImpl<Src, rank, rank> {
-	using T = typename Src::Scalar;
-};
-template<typename Src>
-using ExpandAllIndexes = typename ExpandAllIndexesImpl<Src, 0, Src::rank>::T;
-
-
 
 // vector op vector, matrix op matrix, and tensor op tensor per-component operators
 
