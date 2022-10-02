@@ -633,25 +633,36 @@ ReadIterator vs WriteIterator
 		Write & operator=(Write const & o) { owner = o.owner; return *this; }\
 		Write & operator=(Write && o) { owner = o.owner; return *this; }\
 \
+		/* inc 0 first */\
 		template<int i>\
 		struct WriteIncInner {\
 			static bool exec(intW & writeIndex) {\
-				/* inc 0 first */\
 				++writeIndex[i];\
 				if (writeIndex[i] < This::template count<i>) return true;\
 				if (i < numNestings-1) writeIndex[i] = 0;\
 				return false;\
 			}\
+			static constexpr intW end() {\
+				intR writeIndex;\
+				writeIndex[numNestings-1] = This::template count<numNestings-1>;\
+				return writeIndex;\
+			}\
 		};\
+\
+		/* inc n-1 first */\
 		template<int i>\
 		struct WriteIncOuter {\
 			static bool exec(intW & writeIndex) {\
-				/* inc n-1 first */\
 				constexpr int j = numNestings-1-i;\
 				++writeIndex[j];\
 				if (writeIndex[j] < This::template count<j>) return true;\
 				if (j > 0) writeIndex[j] = 0;\
 				return false;\
+			}\
+			static constexpr intW end() {\
+				intW writeIndex;\
+				writeIndex[0] = This::template count<0>;\
+				return writeIndex;\
 			}\
 		};\
 \
@@ -699,9 +710,9 @@ ReadIterator vs WriteIterator
 			}\
 \
 			/* not in memory order, but ... meh idk why */\
-			template<int i> using WriteInc = WriteIncInner<i>;\
+			/*template<int i> using WriteInc = WriteIncInner<i>;*/\
 			/* in memory order */\
-			/*template<int i> using WriteInc = WriteIncOuter<i>*/;\
+			template<int i> using WriteInc = WriteIncOuter<i>;\
 \
 			WriteIterator & operator++() {\
 				Common::ForLoop<0,numNestings,WriteInc>::exec(writeIndex);\
@@ -718,10 +729,7 @@ ReadIterator vs WriteIterator
 				return WriteIterator(v);\
 			}\
 			static WriteIterator end(OwnerConstness & v) {\
-				intR writeIndex;\
-				/* inc 0 first */\
-				writeIndex[numNestings-1] = This::template count<numNestings-1>;\
-				return WriteIterator(v, writeIndex);\
+				return WriteIterator(v, WriteInc<0>::end());\
 			}\
 		};\
 \

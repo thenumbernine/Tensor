@@ -494,7 +494,6 @@ void test_Tensor() {
 		{
 			auto i = m.begin();
 			if constexpr (std::is_same_v<Tensor::int2::iterator::ReadInc<0>, Tensor::int2::ReadIncOuter<0>>) {
-// TODO WARNING setting WriteInc to WriteIncOuter is crashing, probably cuz it's used in write-ctors, and those are used elsewhere
 				// iterating in memory order for row-major
 				// also in left-right top-bottom order when read
 				// but you have to increment the last index first and first index last
