@@ -83,7 +83,7 @@ Swizzle will return a vector-of-references:
 functions:
 - `elemMul(a,b), matrixCompMult(a,b), hadamard(a,b)` = per-element multiplication aka Hadamard product.
 	$$elemMul(a,b)_I := a_I \cdot b_I$$
-- `dot(a,b)` = Frobenius dot.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
+- `dot(a,b), inner(a,b)` = Frobenius dot.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	$$dot(a,b) := a^I \cdot b_I$$
 - `lenSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
 	$$lenSq(a) := |a|^2 = a^I a_I$$
@@ -103,8 +103,9 @@ functions:
 	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
 - `transpose<from=0,to=1>(a)` = Transpose indexes `from` and `to`.  This will preserve storage optimizations, so transposing 0,1 of a sym-of-vec will produce a sym-of-vec, but transposing 0,2 or 1,2 of a sym-of-vec will produce a vec-of-vec-of-vec.
 	$$transpose(a)_{{i_1}...{i_p}...{i_q}...{i_n}} = a_{{i_1}...{i_q}...{i_p}...{i_n}}$$
-- `trace(m)` = Matrix trace = matrix contraction between two indexes.
+- `trace(m)` = Matrix trace = Tensor contraction between two indexes.
 	$$trace(a) = {a^i}_i$$
+- `contract<i=0,j=1>(a), interior(a)` = Tensor contraction / interior product of indexes 'i' and 'j'. For rank-2 tensors where i=0 and j=1, `contract(t)` is equivalent to `trace(t)`.
 - `diagonal(m)` = Matrix diagonal from vector.
 	$${diagonal(a)_{ij} = \delta_{ij} \cdot a_i$$
 
@@ -141,7 +142,7 @@ TODO:
 	  so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into vec-of-vec
 - shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
 - merge `::ExpandIthIndex<i> ::ExpandAllIndexes<>` into `::ExpandIndexes<int...>`
-
+- `::RemoveIthIndex<i>`, then get contract() working (and proly matrix-mul too)
 
 - better function matching for derivatives?
 - move secondderivative from Relativity to Tensor
@@ -157,3 +158,6 @@ TODO:
 - should I even keep separate member functions for .dot() etc?
 - __complex__ support.  Especially in norms.
 - preserve storage optimizations between tensor op tensor per-elem operations.  right now its just expanding all storage optimizations.
+
+- change all those functions types to be is_tensor_v when possible.
+- try to work around github's mathjax rendering errors.  looks fine on my own mathjax and on stackedit, but not on github.

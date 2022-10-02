@@ -1888,6 +1888,12 @@ typename T::Scalar dot(T const & a, T const & b) {
 	return sum;
 }
 
+// naming compat
+template<typename... T>
+auto inner(T&&... args) {
+	return dot(std::forward<T>(args)...);
+}
+
 template<typename T, int N>
 T lenSq(_vec<T,N> const & v) {
 	return dot(v,v);
@@ -1911,7 +1917,7 @@ _vec<T,N> normalize(_vec<T,N> const & v) {
 // c_i := ε_ijk * b_j * c_k
 template<typename T>
 requires std::is_same_v<typename _vec<T,3>::Scalar, T>
-_vec<T,3> cross(_vec<T,3> const & a, _vec<T,3> const & b) {
+auto cross(_vec<T,3> const & a, _vec<T,3> const & b) {
 	return _vec<T,3>(
 		a[1] * b[2] - a[2] * b[1],
 		a[2] * b[0] - a[0] * b[2],
@@ -1926,7 +1932,7 @@ requires (
 	&& is_tensor_v<B> 
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
-typename A::template ReplaceScalar<B> outer(A const & a, B const & b) {
+auto outer(A const & a, B const & b) {
 	using AB = typename A::template ReplaceScalar<B>;
 	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
 	return AB([&](typename AB::intN i) -> typename A::Scalar {
@@ -2022,6 +2028,61 @@ auto transpose(T const & t) {
 		});
 	}
 }
+
+// contraction of two indexes of a tensor
+#if 0 // TODO needs RemoveIthIndex
+template<int m=0, int n=1, typename T>
+requires (is_tensor_v<T>)
+auto contract(T const & t) {
+	using S = typename T::Scalar;
+	if constexpr(m > n) {
+		return contract<n,m,T>(t);
+	} else if constexpr (m == n) {
+		using R = typename T::template RemoveIthIndex<m>;
+		// TODO a macro to remove the m'th element from 'i'
+		//return R([](auto... is) -> S {
+		// or TODO implement intN access to asym (and fully sym)
+		return R([](typename R::intN i) -> S {
+			// static_assert R::intN::dims == T::intN::dims-1
+			auto j = typename T::intN([&](int jk) -> int {
+				if (jk < m) return i[jk];
+				if (jk == m) return 0;
+				return i[jk-1];
+			});
+			S sum = {};
+			for (int k = 0; k < T.dim<m>; ++k) {
+				j[m] = k;
+				sum += t(j) * t(j);
+			}
+			return sum;
+		});
+	} else { // m < n
+		using R = typename T::template RemoveIthIndex<n>::template RemoveIthIndex<m>;
+		return R([](typename R::intN i) -> S {
+			// static_assert R::intN::dims == T::intN::dims-2
+			auto j = typename T::intN([&](int jk) -> int {
+				if (jk < m) return i[jk];
+				if (jk == m) return 0;
+				if (jk < n) return i[jk-1];
+				if (jk == n) return 0;
+				return i[jk-2];
+			});
+			S sum = {};
+			for (int k = 0; k < T.dim<m>; ++k) {
+				j[m] = j[n] = k;
+				sum += t(j) * t(j);
+			}
+			return sum;
+		});
+	}
+}
+
+// naming compat
+template<typename... T>
+auto interior(T&&... args) {
+	return contract(std::forward<T>(args)...);
+}
+#endif
 
 
 // trace of a matrix
