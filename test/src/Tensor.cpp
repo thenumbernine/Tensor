@@ -12,18 +12,18 @@ namespace StaticTests {
 	static_assert(std::is_same_v<_tensorr<int,3,3>, _tensor<int,3,3,3>>);
 	static_assert(std::is_same_v<_tensorr<int,3,4>, _tensor<int,3,3,3,3>>);
 	
-	static_assert(GetNestingForIthIndex<_vec<int,3>, 0> == 0);
-	static_assert(GetNestingForIthIndex<_tensor<int,3,3>, 0> == 0);
-	static_assert(GetNestingForIthIndex<_tensor<int,3,3>, 1> == 1);
-	static_assert(GetNestingForIthIndex<_tensor<int,3,3,3>, 0> == 0);
-	static_assert(GetNestingForIthIndex<_tensor<int,3,3,3>, 1> == 1);
-	static_assert(GetNestingForIthIndex<_tensor<int,3,3,3>, 2> == 2);
-	static_assert(GetNestingForIthIndex<_sym<int,3>, 0> == 0);
-	static_assert(GetNestingForIthIndex<_sym<int,3>, 1> == 0);
-	static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 0> == 0);
-	static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 1> == 1);
-	static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 2> == 1);
-	static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 3> == 2);
+	static_assert(_vec<int,3>::template numNestingsToIndex<0> == 0);
+	static_assert(_tensor<int,3,3>::template numNestingsToIndex<0> == 0);
+	static_assert(_tensor<int,3,3>::template numNestingsToIndex<1> == 1);
+	static_assert(_tensor<int,3,3,3>::template numNestingsToIndex<0> == 0);
+	static_assert(_tensor<int,3,3,3>::template numNestingsToIndex<1> == 1);
+	static_assert(_tensor<int,3,3,3>::template numNestingsToIndex<2> == 2);
+	static_assert(_sym<int,3>::template numNestingsToIndex<0> == 0);
+	static_assert(_sym<int,3>::template numNestingsToIndex<1> == 0);
+	static_assert(_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>::template numNestingsToIndex<0> == 0);
+	static_assert(_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>::template numNestingsToIndex<1> == 1);
+	static_assert(_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>::template numNestingsToIndex<2> == 1);
+	static_assert(_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>::template numNestingsToIndex<3> == 2);
 
 	static_assert(std::is_same_v<ExpandIthIndex<_vec<int,3>, 0>, _tensor<int,3>>);
 	static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3>, 0>, _tensorr<int,3,2>>);
@@ -95,7 +95,7 @@ namespace StaticTests {
 	static_assert(std::is_same_v<int3x3::Nested<2>, int>);
 
 	static_assert(
-		GetNestingForIthIndex<float3s3,0> == GetNestingForIthIndex<float3s3,1>
+		float3s3::numNestingsToIndex<0> == float3s3::numNestingsToIndex<1>
 	);
 	static_assert(
 		is_sym_v<float3s3>

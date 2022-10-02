@@ -79,6 +79,7 @@ namespace Tensor {
 	/* TODO make a 'count<int nesting>', same as dim? */\
 	static constexpr int localCount = localDim;
 
+// this contains definitions of types and values used in all tensors
 // TODO rename this to indicate it comes after TENSOR_*_HEADER()
 #define TENSOR_HEADER()\
 \
@@ -90,33 +91,126 @@ namespace Tensor {
 	using Traits = VectorTraits<This>;\
 	using InnerTraits = VectorTraits<Inner>;\
 \
-	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the child-most nested class that isn't in our math library. */\
-	/* TODO why can't I use VectorTraits<This> here? */\
-	/* ... clang complains of operator*= += -= /= having multiple overloads */\
-	/* maybe because of circular ref?  _vec::Traits = VectorTraits<...>, VectorTraits<...>::Type = _vec ...*/\
-	using Scalar = typename InnerTraits::Scalar;\
+	struct ScalarImpl {\
+		static constexpr auto value() {\
+			if constexpr (is_tensor_v<Inner>) {\
+				return Inner::ScalarImpl::value();\
+			} else {\
+				return std::optional<Inner>();\
+			}\
+		}\
+	};\
+	using Scalar = typename decltype(ScalarImpl::value())::value_type;\
 \
-	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
 	/*  for vectors-of-vectors this is the nesting. */\
 	/*  if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each. */\
 	/**/\
-	/* if we do recursive case in VectorTraits (failing for rank-3 and above): */\
-	/*static constexpr int rank = VectorTraits<This>::rank;*/\
-	/* if we do recursive case here: */\
-	static constexpr int rank = localRank + InnerTraits::rank;\
+	struct RankImpl {\
+		static constexpr int value() {\
+			if constexpr (is_tensor_v<Inner>) {\
+				return localRank + Inner::RankImpl::value();\
+			} else {\
+				return localRank;\
+			}\
+		}\
+	};\
+	static constexpr int rank = RankImpl::value();\
 \
 	/* used for vector-dereferencing into the tensor. */\
 	using intN = _vec<int,rank>;\
 \
 	/* how many _vec<_vec<...'s there are ... no extra +'s for multi-rank nestings */\
 	/* so _sym<> has numNestings=1 and rank=2, _vec<> has numNestings=1 and rank=1, _vec_vec<>>==_mat<> has numNestings=2 and rank=2 */\
-	static constexpr int numNestings = Traits::numNestings;\
-	/*static constexpr int numNestings = 1 + InnerTraits::numNestings;*/
+	struct NumNestingImpl {\
+		static constexpr int value() {\
+			if constexpr (is_tensor_v<Inner>) {\
+				return 1 + Inner::NumNestingImpl::value();\
+			} else {\
+				return 1;\
+			}\
+		};\
+	};\
+	static constexpr int numNestings = NumNestingImpl::value();\
 
 
-//for giving operators to the Cons and Prim vector classes
+//::dims returns the total nested dimensions as an int-vec
+#define TENSOR_ADD_DIMS()\
+\
+	template<int index>\
+	struct NestedImpl {\
+		static constexpr auto value() {\
+			static_assert(index >= 0);\
+			if constexpr (index >= numNestings) {\
+				return Scalar();\
+			} else if constexpr (index == 0) {\
+				return This();\
+			} else {\
+				return typename Inner::template Nested<index-1>();\
+			}\
+		}\
+	};\
+	template<int index>\
+	using Nested = decltype(NestedImpl<index>::value());\
+\
+	template<int i>\
+	static constexpr int count = Nested<i>::localCount;\
+\
+	/* get the number of nestings to the j'th index */\
+	template<int index>\
+	struct NestingForIndexImpl {\
+		static constexpr int value() {\
+			static_assert(index >= 0 && index < rank);\
+			if constexpr (index < localRank) {\
+				return 0;\
+			} else {\
+				using Impl = typename Inner::template NestingForIndexImpl<index - localRank>;\
+				return 1 + Impl::value();\
+			}\
+		}\
+	};\
+	template<int index>\
+	static constexpr int numNestingsToIndex = NestingForIndexImpl<index>::value();\
+\
+	/* todo just 'Inner' and Inner => 'LocalInner' ? */\
+	template<int index>\
+	using InnerForIndex = Nested<numNestingsToIndex<index>>;\
+\
+	template<int index>\
+	static constexpr int dim = InnerForIndex<index>::localDim;\
+\
+	/* .. then for loop iterator in dims() function and just a single exceptional case in the dims() function is needed */\
+	static constexpr auto DimsImpl() {\
+		/* if this is a vector-of-scalars, such that the dims would be an int1, just use int */\
+		if constexpr (rank == 1) {\
+			return localDim;\
+		} else {\
+			/* use an int[localDim] */\
+			intN dimv;\
+/* TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly. */\
+/* TODO can I change the template unroll metaprogram to use constexpr lambdas? */\
+			for (int i = 0; i < localRank; ++i) {\
+				dimv.s[i] = localDim;\
+			}\
+			if constexpr (localRank < rank) {\
+				/* special case reading from int */\
+				if constexpr (Inner::rank == 1) {\
+					dimv.s[localRank] = Inner::DimsImpl();\
+				} else {\
+					/* assigning sub-vector */\
+					auto innerDim = Inner::DimsImpl();\
+					for (int i = 0; i < rank-localRank; ++i) {\
+						dimv.s[i+localRank] = innerDim.s[i];\
+					}\
+				}\
+			}\
+			return dimv;\
+		}\
+	}\
+	static constexpr auto dims = DimsImpl();
+
+//for giving operators to tensor classes
 //how can you add correctly-typed ops via crtp to a union?
 //unions can't inherit.
 //until then...
@@ -147,59 +241,6 @@ namespace Tensor {
 	constexpr bool operator!=(This const & b) const {\
 		return !operator==(b);\
 	}
-
-//::dims returns the total nested dimensions as an int-vec
-#define TENSOR_ADD_DIMS()\
-\
-	template<int i> static constexpr int dim = Traits::template calc_ith_dim<i>();\
-\
-	/* .. then for loop iterator in dims() function and just a single exceptional case in the dims() function is needed */\
-	static constexpr auto calc_dims() {\
-		/* if this is a vector-of-scalars, such that the dims would be an int1, just use int */\
-		if constexpr (rank == 1) {\
-			return localDim;\
-		} else {\
-			/* use an int[localDim] */\
-			intN dimv;\
-/* TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly. */\
-/* TODO can I change the template unroll metaprogram to use constexpr lambdas? */\
-			for (int i = 0; i < localRank; ++i) {\
-				dimv.s[i] = localDim;\
-			}\
-			if constexpr (localRank < rank) {\
-				/* special case reading from int */\
-				if constexpr (Inner::rank == 1) {\
-					dimv.s[localRank] = Inner::calc_dims();\
-				} else {\
-					/* assigning sub-vector */\
-					auto innerDim = Inner::calc_dims();\
-					for (int i = 0; i < rank-localRank; ++i) {\
-						dimv.s[i+localRank] = innerDim.s[i];\
-					}\
-				}\
-			}\
-			return dimv;\
-		}\
-	}\
-	static constexpr auto dims = calc_dims();\
-\
-	template<int index>\
-	struct NestedImpl {\
-		static constexpr auto value() {\
-			static_assert(index >= 0);\
-			if constexpr (index >= numNestings) {\
-				return Scalar();\
-			} else if constexpr (index == 0) {\
-				return This();\
-			} else {\
-				return typename Inner::template Nested<index-1>();\
-			}\
-		}\
-	};\
-	template<int index>\
-	using Nested = decltype(NestedImpl<index>::value());\
-\
-	template<int i> static constexpr int count = Nested<i>::localCount;
 
 // danger ... danger ...
 #define TENSOR_ADD_CAST_BOOL_OP()\
@@ -620,27 +661,28 @@ ReadIterator vs WriteIterator
 	/* wait, if Write<This> write() is called by a const object ... then the return type is const ... could I detect that from within Write to forward on to Write's inner class ctor? */\
 	Write<This const> write() const { return Write<This const>(*this); }\
 
-#define TENSOR_ADD_RECAST(classname)\
+// I would put it in TENSOR_HEADER()
+//  except _quat can't handle this, because it only uses one template arg.
+// I guess alongside 'Template' I could provide a single-arg template with the localDim already curried, then _quat would work too.
+#define TENSOR_ADD_REPLACE_SCALAR()\
 \
-	template<typename NewInner>\
-	struct Recast_DontEvalInner {\
+	template<typename NewScalar>\
+	struct ReplaceScalarImpl {\
 		static auto getType() {\
 			if constexpr (numNestings == 1) {\
-				return NewInner();\
+				return NewScalar();\
 			} else {\
-				return typename Inner::template replaceScalar<NewInner>();\
+				return typename Inner::template ReplaceScalar<NewScalar>();\
 			}\
 		}\
 	};\
-	template<typename NewInner> using replaceScalar = classname<\
-		decltype(Recast_DontEvalInner<NewInner>::getType()),\
-		localDim\
-	>;
+	template<typename NewScalar>\
+	using ReplaceScalar = Template<decltype(ReplaceScalarImpl<NewScalar>::getType()), localDim>;
 
 // vector.volume() == the volume of a size reprensted by the vector
+// assumes Inner operator* exists
+// TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims
 #define TENSOR_ADD_VOLUME()\
-	/* assumes Inner operator* exists */\
-	/* TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims */\
 	T volume() const {\
 		T res = s[0];\
 		for (int i = 1; i < localCount; ++i) {\
@@ -670,7 +712,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_SCALAR_OP_EQ(/=)\
 	TENSOR_ADD_UNM()\
 	TENSOR_ADD_CMP_OP()\
-	TENSOR_ADD_RECAST(classname)
+	TENSOR_ADD_REPLACE_SCALAR()
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
@@ -1602,22 +1644,6 @@ struct _tensorr_impl<Scalar, dim, 0> {
 template<typename Src, int dim, int rank>
 using _tensorr = typename _tensorr_impl<Src, dim, rank>::T;
 
-// get the i'th nesting for the j'th index
-
-template<typename Src, int index>
-struct GetNestingForIthIndexImpl {
-	static constexpr int value() {
-		static_assert(index >= 0 && index < Src::rank);
-		if constexpr (index < Src::localRank) {
-			return 0;
-		} else {
-			return 1 + GetNestingForIthIndexImpl<typename Src::Inner, index - Src::localRank>::value();
-		}
-	}
-};
-template<typename Src, int index>
-constexpr int GetNestingForIthIndex = GetNestingForIthIndexImpl<Src, index>::value();
-
 // expand i'th index
 
 template<
@@ -1861,8 +1887,8 @@ requires (
 	&& is_tensor_v<B> 
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
-typename A::template replaceScalar<B> outer(A const & a, B const & b) {
-	using AB = typename A::template replaceScalar<B>;
+typename A::template ReplaceScalar<B> outer(A const & a, B const & b) {
+	using AB = typename A::template ReplaceScalar<B>;
 	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
 	return AB([&](typename AB::intN i) -> typename A::Scalar {
 		static_assert(decltype(i)::template dim<0> == A::rank + B::rank);
@@ -1943,7 +1969,7 @@ auto transpose(T const & t) {
 		return t;
 	} else if constexpr(
 		// don't reshape internal structure if we're using a symmetric matrix
-		GetNestingForIthIndex<T,m> == GetNestingForIthIndex<T,n>
+		T::template numNestingsToIndex<m> == T::template numNestingsToIndex<n>
 		&& is_sym_v<T>
 	) {
 		return t;

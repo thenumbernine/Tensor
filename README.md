@@ -36,10 +36,12 @@
 - `::dims` = get a int-vector with all the dimensions.  For rank-1 this is just an int.  Maybe I'll change it to be intN for all ranks, not sure.
 - `::localDim` = get the dimension size of the current class, equal to `dim<0>`.
 - `::numNestings` = get the number of nested classes.
-- `::count<i>` = get the storage size of the i'th nested class.
+- `::count<i>` = get the storage size of the i'th nested class.  i is from 0 to numNestings-1.
 - `::localCount` = get the storage size of the current class, equal to `count<0>`.
+- `::Nested<i>` = get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
+- `::numNestingsToIndex<i>` = gets the number of nestings deep that the index 'i' is located.
+- `::InnerForIndex<i>` = get the type associated with the i'th index, where i is from 0 to rank-1.  Equivalent to `::Nested<numNestingsToIndex<i>>`  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
 - `::replaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most replaced by T.
-- `::Nested<i>` = get the i'th nested type from our tensor type.
 
 Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.
@@ -100,7 +102,6 @@ Tensor Template Helpers (subject to change)
 - `is_vec_v<T>` = is it a _vec<T,N>?
 - `is_sym_v<T>` = is it a _sym<T,N>?
 - `is_asym_v<T>` = is it a _asym<T,N>?
-- `GetNestingForIthIndex<T,i>` = get the tensor type associated with the i'th index.  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
 - `ExpandIthIndex<T,i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
 - `ExpandAllIndexes<T>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
 
@@ -125,7 +126,6 @@ TODO:
 	- once we have this, why not rank-3 rank-4 etc sym or antisym ... I'm sure there's some math on how to calculate the unique # of vars
 
 - better / member names for:
-- - GetNestingForIthIndex = InnerOfIndex<> or just Inner<> even, and change Inner to LocalInner or something
 - - ExpandIthIndex = idk
 - - ExpandAllIndexes = idk
 
