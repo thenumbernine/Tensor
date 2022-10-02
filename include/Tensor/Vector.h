@@ -1019,331 +1019,6 @@ struct _vec<T,4> {
 	TENSOR3_VEC4_ADD_SWIZZLE4()
 };
 
-
-//convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
-// ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed
-// ... also GLSL is column-major so between this and GLSL the indexes have to be transposed.
-template<typename T, int dim1, int dim2> using _mat = _vec<_vec<T, dim2>, dim1>;
-
-// vector op vector, matrix op matrix, and tensor op tensor per-component operators
-
-#define TENSOR_ADD_VECTOR_VECTOR_OP(op)\
-template<typename T, int N>\
-_vec<T,N> operator op(_vec<T,N> const & a, _vec<T,N> const & b) {\
-	_vec<T,N> c;\
-	for (int i = 0; i < N; ++i) {\
-		c[i] = a[i] op b[i];\
-	}\
-	return c;\
-}
-
-TENSOR_ADD_VECTOR_VECTOR_OP(+)
-TENSOR_ADD_VECTOR_VECTOR_OP(-)
-TENSOR_ADD_VECTOR_VECTOR_OP(/)
-
-// vector op scalar, scalar op vector, matrix op scalar, scalar op matrix, tensor op scalar, scalar op tensor operations
-// need to require that T == _vec<T,N>::Scalar otherwise this will spill into vector/matrix operations
-// c_i := a_i * b
-// c_i := a * b_i
-
-#define TENSOR_ADD_VECTOR_SCALAR_OP(op)\
-template<typename T, int N>\
-_vec<T,N> operator op(_vec<T,N> const & a, typename _vec<T,N>::Scalar const & b) {\
-	_vec<T,N> c;\
-	for (int i = 0; i < N; ++i) {\
-		c[i] = a[i] op b;\
-	}\
-	return c;\
-}\
-template<typename T, int N>\
-_vec<T,N> operator op(typename _vec<T,N>::Scalar const & a, _vec<T,N> const & b) {\
-	_vec<T,N> c;\
-	for (int i = 0; i < N; ++i) {\
-		c[i] = a op b[i];\
-	}\
-	return c;\
-}
-
-TENSOR_ADD_VECTOR_SCALAR_OP(+)
-TENSOR_ADD_VECTOR_SCALAR_OP(-)
-TENSOR_ADD_VECTOR_SCALAR_OP(*)
-TENSOR_ADD_VECTOR_SCALAR_OP(/)
-
-// TODO replace all operator* with outer+contract to generalize to any rank
-// maybe generalize further with the # of indexes to contract: 
-// c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
-
-// vector * vector
-//TENSOR_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
-// so it has to be constrained to only T == _vec<T,N>:Scalar
-// c_i := a_i * b_i
-template<typename T, int N>
-requires std::is_same_v<typename _vec<T,N>::Scalar, T>
-_vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
-	_vec<T,N> c;
-	for (int i = 0; i < N; ++i) {
-		c[i] = a[i] * b[i];
-	}
-	return c;
-}
-
-// matrix * matrix operators
-// c_ik := a_ij * b_jk
-template<typename T, int dim1, int dim2, int dim3>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
-_mat<T,dim1,dim3> operator*(_mat<T,dim1,dim2> const & a, _mat<T,dim2,dim3> const & b) {
-	_mat<T,dim1,dim3> c;
-	for (int i = 0; i < dim1; ++i) {
-		for (int j = 0; j < dim3; ++j) {
-			T sum = {};
-			for (int k = 0; k < dim2; ++k) {
-				sum += a[i][k] * b[k][j];
-			}
-			c[i][j] = sum;
-		}
-	}
-	return c;
-}
-
-// (row-)vector * matrix operator
-// c_j := a_i * b_ij
-
-template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
-_vec<T,dim2> operator*(_vec<T,dim1> const & a, _mat<T,dim1,dim2> const & b) {
-	_vec<T,dim2> c;
-	for (int j = 0; j < dim2; ++j) {
-		T sum = {};
-		for (int i = 0; i < dim1; ++i) {
-			sum += a[i] * b[i][j];
-		}
-		c[j] = sum;
-	}
-	return c;
-}
-
-// matrix * (column-)vector operator
-// c_i := a_ij * b_j
-
-template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
-_vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
-	_vec<T,dim1> c;
-	for (int i = 0; i < dim1; ++i) {
-		T sum = {};
-		for (int j = 0; j < dim2; ++j) {
-			sum += a[i][j] * b[j];
-		}
-		c[i] = sum;
-	}
-	return c;
-}
-
-//element-wise multiplication
-// c_i1_i2_... := a_i1_i2_... * b_i1_i2_...
-// Hadamard product / per-element multiplication
-// TODO let 'a' and 'b' be dif types, so long as rank and dim match i.e. so long as the read-iterator domain matches.
-//  pick the result to be the generalization of the two, so if one has sym<> indexes and the other doesn't use the not-sym in the result
-template<typename T>
-requires is_tensor_v<T>
-T elemMul(T const & a, T const & b) {
-	return T([&](typename T::intN i) -> typename T::Scalar {
-		return a(i) * b(i);
-	});
-}
-
-// GLSL naming compat
-// TODO only for matrix? meh?
-template<typename... T>
-auto matrixCompMult(T&&... args) {
-	return elemMul(std::forward<T>(args)...);
-}
-
-// vector functions
-// TODO for these, should I call into the member function?
-
-// c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
-// Should this generalize to a contraction?  or to a Frobenius norm?
-// Frobenius norm, since * will already be contraction
-// TODO let 'a' and 'b' be dif types, so long as rank and dim match i.e. so long as the read-iterator domain matches.
-template<typename T>
-requires is_tensor_v<T>
-typename T::Scalar dot(T const & a, T const & b) {
-	typename T::Scalar sum = {};
-	for (auto i = a.begin(); i != a.end(); ++i) {
-		sum += a(i.index) * b(i.index);
-	}
-	return sum;
-}
-
-template<typename T, int N>
-T lenSq(_vec<T,N> const & v) {
-	return dot(v,v);
-}
-
-template<typename T, int N>
-T length(_vec<T,N> const & v) {
-	return sqrt(lenSq(v));
-}
-
-template<typename T, int N>
-T distance(_vec<T,N> const & a, _vec<T,N> const & b) {
-	return length(b - a);
-}
-
-template<typename T, int N>
-_vec<T,N> normalize(_vec<T,N> const & v) {
-	return v / length(v);
-}
-
-// c_i := ε_ijk * b_j * c_k
-template<typename T>
-requires std::is_same_v<typename _vec<T,3>::Scalar, T>
-_vec<T,3> cross(_vec<T,3> const & a, _vec<T,3> const & b) {
-	return _vec<T,3>(
-		a[1] * b[2] - a[2] * b[1],
-		a[2] * b[0] - a[0] * b[2],
-		a[0] * b[1] - a[1] * b[0]);
-}
-
-// outer product of tensors c_i1_..ip_j1_..jq = a_i1..ip * b_j1..jq
-// for vectors: c_ij := a_i * b_j
-template<typename A, typename B>
-requires (
-	is_tensor_v<A> 
-	&& is_tensor_v<B> 
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-)
-typename A::template replaceScalar<B> outer(A const & a, B const & b) {
-	using AB = typename A::template replaceScalar<B>;
-	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
-	return AB([&](typename AB::intN i) -> typename A::Scalar {
-		static_assert(decltype(i)::template dim<0> == A::rank + B::rank);
-		return a(i.template subset<A::rank, 0>()) * b(i.template subset<B::rank, A::rank>());
-	});
-}
-
-// GLSL naming compat
-template<typename... T>
-auto outerProduct(T&&... args) {
-	return outer(std::forward<T>(args)...);
-}
-
-// annnnnd this was so useful here's the non-transpose case
-// TODO make a template that expands the i'th index
-
-template<
-	typename Src, 	// source tensor
-	int i, 			// current index
-	int rank		// final index
->
-struct ExpandAllIndexesImpl {
-	static constexpr int getdim() {
-		return Src::template dim<i>;
-	}
-	using T = _vec<
-		typename ExpandAllIndexesImpl<Src, i+1, rank>::T,
-		getdim()
-	>;
-};
-// final case
-template<typename Src, int i>
-struct ExpandAllIndexesImpl<Src, i, i> {
-	using T = typename Src::Scalar;
-};
-template<typename Src>
-using ExpandAllIndexes = typename ExpandAllIndexesImpl<Src, 0, Src::rank>::T;
-
-// matrix functions
-
-//https://stackoverflow.com/a/50471331
-template<typename T, std::size_t N, typename... Ts>
-constexpr std::array<T, N> permute(
-	std::array<T, N> const & arr,
-	std::array<int, N> const & permutation,
-	Ts&&... processed
-) {
-	if constexpr (sizeof...(Ts) == N) {
-		return std::array<T, N>{ std::forward<Ts>(processed)... };
-	} else {
-		return permute(
-			arr,
-			permutation,
-			std::forward<Ts>(processed)...,
-			arr[permutation[sizeof...(Ts)]]
-		);
-	}
-}
-// TODO how to unpack a tuple-of-ints into an argument list
-
-
-// transpose ... right now only 2 indexes but for any rank tensor
-// also the result doesn't respect storage optimizations, so the result will be a rank-n _vec
-
-template<
-	typename Src, 	// source tensor
-	int i, 			// current index
-	int rank,		// final index
-	
-	// TODO instead of two, use this: 
-	//https://stackoverflow.com/a/50471331
-	int m,			// swap #1
-	int n			// swap #2
->
-struct TransposeResultWithAllIndexesExpanded {
-	static constexpr int getdim() {
-		if constexpr (i == m) {
-			return Src::template dim<n>;
-		} else if constexpr (i == n) {
-			return Src::template dim<m>;
-		} else {
-			return Src::template dim<i>;
-		}
-	}
-	using T = _vec<
-		typename TransposeResultWithAllIndexesExpanded<Src, i+1, rank, m, n>::T,
-		getdim()
-	>;
-};
-// final case
-template<typename Src, int i, int m, int n>
-struct TransposeResultWithAllIndexesExpanded<Src, i, i, m, n> {
-	using T = typename Src::Scalar;
-};
-
-// if the m'th or n'th index is a sym then i'll have to replace it with two _Vec's anyways
-//  so for now replace it all with vec's
-template<int m=0, int n=1, typename T>
-auto transpose(T const & t) {
-	using U = typename TransposeResultWithAllIndexesExpanded<T, 0, T::rank, m, n>::T;
-	return U([&](typename T::intN i) {
-		std::swap(i(m), i(n));
-		return t(i);
-	});
-}
-
-// trace of a matrix
-
-template<typename T, int N>
-_mat<T,N,N> trace(_vec<T,N> const & v) {
-	T sum = v(0,0);
-	for (int i = 1; i < N; ++i) {
-		sum += v(i,i);
-	}
-	return sum;
-}
-
-// diagonal matrix from vector
-
-template<typename T, int N>
-_mat<T,N,N> diagonal(_vec<T,N> const & v) {
-	_mat<T,N,N> a;
-	for (int i = 0; i < N; ++i) {
-		a[i][i] = v[i];
-	}
-	return a;
-}
-
 // rank-2 optimized storage
 
 // symmetric matrices
@@ -1807,6 +1482,543 @@ struct _asym {
 
 	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(_asym)
 };
+
+// dense vec-of-vec
+
+//convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
+// ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed
+// ... also GLSL is column-major so between this and GLSL the indexes have to be transposed.
+template<typename T, int dim1, int dim2> using _mat = _vec<_vec<T, dim2>, dim1>;
+
+
+// some template metaprogram helpers
+//  needed for the math function 
+//  including operators, esp *
+
+// _tensori helpers:
+// _tensor<T, index_vec<dim>, index_vec<dim2>, ..., index_vec<dimN>>
+//  use index_sym<> index_asym<> for injecting storage optimization
+// _tensor<T, index_sym<dim1>, ..., dimN>
+
+template<int dim>
+struct index_vec {
+	template<typename T>
+	using type = _vec<T,dim>;
+	// so (hopefully) index_vec<dim><T> == _vec<dim,T>
+};
+
+template<int dim>
+struct index_sym {
+	template<typename T>
+	using type = _sym<T,dim>;
+};
+
+template<int dim>
+struct index_asym {
+	template<typename T>
+	using type = _asym<T,dim>;
+};
+
+// _tensori:
+// tensor which allows custom nested storage, such as symmetric indexes
+
+template<typename T, typename Index, typename... Indexes>
+struct _tensori_impl {
+	using tensor = typename Index::template type<typename _tensori_impl<T, Indexes...>::tensor>;
+};
+
+template<typename T, typename Index>
+struct _tensori_impl<T, Index> {
+	using tensor = typename Index::template type<T>;
+};
+
+template<typename T, typename Index, typename... Indexes>
+using _tensori = typename _tensori_impl<T, Index, Indexes...>::tensor;
+
+
+// make a tensor from a list of dimensions
+// ex: _tensor<T, dim1, ..., dimN>
+// fully expanded storage - no spatial optimizations
+// TODO can I accept template args as int or Index?
+// maybe vararg function return type and decltype()?
+
+template<typename T, int dim, int... dims>
+struct _tensor_impl {
+	using tensor = _vec<typename _tensor_impl<T, dims...>::tensor, dim>;
+};
+
+template<typename T, int dim>
+struct _tensor_impl<T, dim> {
+	using tensor = _vec<T,dim>;
+};
+
+template<typename T, int dim, int... dims>
+using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
+
+// type of a tensor with specific rank and dimension (for all indexes)
+
+template<typename Scalar, int dim, int rank>
+struct _tensorr_impl {
+	using T = _vec<typename _tensorr_impl<Scalar, dim, rank-1>::T, dim>;
+};
+template<typename Scalar, int dim> 
+struct _tensorr_impl<Scalar, dim, 0> {
+	using T = Scalar;
+};
+template<typename Src, int dim, int rank>
+using _tensorr = typename _tensorr_impl<Src, dim, rank>::T;
+
+static_assert(std::is_same_v<_tensorr<int,3,1>, _tensor<int,3>>);
+static_assert(std::is_same_v<_tensorr<int,3,2>, _tensor<int,3,3>>);
+static_assert(std::is_same_v<_tensorr<int,3,3>, _tensor<int,3,3,3>>);
+static_assert(std::is_same_v<_tensorr<int,3,4>, _tensor<int,3,3,3,3>>);
+
+// get the i'th nesting for the j'th index
+
+template<typename Src, int index>
+struct GetNestingForIthIndexImpl {
+	static constexpr int value() {
+		static_assert(index >= 0 && index < Src::rank);
+		if constexpr (index < Src::localRank) {
+			return 0;
+		} else {
+			return 1 + GetNestingForIthIndexImpl<typename Src::Inner, index - Src::localRank>::value();
+		}
+	}
+};
+template<typename Src, int index>
+constexpr int GetNestingForIthIndex = GetNestingForIthIndexImpl<Src, index>::value();
+
+static_assert(GetNestingForIthIndex<_vec<int,3>, 0> == 0);
+static_assert(GetNestingForIthIndex<_tensor<int,3,3>, 0> == 0);
+static_assert(GetNestingForIthIndex<_tensor<int,3,3>, 1> == 1);
+static_assert(GetNestingForIthIndex<_tensor<int,3,3,3>, 0> == 0);
+static_assert(GetNestingForIthIndex<_tensor<int,3,3,3>, 1> == 1);
+static_assert(GetNestingForIthIndex<_tensor<int,3,3,3>, 2> == 2);
+static_assert(GetNestingForIthIndex<_sym<int,3>, 0> == 0);
+static_assert(GetNestingForIthIndex<_sym<int,3>, 1> == 0);
+static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 0> == 0);
+static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 1> == 1);
+static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 2> == 1);
+static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 3> == 2);
+
+// expand i'th index
+
+template<
+	typename Src,	// source tensor
+	int index		// index to expand
+>
+struct ExpandIthIndexImpl {
+	static constexpr auto value() {
+		static_assert(index >= 0 && index < Src::rank);
+		if constexpr (index < Src::localRank) {
+			if constexpr (Src::localRank == 1) {
+				// nothing changes
+				return Src();
+			} else {
+				// return a dense-tensor of depth 'localRank' with inner type 'Src::Inner'
+				return _tensorr<
+					typename Src::Traits::template Nested<Src::localRank>,
+					Src::localDim,
+					Src::localRank
+				>();
+			}
+		} else {
+			return ExpandIthIndexImpl<typename Src::Inner, index - Src::localRank>::value();
+		}
+	}
+};
+template<typename Src, int index>
+using ExpandIthIndex = decltype(ExpandIthIndexImpl<Src, index>::value());
+
+#if 0
+static_assert(std::is_same_v<ExpandIthIndex<_vec<int,3>, 0>, _tensor<int,3>>);
+static_assert(std::is_same_v<ExpandIthIndex<_sym<int,3>, 0>, _tensor<int,3,3>>);
+static_assert(std::is_same_v<ExpandIthIndex<_sym<int,3>, 1>, _tensor<int,3,3>>);
+static_assert(std::is_same_v<
+	ExpandIthIndex<
+		_tensori<int,index_vec<3>,index_vec<3>,index_vec<3>,index_vec<3>>, 
+		0
+	>,
+	_tensorr<int,3,4>
+>);
+static_assert(std::is_same_v<
+	ExpandIthIndex<
+		_tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 
+		0
+	>,
+	_tensorr<int,3,4>
+>);
+static_assert(std::is_same_v<
+	ExpandIthIndex<
+		_tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>, 
+		0
+	>,
+	_tensorr<int,3,4>
+>);
+static_assert(std::is_same_v<
+	ExpandIthIndex<
+		_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 
+		0
+	>,
+	_tensorr<int,3,4>
+>);
+static_assert(std::is_same_v<
+	ExpandIthIndex<
+		_tensori<int,index_vec<3>,index_asym<3>,index_vec<3>>, 
+		0
+	>,
+	_tensorr<int,3,4>
+>);
+static_assert(std::is_same_v<
+	ExpandIthIndex<
+		_tensori<int,index_vec<3>,index_vec<3>,index_sym<3>>, 
+		0
+	>,
+	_tensorr<int,3,4>
+>);
+static_assert(std::is_same_v<
+	ExpandIthIndex<
+		_tensori<int,index_vec<3>,index_vec<3>,index_asym<3>>, 
+		0
+	>,
+	_tensorr<int,3,4>
+>);
+static_assert(std::is_same_v<
+	ExpandIthIndex<
+		_tensori<int,index_sym<3>,index_sym<3>>, 
+		0
+	>,
+	_tensorr<int,3,4>
+>);
+static_assert(std::is_same_v<
+	ExpandIthIndex<
+		_tensori<int,index_asym<3>,index_asym<3>>, 
+		0
+	>,
+	_tensorr<int,3,4>
+>);
+#endif
+
+// expand all indexes 
+
+template<
+	typename Src, 	// source tensor
+	int i, 			// current index
+	int rank		// final index
+>
+struct ExpandAllIndexesImpl {
+	static constexpr int getdim() {
+		return Src::template dim<i>;
+	}
+	using T = _vec<
+		typename ExpandAllIndexesImpl<Src, i+1, rank>::T,
+		getdim()
+	>;
+};
+template<typename Src, int rank>
+struct ExpandAllIndexesImpl<Src, rank, rank> {
+	using T = typename Src::Scalar;
+};
+template<typename Src>
+using ExpandAllIndexes = typename ExpandAllIndexesImpl<Src, 0, Src::rank>::T;
+
+
+
+// vector op vector, matrix op matrix, and tensor op tensor per-component operators
+
+#define TENSOR_ADD_VECTOR_VECTOR_OP(op)\
+template<typename T, int N>\
+_vec<T,N> operator op(_vec<T,N> const & a, _vec<T,N> const & b) {\
+	_vec<T,N> c;\
+	for (int i = 0; i < N; ++i) {\
+		c[i] = a[i] op b[i];\
+	}\
+	return c;\
+}
+
+TENSOR_ADD_VECTOR_VECTOR_OP(+)
+TENSOR_ADD_VECTOR_VECTOR_OP(-)
+TENSOR_ADD_VECTOR_VECTOR_OP(/)
+
+// vector op scalar, scalar op vector, matrix op scalar, scalar op matrix, tensor op scalar, scalar op tensor operations
+// need to require that T == _vec<T,N>::Scalar otherwise this will spill into vector/matrix operations
+// c_i := a_i * b
+// c_i := a * b_i
+
+#define TENSOR_ADD_VECTOR_SCALAR_OP(op)\
+template<typename T, int N>\
+_vec<T,N> operator op(_vec<T,N> const & a, typename _vec<T,N>::Scalar const & b) {\
+	_vec<T,N> c;\
+	for (int i = 0; i < N; ++i) {\
+		c[i] = a[i] op b;\
+	}\
+	return c;\
+}\
+template<typename T, int N>\
+_vec<T,N> operator op(typename _vec<T,N>::Scalar const & a, _vec<T,N> const & b) {\
+	_vec<T,N> c;\
+	for (int i = 0; i < N; ++i) {\
+		c[i] = a op b[i];\
+	}\
+	return c;\
+}
+
+TENSOR_ADD_VECTOR_SCALAR_OP(+)
+TENSOR_ADD_VECTOR_SCALAR_OP(-)
+TENSOR_ADD_VECTOR_SCALAR_OP(*)
+TENSOR_ADD_VECTOR_SCALAR_OP(/)
+
+// TODO replace all operator* with outer+contract to generalize to any rank
+// maybe generalize further with the # of indexes to contract: 
+// c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
+
+// vector * vector
+//TENSOR_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
+// so it has to be constrained to only T == _vec<T,N>:Scalar
+// c_i := a_i * b_i
+template<typename T, int N>
+requires std::is_same_v<typename _vec<T,N>::Scalar, T>
+_vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
+	_vec<T,N> c;
+	for (int i = 0; i < N; ++i) {
+		c[i] = a[i] * b[i];
+	}
+	return c;
+}
+
+// matrix * matrix operators
+// c_ik := a_ij * b_jk
+template<typename T, int dim1, int dim2, int dim3>
+requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
+_mat<T,dim1,dim3> operator*(_mat<T,dim1,dim2> const & a, _mat<T,dim2,dim3> const & b) {
+	_mat<T,dim1,dim3> c;
+	for (int i = 0; i < dim1; ++i) {
+		for (int j = 0; j < dim3; ++j) {
+			T sum = {};
+			for (int k = 0; k < dim2; ++k) {
+				sum += a[i][k] * b[k][j];
+			}
+			c[i][j] = sum;
+		}
+	}
+	return c;
+}
+
+// (row-)vector * matrix operator
+// c_j := a_i * b_ij
+
+template<typename T, int dim1, int dim2>
+requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
+_vec<T,dim2> operator*(_vec<T,dim1> const & a, _mat<T,dim1,dim2> const & b) {
+	_vec<T,dim2> c;
+	for (int j = 0; j < dim2; ++j) {
+		T sum = {};
+		for (int i = 0; i < dim1; ++i) {
+			sum += a[i] * b[i][j];
+		}
+		c[j] = sum;
+	}
+	return c;
+}
+
+// matrix * (column-)vector operator
+// c_i := a_ij * b_j
+
+template<typename T, int dim1, int dim2>
+requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
+_vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
+	_vec<T,dim1> c;
+	for (int i = 0; i < dim1; ++i) {
+		T sum = {};
+		for (int j = 0; j < dim2; ++j) {
+			sum += a[i][j] * b[j];
+		}
+		c[i] = sum;
+	}
+	return c;
+}
+
+//element-wise multiplication
+// c_i1_i2_... := a_i1_i2_... * b_i1_i2_...
+// Hadamard product / per-element multiplication
+// TODO let 'a' and 'b' be dif types, so long as rank and dim match i.e. so long as the read-iterator domain matches.
+//  pick the result to be the generalization of the two, so if one has sym<> indexes and the other doesn't use the not-sym in the result
+template<typename T>
+requires is_tensor_v<T>
+T elemMul(T const & a, T const & b) {
+	return T([&](typename T::intN i) -> typename T::Scalar {
+		return a(i) * b(i);
+	});
+}
+
+// GLSL naming compat
+// TODO only for matrix? meh?
+template<typename... T>
+auto matrixCompMult(T&&... args) {
+	return elemMul(std::forward<T>(args)...);
+}
+
+// vector functions
+// TODO for these, should I call into the member function?
+
+// c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
+// Should this generalize to a contraction?  or to a Frobenius norm?
+// Frobenius norm, since * will already be contraction
+// TODO let 'a' and 'b' be dif types, so long as rank and dim match i.e. so long as the read-iterator domain matches.
+template<typename T>
+requires is_tensor_v<T>
+typename T::Scalar dot(T const & a, T const & b) {
+	typename T::Scalar sum = {};
+	for (auto i = a.begin(); i != a.end(); ++i) {
+		sum += a(i.index) * b(i.index);
+	}
+	return sum;
+}
+
+template<typename T, int N>
+T lenSq(_vec<T,N> const & v) {
+	return dot(v,v);
+}
+
+template<typename T, int N>
+T length(_vec<T,N> const & v) {
+	return sqrt(lenSq(v));
+}
+
+template<typename T, int N>
+T distance(_vec<T,N> const & a, _vec<T,N> const & b) {
+	return length(b - a);
+}
+
+template<typename T, int N>
+_vec<T,N> normalize(_vec<T,N> const & v) {
+	return v / length(v);
+}
+
+// c_i := ε_ijk * b_j * c_k
+template<typename T>
+requires std::is_same_v<typename _vec<T,3>::Scalar, T>
+_vec<T,3> cross(_vec<T,3> const & a, _vec<T,3> const & b) {
+	return _vec<T,3>(
+		a[1] * b[2] - a[2] * b[1],
+		a[2] * b[0] - a[0] * b[2],
+		a[0] * b[1] - a[1] * b[0]);
+}
+
+// outer product of tensors c_i1_..ip_j1_..jq = a_i1..ip * b_j1..jq
+// for vectors: c_ij := a_i * b_j
+template<typename A, typename B>
+requires (
+	is_tensor_v<A> 
+	&& is_tensor_v<B> 
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+)
+typename A::template replaceScalar<B> outer(A const & a, B const & b) {
+	using AB = typename A::template replaceScalar<B>;
+	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
+	return AB([&](typename AB::intN i) -> typename A::Scalar {
+		static_assert(decltype(i)::template dim<0> == A::rank + B::rank);
+		return a(i.template subset<A::rank, 0>()) * b(i.template subset<B::rank, A::rank>());
+	});
+}
+
+// GLSL naming compat
+template<typename... T>
+auto outerProduct(T&&... args) {
+	return outer(std::forward<T>(args)...);
+}
+
+// matrix functions
+
+//https://stackoverflow.com/a/50471331
+template<typename T, std::size_t N, typename... Ts>
+constexpr std::array<T, N> permute(
+	std::array<T, N> const & arr,
+	std::array<int, N> const & permutation,
+	Ts&&... processed
+) {
+	if constexpr (sizeof...(Ts) == N) {
+		return std::array<T, N>{ std::forward<Ts>(processed)... };
+	} else {
+		return permute(
+			arr,
+			permutation,
+			std::forward<Ts>(processed)...,
+			arr[permutation[sizeof...(Ts)]]
+		);
+	}
+}
+// TODO how to unpack a tuple-of-ints into an argument list
+
+
+// transpose ... right now only 2 indexes but for any rank tensor
+// also the result doesn't respect storage optimizations, so the result will be a rank-n _vec
+
+template<
+	typename Src, 	// source tensor
+	int i, 			// current index
+	int rank,		// final index
+	
+	// TODO instead of two, use this: 
+	//https://stackoverflow.com/a/50471331
+	int m,			// swap #1
+	int n			// swap #2
+>
+struct TransposeResultWithAllIndexesExpanded {
+	static constexpr int getdim() {
+		if constexpr (i == m) {
+			return Src::template dim<n>;
+		} else if constexpr (i == n) {
+			return Src::template dim<m>;
+		} else {
+			return Src::template dim<i>;
+		}
+	}
+	using T = _vec<
+		typename TransposeResultWithAllIndexesExpanded<Src, i+1, rank, m, n>::T,
+		getdim()
+	>;
+};
+// final case
+template<typename Src, int i, int m, int n>
+struct TransposeResultWithAllIndexesExpanded<Src, i, i, m, n> {
+	using T = typename Src::Scalar;
+};
+
+// if the m'th or n'th index is a sym then i'll have to replace it with two _Vec's anyways
+//  so for now replace it all with vec's
+template<int m=0, int n=1, typename T>
+auto transpose(T const & t) {
+	using U = typename TransposeResultWithAllIndexesExpanded<T, 0, T::rank, m, n>::T;
+	return U([&](typename T::intN i) {
+		std::swap(i(m), i(n));
+		return t(i);
+	});
+}
+
+// trace of a matrix
+
+template<typename T, int N>
+_mat<T,N,N> trace(_vec<T,N> const & v) {
+	T sum = v(0,0);
+	for (int i = 1; i < N; ++i) {
+		sum += v(i,i);
+	}
+	return sum;
+}
+
+// diagonal matrix from vector
+
+template<typename T, int N>
+_mat<T,N,N> diagonal(_vec<T,N> const & v) {
+	_mat<T,N,N> a;
+	for (int i = 0; i < N; ++i) {
+		a[i][i] = v[i];
+	}
+	return a;
+}
+
 
 
 // specific typed vectors

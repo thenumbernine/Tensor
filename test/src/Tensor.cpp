@@ -46,7 +46,28 @@ math functions:
 
 void test_Tensor() {
 	//vector
+	
+	using namespace Tensor;
 
+	static_assert(
+		std::is_same_v<
+			_vec<int,3>::Traits::Nested<0>,
+			_vec<int,3>
+		>
+	);
+
+	using T = ExpandIthIndex<
+		_vec<int,3>, // works
+		//_tensor<int,3,3>, // works
+		//_sym<int,3>, // failing
+		//_tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 
+		0
+	>;
+	T t;
+	//static_assert(T::rank == 4);
+	ECHO(t);
+
+#if 0
 	{
 		// default ctor
 		Tensor::float3 f;
@@ -1078,4 +1099,5 @@ so a.s == {0,1,2,4,5,8};
 		static_assert(d.dim<1> == 3);
 		static_assert(d.dim<2> == 2);
 	}
+#endif
 }
