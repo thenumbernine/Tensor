@@ -2,6 +2,99 @@
 #include "Tensor/Inverse.h"
 #include "Common/Test.h"
 
+// static_asserts for templates
+
+namespace StaticTests {
+	using namespace Tensor;
+
+	static_assert(std::is_same_v<_tensorr<int,3,1>, _tensor<int,3>>);
+	static_assert(std::is_same_v<_tensorr<int,3,2>, _tensor<int,3,3>>);
+	static_assert(std::is_same_v<_tensorr<int,3,3>, _tensor<int,3,3,3>>);
+	static_assert(std::is_same_v<_tensorr<int,3,4>, _tensor<int,3,3,3,3>>);
+	
+	static_assert(GetNestingForIthIndex<_vec<int,3>, 0> == 0);
+	static_assert(GetNestingForIthIndex<_tensor<int,3,3>, 0> == 0);
+	static_assert(GetNestingForIthIndex<_tensor<int,3,3>, 1> == 1);
+	static_assert(GetNestingForIthIndex<_tensor<int,3,3,3>, 0> == 0);
+	static_assert(GetNestingForIthIndex<_tensor<int,3,3,3>, 1> == 1);
+	static_assert(GetNestingForIthIndex<_tensor<int,3,3,3>, 2> == 2);
+	static_assert(GetNestingForIthIndex<_sym<int,3>, 0> == 0);
+	static_assert(GetNestingForIthIndex<_sym<int,3>, 1> == 0);
+	static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 0> == 0);
+	static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 1> == 1);
+	static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 2> == 1);
+	static_assert(GetNestingForIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 3> == 2);
+
+	static_assert(std::is_same_v<ExpandIthIndex<_vec<int,3>, 0>, _tensor<int,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3>, 0>, _tensorr<int,3,2>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3>, 1>, _tensorr<int,3,2>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_sym<int,3>, 0>, _tensorr<int,3,2>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_sym<int,3>, 1>, _tensorr<int,3,2>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_asym<int,3>, 0>, _tensorr<int,3,2>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_asym<int,3>, 1>, _tensorr<int,3,2>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3,3>, 0>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3,3>, 1>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3,3>, 2>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>>, 0>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>>, 1>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>>, 2>, _tensori<int,index_sym<3>,index_vec<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_asym<3>,index_vec<3>>, 0>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_asym<3>,index_vec<3>>, 1>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_asym<3>,index_vec<3>>, 2>, _tensori<int,index_asym<3>,index_vec<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_vec<3>,index_sym<3>>, 0>, _tensori<int,index_vec<3>,index_sym<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_vec<3>,index_sym<3>>, 1>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_vec<3>,index_sym<3>>, 2>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_vec<3>,index_asym<3>>, 0>, _tensori<int,index_vec<3>,index_asym<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_vec<3>,index_asym<3>>, 1>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_vec<3>,index_asym<3>>, 2>, _tensorr<int,3,3>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3,3,3>, 0>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3,3,3>, 1>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3,3,3>, 2>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensor<int,3,3,3,3>, 3>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 0>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 1>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 2>, _tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>, 3>, _tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>, 0>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>, 1>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>, 2>, _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex< _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>, 3>, _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 0>, _tensori<int,index_vec<3>,index_sym<3>,index_vec<3>> >);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 1>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 2>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>, 3>, _tensori<int,index_vec<3>,index_sym<3>,index_vec<3>> >);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_asym<3>,index_vec<3>>, 0>, _tensori<int,index_vec<3>,index_asym<3>,index_vec<3>> >);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_asym<3>,index_vec<3>>, 1>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_asym<3>,index_vec<3>>, 2>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_asym<3>,index_vec<3>>, 3>, _tensori<int,index_vec<3>,index_asym<3>,index_vec<3>> >);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_vec<3>,index_sym<3>>, 0>, _tensori<int,index_vec<3>,index_vec<3>,index_sym<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_vec<3>,index_sym<3>>, 1>, _tensori<int,index_vec<3>,index_vec<3>,index_sym<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_vec<3>,index_sym<3>>, 2>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_vec<3>,index_sym<3>>, 3>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_vec<3>,index_asym<3>>, 0>, _tensori<int,index_vec<3>,index_vec<3>,index_asym<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_vec<3>,index_asym<3>>, 1>, _tensori<int,index_vec<3>,index_vec<3>,index_asym<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_vec<3>,index_asym<3>>, 2>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_vec<3>,index_vec<3>,index_asym<3>>, 3>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_sym<3>,index_sym<3>>, 0>, _tensori<int,index_vec<3>,index_vec<3>,index_sym<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_sym<3>,index_sym<3>>, 1>, _tensori<int,index_vec<3>,index_vec<3>,index_sym<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_sym<3>,index_sym<3>>, 2>, _tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_sym<3>,index_sym<3>>, 3>, _tensori<int,index_sym<3>,index_vec<3>,index_vec<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_asym<3>,index_asym<3>>, 0>, _tensori<int,index_vec<3>,index_vec<3>,index_asym<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_asym<3>,index_asym<3>>, 1>, _tensori<int,index_vec<3>,index_vec<3>,index_asym<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_asym<3>,index_asym<3>>, 2>, _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>>);
+	static_assert(std::is_same_v<ExpandIthIndex<_tensori<int,index_asym<3>,index_asym<3>>, 3>, _tensori<int,index_asym<3>,index_vec<3>,index_vec<3>>>);
+
+	static_assert(std::is_same_v<int3::Nested<0>, int3>);
+	static_assert(std::is_same_v<int3::Nested<1>, int>);
+	static_assert(std::is_same_v<int3s3::Nested<0>, int3s3>);
+	static_assert(std::is_same_v<int3s3::Nested<1>, int>);
+	static_assert(std::is_same_v<int3a3::Nested<0>, int3a3>);
+	static_assert(std::is_same_v<int3a3::Nested<1>, int>);
+	static_assert(std::is_same_v<int3x3::Nested<0>, int3x3>);
+	static_assert(std::is_same_v<int3x3::Nested<1>, int3>);
+	static_assert(std::is_same_v<int3x3::Nested<2>, int>);
+}
+
 /*
 order of tests, for each tested type:
 static_asserts
@@ -52,14 +145,14 @@ void test_Tensor() {
 	using T = ExpandIthIndex<
 		//_vec<int,3>, 0 // works
 		//_tensor<int,3,3>, 0 // works
-		_tensor<int,3,3>, 1 // works
+		//_tensor<int,3,3>, 1 // works
 		//_sym<int,3>, 0 // works 
 		//_sym<int,3>, 1 // works
 		//_asym<int,3>, 0 // works
 		//_asym<int,3>, 1 // 
 		//_tensori<int,index_sym<3>,index_vec<3>>, 0 // works
 		//_tensori<int,index_sym<3>,index_vec<3>>, 1 // works
-		//_tensori<int,index_sym<3>,index_vec<3>>, 2 // works
+		_tensori<int,index_sym<3>,index_vec<3>>, 2 // works
 		//_tensori<int,index_asym<3>,index_vec<3>>, 0 // works
 		//_tensori<int,index_asym<3>,index_vec<3>>, 1 // works
 		//_tensori<int,index_asym<3>,index_vec<3>>, 2 // works
