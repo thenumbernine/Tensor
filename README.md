@@ -67,6 +67,8 @@ Swizzle will return a vector-of-references:
 - 4D: `.xxxx() ... .wwww()` 
 
 functions:
+- `elemMul(a,b)` = per-element multiplication.
+	$$elemMul(a,b)_I := a_I \cdot b_I$$
 - `dot(a,b)` = Frobenius dot.
 	$$dot(a,b) := a^I \cdot b_I$$
 - `lenSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
@@ -99,20 +101,16 @@ Sorry GLSL, Cg wins this round:
 - `float2, float3, float4` = 1D, 2D, 3D float vector.
 - `float2x2, float2x3, float2x4, float3x2, float3x3, float3x4, float4x2, float4x3, float4x4` = matrix types.
 - `float2s2, float3s3, float4s4` = symmetric matrix types.
+- `float2a2, float3a3, float4a4` = antisymmetric matrix types.
 - ... same with bool, char, uchar, short, ushort, int, uint, float, double, ldouble, size, intptr, uintptr.
 - `_vec2<T>, _vec3<T>, _vec4<T>` = templated fixed-size vectors.
 - `_mat2x2<T>, _mat2x3<T>, _mat2x4<T>, _mat3x2<T>, _mat3x3<T>, _mat3x4<T>, _mat4x2<T>, _mat4x3<T>, _mat4x4<T>` = templated fixed-size matrices.
 - `_sym2<T>, _sym3<T>, _sym4<T>` = templated fixed-size symmetric matrices.
+- `_asym2<T>, _asym3<T>, _asym4<T>` = templated fixed-size antisymmetric matrices.
 
 Depends on the "Common" project, for Exception, template metaprograms, etc.
 
 TODO:
-- get rid fo the Grid class.  
-	The difference between Grid and Tensor is allocation: Grid uses dynamic allocation, Tensor uses static allocation.
-	Intead, make the allocator of each dimension a templated parameter: dynamic vs static.
-	This will give dynamically-sized tensors all the operations of the Tensor template class without having to re-implement them all for Grid.
-	This will allow for flexible allocations: a degree-2 tensor can have one dimension statically allocated and one dimension dynmamically allocated
-
 - 1) ability to expand specific-rank of a tensor from sym (or antisym) into vec-of-vec
 parallel:
 - 1) how about antisym(rank-2)
@@ -140,3 +138,10 @@ parallel:
 - move secondderivative from Relativity to Tensor
 - move covariantderivative from Relativity to Tensor
 - move Hydro/Inverse.h's GaussJordan solver into Tensor/Inverse
+- get rid fo the Grid class.  
+	The difference between Grid and Tensor is allocation: Grid uses dynamic allocation, Tensor uses static allocation.
+	Intead, make the allocator of each dimension a templated parameter: dynamic vs static.
+	This will give dynamically-sized tensors all the operations of the Tensor template class without having to re-implement them all for Grid.
+	This will allow for flexible allocations: a degree-2 tensor can have one dimension statically allocated and one dimension dynmamically allocated
+
+- should I even keep separate member functions for .dot() etc?

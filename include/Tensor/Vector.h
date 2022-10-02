@@ -364,6 +364,7 @@ namespace Tensor {
 // explicit 'this->s' so subclasses can use this macro (like _quat)
 #define TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname, othername)\
 	template<typename U>\
+	/* TODO find a way to compare 'dims' instead of 'rank', then bounds would be guaranteed */\
 	requires (is_tensor_v<U> && rank == U::rank)\
 	constexpr classname(U const & t) {\
 		auto w = write();\
@@ -1894,6 +1895,9 @@ template<typename T> using _mat4x4 = _vec4<_vec4<T>>;
 template<typename T> using _sym2 = _sym<T,2>;
 template<typename T> using _sym3 = _sym<T,3>;
 template<typename T> using _sym4 = _sym<T,4>;
+template<typename T> using _asym2 = _asym<T,2>;
+template<typename T> using _asym3 = _asym<T,3>;
+template<typename T> using _asym4 = _asym<T,4>;
 
 
 // ostream

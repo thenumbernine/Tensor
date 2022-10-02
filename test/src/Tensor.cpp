@@ -2,9 +2,47 @@
 #include "Tensor/Inverse.h"
 #include "Common/Test.h"
 
-// TODO test everything a second time but with const access
+/*
+order of tests, for each tested type:
+static_asserts
+default ctor
+parenthesis ctor
+list ctor
+verify fields .x ... .s0 ...
+verify .s[] storage
+verify index access...
+	all permutations of (i)(j)(k)(l)... to [i][j][k][l]...
+	... of neighboring ()'s, all possible mergings of indexes into (int...)'s
+	... of merged (int...)'s, also (intN)
+	... of []'s, also .s[] (for non-optimized storage only)
+ctor(scalar)
+ctor(lambda(int))
+ctor(lambda(intN))
+ctor based on casting from another tensor
+read iterator (with const)
+write iterator (with const)
+TODO test cbegin / cend
+TODO implement rbegin / rend / crbegin / crend
+subtensor field access based on .s[] (for matrices and rank>1 that aren't storage-optimized)
+subset<n,i>() and subset<n>(i) access
+swizzle
+operators: == != += -= *= /= + - * /
+string/stream operators: to_string and operator<<
+math functions:
+	dot
+	lenSq
+	length
+	normalize
+	distance
+	cross
+	outer
+	determinant
+	inverse
+	transpose
+	trace
+	diagonal
+*/
 
-// static tests here:
 
 void test_Tensor() {
 	//vector
@@ -20,12 +58,17 @@ void test_Tensor() {
 	{
 		// parenthesis ctor
 		Tensor::float3 f(4,5,7);
+		
+		// initializer list ctor
+		Tensor::float3 g = {7,1,2};
+		
+		//.dims
+		static_assert(f.rank == 1);
+		static_assert(f.dims == 3);
+		static_assert(f.dim<0> == 3);
+		static_assert(f.numNestings == 1);
+		static_assert(f.count<0> == 3);
 	
-		//operator<< works?
-		std::cout << f << std::endl;
-		// to_string works?
-		std::cout << std::to_string(f) << std::endl;
-
 		//test .x .y .z
 		TEST_EQ(f.x, 4);
 		TEST_EQ(f.y, 5);
@@ -47,11 +90,36 @@ void test_Tensor() {
 		TEST_EQ(f[0], 4);
 		TEST_EQ(f[1], 5);
 		TEST_EQ(f[2], 7);
-		
-		//.dims
-		TEST_EQ(f.dims, 3);
-		TEST_EQ(f.dim<0>, 3);
-	
+
+		// indexing
+		{
+			Tensor::float3 t(1,2,3);
+			auto verifyAccess = []<typename T>(T & t){
+				for (int i = 0; i < 3; ++i) {
+					// various [] and (int...) and (intN)
+					TEST_EQ(t(i), 1 + i);
+					TEST_EQ(t(Tensor::intN<1>(i)), 1 + i);
+					TEST_EQ(t[i], 1 + i);
+					TEST_EQ(t.s[i], 1 + i);
+				}
+			};
+			verifyAccess.template operator()<decltype(t)>(t);
+			verifyAccess.template operator()<decltype(t) const>(t);
+		}
+
+		//lambda ctor
+		TEST_EQ(f, Tensor::float3([](int i) -> float { return 4 + i * (i + 1) / 2; }));
+		TEST_EQ(f, Tensor::float3([](Tensor::intN<1> i) -> float { return 4 + i(0) * (i(0) + 1) / 2; }));
+
+		// scalar ctor
+		TEST_EQ(Tensor::float3(3), Tensor::float3(3,3,3));
+
+		// casting
+		Tensor::int3 fi = {4,5,7};
+		Tensor::double3 fd = {4,5,7};
+		TEST_EQ(f, (Tensor::float3)fi);
+		TEST_EQ(f, (Tensor::float3)fd);
+
 		//iterator
 		{
 			auto i = f.begin();
@@ -70,17 +138,6 @@ void test_Tensor() {
 			// TODO support for rbegin/rend const/not const and crbegin/crend
 		}
 		
-		//lambda ctor
-		TEST_EQ(f, Tensor::float3([](int i) -> float { return 4 + i * (i + 1) / 2; }));
-
-		// TODO casting ctor
-
-		// scalar ctor
-		TEST_EQ(Tensor::float3(3), Tensor::float3(3,3,3));
-
-		// bracket ctor
-		Tensor::float3 g = {7,1,2};
-
 		// vector/scalar operations
 		TEST_EQ(f+1.f, Tensor::float3(5,6,8));
 		TEST_EQ(f-1.f, Tensor::float3(3,4,6));
@@ -108,6 +165,11 @@ void test_Tensor() {
 		{ Tensor::float3 h = f; h -= Tensor::float3(5,0,9); TEST_EQ(h, Tensor::float3(-1,5,-2)); }
 		{ Tensor::float3 h = f; h *= Tensor::float3(-1,1,-2); TEST_EQ(h, Tensor::float3(-4,5,-14)); }
 		{ Tensor::float3 h = f; h /= Tensor::float3(-2,3,-4); TEST_EQ(h, Tensor::float3(-2, 5.f/3.f, -1.75)); }
+
+		//operator<< works?
+		std::cout << f << std::endl;
+		// to_string works?
+		std::cout << std::to_string(f) << std::endl;
 
 		// dot product
 		TEST_EQ(dot(f,g), 47)
@@ -225,68 +287,71 @@ void test_Tensor() {
 			{7,8,9},
 		};
 		
+		//dims and rank.  really these are static_assert's, except dims, but it could be, but I'd have to constexpr some things ...
 		static_assert(m.rank == 2);
 		static_assert(m.dim<0> == 3);
 		static_assert(m.dim<1> == 3);
-
-		// TODO .x .y .z indexing
-		// TODO .s0 .s1 .s2 indexing
-		// TODO .s[] indexing
-		
-		//m[i][j] indexing
-		TEST_EQ(m[0][0], 1);
-		TEST_EQ(m[0][1], 2);
-		TEST_EQ(m[0][2], 3);
-		TEST_EQ(m[1][0], 4);
-		TEST_EQ(m[1][1], 5);
-		TEST_EQ(m[1][2], 6);
-		TEST_EQ(m[2][0], 7);
-		TEST_EQ(m[2][1], 8);
-		TEST_EQ(m[2][2], 9);
-
-		//m(i)(j) indexing
-		TEST_EQ(m(0)(0), 1);
-		TEST_EQ(m(0)(1), 2);
-		TEST_EQ(m(0)(2), 3);
-		TEST_EQ(m(1)(0), 4);
-		TEST_EQ(m(1)(1), 5);
-		TEST_EQ(m(1)(2), 6);
-		TEST_EQ(m(2)(0), 7);
-		TEST_EQ(m(2)(1), 8);
-		TEST_EQ(m(2)(2), 9);
-		
-		//m(i,j) indexing
-		TEST_EQ(m(0,0), 1);
-		TEST_EQ(m(0,1), 2);
-		TEST_EQ(m(0,2), 3);
-		TEST_EQ(m(1,0), 4);
-		TEST_EQ(m(1,1), 5);
-		TEST_EQ(m(1,2), 6);
-		TEST_EQ(m(2,0), 7);
-		TEST_EQ(m(2,1), 8);
-		TEST_EQ(m(2,2), 9);
-
-		//m(int2(i,j)) indexing
-		TEST_EQ(m(Tensor::int2(0,0)), 1);
-		TEST_EQ(m(Tensor::int2(0,1)), 2);
-		TEST_EQ(m(Tensor::int2(0,2)), 3);
-		TEST_EQ(m(Tensor::int2(1,0)), 4);
-		TEST_EQ(m(Tensor::int2(1,1)), 5);
-		TEST_EQ(m(Tensor::int2(1,2)), 6);
-		TEST_EQ(m(Tensor::int2(2,0)), 7);
-		TEST_EQ(m(Tensor::int2(2,1)), 8);
-		TEST_EQ(m(Tensor::int2(2,2)), 9);
-		
-		// sub-vectors (row)
-		TEST_EQ(m[0], Tensor::float3(1,2,3));
-		TEST_EQ(m[1], Tensor::float3(4,5,6));
-		TEST_EQ(m[2], Tensor::float3(7,8,9));
-
-		//dims and rank.  really these are static_assert's, except dims, but it could be, but I'd have to constexpr some things ...
-		TEST_EQ(m.rank, 2);
 		TEST_EQ(m.dims, Tensor::int2(3,3));
-		TEST_EQ(m.dim<0>, 3);
-		TEST_EQ(m.dim<1>, 3);
+		static_assert(m.numNestings == 2);
+		static_assert(m.count<0> == 3);
+		static_assert(m.count<1> == 3);
+
+		// .x .y .z indexing
+		TEST_EQ(m.x.x, 1);
+		TEST_EQ(m.x.y, 2);
+		TEST_EQ(m.x.z, 3);
+		TEST_EQ(m.y.x, 4);
+		TEST_EQ(m.y.y, 5);
+		TEST_EQ(m.y.z, 6);
+		TEST_EQ(m.z.x, 7);
+		TEST_EQ(m.z.y, 8);
+		TEST_EQ(m.z.z, 9);
+
+		// .s0 .s1 .s2 indexing
+		TEST_EQ(m.s0.s0, 1);
+		TEST_EQ(m.s0.s1, 2);
+		TEST_EQ(m.s0.s2, 3);
+		TEST_EQ(m.s1.s0, 4);
+		TEST_EQ(m.s1.s1, 5);
+		TEST_EQ(m.s1.s2, 6);
+		TEST_EQ(m.s2.s0, 7);
+		TEST_EQ(m.s2.s1, 8);
+		TEST_EQ(m.s2.s2, 9);
+		
+		// indexing
+		auto verifyAccess = []<typename T>(T & m){
+			for (int i = 0; i < 3; ++i) {
+				for (int j = 0; j < 3; ++j) {
+					// various [] and (int...) and (intN)
+					TEST_EQ(m(i)(j), 1 + j + 3 * i);
+					TEST_EQ(m(i,j), 1 + j + 3 * i);
+					TEST_EQ(m(Tensor::int2(i,j)), 1 + j + 3 * i);
+					TEST_EQ(m[i](j), 1 + j + 3 * i);
+					TEST_EQ(m.s[i](j), 1 + j + 3 * i);
+					TEST_EQ(m(i)[j], 1 + j + 3 * i);
+					TEST_EQ(m(i).s[j], 1 + j + 3 * i);
+					TEST_EQ(m[i][j], 1 + j + 3 * i);
+					TEST_EQ(m.s[i].s[j], 1 + j + 3 * i);
+				}
+			}
+		};
+		verifyAccess.template operator()<decltype(m)>(m);
+		verifyAccess.template operator()<decltype(m) const>(m);
+		
+		// scalar ctor
+		// TODO how do GLSL matrix ctor from scalars work? 
+		// do they initialize to full scalars like vecs do?
+		// do they initialize to ident times scalar like math do?
+		TEST_EQ(Tensor::float3x3(3), (Tensor::float3x3{{3,3,3},{3,3,3},{3,3,3}}));
+
+		// lambda constructor
+		// row-major, sequential in memory:
+		TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(1) + 3 * i(0); }));
+		// col-major, sequential in memory:
+		//TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(0) + 3 * i(1); }));
+		
+		
+		// TODO casting ctor
 
 		// read iterator
 		{
@@ -325,19 +390,13 @@ void test_Tensor() {
 			TEST_EQ(i, m.end());
 #endif
 		}
-
+	
 		// write iterator (should match read iterator except for symmetric members)
 
-		// lambda constructor
-		// row-major, sequential in memory:
-		TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(1) + 3 * i(0); }));
-		// col-major, sequential in memory:
-		//TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(0) + 3 * i(1); }));
-		
-		// TODO casting ctor
-
-		// scalar ctor
-		TEST_EQ(Tensor::float3x3(3), (Tensor::float3x3{{3,3,3},{3,3,3},{3,3,3}}));
+		// sub-vectors (row)
+		TEST_EQ(m[0], Tensor::float3(1,2,3));
+		TEST_EQ(m[1], Tensor::float3(4,5,6));
+		TEST_EQ(m[2], Tensor::float3(7,8,9));
 
 		// TODO matrix subset access
 
@@ -354,7 +413,7 @@ void test_Tensor() {
 		TEST_EQ(m * 1.f, m);
 		TEST_EQ(m * 0.f, decltype(m)());
 
-		auto m2 = matrixCompMult(m,m);
+		auto m2 = elemMul(m,m);
 		for (int i = 0; i < m.dim<0>; ++i) {
 			for (int j = 0; j < m.dim<1>; ++j) {
 				TEST_EQ(m2(i,j), m(i,j) * m(i,j));
@@ -388,90 +447,84 @@ void test_Tensor() {
 		static_assert(a.dim<0> == 3);
 		static_assert(a.dim<1> == 3);
 		// default ctor
+		for (int i = 0; i < a.count<0>; ++i) {
+			TEST_EQ(a.s[i], 0);
+		}
 		for (int i = 0; i < a.dim<0>; ++i) {
 			for (int j = 0; j < a.dim<1>; ++j) {
 				TEST_EQ(a(i,j), 0);
 				TEST_EQ(a(j,i), 0);
 			}
 		}
+/*
+use a symmetric procedural matrix with distinct values , esp for verifying .x_x fields
+don't use a_ij = i+j, because a_02 == a_11
+so here's a procedural symmetric matrix with all distinct symmetric components:
+a_ij = i*i + j*j
+	{{0, 1, 4},
+	{1, 2, 5},
+	{4, 5, 8}}
+so a.s == {0,1,2,4,5,8};
+*/
+		a = Tensor::float3s3(0,1,2,4,5,8);
+		
+		// verify index access works
+
+		auto verifyAccess = []<typename T>(T & a){	
+			// testing fields 
+			TEST_EQ(a.x_x, 0);
+			TEST_EQ(a.x_y, 1);
+			TEST_EQ(a.x_z, 4);
+			TEST_EQ(a.y_x, 1);
+			TEST_EQ(a.y_y, 2);
+			TEST_EQ(a.y_z, 5);
+			TEST_EQ(a.z_x, 4);
+			TEST_EQ(a.z_y, 5);
+			TEST_EQ(a.z_z, 8);
+
+			for (int i = 0; i < T::template dim<0>; ++i) {
+				for (int j = 0; j < T::template dim<1>; ++j) {
+					float e = i*i + j*j;
+					//various () and [] access
+					TEST_EQ(a(i)(j), e);
+					TEST_EQ(a(i,j), e);
+					TEST_EQ(a(Tensor::int2(i,j)), e);
+					TEST_EQ(a[i](j), e);
+					TEST_EQ(a(i)[j], e);
+					TEST_EQ(a[i][j], e);
+				}
+			}
+		};
+		verifyAccess.template operator()<decltype(a)>(a);
+		verifyAccess.template operator()<decltype(a) const>(a);
 
 		// lambda ctor using int,int...
-		auto b = Tensor::float3s3([](int i, int j) -> float {
-			return (float)(i+j);
-		});
-		for (int i = 0; i < b.dim<0>; ++i) {
-			for (int j = 0; j < b.dim<1>; ++j) {
-				TEST_EQ(b(i,j), i+j);
-				TEST_EQ(b(j,i), i+j);
-			}
-		}
+		TEST_EQ(a, Tensor::float3s3([](int i, int j) -> float { return i*i + j*j; }));
+		
+		// lambda ctor using int2
+		TEST_EQ(a, Tensor::float3s3([](Tensor::int2 ij) -> float { return ij(0)*ij(0) + ij(1)*ij(1); }));
+		
+		// verify only 6 writes take place during ctor
 		{
 			int k = 0;
+			// verifies lambda-of-ref too
 			auto c = Tensor::float3s3([&](int i, int j) -> float {
 				++k;
-				return (float)(i+j);
+				return (float)(i*i+j*j);
 			});
 			TEST_EQ(k, 6);	//for write iterators in lambda ctor ...
-			TEST_EQ(c, b);
+			TEST_EQ(c, a);
 		}
 
 		// lambda ctor using int2
-		TEST_EQ(b, Tensor::float3s3([](Tensor::int2 ij) -> float {
-			return (float)(ij.x+ij.y);
+		TEST_EQ(a, Tensor::float3s3([](Tensor::int2 ij) -> float {
+			return (float)(ij.x*ij.x+ij.y*ij.y);
 		}));
 
-		b = Tensor::float3s3{0,1,2,3,4,5};
-		
-		auto verifyAccess = []<typename T>(T & b){
-			// testing (int,int) access
-			TEST_EQ(b(0,0), 0);
-			TEST_EQ(b(0,1), 1);
-			TEST_EQ(b(0,2), 3);
-			TEST_EQ(b(1,0), 1);
-			TEST_EQ(b(1,1), 2);
-			TEST_EQ(b(1,2), 4);
-			TEST_EQ(b(2,0), 3);
-			TEST_EQ(b(2,1), 4);
-			TEST_EQ(b(2,2), 5);
-			
-			// testing fields 
-			TEST_EQ(b.x_x, 0);
-			TEST_EQ(b.x_y, 1);
-			TEST_EQ(b.x_z, 3);
-			TEST_EQ(b.y_x, 1);
-			TEST_EQ(b.y_y, 2);
-			TEST_EQ(b.y_z, 4);
-			TEST_EQ(b.z_x, 3);
-			TEST_EQ(b.z_y, 4);
-			TEST_EQ(b.z_z, 5);
 
-			// [][] access
-			TEST_EQ(b[0][0], 0);
-			TEST_EQ(b[0][1], 1);
-			TEST_EQ(b[0][2], 3);
-			TEST_EQ(b[1][0], 1);
-			TEST_EQ(b[1][1], 2);
-			TEST_EQ(b[1][2], 4);
-			TEST_EQ(b[2][0], 3);
-			TEST_EQ(b[2][1], 4);
-			TEST_EQ(b[2][2], 5);
-
-			// ()() access
-			TEST_EQ(b(0)(0), 0);
-			TEST_EQ(b(0)(1), 1);
-			TEST_EQ(b(0)(2), 3);
-			TEST_EQ(b(1)(0), 1);
-			TEST_EQ(b(1)(1), 2);
-			TEST_EQ(b(1)(2), 4);
-			TEST_EQ(b(2)(0), 3);
-			TEST_EQ(b(2)(1), 4);
-			TEST_EQ(b(2)(2), 5);
-		};
-		verifyAccess.template operator()<decltype(b)>(b);
-		verifyAccess.template operator()<decltype(b) const>(b);
-		
 		/*
-		storing matrix 
+		test storing matrix
+		for this test, construct from an asymmetric matrix
 			0 1 2
 			3 4 5
 			6 7 8
@@ -485,7 +538,7 @@ void test_Tensor() {
 			1 4 5
 			2 5 8
 		*/
-		b = Tensor::float3s3([](int i, int j) -> float {
+		auto b = Tensor::float3s3([](int i, int j) -> float {
 			return 3 * i + j;
 		});
 #if 1 // upper triangular
@@ -510,8 +563,7 @@ void test_Tensor() {
 		TEST_EQ(b, Tensor::float3s3(0,1,4,2,5,8));
 #endif
 
-
-		// test symmetry
+		// test symmetry read/write
 		b(0,2) = 7;
 		TEST_EQ(b(2,0), 7);
 		b.x_y = -1;
@@ -524,13 +576,10 @@ void test_Tensor() {
 			}
 		}
 		
+		// operators
 		TEST_EQ(a + 0.f, a);
 		TEST_EQ(a * 1.f, a);
 		TEST_EQ(a * 0.f, decltype(a)());
-	
-		// TODO how do GLSL matrix ctor from scalars work? 
-		// do they initialize to full scalars like vecs do?
-		// do they initialize to ident times scalar like math do?
 	}
 
 	// antisymmetric matrix
