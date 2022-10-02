@@ -1229,7 +1229,53 @@ auto outerProduct(T&&... args) {
 	return outer(std::forward<T>(args)...);
 }
 
+// annnnnd this was so useful here's the non-transpose case
+// TODO make a template that expands the i'th index
+
+template<
+	typename Src, 	// source tensor
+	int i, 			// current index
+	int rank		// final index
+>
+struct ExpandAllIndexesImpl {
+	static constexpr int getdim() {
+		return Src::template dim<i>;
+	}
+	using T = _vec<
+		typename ExpandAllIndexesImpl<Src, i+1, rank>::T,
+		getdim()
+	>;
+};
+// final case
+template<typename Src, int i>
+struct ExpandAllIndexesImpl<Src, i, i> {
+	using T = typename Src::Scalar;
+};
+template<typename Src>
+using ExpandAllIndexes = typename ExpandAllIndexesImpl<Src, 0, Src::rank>::T;
+
 // matrix functions
+
+//https://stackoverflow.com/a/50471331
+template<typename T, std::size_t N, typename... Ts>
+constexpr std::array<T, N> permute(
+	std::array<T, N> const & arr,
+	std::array<int, N> const & permutation,
+	Ts&&... processed
+) {
+	if constexpr (sizeof...(Ts) == N) {
+		return std::array<T, N>{ std::forward<Ts>(processed)... };
+	} else {
+		return permute(
+			arr,
+			permutation,
+			std::forward<Ts>(processed)...,
+			arr[permutation[sizeof...(Ts)]]
+		);
+	}
+}
+// TODO how to unpack a tuple-of-ints into an argument list
+
 
 // transpose ... right now only 2 indexes but for any rank tensor
 // also the result doesn't respect storage optimizations, so the result will be a rank-n _vec
@@ -1238,7 +1284,9 @@ template<
 	typename Src, 	// source tensor
 	int i, 			// current index
 	int rank,		// final index
-	// TODO instead of two, use this: https://stackoverflow.com/a/50471331
+	
+	// TODO instead of two, use this: 
+	//https://stackoverflow.com/a/50471331
 	int m,			// swap #1
 	int n			// swap #2
 >
@@ -1273,31 +1321,6 @@ auto transpose(T const & t) {
 		return t(i);
 	});
 }
-
-// annnnnd this was so useful here's the non-transpose case
-// TODO make a template that expands the i'th index
-
-template<
-	typename Src, 	// source tensor
-	int i, 			// current index
-	int rank		// final index
->
-struct ExpandAllIndexesImpl {
-	static constexpr int getdim() {
-		return Src::template dim<i>;
-	}
-	using T = _vec<
-		typename ExpandAllIndexesImpl<Src, i+1, rank>::T,
-		getdim()
-	>;
-};
-// final case
-template<typename Src, int i>
-struct ExpandAllIndexesImpl<Src, i, i> {
-	using T = typename Src::Scalar;
-};
-template<typename Src>
-using ExpandAllIndexes = typename ExpandAllIndexesImpl<Src, 0, Src::rank>::T;
 
 // trace of a matrix
 

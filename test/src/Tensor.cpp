@@ -421,24 +421,6 @@ void test_Tensor() {
 		}
 	}
 
-	// tensor of vec-vec-vec
-	{
-		using T = Tensor::_tensor<float, 2, 4, 5>;
-		T t;
-		static_assert(t.rank == 3);
-		static_assert(t.dim<0> == 2);
-		static_assert(t.dim<1> == 4);
-		static_assert(t.dim<2> == 5);
-
-		//TODO 
-		//tensor * scalar
-		//scalar * tensor
-	
-		TEST_EQ(t + 0.f, t);
-		TEST_EQ(t * 1.f, t);
-		TEST_EQ(t * 0.f, decltype(t)());
-	}
-
 	//symmetric
 	
 	{
@@ -668,7 +650,26 @@ so a.s == {0,1,2,4,5,8};
 		TEST_EQ(b, (Tensor::float3x3{{0, -2, -3}, {2, 0, -4}, {3, 4, 0}}));
 	}
 
-	// tensor with intermixed non-vec types:
+	// rank-3 tensor: vector-vector-vector
+	{
+		using T = Tensor::_tensor<float, 2, 4, 5>;
+		T t;
+		static_assert(t.rank == 3);
+		static_assert(t.dim<0> == 2);
+		static_assert(t.dim<1> == 4);
+		static_assert(t.dim<2> == 5);
+
+		//TODO 
+		//tensor * scalar
+		//scalar * tensor
+	
+		TEST_EQ(t + 0.f, t);
+		TEST_EQ(t * 1.f, t);
+		TEST_EQ(t * 0.f, decltype(t)());
+	}
+
+
+	// rank-3 tensor with intermixed non-vec types:
 	// vector-of-symmetric
 	{
 		//this is a T_ijk = T_ikj, i spans 3 dims, j and k span 2 dims
