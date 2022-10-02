@@ -44,7 +44,7 @@
 Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.
 - `(s)` = initialize with all elements set to `s`.
-- `(x, y, z, w)` for dimensions 1-4, initialize with scalar values.
+- `(x, y), (x, y, z), (x, y, z, w)` for dimensions 1-4, initialize with scalar values.
 - `(function<Scalar(int i1, ...)>)` = initialize with a lambda that accepts the index of the matrix as a list of int arguments and returns the value for that index.
 - `(function<Scalar(intN i)>)` = initialize with a lambda, same as above except the index is stored as an int-vector in `i`.
 - `(tensor t)` = initialize from another tensor.  Truncate dimensions.  Uninitialized elements are set to {}.
@@ -97,9 +97,9 @@ functions:
 
 Tensor Template Helpers (subject to change)
 - `is_tensor_v<T>` = is it a tensor storage type?
-- `is_vec_v<T>` = is it a tensor storage type?
-- `is_sym_v<T>` = is it a tensor storage type?
-- `is_asym_v<T>` = is it a tensor storage type?
+- `is_vec_v<T>` = is it a _vec<T,N>?
+- `is_sym_v<T>` = is it a _sym<T,N>?
+- `is_asym_v<T>` = is it a _asym<T,N>?
 - `GetNestingForIthIndex<T,i>` = get the tensor type associated with the i'th index.  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
 - `ExpandIthIndex<T,i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
 - `ExpandAllIndexes<T>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
@@ -150,4 +150,5 @@ TODO:
 	This will give dynamically-sized tensors all the operations of the Tensor template class without having to re-implement them all for Grid.
 	This will allow for flexible allocations: a degree-2 tensor can have one dimension statically allocated and one dimension dynmamically allocated
 
+- double check that I can't ue "requires' with fields and put all vector-specialization in one class
 - should I even keep separate member functions for .dot() etc?
