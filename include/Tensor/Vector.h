@@ -1958,6 +1958,7 @@ auto transpose(T const & t) {
 }
 
 // trace of a matrix
+// TODO generalize to contract<m,n,T> , trace a rank-2 specialization
 
 template<typename T, int N>
 _mat<T,N,N> trace(_vec<T,N> const & v) {

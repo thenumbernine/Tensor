@@ -97,6 +97,9 @@ functions:
 
 Tensor Template Helpers (subject to change)
 - `is_tensor_v<T>` = is it a tensor storage type?
+- `is_vec_v<T>` = is it a tensor storage type?
+- `is_sym_v<T>` = is it a tensor storage type?
+- `is_asym_v<T>` = is it a tensor storage type?
 - `GetNestingForIthIndex<T,i>` = get the tensor type associated with the i'th index.  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
 - `ExpandIthIndex<T,i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
 - `ExpandAllIndexes<T>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.
@@ -118,30 +121,26 @@ Sorry GLSL, Cg wins this round:
 Depends on the "Common" project, for Exception, template metaprograms, etc.
 
 TODO:
-- 1) ability to expand specific-rank of a tensor from sym (or antisym) into vec-of-vec
-parallel:
-- 1) how about antisym(rank-2)
-	- for a n x n antisym we have only n*(n-1)/2 instead of symmetric n*(n+1)/2
+- finishing up antisym , it needs intN access, and a loooot of wrapper classes.  same with sym maybe too.
 	- once we have this, why not rank-3 rank-4 etc sym or antisym ... I'm sure there's some math on how to calculate the unique # of vars
-	- first this starts with a negative-ref wrapper, which initializes with another variable, and always read/writes the negative of its source.
-- 2) "expandStorage<>" ... for our nested tensor-of-index-of-sym-of...etc ... need a template option for taking one specific index, and - for whatever sturcuture is there (vec, sym, antisym) turning it into vecs-of-vecs 
-	- then do this when you transpose() it, when you operator* it, any time you need to produce an output type based on input types whose dimensions might overlap optimized storage structures.
-		- or better, make a permuteOrder() function, have this "expandStorage<>" on all its passed indexes, then have it run across the permute indexes.
 
-- GetNestedForIndex<i> = 
-	- then use this for 'dim<i> = GetNestedForIndex<i>::dim`.
-	- then ExpandStorage<i> would .... ?
+- better / member names for:
+- - GetNestingForIthIndex = InnerOfIndex<> or just Inner<> even, and change Inner to LocalInner or something
+- - ExpandIthIndex = idk
+- - ExpandAllIndexes = idk
 
 - more flexible exterior product (cross, wedge, determinant)
 - more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
 	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "replaceScalar" the nesting-minus-one of A with the nesting-1 of B
+	- ExpandIthIndex when you when you operator* it or any time you need to produce an output type based on input types whose dimensions might overlap optimized storage structures.
+		- or better, make a permuteOrder() function, have this "ExpandIthIndex<>" on all its passed indexes, then have it run across the permute indexes.
 - index notation summation?  mind you that it shoud preserve non-summed index memory-optimization structures.
-- better function matching for derivatives?
-- shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
 - make transpose a specialization of permuteIndexes()
 - multiply as contraction of indexes
 	- for multiply and for permute, some way to extract the flags for symmetric/not on dif indexes
 	  so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into vec-of-vec
+- shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
+- better function matching for derivatives?
 - move secondderivative from Relativity to Tensor
 - move covariantderivative from Relativity to Tensor
 - move Hydro/Inverse.h's GaussJordan solver into Tensor/Inverse
