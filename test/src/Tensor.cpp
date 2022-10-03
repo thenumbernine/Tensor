@@ -2,7 +2,52 @@
 #include "Tensor/Inverse.h"
 #include "Common/Test.h"
 
-// static_asserts for templates
+/*
+static_asserts for templates
+
+order of tests, for each tested type:
+static_asserts
+default ctor
+parenthesis ctor
+list ctor
+verify fields .x ... .s0 ...
+verify .s[] storage
+verify index access...
+	all permutations of (i)(j)(k)(l)... to [i][j][k][l]...
+	... of neighboring ()'s, all possible mergings of indexes into (int...)'s
+	... of merged (int...)'s, also (intN)
+	... of []'s, also .s[] (for non-optimized storage only)
+ctor(scalar)
+ctor(lambda(int))
+ctor(lambda(intN))
+ctor based on casting from another tensor
+read iterator (with const)
+write iterator (with const)
+TODO test cbegin / cend
+TODO implement rbegin / rend / crbegin / crend
+subtensor field access based on .s[] (for matrices and rank>1 that aren't storage-optimized)
+subset<n,i>() and subset<n>(i) access
+swizzle
+operators: == != += -= *= /= + - * /
+string/stream operators: to_string and operator<<
+
+math functions:
+dot, inner
+lenSq
+length
+distance
+normalize
+elemMul, hadamard, matrixCompMult
+cross
+outer, outerProduct
+transpose
+contract, interior, trace
+diagonal
+determinant
+inverse
+*/
+
+
 
 namespace StaticTest1 {
 	using namespace Tensor;
@@ -277,61 +322,6 @@ namespace StaticTest1 {
 
 	}
 }
-
-/*
-order of tests, for each tested type:
-static_asserts
-default ctor
-parenthesis ctor
-list ctor
-verify fields .x ... .s0 ...
-verify .s[] storage
-verify index access...
-	all permutations of (i)(j)(k)(l)... to [i][j][k][l]...
-	... of neighboring ()'s, all possible mergings of indexes into (int...)'s
-	... of merged (int...)'s, also (intN)
-	... of []'s, also .s[] (for non-optimized storage only)
-ctor(scalar)
-ctor(lambda(int))
-ctor(lambda(intN))
-ctor based on casting from another tensor
-read iterator (with const)
-write iterator (with const)
-TODO test cbegin / cend
-TODO implement rbegin / rend / crbegin / crend
-subtensor field access based on .s[] (for matrices and rank>1 that aren't storage-optimized)
-subset<n,i>() and subset<n>(i) access
-swizzle
-operators: == != += -= *= /= + - * /
-string/stream operators: to_string and operator<<
-math functions:
-
-rank-N x rank-N -> rank-0:
-	dot, inner
-rank-N -> rank-0:
-	lenSq
-	length
-rank-N x rank-N -> rank-N:
-	elemMul, hadamard, matrixCompMult
-rank-N -> rank-N:
-	normalize
-rank-N x rank-N -> rank-0:
-	distance
-rank-M x rank-N -> rank-(M+N):
-	outer, outerProduct
-rank-M -> rank-M, M >= 2
-	transpose
-rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes... M >= 1
-	contract, interior, trace
-rank-1 -> rank-2:
-	diagonal
-rank-2 -> rank-0:
-	determinant
-rank-2 -> rank-2:
-	inverse
-rank-1 dim-3 x rank-1 dim-3 -> rank-1 dim-3:
-	cross
-*/
 
 template<typename T>
 void operatorScalarTest(T const & t) {

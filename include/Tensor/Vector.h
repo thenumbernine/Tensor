@@ -1025,7 +1025,6 @@ struct _vec<T,2> {
 	TENSOR_VEC2_ADD_SWIZZLE4_i(x)\
 	TENSOR_VEC2_ADD_SWIZZLE4_i(y)
 	TENSOR3_VEC2_ADD_SWIZZLE4()
-
 };
 
 // size == 3 specialization
@@ -1875,6 +1874,8 @@ _vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
 	return c;
 }
 
+
+
 //element-wise multiplication
 // c_i1_i2_... := a_i1_i2_... * b_i1_i2_...
 // Hadamard product / per-element multiplication
@@ -1902,16 +1903,19 @@ auto hadamard(T&&... args) {
 }
 
 // vector functions
-// TODO for these, should I call into the member function?
+// TODO get rid of member functions  ...
+// .... or have the member functions call into these.
 
 // c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
-// Should this generalize to a contraction?  or to a Frobenius norm?
 // Frobenius norm, since * will already be contraction
-// TODO let 'a' and 'b' be dif types, so long as rank and dim match i.e. so long as the read-iterator domain matches.
-template<typename T>
-requires is_tensor_v<T>
-typename T::Scalar dot(T const & a, T const & b) {
-	typename T::Scalar sum = {};
+template<typename A, typename B>
+requires (
+	is_tensor_v<A> 
+	&& is_tensor_v<B> 
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+)
+auto dot(A const & a, B const & b) {
+	auto sum = typename A::Scalar{};
 	for (auto i = a.begin(); i != a.end(); ++i) {
 		sum += a(i.index) * b(i.index);
 	}
@@ -1924,31 +1928,46 @@ auto inner(T&&... args) {
 	return dot(std::forward<T>(args)...);
 }
 
-template<typename T, int N>
-T lenSq(_vec<T,N> const & v) {
-	return dot(v,v);
+template<typename T>
+requires (is_tensor_v<T>)
+auto lenSq(T const & v) {
+	return dot(v, v);
 }
 
-template<typename T, int N>
-T length(_vec<T,N> const & v) {
-	return sqrt(lenSq(v));
+template<typename T>
+requires (is_tensor_v<T>)
+auto length(T const & v) {
+	// TODO should I recast to Scalar, or just let it preserve double, or use sqrtf or what?
+	return (typename T::Scalar)sqrt(lenSq(v));
 }
 
-template<typename T, int N>
-T distance(_vec<T,N> const & a, _vec<T,N> const & b) {
+template<typename A, typename B>
+requires (
+	is_tensor_v<A> 
+	&& is_tensor_v<B> 
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+)
+auto distance(A const & a, B const & b) {
 	return length(b - a);
 }
 
-template<typename T, int N>
-_vec<T,N> normalize(_vec<T,N> const & v) {
+template<typename T>
+requires (is_tensor_v<T>)
+auto normalize(T const & v) {
 	return v / length(v);
 }
 
 // c_i := ε_ijk * b_j * c_k
-template<typename T>
-requires std::is_same_v<typename _vec<T,3>::Scalar, T>
-auto cross(_vec<T,3> const & a, _vec<T,3> const & b) {
-	return _vec<T,3>(
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& A::dims == 3
+	&& B::dims == 3
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+)
+auto cross(A const & a, B const & b) {
+	return A(
 		a[1] * b[2] - a[2] * b[1],
 		a[2] * b[0] - a[0] * b[2],
 		a[0] * b[1] - a[1] * b[0]);
@@ -2122,6 +2141,7 @@ auto trace(T&&... args) {
 
 // diagonal matrix from vector
 
+// TODO arbitrary rank and index?
 template<typename T, int N>
 _mat<T,N,N> diagonal(_vec<T,N> const & v) {
 	_mat<T,N,N> a;

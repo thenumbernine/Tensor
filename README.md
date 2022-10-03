@@ -98,32 +98,45 @@ Swizzle will return a vector-of-references:
 - 4D: `.xxxx() ... .wwww()` 
 
 functions:
-- `elemMul(a,b), matrixCompMult(a,b), hadamard(a,b)` = per-element multiplication aka Hadamard product.
-	$$elemMul(a,b)_I := a_I \cdot b_I$$
 - `dot(a,b), inner(a,b)` = Frobenius dot.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
+	- rank-N x rank-N -> rank-0.
 	$$dot(a,b) := a^I \cdot b_I$$
 - `lenSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
+	- rank-N -> rank-0
 	$$lenSq(a) := |a|^2 = a^I a_I$$
 - `length(a)` = For vectors this is the length.  It is the sqrt of the self-dot.
+	- rank-N -> rank-0
 	$$length(a) := |a| = \sqrt{a^I a_I}$$
-- `normalize(a)` = For vectors this returns a unit.  It is a tensor divided by its sqrt-of-self-dot
-	$$normalize(a) := a / |a|$$
 - `distance(a,b)` = Length of the difference of two tensors.
+	- rank-N x rank-N -> rank-0:
 	$$distance(a,b) := |b - a|$$
+- `normalize(a)` = For vectors this returns a unit.  It is a tensor divided by its sqrt-of-self-dot
+	- rank-N -> rank-N:
+	$$normalize(a) := a / |a|$$
+- `elemMul(a,b), matrixCompMult(a,b), hadamard(a,b)` = per-element multiplication aka Hadamard product.
+	- rank-N x rank-N -> rank-N:
+	$$elemMul(a,b)_I := a_I \cdot b_I$$
 - `cross(a,b)` = 3D vector cross product.
+	- rank-1 dim-3 x rank-1 dim-3 -> rank-1 dim-3:
 	$${cross(a,b)_i} := {\epsilon_{ijk}} b^j c^k$$ 
 - `outer(a,b), outerProduct(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a sym and a sym produces a sym-of-syms.
+	- rank-M x rank-N -> rank-(M+N):
 	$$outer(a,b)_{IJ} := a_I b_J$$
-- `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
-	$$determinant(a) := det(a) = \epsilon_I {a^{i_1}}_1 {a^{i_2}}_2 {a^{i_3}}_3 ... {a^{i_n}}_n$$
-- `inverse(m)` = Matrix inverse, for rank-2 tensors.
-	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
 - `transpose<from=0,to=1>(a)` = Transpose indexes `from` and `to`.  This will preserve storage optimizations, so transposing 0,1 of a sym-of-vec will produce a sym-of-vec, but transposing 0,2 or 1,2 of a sym-of-vec will produce a vec-of-vec-of-vec.
+	- rank-M -> rank-M, M >= 2
 	$$transpose(a)_{{i_1}...{i_p}...{i_q}...{i_n}} = a_{{i_1}...{i_q}...{i_p}...{i_n}}$$
 - `contract<m=0,n=1>(a), interior(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to `trace(t)`.
+	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes... M >= 1
 	$$contract(a) = \delta^{i_m i_n} a_I$$
 - `diagonal(m)` = Matrix diagonal from vector.
+	- rank-1 -> rank-2:
 	$${diagonal(a)_{ij} = \delta_{ij} \cdot a_i$$
+- `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
+	- rank-2 -> rank-0:
+	$$determinant(a) := det(a) = \epsilon_I {a^{i_1}}_1 {a^{i_2}}_2 {a^{i_3}}_3 ... {a^{i_n}}_n$$
+- `inverse(m)` = Matrix inverse, for rank-2 tensors.
+	- rank-2 -> rank-2:
+	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
 
 ## Familiar Types
 
@@ -146,17 +159,17 @@ TODO:
 	- once we have this, why not rank-3 rank-4 etc sym or antisym ... I'm sure there's some math on how to calculate the unique # of vars
 - sym needs some index help when it's mixing accessors and normal derefs. one signature is Scalar&, the other is Accessor
 
-- more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
-	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "ReplaceScalar" the nesting-minus-one of A with the nesting-1 of B
 - make a permuteIndexes() function, have this "ExpandIndex<>" on all its passed indexes, then have it run across the permute indexes.
 	- mind you that for transposes then you can respect symmetry and you don't need to expand those indexes.
 	- make transpose a specialization of permuteIndexes()
 - index notation summation?  mind you that it shoud preserve non-summed index memory-optimization structures.
-- multiply as contraction of indexes
-	- for multiply and for permute, some way to extract the flags for symmetric/not on dif indexes
-	  so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into vec-of-vec
-- shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
 - get matrix-mul working for arbitrary tensors without expanding all internal storage optimizations.
+	- multiply as contraction of indexes
+	- for multiply and for permute, some way to extract the flags for symmetric/not on dif indexes
+	- so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into vec-of-vec
+	- more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
+	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "ReplaceScalar" the nesting-minus-one of A with the nesting-1 of B
+- shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
 
 - more flexible exterior product (cross, wedge, determinant).  Generalize to something with Levi-Civita permutation tensor.
 - asym is 2-rank totally-antisymmetric .. I should do a N-rank totally-antisymmetric and N-rank totally-symmetric 
@@ -173,7 +186,6 @@ TODO:
 	This will give dynamically-sized tensors all the operations of the Tensor template class without having to re-implement them all for Grid.
 	This will allow for flexible allocations: a degree-2 tensor can have one dimension statically allocated and one dimension dynmamically allocated
 
-- double check that I can't use "requires' with fields and put all vector-specialization in one class
 - should I even keep separate member functions for .dot() etc?
 - __complex__ support.  Especially in norms.
 - preserve storage optimizations between tensor op tensor per-elem operations.  right now its just expanding all storage optimizations.
@@ -181,6 +193,4 @@ TODO:
 - change all those functions types to be is_tensor_v when possible.
 - try to work around github's mathjax rendering errors.  looks fine on my own mathjax and on stackedit, but not on github.
 
-- InnerForIndex doesn't really get the inner, it gets the index, so call it something like "TypeForIndex" 
-- see if ReplaceNested<> can't be used in a few other places.
-- get rid of Traits
+- InnerForIndex doesn't really get the inner, it gets the index, so call it something like "TypeForIndex"
