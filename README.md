@@ -15,6 +15,8 @@ So I guess overall this library is halfway between a mathematician's and a progr
 
 ## Reference:
 
+`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_sym`, `_asym`.
+
 `_vec<type, dim>` = vectors:
 - `std::array<T> s` = element std::array access.  Tempted to change it back to `T[] s` for ease of ue as pointer access... but I do like the ease of iterator use with `std::array`... hmm...
 - for 1D through 4D: `.x .y .z .w`, `.s0 .s1 .s2 .s2` storage.
@@ -181,3 +183,4 @@ TODO:
 
 - InnerForIndex doesn't really get the inner, it gets the index, so call it something like "TypeForIndex" 
 - see if ReplaceNested<> can't be used in a few other places.
+- get rid of Traits

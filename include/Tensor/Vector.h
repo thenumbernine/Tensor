@@ -87,10 +87,6 @@ namespace Tensor {
 	/*  this is the next most nested class, so vector-of-vector is a matrix. */\
 	using Inner = T;\
 \
-	/* some helper stuff associated with our _vec */\
-	using Traits = VectorTraits<This>;\
-	using InnerTraits = VectorTraits<Inner>;\
-\
 	/*  this is the child-most nested class that isn't in our math library. */\
 	struct ScalarImpl {\
 		static constexpr auto value() {\
@@ -134,6 +130,9 @@ namespace Tensor {
 		};\
 	};\
 	static constexpr int numNestings = NumNestingImpl::value();\
+\
+	/* used for write-iterators and converting write-iterator indexes to read index vectors */\
+	using intW = _vec<int,numNestings>;\
 \
 	template<int i, typename NewNestedInner>\
 	struct ReplaceNestedImpl {\
@@ -697,6 +696,31 @@ ReadIterator vs WriteIterator
 	const_iterator cbegin() const { return const_iterator::begin(*this); }\
 	const_iterator cend() const { return const_iterator::end(*this); }\
 \
+	/* helper function sfor WriteIterator */\
+	static intN getReadForWriteIndex(intW const & i) {\
+		intN res;\
+		res.template subset<This::localRank, 0>() = This::getLocalReadForWriteIndex(i[0]);\
+		if constexpr (numNestings > 1) {\
+			/*static_assert(rank - This::localRank == Inner::rank);*/\
+			res.template subset<rank-This::localRank, This::localRank>() = Inner::getReadForWriteIndex(i.template subset<numNestings-1,1>());\
+		}\
+		return res;\
+	}\
+	static Scalar & getByWriteIndex(This & t, intW const & index) {\
+		if constexpr (numNestings == 1) {\
+			return t.s[index.s[0]];\
+		} else {\
+			return Inner::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());\
+		}\
+	}\
+	static Scalar const & getByWriteIndex(This const & t, intW const & index) {\
+		if constexpr (numNestings == 1) {\
+			return t.s[index.s[0]];\
+		} else {\
+			return Inner::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());\
+		}\
+	}\
+\
 	template<typename WriteOwnerConstness>\
 	struct Write {\
 		using intW = _vec<int, numNestings>;\
@@ -759,7 +783,7 @@ ReadIterator vs WriteIterator
 			WriteIterator(OwnerConstness & owner_, intW writeIndex_ = {})\
 			: owner(owner_),\
 				writeIndex(writeIndex_),\
-				readIndex(Traits::getReadForWriteIndex(writeIndex)) {}\
+				readIndex(getReadForWriteIndex(writeIndex)) {}\
 			WriteIterator(WriteIterator const & o)\
 				: owner(o.owner),\
 				writeIndex(o.writeIndex),\
@@ -788,17 +812,17 @@ ReadIterator vs WriteIterator
 			}\
 			auto & operator*() {\
 				/* cuz it takes less operations than by-read-writeIndex */\
-				return Traits::getByWriteIndex(owner, writeIndex);\
+				return getByWriteIndex(owner, writeIndex);\
 			}\
 \
 			WriteIterator & operator++() {\
 				Common::ForLoop<0,numNestings,WriteInc>::exec(writeIndex);\
-				readIndex = Traits::getReadForWriteIndex(writeIndex);\
+				readIndex = getReadForWriteIndex(writeIndex);\
 				return *this;\
 			}\
 			WriteIterator & operator++(int) {\
 				Common::ForLoop<0,numNestings,WriteInc>::exec(writeIndex);\
-				readIndex = Traits::getReadForWriteIndex(writeIndex);\
+				readIndex = getReadForWriteIndex(writeIndex);\
 				return *this;\
 			}\
 \
@@ -902,82 +926,6 @@ ReadIterator vs WriteIterator
 template<typename T, int dim_>
 struct _vec;
 
-// base/scalar case
-template<typename T>
-struct VectorTraits {
-	using Type = T;
-	using Inner = void;
-	using InnerTraits = void;
-	static constexpr int rank = 0;
-	static constexpr int numNestings = 0; // number of _vec<_vec<..._vec<T, ...>'s 
-	using Scalar = T;
-};
-
-// recursive/vec/matrix/tensor case
-template<typename Type_>
-requires is_tensor_v<Type_>
-struct VectorTraits<Type_> {
-	using Type = Type_;
-	using Inner = typename Type::Inner;
-	static constexpr int localDim = Type::localDim;
-	using InnerTraits = VectorTraits<Inner>;
-	using intN = typename Type::intN;
-
-	// using rank = localRank + InnerTraits::rank in _vec
-	static constexpr int rank = Type::rank;
-	// using VectorTraits<This>::rank in _vec
-	// would be nice to do all recursive calcs inside VectorTraits instead of across _vec
-	// but this screws up with _tensor<real,3,3,3> rank3 and above
-	//static constexpr int rank = Type::localRank + InnerTraits::rank;
-	
-	static constexpr int numNestings = 1 + InnerTraits::numNestings;
-
-	using Scalar = std::conditional_t<
-		(numNestings > 1),
-		typename InnerTraits::Scalar,
-		Inner
-	>;
-
-	// a function for getting the i'th component of the size vector
-	template<int i>
-	static constexpr int calc_ith_dim() {
-		static_assert(i >= 0, "you tried to get a negative size");
-		static_assert(i < rank, "you tried to get an oob size");
-		if constexpr (i < Type::localRank) {
-			return Type::localDim;
-		} else {
-			return InnerTraits::template calc_ith_dim<i - Type::localRank>();
-		}
-	}
-
-	using intW = _vec<int,numNestings>;
-	
-	static intN getReadForWriteIndex(intW const & i) {
-		intN res;
-		res.template subset<Type::localRank, 0>() = Type::getLocalReadForWriteIndex(i[0]);
-		if constexpr (numNestings > 1) {
-			//static_assert(rank - Type::localRank == Inner::rank);
-			res.template subset<rank-Type::localRank, Type::localRank>() = InnerTraits::getReadForWriteIndex(i.template subset<numNestings-1,1>());
-		}
-		return res;
-	}
-
-	static Scalar & getByWriteIndex(Type & t, intW const & index) {
-		if constexpr (numNestings == 1) {
-			return t.s[index.s[0]];
-		} else {
-			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());
-		}
-	}
-	static Scalar const & getByWriteIndex(Type const & t, intW const & index) {
-		if constexpr (numNestings == 1) {
-			return t.s[index.s[0]];
-		} else {
-			return InnerTraits::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());
-		}
-	}
-};
-
 // type of a tensor with specific rank and dimension (for all indexes)
 // used by some _vec members
 
@@ -991,8 +939,6 @@ struct _tensorr_impl<Scalar, dim, 0> {
 };
 template<typename Src, int dim, int rank>
 using _tensorr = typename _tensorr_impl<Src, dim, rank>::T;
-
-
 
 // default
 
