@@ -135,11 +135,11 @@ namespace Tensor {
 	static constexpr int numNestings = NumNestingImpl::value();\
 \
 	/* expand the storage of the i'th index */\
-	/* TODO support a list-of-indexes, then ExpandAll can just pass the whole sequence */\
 	template<int index>\
 	struct ExpandIthIndexImpl {\
+		static_assert(index >= 0 && index < rank);\
 		static constexpr auto value() {\
-			static_assert(index >= 0 && index < rank);\
+			/* if 'This' is a result then maybe I can't use decltype(value()) ? */\
 			if constexpr (index < localRank) {\
 				if constexpr (localRank == 1) {\
 					/* nothing changes */\
@@ -149,58 +149,42 @@ namespace Tensor {
 					return _tensorr<Inner, localDim, localRank>();\
 				}\
 			} else {\
-				using NewInner = decltype(Inner::template ExpandIthIndexImpl<index - localRank>::value());\
+				using NewInner = typename Inner::template ExpandIthIndexImpl<index - localRank>::type;\
 				return ReplaceInner<NewInner>();\
 			}\
 		}\
+		using type = decltype(value());\
 	};\
 	template<int index>\
-	using ExpandIthIndex = decltype(ExpandIthIndexImpl<index>::value());\
+	using ExpandIthIndex = typename ExpandIthIndexImpl<index>::type;\
 \
-	/* expand all indexes */\
-	/* has to go after dim<> */\
-	template<typename DEFER>\
-	struct ExpandAllIndexesImpl {\
-		template<typename DEFER2>\
-		static constexpr auto condrank1() {\
-			/* nothing changes */\
-			static_assert(std::is_same_v<Scalar, Inner>);\
-			static_assert(numNestings == 1);\
-			return std::optional<This>();\
-		}\
-		template<typename DEFER2>\
-		static constexpr auto condnest1() {\
-			static_assert(rank > 1);\
-			static_assert(localRank == rank);\
-			/* WHY FAILING *//*static_assert(std::is_same_v<Scalar, Inner>);*/\
-			return std::optional<_tensorr<Inner, localDim, localRank>>();\
-		}\
-		template<typename DEFER2>\
-		static constexpr auto condelse() {\
-			/* return a dense-tensor of depth 'localRank' with inner type 'Inner' */\
-			using NewInner = typename decltype(\
-					Inner::template ExpandAllIndexesImpl<DEFER2>::value()\
-				)::value_type;\
-			return std::optional<_tensorr<NewInner, localDim, localRank>>();\
-		}\
-		/* need to break up cases into separate, templated methods */\
-		/* https://stackoverflow.com/q/38304847 */\
-		static constexpr auto value() {\
-			if constexpr (rank == 1) {\
-				return condrank1<DEFER>();\
-			} else if constexpr (numNestings == 1) {\
-				return condnest1<DEFER>();\
-			} else {\
-				return condelse<DEFER>();\
-			}\
-		}\
+	template<int i1, int... I>\
+	struct ExpandIndexesImpl {\
+		using tmp = This::template ExpandIthIndex<i1>;\
+		using type = typename tmp::template ExpandIndexesImpl<I...>::type;\
 	};\
-	/* you can't simply set this as a 'using' or it'll try to evaluate too much and compile-error. */\
-	/* so wrap it in this default-template to prevent that */\
-	template<typename DEFER = void>\
-	using ExpandAllIndexes = typename decltype(\
-		ExpandAllIndexesImpl<DEFER>::value()\
-	)::value_type;
+	template<int i1>\
+	struct ExpandIndexesImpl<i1> {\
+		using type = This::template ExpandIthIndex<i1>;\
+	};\
+	template<int... I>\
+	using ExpandIndexes = typename ExpandIndexesImpl<I...>::type;\
+\
+	template<typename Seq>\
+	struct ExpandIndexSeqImpl {};\
+	template<int... I>\
+	struct ExpandIndexSeqImpl<std::integer_sequence<int, I...>> {\
+		using type = ExpandIndexes<I...>;\
+	};\
+	template<typename Seq>\
+	using ExpandIndexSeq = typename ExpandIndexSeqImpl<Seq>::type;\
+\
+	template<int deferRank = rank> /* evaluation needs to be deferred */\
+	using ExpandAllIndexes = ExpandIndexSeq<std::make_integer_sequence<int, deferRank>>;
+
+// TODO remove index ...
+// 1) expand index
+// 2) replace its inner with one-past-index
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_DIMS()\
@@ -2020,10 +2004,8 @@ auto transpose(T const & t) {
 		&& is_sym_v<T>
 	) {
 		return t;
-	} else if constexpr(m > n) {
-		return transpose<n,m,T>(t);
 	} else {	// m < n and they are different storage nestings
-		using E = typename T::template ExpandIthIndex<n>::template ExpandIthIndex<m>;
+		using E = typename T::template ExpandIndexes<m,n>;
 		using U = typename TransposeResultWithAllIndexesExpanded<E, 0, E::rank, m, n>::T;
 		return U([&](typename T::intN i) {
 			std::swap(i(m), i(n));

@@ -47,6 +47,9 @@
 - `::ReplaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
 - `::ExpandIthIndex<i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  So a sym's ExpandIthIndex<0> or <1> would produce a vec-of-vec.  a sym-of-vec's ExpandIthIndex<2> would return the same type, and a vec-of-sym's ExpandIthIndex<0> would return the same type.
 - `::ExpandAllIndexes<>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.
+- `::ExpandIndexes<i1, i2, ...>` = expand the all indexes listed.
+- `::ExpandIndexSeq<std::integer_sequence<int, i1...>>` = expands the indexes in the `integer_sequence<int, ...>`
+- `::RemoveIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into vecs.
 
 Tensor Template Helpers (subject to change)
 - `is_tensor_v<T>` = is it a tensor storage type?
@@ -141,7 +144,6 @@ TODO:
 	- for multiply and for permute, some way to extract the flags for symmetric/not on dif indexes
 	  so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into vec-of-vec
 - shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
-- merge `::ExpandIthIndex<i> ::ExpandAllIndexes<>` into `::ExpandIndexes<int...>`
 - `::RemoveIthIndex<i>`, then get contract() working (and proly matrix-mul too)
 
 - better function matching for derivatives?

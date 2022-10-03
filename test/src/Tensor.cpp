@@ -2,169 +2,6 @@
 #include "Tensor/Inverse.h"
 #include "Common/Test.h"
 
-// TODO move this to Common's test
-
-
-// get the i'th value from a tuple of values
-// https://cplusplus.com/forum/general/241535/#msg1073933
-// TODO smae thing but with index_sequence
-
-template<size_t i, size_t... is>
-struct index_get;
-
-template<size_t i, size_t first, size_t... rest>
-struct index_get<i, first, rest...> {
-	static constexpr size_t value = index_get<i-1, rest...>::value;
-};
-
-template<size_t first, size_t... rest>
-struct index_get<0, first, rest...> {
-	static constexpr size_t value = first;
-};
-
-template<size_t... i>
-constexpr size_t index_get_v = index_get<i...>::value;
-
-static_assert(index_get_v<0,1> == 1);
-static_assert(index_get_v<0,1,2> == 1);
-static_assert(index_get_v<1,1,2> == 2);
-
-template<size_t i, typename T>
-constexpr size_t sequence_get_v = {};
-
-template<size_t i, size_t... I>
-constexpr size_t sequence_get_v<i, std::index_sequence<I...>> = index_get_v<i, I...>;
-
-// index_sequence concat
-//https://devblogs.microsoft.com/oldnewthing/20200625-00/?p=103903
-
-template<typename Seq1, typename Seq>
-struct sequence_cat;
-
-template<std::size_t... Ints1, std::size_t... Ints2>
-struct sequence_cat<
-	std::index_sequence<Ints1...>,
-	std::index_sequence<Ints2...>
-> {
-	using type = std::index_sequence<Ints1..., Ints2...>;
-};
-
-template<typename Seq1, typename Seq2>
-using sequence_cat_t = typename sequence_cat<Seq1, Seq2>::type;
-
-static_assert(
-	std::is_same_v<
-		sequence_cat_t<
-			std::index_sequence<1>,
-			std::index_sequence<2,3>
-		>,
-		std::index_sequence<1,2,3>
-	>
-);
-
-// set the i'th value
-
-template<size_t value, size_t i, typename T>
-struct sequence_set;
-
-template<size_t value, size_t i, size_t first, size_t... rest>
-struct sequence_set<value, i, std::index_sequence<first, rest...>> {
-	using type = sequence_cat_t<
-		std::index_sequence<first>,
-		typename sequence_set<value, i-1, std::index_sequence<rest...>>::type
-	>;
-};
-
-template<size_t value, size_t first, size_t... rest>
-struct sequence_set<value, 0, std::index_sequence<first, rest...>> {
-	using type = sequence_cat_t<
-		std::index_sequence<value>,
-		std::index_sequence<rest...>
-	>;
-};
-
-template<size_t value, size_t first>
-struct sequence_set<value, 0, std::index_sequence<first>> {
-	using type = std::index_sequence<value>;
-};
-
-template<size_t value, size_t i, typename T>
-using sequence_set_t = typename sequence_set<value, i, T>::type;
-
-static_assert(
-	std::is_same_v<
-		sequence_set_t<3, 0, std::index_sequence<2>>,
-		std::index_sequence<3>
-	>
-);
-
-static_assert(
-	std::is_same_v<
-		sequence_set_t<3, 0, std::index_sequence<1, 2>>,
-		std::index_sequence<3, 2>
-	>
-);
-static_assert(
-	std::is_same_v<
-		sequence_set_t<3, 1, std::index_sequence<1, 2>>,
-		std::index_sequence<1, 3>
-	>
-);
-
-static_assert(
-	std::is_same_v<
-		sequence_set_t<3, 0, std::index_sequence<7,5,9>>,
-		std::index_sequence<3,5,9>
-	>
-);
-static_assert(
-	std::is_same_v<
-		sequence_set_t<3, 1, std::index_sequence<7,5,9>>,
-		std::index_sequence<7,3,9>
-	>
-);
-static_assert(
-	std::is_same_v<
-		sequence_set_t<3, 2, std::index_sequence<7,5,9>>,
-		std::index_sequence<7,5,3>
-	>
-);
-
-/*
-initialize to <0, 0, size>
-
-start goes from 0 to size-2
-current goes from start to size-2
-current and current+1 are sorted
-then recursive case called on <start, current+1, size>
-
-then for case <start, size-1, size> instead do <0, 0, size-1>
-then for case <0, 0, 0> you're done
-*/
-template<size_t start, size_t current, size_t size, size_t... I>
-struct SortImpl {
-	using seq = std::index_sequence<I...>;
-	static constexpr auto value() {
-		constexpr size_t va = sequence_get_v<current, seq>;
-		constexpr size_t vb = sequence_get_v<current+1, seq>;
-		if constexpr (va < vb) {
-			return (int)1;
-		} else {
-			return (int)1;
-		}
-	}
-};
-template<size_t... I>
-using Sort = SortImpl<0, 0, sizeof...(I), I...>;
-
-#if 0
-void test_Tensor() {
-	Sort<1> s1;
-	Sort<1,2> s1_2;
-}
-#endif
-#if 1
-
 // static_asserts for templates
 
 namespace StaticTests {
@@ -250,6 +87,9 @@ namespace StaticTests {
 	static_assert(std::is_same_v<_vec<int,3>::ExpandAllIndexes<>, _vec<int,3>>);
 	static_assert(std::is_same_v<_tensor<int,3,3>::ExpandAllIndexes<>, _tensor<int,3,3>>);
 	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandAllIndexes<>, _tensorr<int,3,4>>);
+	
+	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandIndexes<0,1,2,3>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandIndexSeq<std::integer_sequence<int,0,1,2,3>>, _tensorr<int,3,4>>);
 
 	static_assert(std::is_same_v<int3::Nested<0>, int3>);
 	static_assert(std::is_same_v<int3::Nested<1>, int>);
@@ -740,6 +580,18 @@ void test_Tensor() {
 		//determinant
 		
 		TEST_EQ(determinant(m), 0);
+
+		// transpose
+
+		TEST_EQ(Tensor::float3x3(
+			{1,2,3},
+			{4,5,6},
+			{7,8,9}
+		), Tensor::transpose(Tensor::float3x3(
+			{1,4,7},
+			{2,5,8},
+			{3,6,9}
+		)));
 	}
 
 	//symmetric
@@ -1409,5 +1261,3 @@ so a.s == {0,1,2,4,5,8};
 		static_assert(d.dim<2> == 2);
 	}
 }
-
-#endif
