@@ -88,7 +88,7 @@ namespace StaticTests {
 	static_assert(std::is_same_v<_tensor<int,3,3>::ExpandAllIndexes<>, _tensor<int,3,3>>);
 	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandAllIndexes<>, _tensorr<int,3,4>>);
 	
-	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandIndexes<0,1,2,3>, _tensorr<int,3,4>>);
+	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandIndex<0,1,2,3>, _tensorr<int,3,4>>);
 	static_assert(std::is_same_v<_tensori<int,index_asym<3>,index_asym<3>>::ExpandIndexSeq<std::integer_sequence<int,0,1,2,3>>, _tensorr<int,3,4>>);
 
 	static_assert(std::is_same_v<int3::Nested<0>, int3>);
@@ -100,6 +100,8 @@ namespace StaticTests {
 	static_assert(std::is_same_v<int3x3::Nested<0>, int3x3>);
 	static_assert(std::is_same_v<int3x3::Nested<1>, int3>);
 	static_assert(std::is_same_v<int3x3::Nested<2>, int>);
+
+	static_assert(std::is_same_v<float3::RemoveIthIndex<0>, float>);
 
 	static_assert(
 		float3s3::numNestingsToIndex<0> == float3s3::numNestingsToIndex<1>

@@ -168,19 +168,60 @@ namespace Tensor {
 		using type = This::template ExpandIthIndex<i1>;\
 	};\
 	template<int... I>\
-	using ExpandIndexes = typename ExpandIndexesImpl<I...>::type;\
+	using ExpandIndex = typename ExpandIndexesImpl<I...>::type;\
 \
 	template<typename Seq>\
 	struct ExpandIndexSeqImpl {};\
 	template<int... I>\
 	struct ExpandIndexSeqImpl<std::integer_sequence<int, I...>> {\
-		using type = ExpandIndexes<I...>;\
+		using type = ExpandIndex<I...>;\
 	};\
 	template<typename Seq>\
 	using ExpandIndexSeq = typename ExpandIndexSeqImpl<Seq>::type;\
 \
 	template<int deferRank = rank> /* evaluation needs to be deferred */\
-	using ExpandAllIndexes = ExpandIndexSeq<std::make_integer_sequence<int, deferRank>>;
+	using ExpandAllIndexes = ExpandIndexSeq<std::make_integer_sequence<int, deferRank>>;\
+\
+	/* same but now with RemoveIthIndex, RemoveIndex, RemoveIndexSeq */\
+	template<int i>\
+	struct RemoveIthIndexImpl {\
+		static constexpr auto value() {\
+			using expanded = This::template ExpandIthIndex<i>;\
+			if constexpr (i == 0) {\
+				return typename expanded::Inner();\
+			} else if constexpr (i == rank-1) {\
+				return expanded::template Nested<i-1>::template ReplaceInner<expanded::Scalar>();\
+			} else {\
+				return expanded::template Nested<i-1>::template ReplaceInner<\
+					typename expanded::template Nested<i+1>\
+				>();\
+			}\
+		}\
+		using type = decltype(value());\
+	};\
+	template<int i>\
+	using RemoveIthIndex = typename RemoveIthIndexImpl<i>::type;\
+\
+	template<int i1, int... I>\
+	struct RemoveIndexesImpl {\
+		using tmp = This::template RemoveIthIndex<i1>;\
+		using type = typename tmp::template RemoveIndexesImpl<I...>::type;\
+	};\
+	template<int i1>\
+	struct RemoveIndexesImpl<i1> {\
+		using type = This::template RemoveIthIndex<i1>;\
+	};\
+	template<int... I>\
+	using RemoveIndex = typename RemoveIndexesImpl<I...>::type;\
+\
+	template<typename Seq>\
+	struct RemoveIndexSeqImpl {};\
+	template<int... I>\
+	struct RemoveIndexSeqImpl<std::integer_sequence<int, I...>> {\
+		using type = RemoveIndex<I...>;\
+	};\
+	template<typename Seq>\
+	using RemoveIndexSeq = typename RemoveIndexSeqImpl<Seq>::type;
 
 // TODO remove index ...
 // 1) expand index
@@ -2005,7 +2046,7 @@ auto transpose(T const & t) {
 	) {
 		return t;
 	} else {	// m < n and they are different storage nestings
-		using E = typename T::template ExpandIndexes<m,n>;
+		using E = typename T::template ExpandIndex<m,n>;
 		using U = typename TransposeResultWithAllIndexesExpanded<E, 0, E::rank, m, n>::T;
 		return U([&](typename T::intN i) {
 			std::swap(i(m), i(n));
