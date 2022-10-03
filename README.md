@@ -46,11 +46,11 @@
 - `::ReplaceInner<T>` = replaces this tensor's Inner with a new type, T.
 - `::ReplaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
 - `::ExpandIthIndex<i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  So a sym's ExpandIthIndex<0> or <1> would produce a vec-of-vec.  a sym-of-vec's ExpandIthIndex<2> would return the same type, and a vec-of-sym's ExpandIthIndex<0> would return the same type.
-- `::ExpandAllIndexes<>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.
 - `::ExpandIndex<i1, i2, ...>` = expand the all indexes listed.
 - `::ExpandIndexSeq<std::integer_sequence<int, i1...>>` = expands the indexes in the `integer_sequence<int, ...>`
+- `::ExpandAllIndexes<>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `_tensori<Scalar, dim1, ..., dimN>`.
 - `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into vecs.
-- `::RemoveIndex<i1, i2, ...>` = Removes all indexe.
+- `::RemoveIndex<i1, i2, ...>` = Removes all indexes.
 
 Tensor Template Helpers (subject to change)
 - `is_tensor_v<T>` = is it a tensor storage type?
