@@ -100,8 +100,9 @@ namespace Tensor {
 				return std::optional<Inner>();\
 			}\
 		}\
+		using type = typename decltype(value())::value_type;\
 	};\
-	using Scalar = typename decltype(ScalarImpl::value())::value_type;\
+	using Scalar = typename ScalarImpl::type;\
 \
 	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
 	/*  for vectors-of-vectors this is the nesting. */\
@@ -171,8 +172,9 @@ namespace Tensor {
 \
 	template<int i1, int... I>\
 	struct ExpandIndexImpl {\
-		using tmp = This::template ExpandIthIndex<i1>;\
-		using type = typename tmp::template ExpandIndexImpl<I...>::type;\
+		using type = typename This\
+			::template ExpandIthIndex<i1>\
+			::template ExpandIndexImpl<I...>::type;\
 	};\
 	template<int i1>\
 	struct ExpandIndexImpl<i1> {\
@@ -287,9 +289,10 @@ namespace Tensor {
 				return typename Inner::template Nested<index-1>();\
 			}\
 		}\
+		using type = decltype(value());\
 	};\
 	template<int index>\
-	using Nested = decltype(NestedImpl<index>::value());\
+	using Nested = typename NestedImpl<index>::type;\
 \
 	template<int i>\
 	static constexpr int count = Nested<i>::localCount;\
@@ -835,16 +838,17 @@ ReadIterator vs WriteIterator
 #define TENSOR_ADD_REPLACE_SCALAR()\
 	template<typename NewScalar>\
 	struct ReplaceScalarImpl {\
-		static constexpr auto getType() {\
+		static constexpr auto value() {\
 			if constexpr (numNestings == 1) {\
 				return NewScalar();\
 			} else {\
 				return typename Inner::template ReplaceScalar<NewScalar>();\
 			}\
 		}\
+		using type = decltype(value());\
 	};\
 	template<typename NewScalar>\
-	using ReplaceScalar = ReplaceInner<decltype(ReplaceScalarImpl<NewScalar>::getType())>;
+	using ReplaceScalar = ReplaceInner<typename ReplaceScalarImpl<NewScalar>::type>;
 
 // vector.volume() == the volume of a size reprensted by the vector
 // assumes Inner operator* exists
