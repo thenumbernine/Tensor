@@ -40,6 +40,7 @@ So I guess overall this library is halfway between a mathematician's and a progr
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 - `::Scalar` = get the scalar type used for this tensor.
 - `::Inner` = the next most nested vector/matrix/symmetric.
+- `::Template<T, N>` = the template of this class, useful for nesting operations.
 - `::rank` = for determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
 - `::dim<i>` = get the i'th dimension size , where i is from 0 to rank-1.
 - `::dims` = get a int-vector with all the dimensions.  For rank-1 this is just an int.  Maybe I'll change it to be intN for all ranks, not sure.
@@ -48,9 +49,12 @@ So I guess overall this library is halfway between a mathematician's and a progr
 - `::count<i>` = get the storage size of the i'th nested class.  i is from 0 to numNestings-1.
 - `::localCount` = get the storage size of the current class, equal to `count<0>`.
 - `::Nested<i>` = get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
-- `::numNestingsToIndex<i>` = gets the number of nestings deep that the index 'i' is located.
+- `::numNestingsToIndex<i>` = gets the number of nestings deep that the index 'i' is located, where i is from 0 to rank.  `numNestingsToIndex<0>` will always return 0, `numNestingsToIndex<rank>` will always return `numNestings`.
 - `::InnerForIndex<i>` = get the type associated with the i'th index, where i is from 0 to rank-1.  Equivalent to `::Nested<numNestingsToIndex<i>>`  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
-- `::ReplaceInner<T>` = replaces this tensor's Inner with a new type, T.
+- `::ReplaceInner<T>` = Replaces this tensor's Inner with a new type, T.
+- `::ReplaceNested<i,T>` = Replace the i'th nesting of this tensor with the type 'T', where i is from 0 to numNestings-1.
+- `::ReplaceLocalDim<n>` = replaces this tensor's localDim with a new dimension, n.
+- `::ReplaceDim<i,n>` = Replace the i'th index dimension with the dimension, n.
 - `::ReplaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
 - `::ExpandIthIndex<i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  So a sym's ExpandIthIndex<0> or <1> would produce a vec-of-vec.  a sym-of-vec's ExpandIthIndex<2> would return the same type, and a vec-of-sym's ExpandIthIndex<0> would return the same type.
 - `::ExpandIndex<i1, i2, ...>` = expand the all indexes listed.
@@ -142,7 +146,7 @@ TODO:
 
 - more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
 	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "ReplaceScalar" the nesting-minus-one of A with the nesting-1 of B
-- make a permuteOrder() function, have this "ExpandIthIndex<>" on all its passed indexes, then have it run across the permute indexes.
+- make a permuteIndexes() function, have this "ExpandIndex<>" on all its passed indexes, then have it run across the permute indexes.
 	- mind you that for transposes then you can respect symmetry and you don't need to expand those indexes.
 	- make transpose a specialization of permuteIndexes()
 - index notation summation?  mind you that it shoud preserve non-summed index memory-optimization structures.
@@ -150,8 +154,7 @@ TODO:
 	- for multiply and for permute, some way to extract the flags for symmetric/not on dif indexes
 	  so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into vec-of-vec
 - shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
-- get contract() working (and proly matrix-mul too)
-- TODO RemoveIndex<> doesn't sort yet, so the order you provide matters, but I just put sequence-sort in Common/Meta.h so yeah soon.
+- get matrix-mul working for arbitrary tensors without expanding all internal storage optimizations.
 
 - more flexible exterior product (cross, wedge, determinant).  Generalize to something with Levi-Civita permutation tensor.
 - asym is 2-rank totally-antisymmetric .. I should do a N-rank totally-antisymmetric and N-rank totally-symmetric 
@@ -175,3 +178,6 @@ TODO:
 
 - change all those functions types to be is_tensor_v when possible.
 - try to work around github's mathjax rendering errors.  looks fine on my own mathjax and on stackedit, but not on github.
+
+- InnerForIndex doesn't really get the inner, it gets the index, so call it something like "TypeForIndex" 
+- see if ReplaceNested<> can't be used in a few other places.

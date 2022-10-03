@@ -134,6 +134,21 @@ namespace Tensor {
 	};\
 	static constexpr int numNestings = NumNestingImpl::value();\
 \
+	template<int i, typename NewNestedInner>\
+	struct ReplaceNestingImpl {\
+		static constexpr auto value() {\
+			if constexpr (i == 0) {\
+				return NewNestedInner();\
+			} else {\
+				using NewType = typename Inner::template ReplaceNestingImpl<i-1, NewNestedInner>::type;\
+				return ReplaceInner<NewType>();\
+			}\
+		}\
+		using type = decltype(value());\
+	};\
+	template<int i, typename NewType>\
+	using ReplaceNested = typename ReplaceNestingImpl<i, NewType>::type;\
+\
 	/* expand the storage of the i'th index */\
 	template<int index>\
 	struct ExpandIthIndexImpl {\
@@ -275,8 +290,11 @@ namespace Tensor {
 	template<int index>\
 	struct NestingForIndexImpl {\
 		static constexpr int value() {\
-			static_assert(index >= 0 && index < rank);\
-			if constexpr (index < localRank) {\
+			static_assert(index >= 0 && index <= rank);\
+			/* to get the scalar-most nesting, query rank */\
+			if constexpr (index == rank) {\
+				return numNestings;\
+			} else if constexpr (index < localRank) {\
 				return 0;\
 			} else {\
 				using Impl = typename Inner::template NestingForIndexImpl<index - localRank>;\
@@ -802,10 +820,14 @@ ReadIterator vs WriteIterator
 	template <typename NewInner>\
 	using ReplaceInner = Template<NewInner, localDim>;
 
+#define TENSOR_ADD_REPLACE_DIM()\
+	template<int newDim>\
+	using ReplaceLocalDim = Template<Inner, newDim>;
+
 #define TENSOR_ADD_REPLACE_SCALAR()\
 	template<typename NewScalar>\
 	struct ReplaceScalarImpl {\
-		static auto getType() {\
+		static constexpr auto getType() {\
 			if constexpr (numNestings == 1) {\
 				return NewScalar();\
 			} else {\
@@ -834,7 +856,8 @@ ReadIterator vs WriteIterator
 		return _vec<int,localRank>{writeIndex};\
 	}
 
-//these are all per-element assignment operators, so they should work fine for vector- and for symmetric-
+//these are all per-element assignment operators, 
+// so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
 #define TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_DIMS() /* needed by TENSOR_ADD_CTORS */\
 	TENSOR_ADD_ITERATOR() /* needed by TENSOR_ADD_CTORS */\
@@ -850,7 +873,8 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_UNM()\
 	TENSOR_ADD_CMP_OP()\
 	TENSOR_ADD_REPLACE_INNER()\
-	TENSOR_ADD_REPLACE_SCALAR()
+	TENSOR_ADD_REPLACE_SCALAR()\
+	TENSOR_ADD_REPLACE_DIM()
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
@@ -2019,44 +2043,19 @@ constexpr std::array<T, N> permute(
 // TODO how to unpack a tuple-of-ints into an argument list
 #endif
 
-// transpose ... right now only 2 indexes but for any rank tensor
-// also the result doesn't respect storage optimizations, so the result will be a rank-n _vec
+/*
+Transpose, i.e. exchange two indexes
 
-template<
-	typename Src, 	// source tensor
-	int i, 			// current index
-	int rank,		// final index
-	
-	// TODO instead of two, use this: 
-	//https://stackoverflow.com/a/50471331
-	int m,			// swap #1
-	int n			// swap #2
->
-struct TransposeResultWithAllIndexesExpanded {
-	static constexpr int getdim() {
-		if constexpr (i == m) {
-			return Src::template dim<n>;
-		} else if constexpr (i == n) {
-			return Src::template dim<m>;
-		} else {
-			return Src::template dim<i>;
-		}
-	}
-	using T = _vec<
-		typename TransposeResultWithAllIndexesExpanded<Src, i+1, rank, m, n>::T,
-		getdim()
-	>;
-};
-// final case
-template<typename Src, int i, int m, int n>
-struct TransposeResultWithAllIndexesExpanded<Src, i, i, m, n> {
-	using T = typename Src::Scalar;
-};
-
-// if the m'th or n'th index is a sym then i'll have to replace it with two _Vec's anyways
-//  so for now replace it all with vec's
+If the two indexes are sequential and _sym symmetric storage is used then nothing is changed.
+TODO if the two indexes are sequential and _asym storage is used then just negative the values.
+Otherwise expand the internal storage at indexes m and n (i.e. convert it from _sym or _asym into _vec),
+then exchange the dimensions.
+*/
 template<int m=0, int n=1, typename T>
-requires (is_tensor_v<T> && T::rank >= 2)
+requires (
+	is_tensor_v<T>
+	&& T::rank >= 2
+)
 auto transpose(T const & t) {
 	if constexpr (m == n) {
 		//don't reshape if we're flipping the same index with itself
@@ -2068,9 +2067,22 @@ auto transpose(T const & t) {
 	) {
 		return t;
 	} else {	// m < n and they are different storage nestings
-		using E = typename T::template ExpandIndex<m,n>;
-		using U = typename TransposeResultWithAllIndexesExpanded<E, 0, E::rank, m, n>::T;
-		return U([&](typename T::intN i) {
+		constexpr int mdim = T::template dim<m>;
+		constexpr int ndim = T::template dim<n>;
+		// now re-index E to exchange dimensions
+		// replace the storage at index m with an equivalent one but of dimension of n's index
+		using TmnTmp = typename T::template ExpandIndex<m>;
+		using Tnn = typename TmnTmp::template ReplaceNested<
+			TmnTmp::template numNestingsToIndex<m>,
+			typename TmnTmp::template InnerForIndex<m>::template ReplaceLocalDim<ndim>
+		>;
+		// then same with index n to m's storage
+		using TnnTmp = typename Tnn::template ExpandIndex<n>;
+		using Tnm = typename TnnTmp::template ReplaceNested<
+			TnnTmp::template numNestingsToIndex<n>,
+			typename TnnTmp::template InnerForIndex<n>::template ReplaceLocalDim<mdim>
+		>;
+		return Tnm([&](typename Tnm::intN i) {
 			std::swap(i(m), i(n));
 			return t(i);
 		});
@@ -2099,7 +2111,7 @@ auto contract(T const & t) {
 			return sum;
 		} else {
 			using R = typename T::template RemoveIndex<m>;
-			// TODO a macro to remove the m'th element from 'i'
+			// TODO a macro to remove the m'th element from 'int... i'
 			//return R([](auto... is) -> S {
 			// or TODO implement intN access to asym (and fully sym)
 			return R([&](typename R::intN i) -> S {
@@ -2152,18 +2164,10 @@ auto interior(T&&... args) {
 	return contract(std::forward<T>(args)...);
 }
 
-
-// trace of a matrix
-// TODO generalize to contract<m,n,T> , trace a rank-2 specialization
-
-template<typename T>
-requires (is_tensor_v<T> && T::rank == 2 && T::template dim<0> == T::template dim<1>)
-auto trace(T const & v) {
-	auto sum = v(0,0);
-	for (int i = 1; i < T::template dim<0>; ++i) {
-		sum += v(i,i);
-	}
-	return sum;
+// naming compat
+template<typename... T>
+auto trace(T&&... args) {
+	return contract(std::forward<T>(args)...);
 }
 
 // diagonal matrix from vector

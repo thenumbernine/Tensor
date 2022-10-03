@@ -148,6 +148,54 @@ namespace StaticTest1 {
 	static_assert(
 		is_sym_v<float3s3>
 	);
+
+	namespace transposeTest {
+
+		using T = float2x3;
+		constexpr int m = 0;
+		constexpr int n = 1;
+		using Emn = typename T::template ExpandIndex<m,n>;
+		static_assert(std::is_same_v<Emn, float2x3>);
+		constexpr int mdim = Emn::template dim<m>;
+		static_assert(mdim == 2);
+		constexpr int ndim = Emn::template dim<n>;
+		static_assert(ndim == 3);
+		
+		static_assert(Emn::numNestingsToIndex<0> == 0); // m=0 from-index
+		static_assert(Emn::numNestingsToIndex<1> == 1);
+		static_assert(Emn::numNestingsToIndex<2> == 2);
+		
+		static_assert(std::is_same_v<Emn::InnerForIndex<0>, float2x3>); // m=0 from-index
+		static_assert(std::is_same_v<Emn::InnerForIndex<1>, float3>);
+		static_assert(std::is_same_v<Emn::InnerForIndex<2>, float>);
+
+		static_assert(std::is_same_v<float2x3::ReplaceLocalDim<4>, float4x3>);
+		static_assert(std::is_same_v<float2::ReplaceLocalDim<4>, float4>);
+
+		using Enn = typename Emn::template ReplaceNested<
+			Emn::template numNestingsToIndex<m>,
+			typename Emn::template InnerForIndex<m>::template ReplaceLocalDim<ndim>
+		>;
+		static_assert(std::is_same_v<Enn, float3x3>);
+	
+		static_assert(Enn::template numNestingsToIndex<0> == 0);
+		static_assert(Enn::template numNestingsToIndex<1> == 1); // n=1 to-index
+		static_assert(Enn::template numNestingsToIndex<2> == 2);
+		
+		static_assert(std::is_same_v<Enn::InnerForIndex<0>, float3x3>);
+		static_assert(std::is_same_v<Enn::InnerForIndex<1>, float3>); // n=1 from-index
+		static_assert(std::is_same_v<Enn::InnerForIndex<2>, float>);
+		
+		static_assert(std::is_same_v<float3x3::ReplaceLocalDim<4>, float4x3>);
+		static_assert(std::is_same_v<float3::ReplaceLocalDim<4>, float4>);
+	
+		using Enm = typename Enn::template ReplaceNested<
+			Enn::template numNestingsToIndex<n>,
+			typename Enn::template InnerForIndex<n>::template ReplaceLocalDim<mdim>
+		>;
+
+		static_assert(std::is_same_v<Enm, float3x2>);
+	}
 	static_assert(
 		std::is_same_v<
 			decltype(
@@ -174,12 +222,59 @@ namespace StaticTest1 {
 		>
 	);
 #endif	
-	namespace Test2 {
+	// test swapping dimensions correctly
+	namespace transposeTest1 {
+		using T = _tensor<int, 2,3,4,5>;
+		static_assert(std::is_same_v<decltype(transpose<0,0>(T())), _tensor<int,2,3,4,5>>);
+		static_assert(std::is_same_v<decltype(transpose<1,1>(T())), _tensor<int,2,3,4,5>>);
+		static_assert(std::is_same_v<decltype(transpose<2,2>(T())), _tensor<int,2,3,4,5>>);
+		static_assert(std::is_same_v<decltype(transpose<3,3>(T())), _tensor<int,2,3,4,5>>);
+		static_assert(std::is_same_v<decltype(transpose<0,1>(T())), _tensor<int,3,2,4,5>>);
+		static_assert(std::is_same_v<decltype(transpose<0,2>(T())), _tensor<int,4,3,2,5>>);
+		static_assert(std::is_same_v<decltype(transpose<0,3>(T())), _tensor<int,5,3,4,2>>);
+		static_assert(std::is_same_v<decltype(transpose<1,2>(T())), _tensor<int,2,4,3,5>>);
+		static_assert(std::is_same_v<decltype(transpose<1,3>(T())), _tensor<int,2,5,4,3>>);
+		static_assert(std::is_same_v<decltype(transpose<2,3>(T())), _tensor<int,2,3,5,4>>);
+		static_assert(std::is_same_v<decltype(transpose<1,0>(T())), _tensor<int,3,2,4,5>>);
+		static_assert(std::is_same_v<decltype(transpose<2,0>(T())), _tensor<int,4,3,2,5>>);
+		static_assert(std::is_same_v<decltype(transpose<3,0>(T())), _tensor<int,5,3,4,2>>);
+		static_assert(std::is_same_v<decltype(transpose<2,1>(T())), _tensor<int,2,4,3,5>>);
+		static_assert(std::is_same_v<decltype(transpose<3,1>(T())), _tensor<int,2,5,4,3>>);
+		static_assert(std::is_same_v<decltype(transpose<3,2>(T())), _tensor<int,2,3,5,4>>);
+	}
+	// test preserving storage
+	namespace transposeTest2 {
 		using T = _tensori<int, index_sym<3>, index_vec<3>>;
 		using R = _tensorr<int, 3,3>;
+		static_assert(std::is_same_v<decltype(transpose<0,0>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<1,1>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<2,2>(T())), T>);
 		static_assert(std::is_same_v<decltype(transpose<0,1>(T())), T>);
 		static_assert(std::is_same_v<decltype(transpose<0,2>(T())), R>);
 		static_assert(std::is_same_v<decltype(transpose<1,2>(T())), R>);
+		static_assert(std::is_same_v<decltype(transpose<1,0>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<2,0>(T())), R>);
+		static_assert(std::is_same_v<decltype(transpose<2,1>(T())), R>);
+	}
+	namespace transposeTest4 {
+		using T = _tensori<int, index_sym<3>, index_sym<4>>;
+		static_assert(std::is_same_v<decltype(transpose<0,0>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<1,1>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<2,2>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<3,3>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<0,1>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<0,2>(T())), _tensor<int,4,3,3,4>>);
+		static_assert(std::is_same_v<decltype(transpose<0,3>(T())), _tensor<int,4,3,4,3>>);
+		static_assert(std::is_same_v<decltype(transpose<1,2>(T())), _tensor<int,3,4,3,4>>);
+		static_assert(std::is_same_v<decltype(transpose<1,3>(T())), _tensor<int,3,4,4,3>>);
+		static_assert(std::is_same_v<decltype(transpose<2,3>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<1,0>(T())), T>);
+		static_assert(std::is_same_v<decltype(transpose<2,0>(T())), _tensor<int,4,3,3,4>>);
+		static_assert(std::is_same_v<decltype(transpose<3,0>(T())), _tensor<int,4,3,4,3>>);
+		static_assert(std::is_same_v<decltype(transpose<2,1>(T())), _tensor<int,3,4,3,4>>);
+		static_assert(std::is_same_v<decltype(transpose<3,1>(T())), _tensor<int,3,4,4,3>>);
+		static_assert(std::is_same_v<decltype(transpose<3,2>(T())), T>);
+
 	}
 }
 
