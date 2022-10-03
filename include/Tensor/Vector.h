@@ -153,20 +153,16 @@ namespace Tensor {
 	template<int index>\
 	struct ExpandIthIndexImpl {\
 		static_assert(index >= 0 && index < rank);\
+		/* another This::template that behaves inside a static constexpr method ... */\
 		static constexpr auto value() {\
-			/* if 'This' is a result then maybe I can't use decltype(value()) ? */\
-			if constexpr (index < localRank) {\
-				if constexpr (localRank == 1) {\
-					/* nothing changes */\
-					return This();\
-				} else {\
-					/* return a dense-tensor of depth 'localRank' with inner type 'Inner' */\
-					return _tensorr<Inner, localDim, localRank>();\
-				}\
-			} else {\
-				using NewInner = typename Inner::template ExpandIthIndexImpl<index - localRank>::type;\
-				return ReplaceInner<NewInner>();\
-			}\
+			constexpr int nest = numNestingsToIndex<index>;\
+			using N = typename This::template Nested<nest>;\
+			using R = typename This\
+				::ReplaceNested<\
+					nest,\
+					_tensorr<typename N::Inner, N::localDim, N::localRank>\
+				>;\
+			return R();\
 		}\
 		using type = decltype(value());\
 	};\

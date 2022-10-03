@@ -24,7 +24,7 @@ So I guess overall this library is halfway between a mathematician's and a progr
 `_mat<type, dim1, dim2>` = `_vec<_vec<type,dim2>,dim1>` = matrices:
 - `operator + - /` scalar/matrix, matrix/scalar, and per-element matrix/matrix operations.
 - `vector * matrix` as row-multplication, `matrix * vector` as column-multiplication, and `matrix * matrix` as matrix-multiplication.  Once again, GLSL compat.
-- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing `A_ij`.  This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
+- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A_{ij}$.  This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
 
 `_sym<type, dim>` = symmetric matrices:
 - `.x_x .x_y .x_z .y_y .y_z .z_z .x_w .y_w .z_w .w_w` storage, `.y_x .z_x, .z_y` union'd access.
