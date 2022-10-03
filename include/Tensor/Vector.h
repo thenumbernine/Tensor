@@ -1831,78 +1831,6 @@ _vec<T,N> operator*(typename _vec<T,N>::Scalar const & a, _vec<T,N> const & b) {
 	return c;
 }
 
-// TODO replace all operator* with outer+contract to generalize to any rank
-// maybe generalize further with the # of indexes to contract: 
-// c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
-
-// vector * vector
-//TENSOR_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
-// so it has to be constrained to only T == _vec<T,N>:Scalar
-// c_i := a_i * b_i
-template<typename T, int N>
-requires std::is_same_v<typename _vec<T,N>::Scalar, T>
-_vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
-	_vec<T,N> c;
-	for (int i = 0; i < N; ++i) {
-		c[i] = a[i] * b[i];
-	}
-	return c;
-}
-
-// matrix * matrix operators
-// c_ik := a_ij * b_jk
-template<typename T, int dim1, int dim2, int dim3>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
-_mat<T,dim1,dim3> operator*(_mat<T,dim1,dim2> const & a, _mat<T,dim2,dim3> const & b) {
-	_mat<T,dim1,dim3> c;
-	for (int i = 0; i < dim1; ++i) {
-		for (int j = 0; j < dim3; ++j) {
-			T sum = {};
-			for (int k = 0; k < dim2; ++k) {
-				sum += a[i][k] * b[k][j];
-			}
-			c[i][j] = sum;
-		}
-	}
-	return c;
-}
-
-// (row-)vector * matrix operator
-// c_j := a_i * b_ij
-
-template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
-_vec<T,dim2> operator*(_vec<T,dim1> const & a, _mat<T,dim1,dim2> const & b) {
-	_vec<T,dim2> c;
-	for (int j = 0; j < dim2; ++j) {
-		T sum = {};
-		for (int i = 0; i < dim1; ++i) {
-			sum += a[i] * b[i][j];
-		}
-		c[j] = sum;
-	}
-	return c;
-}
-
-// matrix * (column-)vector operator
-// c_i := a_ij * b_j
-
-template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
-_vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
-	_vec<T,dim1> c;
-	for (int i = 0; i < dim1; ++i) {
-		T sum = {};
-		for (int j = 0; j < dim2; ++j) {
-			sum += a[i][j] * b[j];
-		}
-		c[i] = sum;
-	}
-	return c;
-}
-
-
-
 //element-wise multiplication
 // c_i1_i2_... := a_i1_i2_... * b_i1_i2_...
 // Hadamard product / per-element multiplication
@@ -2202,6 +2130,91 @@ auto diagonal(T const & t) {
 		return t(isrc);
 	});
 }
+
+
+// operator* is outer+contract 
+// TODO maybe generalize further with the # of indexes to contract: 
+// c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
+
+#if 0
+template<typename A, typename B>
+requires(
+	is_tensor_t<A>
+	&& is_tensor_t<B>
+)
+auto operator*(A const & a, B const & b) {
+	return contract<a.rank-1, a.rank>(outer(a,b));
+}
+#endif
+
+// vector * vector
+//TENSOR_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
+// so it has to be constrained to only T == _vec<T,N>:Scalar
+// c_i := a_i * b_i
+template<typename T, int N>
+requires std::is_same_v<typename _vec<T,N>::Scalar, T>
+_vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
+	_vec<T,N> c;
+	for (int i = 0; i < N; ++i) {
+		c[i] = a[i] * b[i];
+	}
+	return c;
+}
+
+// matrix * matrix operators
+// c_ik := a_ij * b_jk
+template<typename T, int dim1, int dim2, int dim3>
+requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
+_mat<T,dim1,dim3> operator*(_mat<T,dim1,dim2> const & a, _mat<T,dim2,dim3> const & b) {
+	_mat<T,dim1,dim3> c;
+	for (int i = 0; i < dim1; ++i) {
+		for (int j = 0; j < dim3; ++j) {
+			T sum = {};
+			for (int k = 0; k < dim2; ++k) {
+				sum += a[i][k] * b[k][j];
+			}
+			c[i][j] = sum;
+		}
+	}
+	return c;
+}
+
+// (row-)vector * matrix operator
+// c_j := a_i * b_ij
+
+template<typename T, int dim1, int dim2>
+requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
+_vec<T,dim2> operator*(_vec<T,dim1> const & a, _mat<T,dim1,dim2> const & b) {
+	_vec<T,dim2> c;
+	for (int j = 0; j < dim2; ++j) {
+		T sum = {};
+		for (int i = 0; i < dim1; ++i) {
+			sum += a[i] * b[i][j];
+		}
+		c[j] = sum;
+	}
+	return c;
+}
+
+// matrix * (column-)vector operator
+// c_i := a_ij * b_j
+
+template<typename T, int dim1, int dim2>
+requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
+_vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
+	_vec<T,dim1> c;
+	for (int i = 0; i < dim1; ++i) {
+		T sum = {};
+		for (int j = 0; j < dim2; ++j) {
+			sum += a[i][j] * b[j];
+		}
+		c[i] = sum;
+	}
+	return c;
+}
+
+
+
 
 // specific typed vectors
 

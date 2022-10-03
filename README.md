@@ -129,7 +129,7 @@ functions:
 	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes.). M >= 1
 	$$contract(a) = \delta^{i_m i_n} a_I$$
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
-	- rank-N -> rank-(N+1):
+	- rank-N -> rank-(N+1), N>=1:
 	$${diagonal(a)_I = \delta_{i_m i_{m+1}} a_{i_1 ... i_m i_{m+2} ... i_n}$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
 	- rank-2 -> rank-0:
@@ -212,4 +212,6 @@ TODO:
 
 - range-iterator as a function of the tensor, like `for (auto i : a.range) {` 
 	- then maybe see how it can be merged with read and write iterator? maybe?  btw write iterator is just a range iterator over the sequence `count<0>...count<numNestings-1>` with a different lookup 
-	- so make a generic multi-dim iterator that acts on `index_sequence`. then use it with read and write iters. 
+	- so make a generic multi-dim iterator that acts on `index_sequence`. then use it with read and write iters.
+
+- rank-n interior aka contract-n-times on neighboring indexes?
