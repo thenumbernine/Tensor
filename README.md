@@ -9,7 +9,7 @@
 ## Reference:
 
 `_vec<type, dim>` = vectors:
-- `.s[]` element/pointer access.
+- `std::array<T> s` = element std::array access.  Tempted to change it back to `T[] s` for ease of ue as pointer access... but I do like the ease of iterator use with `std::array`... hmm...
 - for 1D through 4D: `.x .y .z .w`, `.s0 .s1 .s2 .s2` storage.
 - `.subset<size>(index), .subset<size,index>()` = return a vector reference to a subset of this vector.
 - `operator + - * /` scalar/vector, vector/scalar, and per-element vector/vector operations.  Including vector/vector multiply for GLSL compat, though I might change this.

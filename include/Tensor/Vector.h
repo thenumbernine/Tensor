@@ -589,6 +589,11 @@ ReadIterator vs WriteIterator
 		}\
 	};\
 \
+	/* not in memory order, but ... meh idk why */\
+	/*template<int i> using ReadInc = ReadIncInner<i>;*/\
+	/* in memory order */\
+	template<int i> using ReadInc = ReadIncOuter<i>;\
+\
 	/* read iterator */\
 	/* - sized to the tensor rank (includes multiple-rank nestings) */\
 	/* - range is 0's to the tensor dims() */\
@@ -619,11 +624,6 @@ ReadIterator vs WriteIterator
 		auto & operator*() const {\
 			return owner(index);\
 		}\
-\
-		/* not in memory order, but ... meh idk why */\
-		/*template<int i> using ReadInc = ReadIncInner<i>;*/\
-		/* in memory order */\
-		template<int i> using ReadInc = ReadIncOuter<i>;\
 \
 		ReadIterator & operator++() {\
 			Common::ForLoop<0,rank,ReadInc>::exec(index);\
@@ -701,6 +701,11 @@ ReadIterator vs WriteIterator
 			}\
 		};\
 \
+		/* not in memory order, but ... meh idk why */\
+		/*template<int i> using WriteInc = WriteIncInner<i>;*/\
+		/* in memory order */\
+		template<int i> using WriteInc = WriteIncOuter<i>;\
+\
 		/* write iterator */\
 		/* - sized to the # of nestings */\
 		/* - range is 0's to each nesting's .localCount */\
@@ -743,11 +748,6 @@ ReadIterator vs WriteIterator
 				/* cuz it takes less operations than by-read-writeIndex */\
 				return Traits::getByWriteIndex(owner, writeIndex);\
 			}\
-\
-			/* not in memory order, but ... meh idk why */\
-			/*template<int i> using WriteInc = WriteIncInner<i>;*/\
-			/* in memory order */\
-			template<int i> using WriteInc = WriteIncOuter<i>;\
 \
 			WriteIterator & operator++() {\
 				Common::ForLoop<0,numNestings,WriteInc>::exec(writeIndex);\

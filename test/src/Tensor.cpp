@@ -553,7 +553,7 @@ void test_Tensor() {
 		// read iterator
 		{
 			auto i = m.begin();
-			if constexpr (std::is_same_v<Tensor::int2::iterator::ReadInc<0>, Tensor::int2::ReadIncOuter<0>>) {
+			if constexpr (std::is_same_v<Tensor::int2::ReadInc<0>, Tensor::int2::ReadIncOuter<0>>) {
 				// iterating in memory order for row-major
 				// also in left-right top-bottom order when read
 				// but you have to increment the last index first and first index last
@@ -569,7 +569,7 @@ void test_Tensor() {
 				TEST_EQ(*i, 8); ++i;
 				TEST_EQ(*i, 9); ++i;
 				TEST_EQ(i, m.end());
-			} else if constexpr (std::is_same_v<Tensor::int2::iterator::ReadInc<0>, Tensor::int2::ReadIncInner<0>>) {
+			} else if constexpr (std::is_same_v<Tensor::int2::ReadInc<0>, Tensor::int2::ReadIncInner<0>>) {
 				//iterating transpose to memory order for row-major
 				// - inc first index first, last index last
 				// but lambda init is now m(i,j) == 1 + i(0) + 3 * i(1)  ... typical memory indexing
@@ -1189,9 +1189,9 @@ so a.s == {0,1,2,4,5,8};
 		for (int i = 0; i < 3; ++i) {
 			for (int j = 0; j < 3; ++j) {
 				for (int k = 0; k < 3; ++k) {
-					if constexpr (std::is_same_v<Tensor::int2::iterator::ReadInc<0>, Tensor::int2::ReadIncOuter<0>>) {
+					if constexpr (std::is_same_v<Tensor::int2::ReadInc<0>, Tensor::int2::ReadIncOuter<0>>) {
 						TEST_EQ(ta(i,j,k), k + 3 * (j + 3 * i));
-					} else if constexpr (std::is_same_v<Tensor::int2::iterator::ReadInc<0>, Tensor::int2::ReadIncInner<0>>) {
+					} else if constexpr (std::is_same_v<Tensor::int2::ReadInc<0>, Tensor::int2::ReadIncInner<0>>) {
 						TEST_EQ(ta(i,j,k), i + 3 * (j + 3 * k));
 					}
 				}
