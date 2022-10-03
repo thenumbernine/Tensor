@@ -374,6 +374,8 @@ namespace Tensor {
 		return *this;\
 	}
 
+// for comparing like types, use the member operator==, because it is constexpr
+// for non-like tensors there's a non-member non-constexpr below
 #define TENSOR_ADD_CMP_OP()\
 	constexpr bool operator==(This const & b) const {\
 		for (int i = 0; i < localCount; ++i) {\
@@ -1724,6 +1726,31 @@ using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
 
 // tensor operations
 
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& !std::is_same_v<A,B>
+	&& A::dims == B::dims // equal types means we use .operator== which is constexpr
+)
+bool operator==(A const & a, B const & b) {
+	for (auto i = a.begin(); i != a.end(); ++i) {
+		if (a(i.index) != b(i.index)) return false;
+	}
+	return true;
+}
+
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& !std::is_same_v<A,B>
+	&& A::dims == B::dims // equal types means we use .operator== which is constexpr
+)
+bool operator!=(A const & a, A const & b) {
+	return !operator==(a,b);
+}
+
 //  tensor/scalar sum and scalar/tensor sum
 
 #define TENSOR_SCALAR_OP(op)\
@@ -1915,8 +1942,9 @@ requires (
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
 auto dot(A const & a, B const & b) {
-	auto sum = typename A::Scalar{};
-	for (auto i = a.begin(); i != a.end(); ++i) {
+	auto i = a.begin();
+	auto sum = a(i.index) * b(i.index);
+	for (++i; i != a.end(); ++i) {
 		sum += a(i.index) * b(i.index);
 	}
 	return sum;
@@ -2073,8 +2101,8 @@ auto contract(T const & t) {
 	} else if constexpr (m == n) {
 		// hmmmm Σ_i g^ii a_i is a technically-incorrect tensor operation
 		if constexpr (T::rank == 1) {
-			S sum = {};
-			for (int k = 0; k < T::template dim<0>; ++k) {
+			S sum = t(0);
+			for (int k = 1; k < T::template dim<0>; ++k) {
 				sum += t(k);
 			}
 			return sum;
@@ -2100,8 +2128,8 @@ auto contract(T const & t) {
 		}
 	} else { // m < n
 		if constexpr (T::rank == 2) {
-			S sum = {};
-			for (int k = 0; k < T::template dim<m>; ++k) {
+			S sum = t(0,0);
+			for (int k = 1; k < T::template dim<m>; ++k) {
 				sum += t(k,k);
 			}
 			return sum;	
@@ -2139,16 +2167,40 @@ auto trace(T&&... args) {
 	return contract(std::forward<T>(args)...);
 }
 
-// diagonal matrix from vector
-
-// TODO arbitrary rank and index?
-template<typename T, int N>
-_mat<T,N,N> diagonal(_vec<T,N> const & v) {
-	_mat<T,N,N> a;
-	for (int i = 0; i < N; ++i) {
-		a[i][i] = v[i];
-	}
-	return a;
+// diagonalize an index 
+// well if it's diagonal, might as well use _sym
+template<int m=0, typename T>
+requires (is_tensor_v<T>)
+auto diagonal(T const & t) {
+	static_assert(m >= 0 && m < T::rank);
+	/* TODO ::InsertIndex that uses _tensor index indicators for what kind of storage to insert
+	using R = T
+		::ExpandIndex<m>
+		::InsertIndex<m, index_vec<T::dim<m>>>;
+	... but can't use InsertIndex to insert a _sym with the expanded index
+	... maybe instead
+	using R = T
+		::RemoveIndex<m>
+		::InsertInsert<m, index_sym<T::dim<m>>>
+	*/
+	using E = typename T::template ExpandIndex<m>;
+	constexpr int nest = E::template numNestingsToIndex<m>;
+	using R = typename E
+		::template ReplaceNested<
+			nest,
+			_sym<
+				typename E::template Nested<nest+1>,
+				E::template dim<m>
+			>
+		>;
+	return R([&](typename R::intN i) {
+		if (i[m] != i[m+1]) return typename T::Scalar();
+		auto isrc = typename T::intN([&](int j) {
+			if (j >= m) return i[j+1];
+			return i[j];
+		});
+		return t(isrc);
+	});
 }
 
 // specific typed vectors

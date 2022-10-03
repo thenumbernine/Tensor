@@ -1344,7 +1344,10 @@ so a.s == {0,1,2,4,5,8};
 			}
 		}
 
-		TEST_EQ(m, Matrix(diagonal(Tensor::_vec<Real, m.dim<0>>(1))));
+		// convert the _sym diagonal to _mat
+		// TODO operator== between matrices
+		auto d = diagonal(Tensor::_vec<Real, m.dim<0>>(1));
+		TEST_EQ(m, d);
 		TEST_EQ(m, (Matrix{{1,0,0},{0,1,0},{0,0,1}}));
 		TEST_EQ(Tensor::determinant(m), 1);
 	}

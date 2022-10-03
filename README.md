@@ -126,11 +126,11 @@ functions:
 	- rank-M -> rank-M, M >= 2
 	$$transpose(a)_{{i_1}...{i_p}...{i_q}...{i_n}} = a_{{i_1}...{i_q}...{i_p}...{i_n}}$$
 - `contract<m=0,n=1>(a), interior(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to `trace(t)`.
-	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes... M >= 1
+	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes.). M >= 1
 	$$contract(a) = \delta^{i_m i_n} a_I$$
-- `diagonal(m)` = Matrix diagonal from vector.
-	- rank-1 -> rank-2:
-	$${diagonal(a)_{ij} = \delta_{ij} \cdot a_i$$
+- `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
+	- rank-N -> rank-(N+1):
+	$${diagonal(a)_I = \delta_{i_m i_{m+1}} a_{i_1 ... i_m i_{m+2} ... i_n}$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
 	- rank-2 -> rank-0:
 	$$determinant(a) := det(a) = \epsilon_I {a^{i_1}}_1 {a^{i_2}}_2 {a^{i_3}}_3 ... {a^{i_n}}_n$$
@@ -190,7 +190,26 @@ TODO:
 - __complex__ support.  Especially in norms.
 - preserve storage optimizations between tensor op tensor per-elem operations.  right now its just expanding all storage optimizations.
 
-- change all those functions types to be is_tensor_v when possible.
+- change all those functions types to be `is_tensor_v` when possible.
 - try to work around github's mathjax rendering errors.  looks fine on my own mathjax and on stackedit, but not on github.
 
 - InnerForIndex doesn't really get the inner, it gets the index, so call it something like "TypeForIndex"
+
+- ReplaceDim and ReplaceLocalDim that take a int pack and insert that many new dimensions into that index' location.
+	- would be nice to insert the template to wedge into it, like `tuple<index_int<3>, index_sym<3>>`.
+
+- shorter names for `index_*` for building tensors.
+
+- more tensor types: `_ident` for identity rank-2 (0 DOF),
+	`_scale` for single-variable rank-2 (1-DOF),
+	maybe diagonalized rank-2 (N-DOF),
+	and then rank-N symmetric and antisymmetric.
+
+- any way to optimize symmetries between non-nested dimensions?
+	- like $t_{ijkl} = a_{ij} b_{kl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
+
+- somehow for differing-typed tensors get operator== constexpr
+
+- range-iterator as a function of the tensor, like `for (auto i : a.range) {` 
+	- then maybe see how it can be merged with read and write iterator? maybe?  btw write iterator is just a range iterator over the sequence `count<0>...count<numNestings-1>` with a different lookup 
+	- so make a generic multi-dim iterator that acts on `index_sequence`. then use it with read and write iters. 
