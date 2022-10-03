@@ -125,6 +125,14 @@ namespace StaticTests {
 	static_assert(std::is_same_v<_tensor<int,2,3,4>::RemoveIndex<2>, _tensor<int,2,3>>);
 
 // TODO VERIFY RemoveIndex<> IS ORDER INDEPENENT !! CUZ ITS NOT ATM
+//[a,b,c,d] remove 0 => [a,c,d] => remove 3 => compiler error 
+//[a,b,c,d] remove 3 => [a,b,c] => remove 0 => [b,c] 
+	static_assert(
+		std::is_same_v<
+			_tensor<int,2,3,4,5>::RemoveIndex<3,0>,	//TODO this fails if you fix the order
+			_tensor<int,3,4>
+		>
+	);
 
 	static_assert(
 		float3s3::numNestingsToIndex<0> == float3s3::numNestingsToIndex<1>

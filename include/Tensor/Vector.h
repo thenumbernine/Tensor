@@ -186,14 +186,14 @@ namespace Tensor {
 	template <int i>\
 	struct RemoveIthNestingImpl {\
 		static constexpr auto value() {\
-			using recursiveCase = typename Inner::template RemoveIthNestingImpl<i-1>::type;\
-			return ReplaceInner<recursiveCase>();\
+			if constexpr (i == 0) {\
+				return This::Inner();\
+			} else {\
+				using recursiveCase = typename Inner::template RemoveIthNestingImpl<i-1>::type;\
+				return ReplaceInner<recursiveCase>();\
+			}\
 		}\
 		using type = decltype(value());\
-	};\
-	template<>\
-	struct RemoveIthNestingImpl<0> {\
-		using type = This::Inner;\
 	};\
 	template<int i>\
 	using RemoveIthNesting = typename RemoveIthNestingImpl<i>::type;\
@@ -2310,7 +2310,7 @@ std::string to_string(Tensor::_vec<T, n> const & x) {
 
 #if 0
 // half baked idea of making std::apply compatible with Tensor::_vec
-// I would just use std::array as the internal storage of _vec, but subset() does some memory casting which maybe I shouldn't be doing .. */\
+// I would just use std::array as the internal storage of _vec, but subset() does some memory casting which maybe I shouldn't be doing .. */
 // tuple_size, make this match array i.e. storage size, returns localCount
 
 template<typename T, int N>
