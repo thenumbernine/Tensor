@@ -4,7 +4,7 @@
 
 // static_asserts for templates
 
-namespace StaticTests {
+namespace StaticTest1 {
 	using namespace Tensor;
 
 	static_assert(std::is_same_v<_tensorr<int,3,1>, _tensor<int,3>>);
@@ -124,15 +124,22 @@ namespace StaticTests {
 	static_assert(std::is_same_v<_tensor<int,2,3,4>::RemoveIndex<1>, _tensor<int,2,4>>);
 	static_assert(std::is_same_v<_tensor<int,2,3,4>::RemoveIndex<2>, _tensor<int,2,3>>);
 
-// TODO VERIFY RemoveIndex<> IS ORDER INDEPENENT !! CUZ ITS NOT ATM
-//[a,b,c,d] remove 0 => [a,c,d] => remove 3 => compiler error 
-//[a,b,c,d] remove 3 => [a,b,c] => remove 0 => [b,c] 
+	// verify RemoveIndex<> is order indepenent
+	//[a,b,c,d] remove 0 => [a,c,d] => remove 3 => compiler error 
+	//[a,b,c,d] remove 3 => [a,b,c] => remove 0 => [b,c] 
 	static_assert(
 		std::is_same_v<
-			_tensor<int,2,3,4,5>::RemoveIndex<3,0>,	//TODO this fails if you fix the order
+			_tensor<int,2,3,4,5>::RemoveIndex<3,0>,
 			_tensor<int,3,4>
 		>
 	);
+	static_assert(
+		std::is_same_v<
+			_tensor<int,2,3,4,5>::RemoveIndex<0,3>,
+			_tensor<int,3,4>
+		>
+	);
+
 
 	static_assert(
 		float3s3::numNestingsToIndex<0> == float3s3::numNestingsToIndex<1>
@@ -203,18 +210,32 @@ swizzle
 operators: == != += -= *= /= + - * /
 string/stream operators: to_string and operator<<
 math functions:
-	dot
+
+rank-N x rank-N -> rank-0:
+	dot, inner
+rank-N -> rank-0:
 	lenSq
 	length
+rank-N x rank-N -> rank-N:
+	elemMul, hadamard, matrixCompMult
+rank-N -> rank-N:
 	normalize
+rank-N x rank-N -> rank-0:
 	distance
-	cross
-	outer
-	determinant
-	inverse
+rank-M x rank-N -> rank-(M+N):
+	outer, outerProduct
+rank-M -> rank-M, M >= 2
 	transpose
-	trace
+rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes... M >= 1
+	contract, interior, trace
+rank-1 -> rank-2:
 	diagonal
+rank-2 -> rank-0:
+	determinant
+rank-2 -> rank-2:
+	inverse
+rank-1 dim-3 x rank-1 dim-3 -> rank-1 dim-3:
+	cross
 */
 
 template<typename T>
@@ -445,6 +466,10 @@ void test_Tensor() {
 		TEST_EQ(fa[0], f[0]);
 		TEST_EQ(fa[1], f[1]);
 		TEST_EQ(fa[2], f[2]);
+	
+		// contract
+
+		TEST_EQ((Tensor::contract<0,0>(Tensor::float3(1,2,3))), 6);
 	}
 
 	//old libraries' tests
@@ -626,6 +651,12 @@ void test_Tensor() {
 			{2,5,8},
 			{3,6,9}
 		)));
+	
+		TEST_EQ(Tensor::trace(Tensor::float3x3(
+			{1,2,3},
+			{4,5,6},
+			{7,8,9}
+		)), 15);
 	}
 
 	//symmetric
@@ -771,6 +802,8 @@ so a.s == {0,1,2,4,5,8};
 		
 		// operators
 		operatorScalarTest(a);
+	
+		TEST_EQ(Tensor::trace(Tensor::float3s3({1,2,3,4,5,6})), 10);
 	}
 
 	// antisymmetric matrix
@@ -1220,78 +1253,79 @@ so a.s == {0,1,2,4,5,8};
 
 		//inverse
 		Matrix m;
-		for (int i = 0; i < 3; ++i) {
-			for (int j = 0; j < 3; ++j) {
+		for (int i = 0; i < m.dim<0>; ++i) {
+			for (int j = 0; j < m.dim<1>; ++j) {
 				m(i,j) = i == j ? 1 : 0;
 			}
 		}
 
+		TEST_EQ(m, Matrix(diagonal(Tensor::_vec<Real, m.dim<0>>(1))));
 		TEST_EQ(m, (Matrix{{1,0,0},{0,1,0},{0,0,1}}));
 		TEST_EQ(Tensor::determinant(m), 1);
 	}
+}
 
-	// more old tests
-	// TODO these are static_assert's
-	{
-		using Real = double;
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<3>>::rank)== 1);
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<3>>::dim<0>)== 3);
+// more old tests
+// TODO these are static_assert's
+namespace StaticTest2 {
+	using Real = double;
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<3>>::rank)== 1);
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<3>>::dim<0>)== 3);
 
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>>::rank)== 1);
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>>::dim<0>)== 4);
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>>::rank)== 1);
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>>::dim<0>)== 4);
 
-		static_assert((Tensor::_tensori<Real, Tensor::index_sym<3>>::rank)== 2);
-		static_assert((Tensor::_tensori<Real, Tensor::index_sym<3>>::dim<0>)== 3);
-		static_assert((Tensor::_tensori<Real, Tensor::index_sym<3>>::dim<1>)== 3);
+	static_assert((Tensor::_tensori<Real, Tensor::index_sym<3>>::rank)== 2);
+	static_assert((Tensor::_tensori<Real, Tensor::index_sym<3>>::dim<0>)== 3);
+	static_assert((Tensor::_tensori<Real, Tensor::index_sym<3>>::dim<1>)== 3);
 
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<5>, Tensor::index_vec<6>>::rank)== 2);
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<5>, Tensor::index_vec<6>>::dim<0>)== 5);
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<5>, Tensor::index_vec<6>>::dim<1>)== 6);
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<5>, Tensor::index_vec<6>>::rank)== 2);
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<5>, Tensor::index_vec<6>>::dim<0>)== 5);
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<5>, Tensor::index_vec<6>>::dim<1>)== 6);
 
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::rank)== 3);
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::dim<0>)== 4);
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::dim<1>)== 3);
-		static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::dim<2>)== 3);
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::rank)== 3);
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::dim<0>)== 4);
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::dim<1>)== 3);
+	static_assert((Tensor::_tensori<Real, Tensor::index_vec<4>, Tensor::index_sym<3>>::dim<2>)== 3);
 
-		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::rank)== 4);
-		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<0>)== 2);
-		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<1>)== 2);
-		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<2>)== 3);
-		static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<3>)== 3);
-	}
+	static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::rank)== 4);
+	static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<0>)== 2);
+	static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<1>)== 2);
+	static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<2>)== 3);
+	static_assert((Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<3>>::dim<3>)== 3);
+}
 
-	// verify that the outer of a vector and a sym is just that
-	{
-		auto a = Tensor::float2(2,3);
-		//ECHO(a);
-		static_assert(a.numNestings == 1);
-		static_assert(a.count<0> == 2);
-		static_assert(a.rank == 1);
-		static_assert(a.dim<0> == 2);
-		auto b = Tensor::float3s3(6,5,4,3,2,1);
-		//ECHO(b);
-		static_assert(b.numNestings == 1);
-		static_assert(b.count<0> == 6);
-		static_assert(b.rank == 2);
-		static_assert(b.dim<0> == 3);
-		static_assert(b.dim<1> == 3);
-		auto c = outer(a,b);
-		//ECHO(c);
-		static_assert(c.numNestings == 2);
-		static_assert(c.count<0> == a.count<0>);
-		static_assert(c.count<1> == b.count<0>);
-		static_assert(c.rank == 3);
-		static_assert(c.dim<0> == 2);
-		static_assert(c.dim<1> == 3);
-		static_assert(c.dim<2> == 3);
-		auto d = outer(b,a);
-		//ECHO(d);
-		static_assert(d.numNestings == 2);
-		static_assert(d.count<0> == b.count<0>);
-		static_assert(d.count<1> == a.count<0>);
-		static_assert(d.rank == 3);
-		static_assert(d.dim<0> == 3);
-		static_assert(d.dim<1> == 3);
-		static_assert(d.dim<2> == 2);
-	}
+// verify that the outer of a vector and a sym is just that
+namespace StaticTest3 {
+	auto a = Tensor::float2(2,3);
+	//ECHO(a);
+	static_assert(a.numNestings == 1);
+	static_assert(a.count<0> == 2);
+	static_assert(a.rank == 1);
+	static_assert(a.dim<0> == 2);
+	auto b = Tensor::float3s3(6,5,4,3,2,1);
+	//ECHO(b);
+	static_assert(b.numNestings == 1);
+	static_assert(b.count<0> == 6);
+	static_assert(b.rank == 2);
+	static_assert(b.dim<0> == 3);
+	static_assert(b.dim<1> == 3);
+	auto c = outer(a,b);
+	//ECHO(c);
+	static_assert(c.numNestings == 2);
+	static_assert(c.count<0> == a.count<0>);
+	static_assert(c.count<1> == b.count<0>);
+	static_assert(c.rank == 3);
+	static_assert(c.dim<0> == 2);
+	static_assert(c.dim<1> == 3);
+	static_assert(c.dim<2> == 3);
+	auto d = outer(b,a);
+	//ECHO(d);
+	static_assert(d.numNestings == 2);
+	static_assert(d.count<0> == b.count<0>);
+	static_assert(d.count<1> == a.count<0>);
+	static_assert(d.rank == 3);
+	static_assert(d.dim<0> == 3);
+	static_assert(d.dim<1> == 3);
+	static_assert(d.dim<2> == 2);
 }

@@ -211,17 +211,30 @@ namespace Tensor {
 	template<int i>\
 	using RemoveIthIndex = typename RemoveIthIndexImpl<i>::type;\
 \
+	/* assumes Seq is a integer_sequence<int, ...> */\
+	/*  and assumes it is already sorted */\
+	template<typename Seq>\
+	struct RemoveIndexesImpl;\
 	template<int i1, int... I>\
-	struct RemoveIndexesImpl {\
+	struct RemoveIndexesImpl<std::integer_sequence<int, i1,I...>>  {\
 		using tmp = This::template RemoveIthIndex<i1>;\
-		using type = typename tmp::template RemoveIndexesImpl<I...>::type;\
+		using type = typename tmp::\
+			template RemoveIndexesImpl<std::integer_sequence<int, I...>>\
+			::type;\
 	};\
 	template<int i1>\
-	struct RemoveIndexesImpl<i1> {\
+	struct RemoveIndexesImpl<std::integer_sequence<int, i1>> {\
 		using type = This::template RemoveIthIndex<i1>;\
 	};\
+	/* RemoveIndex sorts the list, so you don't need to worry about order of arguments */\
 	template<int... I>\
-	using RemoveIndex = typename RemoveIndexesImpl<I...>::type;\
+	using RemoveIndex = typename RemoveIndexesImpl<\
+		Common::seq_reverse_t<\
+			Common::seq_sort_t<\
+				std::integer_sequence<int, I...>\
+			>\
+		>\
+	>::type;\
 \
 	template<typename Seq>\
 	struct RemoveIndexSeqImpl {};\
@@ -2043,7 +2056,7 @@ struct TransposeResultWithAllIndexesExpanded<Src, i, i, m, n> {
 // if the m'th or n'th index is a sym then i'll have to replace it with two _Vec's anyways
 //  so for now replace it all with vec's
 template<int m=0, int n=1, typename T>
-requires (is_tensor_v<T>)
+requires (is_tensor_v<T> && T::rank >= 2)
 auto transpose(T const & t) {
 	if constexpr (m == n) {
 		//don't reshape if we're flipping the same index with itself
@@ -2066,48 +2079,70 @@ auto transpose(T const & t) {
 
 // contraction of two indexes of a tensor
 template<int m=0, int n=1, typename T>
-requires (is_tensor_v<T>)
+requires (is_tensor_v<T> 
+	&& m < T::rank
+	&& n < T::rank
+	&& T::template dim<m> == T::template dim<n>
+)
 auto contract(T const & t) {
 	using S = typename T::Scalar;
 	if constexpr(m > n) {
+		//ensure m < n esp for swizzling index's sake
 		return contract<n,m,T>(t);
 	} else if constexpr (m == n) {
-		using R = typename T::template RemoveIndex<m>;
-		// TODO a macro to remove the m'th element from 'i'
-		//return R([](auto... is) -> S {
-		// or TODO implement intN access to asym (and fully sym)
-		return R([&](typename R::intN i) -> S {
-			// static_assert R::intN::dims == T::intN::dims-1
-			auto j = typename T::intN([&](int jk) -> int {
-				if (jk < m) return i[jk];
-				if (jk == m) return 0;
-				return i[jk-1];
-			});
+		// hmmmm Σ_i g^ii a_i is a technically-incorrect tensor operation
+		if constexpr (T::rank == 1) {
 			S sum = {};
-			for (int k = 0; k < T::template dim<m>; ++k) {
-				j[m] = k;
-				sum += t(j) * t(j);
+			for (int k = 0; k < T::template dim<0>; ++k) {
+				sum += t(k);
 			}
 			return sum;
-		});
+		} else {
+			using R = typename T::template RemoveIndex<m>;
+			// TODO a macro to remove the m'th element from 'i'
+			//return R([](auto... is) -> S {
+			// or TODO implement intN access to asym (and fully sym)
+			return R([&](typename R::intN i) -> S {
+				// static_assert R::intN::dims == T::intN::dims-1
+				auto j = typename T::intN([&](int jk) -> int {
+					if (jk < m) return i[jk];
+					if (jk == m) return 0;
+					return i[jk-1];
+				});
+				S sum = {};
+				for (int k = 0; k < T::template dim<m>; ++k) {
+					j[m] = k;
+					sum += t(j);
+				}
+				return sum;
+			});
+		}
 	} else { // m < n
-		using R = typename T::template RemoveIndex<m,n>;
-		return R([&](typename R::intN i) -> S {
-			// static_assert R::intN::dims == T::intN::dims-2
-			auto j = typename T::intN([&](int jk) -> int {
-				if (jk < m) return i[jk];
-				if (jk == m) return 0;
-				if (jk < n) return i[jk-1];
-				if (jk == n) return 0;
-				return i[jk-2];
-			});
+		if constexpr (T::rank == 2) {
 			S sum = {};
 			for (int k = 0; k < T::template dim<m>; ++k) {
-				j[m] = j[n] = k;
-				sum += t(j) * t(j);
+				sum += t(k,k);
 			}
-			return sum;
-		});
+			return sum;	
+		} else {
+			using R = typename T::template RemoveIndex<m,n>;
+			return R([&](typename R::intN i) -> S {
+				// static_assert R::intN::dims == T::intN::dims-2
+				auto j = typename T::intN([&](int jk) -> int {
+					if (jk < m) return i[jk];
+					if (jk == m) return 0;
+					if (jk < n) return i[jk-1];
+					if (jk == n) return 0;
+					return i[jk-2];
+				});
+				S sum = {};
+				for (int k = 0; k < T::template dim<m>; ++k) {
+					j[m] = j[n] = k;
+					sum += t(j);
+				}
+				return sum;
+			});
+		}
 	}
 }
 
@@ -2121,10 +2156,11 @@ auto interior(T&&... args) {
 // trace of a matrix
 // TODO generalize to contract<m,n,T> , trace a rank-2 specialization
 
-template<typename T, int N>
-_mat<T,N,N> trace(_vec<T,N> const & v) {
-	T sum = v(0,0);
-	for (int i = 1; i < N; ++i) {
+template<typename T>
+requires (is_tensor_v<T> && T::rank == 2 && T::template dim<0> == T::template dim<1>)
+auto trace(T const & v) {
+	auto sum = v(0,0);
+	for (int i = 1; i < T::template dim<0>; ++i) {
 		sum += v(i,i);
 	}
 	return sum;

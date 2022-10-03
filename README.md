@@ -1,4 +1,11 @@
 ## Tensor Library
+
+This is for differential geometry numerics.  That's right AI folks, "tensor" doesn't mean "n-index array of numbers", it means "geometric object that lives in the tangent space at some point on a manifold and is invariant to coordinate transform."
+This library is centered around compile-time sized small arrays and larger ranks/degrees (whatever the term is for the number of indexes).
+The old and pre-C++11 and ugly version had extra math indicators like Upper<> and Lower<> for tracking variance, but I've done away with that now.
+This version got rid of that and has added a lot of C++20 tricks.
+So I guess overall this library is halfway between a mathematician's and a programmer's implementation.
+
 - Familiar vector and math support, 2D 3D 4D.
 - Arbitrary-dimension, arbitrary-rank.
 - Compressed symmetric and antisymmetric storage.
@@ -107,9 +114,8 @@ functions:
 	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
 - `transpose<from=0,to=1>(a)` = Transpose indexes `from` and `to`.  This will preserve storage optimizations, so transposing 0,1 of a sym-of-vec will produce a sym-of-vec, but transposing 0,2 or 1,2 of a sym-of-vec will produce a vec-of-vec-of-vec.
 	$$transpose(a)_{{i_1}...{i_p}...{i_q}...{i_n}} = a_{{i_1}...{i_q}...{i_p}...{i_n}}$$
-- `trace(m)` = Matrix trace = Tensor contraction between two indexes.
-	$$trace(a) = {a^i}_i$$
-- `contract<i=0,j=1>(a), interior(a)` = Tensor contraction / interior product of indexes 'i' and 'j'. For rank-2 tensors where i=0 and j=1, `contract(t)` is equivalent to `trace(t)`.
+- `contract<m=0,n=1>(a), interior(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to `trace(t)`.
+	$$contract(a) = \delta^{i_m i_n} a_I$$
 - `diagonal(m)` = Matrix diagonal from vector.
 	$${diagonal(a)_{ij} = \delta_{ij} \cdot a_i$$
 
