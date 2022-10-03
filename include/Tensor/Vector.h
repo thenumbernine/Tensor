@@ -135,19 +135,19 @@ namespace Tensor {
 	static constexpr int numNestings = NumNestingImpl::value();\
 \
 	template<int i, typename NewNestedInner>\
-	struct ReplaceNestingImpl {\
+	struct ReplaceNestedImpl {\
 		static constexpr auto value() {\
 			if constexpr (i == 0) {\
 				return NewNestedInner();\
 			} else {\
-				using NewType = typename Inner::template ReplaceNestingImpl<i-1, NewNestedInner>::type;\
+				using NewType = typename Inner::template ReplaceNestedImpl<i-1, NewNestedInner>::type;\
 				return ReplaceInner<NewType>();\
 			}\
 		}\
 		using type = decltype(value());\
 	};\
 	template<int i, typename NewType>\
-	using ReplaceNested = typename ReplaceNestingImpl<i, NewType>::type;\
+	using ReplaceNested = typename ReplaceNestedImpl<i, NewType>::type;\
 \
 	/* expand the storage of the i'th index */\
 	template<int index>\
@@ -174,16 +174,16 @@ namespace Tensor {
 	using ExpandIthIndex = typename ExpandIthIndexImpl<index>::type;\
 \
 	template<int i1, int... I>\
-	struct ExpandIndexesImpl {\
+	struct ExpandIndexImpl {\
 		using tmp = This::template ExpandIthIndex<i1>;\
-		using type = typename tmp::template ExpandIndexesImpl<I...>::type;\
+		using type = typename tmp::template ExpandIndexImpl<I...>::type;\
 	};\
 	template<int i1>\
-	struct ExpandIndexesImpl<i1> {\
+	struct ExpandIndexImpl<i1> {\
 		using type = This::template ExpandIthIndex<i1>;\
 	};\
 	template<int... I>\
-	using ExpandIndex = typename ExpandIndexesImpl<I...>::type;\
+	using ExpandIndex = typename ExpandIndexImpl<I...>::type;\
 \
 	template<typename Seq>\
 	struct ExpandIndexSeqImpl {};\
@@ -229,21 +229,22 @@ namespace Tensor {
 	/* assumes Seq is a integer_sequence<int, ...> */\
 	/*  and assumes it is already sorted */\
 	template<typename Seq>\
-	struct RemoveIndexesImpl;\
+	struct RemoveIndexImpl;\
 	template<int i1, int... I>\
-	struct RemoveIndexesImpl<std::integer_sequence<int, i1,I...>>  {\
+	struct RemoveIndexImpl<std::integer_sequence<int, i1,I...>>  {\
 		using tmp = This::template RemoveIthIndex<i1>;\
-		using type = typename tmp::\
-			template RemoveIndexesImpl<std::integer_sequence<int, I...>>\
-			::type;\
+		using type = typename tmp\
+			::template RemoveIndexImpl<\
+				std::integer_sequence<int, I...>\
+			>::type;\
 	};\
 	template<int i1>\
-	struct RemoveIndexesImpl<std::integer_sequence<int, i1>> {\
+	struct RemoveIndexImpl<std::integer_sequence<int, i1>> {\
 		using type = This::template RemoveIthIndex<i1>;\
 	};\
 	/* RemoveIndex sorts the list, so you don't need to worry about order of arguments */\
 	template<int... I>\
-	using RemoveIndex = typename RemoveIndexesImpl<\
+	using RemoveIndex = typename RemoveIndexImpl<\
 		Common::seq_reverse_t<\
 			Common::seq_sort_t<\
 				std::integer_sequence<int, I...>\
@@ -258,11 +259,22 @@ namespace Tensor {
 		using type = RemoveIndex<I...>;\
 	};\
 	template<typename Seq>\
-	using RemoveIndexSeq = typename RemoveIndexSeqImpl<Seq>::type;
-
-// TODO remove index ...
-// 1) expand index
-// 2) replace its inner with one-past-index
+	using RemoveIndexSeq = typename RemoveIndexSeqImpl<Seq>::type;\
+\
+	template<int index, int newDim>\
+	struct ReplaceDimImpl {\
+		using expanded = typename This\
+			::template ExpandIndex<index>;\
+		using type = typename expanded\
+			::template ReplaceNested<\
+				expanded::template numNestingsToIndex<index>,\
+				typename expanded\
+					::template InnerForIndex<index>\
+					::template ReplaceLocalDim<newDim>\
+			>;\
+	};\
+	template<int index, int newDim>\
+	using ReplaceDim = typename ReplaceDimImpl<index, newDim>::type;
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_DIMS()\
@@ -820,7 +832,7 @@ ReadIterator vs WriteIterator
 	template <typename NewInner>\
 	using ReplaceInner = Template<NewInner, localDim>;
 
-#define TENSOR_ADD_REPLACE_DIM()\
+#define TENSOR_ADD_REPLACE_LOCAL_DIM()\
 	template<int newDim>\
 	using ReplaceLocalDim = Template<Inner, newDim>;
 
@@ -874,7 +886,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_CMP_OP()\
 	TENSOR_ADD_REPLACE_INNER()\
 	TENSOR_ADD_REPLACE_SCALAR()\
-	TENSOR_ADD_REPLACE_DIM()
+	TENSOR_ADD_REPLACE_LOCAL_DIM()
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
@@ -2071,17 +2083,9 @@ auto transpose(T const & t) {
 		constexpr int ndim = T::template dim<n>;
 		// now re-index E to exchange dimensions
 		// replace the storage at index m with an equivalent one but of dimension of n's index
-		using TmnTmp = typename T::template ExpandIndex<m>;
-		using Tnn = typename TmnTmp::template ReplaceNested<
-			TmnTmp::template numNestingsToIndex<m>,
-			typename TmnTmp::template InnerForIndex<m>::template ReplaceLocalDim<ndim>
-		>;
-		// then same with index n to m's storage
-		using TnnTmp = typename Tnn::template ExpandIndex<n>;
-		using Tnm = typename TnnTmp::template ReplaceNested<
-			TnnTmp::template numNestingsToIndex<n>,
-			typename TnnTmp::template InnerForIndex<n>::template ReplaceLocalDim<mdim>
-		>;
+		using Tnm = typename T
+			::template ReplaceDim<m, ndim>
+			::template ReplaceDim<n, mdim>;
 		return Tnm([&](typename Tnm::intN i) {
 			std::swap(i(m), i(n));
 			return t(i);
