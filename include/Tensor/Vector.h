@@ -182,20 +182,29 @@ namespace Tensor {
 	template<int deferRank = rank> /* evaluation needs to be deferred */\
 	using ExpandAllIndexes = ExpandIndexSeq<std::make_integer_sequence<int, deferRank>>;\
 \
-	/* same but now with RemoveIthIndex, RemoveIndex, RemoveIndexSeq */\
+	/* remove the i'th nesting, i from 0 to numNestings-1 */\
+	template <int i>\
+	struct RemoveIthNestingImpl {\
+		static constexpr auto value() {\
+			using recursiveCase = typename Inner::template RemoveIthNestingImpl<i-1>::type;\
+			return ReplaceInner<recursiveCase>();\
+		}\
+		using type = decltype(value());\
+	};\
+	template<>\
+	struct RemoveIthNestingImpl<0> {\
+		using type = This::Inner;\
+	};\
+	template<int i>\
+	using RemoveIthNesting = typename RemoveIthNestingImpl<i>::type;\
+\
+	/* same as Expand but now with RemoveIthIndex, RemoveIndex, RemoveIndexSeq */\
 	template<int i>\
 	struct RemoveIthIndexImpl {\
 		static constexpr auto value() {\
 			using expanded = This::template ExpandIthIndex<i>;\
-			if constexpr (i == 0) {\
-				return typename expanded::Inner();\
-			} else if constexpr (i == rank-1) {\
-				return expanded::template Nested<i-1>::template ReplaceInner<expanded::Scalar>();\
-			} else {\
-				return expanded::template Nested<i-1>::template ReplaceInner<\
-					typename expanded::template Nested<i+1>\
-				>();\
-			}\
+			constexpr int indexNesting = expanded::template numNestingsToIndex<i>;\
+			return typename expanded::template RemoveIthNesting<indexNesting>();\
 		}\
 		using type = decltype(value());\
 	};\
@@ -2056,7 +2065,6 @@ auto transpose(T const & t) {
 }
 
 // contraction of two indexes of a tensor
-#if 0 // TODO needs RemoveIthIndex
 template<int m=0, int n=1, typename T>
 requires (is_tensor_v<T>)
 auto contract(T const & t) {
@@ -2064,11 +2072,11 @@ auto contract(T const & t) {
 	if constexpr(m > n) {
 		return contract<n,m,T>(t);
 	} else if constexpr (m == n) {
-		using R = typename T::template RemoveIthIndex<m>;
+		using R = typename T::template RemoveIndex<m>;
 		// TODO a macro to remove the m'th element from 'i'
 		//return R([](auto... is) -> S {
 		// or TODO implement intN access to asym (and fully sym)
-		return R([](typename R::intN i) -> S {
+		return R([&](typename R::intN i) -> S {
 			// static_assert R::intN::dims == T::intN::dims-1
 			auto j = typename T::intN([&](int jk) -> int {
 				if (jk < m) return i[jk];
@@ -2076,15 +2084,15 @@ auto contract(T const & t) {
 				return i[jk-1];
 			});
 			S sum = {};
-			for (int k = 0; k < T.dim<m>; ++k) {
+			for (int k = 0; k < T::template dim<m>; ++k) {
 				j[m] = k;
 				sum += t(j) * t(j);
 			}
 			return sum;
 		});
 	} else { // m < n
-		using R = typename T::template RemoveIthIndex<n>::template RemoveIthIndex<m>;
-		return R([](typename R::intN i) -> S {
+		using R = typename T::template RemoveIndex<m,n>;
+		return R([&](typename R::intN i) -> S {
 			// static_assert R::intN::dims == T::intN::dims-2
 			auto j = typename T::intN([&](int jk) -> int {
 				if (jk < m) return i[jk];
@@ -2094,7 +2102,7 @@ auto contract(T const & t) {
 				return i[jk-2];
 			});
 			S sum = {};
-			for (int k = 0; k < T.dim<m>; ++k) {
+			for (int k = 0; k < T::template dim<m>; ++k) {
 				j[m] = j[n] = k;
 				sum += t(j) * t(j);
 			}
@@ -2108,7 +2116,6 @@ template<typename... T>
 auto interior(T&&... args) {
 	return contract(std::forward<T>(args)...);
 }
-#endif
 
 
 // trace of a matrix

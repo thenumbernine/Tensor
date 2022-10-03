@@ -101,11 +101,35 @@ namespace StaticTests {
 	static_assert(std::is_same_v<int3x3::Nested<1>, int3>);
 	static_assert(std::is_same_v<int3x3::Nested<2>, int>);
 
-	static_assert(std::is_same_v<float3::RemoveIthIndex<0>, float>);
+	//only do the RemoveIthNesting on non-opt storage (vec's, _tensor etc, NOT sym, asym)
+	static_assert(std::is_same_v<float3::RemoveIthNesting<0>, float>);
+	static_assert(std::is_same_v<float3x3::RemoveIthNesting<0>, float3>);
+	static_assert(std::is_same_v<float3x3::RemoveIthNesting<1>, float3>);
+	
+	static_assert(std::is_same_v<float3s3::RemoveIthNesting<0>, float>);
+	static_assert(std::is_same_v<float3a3::RemoveIthNesting<0>, float>);
+	static_assert(std::is_same_v<_tensor<int,2,3,4>::RemoveIthNesting<0>, _tensor<int,3,4>>);
+	static_assert(std::is_same_v<_tensor<int,2,3,4>::RemoveIthNesting<1>, _tensor<int,2,4>>);
+	static_assert(std::is_same_v<_tensor<int,2,3,4>::RemoveIthNesting<2>, _tensor<int,2,3>>);
+
+	static_assert(std::is_same_v<float3::RemoveIndex<0>, float>);
+	static_assert(std::is_same_v<float3x3::RemoveIndex<0>, float3>);
+	static_assert(std::is_same_v<float3x3::RemoveIndex<1>, float3>);
+	static_assert(std::is_same_v<float3s3::RemoveIndex<0>, float3>);
+	static_assert(std::is_same_v<float3s3::RemoveIndex<1>, float3>);
+	static_assert(std::is_same_v<float3a3::RemoveIndex<0>, float3>);
+	static_assert(std::is_same_v<float3a3::RemoveIndex<1>, float3>);
+	
+	static_assert(std::is_same_v<_tensor<int,2,3,4>::RemoveIndex<0>, _tensor<int,3,4>>);
+	static_assert(std::is_same_v<_tensor<int,2,3,4>::RemoveIndex<1>, _tensor<int,2,4>>);
+	static_assert(std::is_same_v<_tensor<int,2,3,4>::RemoveIndex<2>, _tensor<int,2,3>>);
+
+// TODO VERIFY RemoveIndex<> IS ORDER INDEPENENT !! CUZ ITS NOT ATM
 
 	static_assert(
 		float3s3::numNestingsToIndex<0> == float3s3::numNestingsToIndex<1>
 	);
+	
 	static_assert(
 		is_sym_v<float3s3>
 	);

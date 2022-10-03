@@ -50,7 +50,7 @@
 - `::ExpandIndexSeq<std::integer_sequence<int, i1...>>` = expands the indexes in the `integer_sequence<int, ...>`
 - `::ExpandAllIndexes<>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `_tensori<Scalar, dim1, ..., dimN>`.
 - `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into vecs.
-- `::RemoveIndex<i1, i2, ...>` = Removes all indexes.
+- `::RemoveIndex<i1, i2, ...>` = Removes all indexes.  
 
 Tensor Template Helpers (subject to change)
 - `is_tensor_v<T>` = is it a tensor storage type?
@@ -134,7 +134,6 @@ TODO:
 	- once we have this, why not rank-3 rank-4 etc sym or antisym ... I'm sure there's some math on how to calculate the unique # of vars
 - sym needs some index help when it's mixing accessors and normal derefs. one signature is Scalar&, the other is Accessor
 
-- more flexible exterior product (cross, wedge, determinant).  Generalize to something with Levi-Civita permutation tensor.
 - more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
 	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "ReplaceScalar" the nesting-minus-one of A with the nesting-1 of B
 - make a permuteOrder() function, have this "ExpandIthIndex<>" on all its passed indexes, then have it run across the permute indexes.
@@ -145,7 +144,13 @@ TODO:
 	- for multiply and for permute, some way to extract the flags for symmetric/not on dif indexes
 	  so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into vec-of-vec
 - shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
-- `::RemoveIthIndex<i>`, then get contract() working (and proly matrix-mul too)
+- get contract() working (and proly matrix-mul too)
+- TODO RemoveIndex<> doesn't sort yet, so the order you provide matters, but I just put sequence-sort in Common/Meta.h so yeah soon.
+
+- more flexible exterior product (cross, wedge, determinant).  Generalize to something with Levi-Civita permutation tensor.
+- asym is 2-rank totally-antisymmetric .. I should do a N-rank totally-antisymmetric and N-rank totally-symmetric 
+	- then use it for an implementation of LeviCivita as constexpr
+	- then use that for cross, determinant, inverse, wedge
 
 - better function matching for derivatives?
 - move secondderivative from Relativity to Tensor
