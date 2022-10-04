@@ -595,7 +595,7 @@ void test_Tensor() {
 			TEST_EQ(Tensor::float3(2,4,6)/2., Tensor::float3(1,2,3));	
 		}
 	}
-
+	
 	// matrix
 	{
 		//bracket ctor
@@ -1448,6 +1448,25 @@ so a.s == {0,1,2,4,5,8};
 		TEST_EQ(m, d);
 		TEST_EQ(m, (Matrix{{1,0,0},{0,1,0},{0,0,1}}));
 		TEST_EQ(Tensor::determinant(m), 1);
+	}
+
+// does this work?
+{
+	using namespace Tensor;
+	float2 a = {1,2};
+	float3 b = a;
+	TEST_EQ(b, float3(1,2,0));
+}
+
+	// can you vector non-numeric types?
+	{
+		using namespace Tensor;
+		using namespace std;
+		// "attempt to use a deleted function"
+		// "destructor of '_vec<..., 3>' is implicitly deleted because variant field '' has a non-trivial destructor"
+		//auto t = _vec<function<void()>, 3>();
+		//auto t = _vec<optional<function<void()>>, 3>();
+		//ECHO(t);
 	}
 }
 

@@ -1835,19 +1835,17 @@ auto hadamard(T&&... args) {
 	return elemMul(std::forward<T>(args)...);
 }
 
-// vector functions
+// dot product.  To generalize this I'll consider it to be the Frobenius norm, since * will already be contraction
 // TODO get rid of member functions  ...
 // .... or have the member functions call into these.
-
-// c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
-// Frobenius norm, since * will already be contraction
+// 	c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
 template<typename A, typename B>
 requires (
 	is_tensor_v<A> 
 	&& is_tensor_v<B> 
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
-auto dot(A const & a, B const & b) {
+auto inner(A const & a, B const & b) {
 	auto i = a.begin();
 	auto sum = a(i.index) * b(i.index);
 	for (++i; i != a.end(); ++i) {
@@ -1858,8 +1856,8 @@ auto dot(A const & a, B const & b) {
 
 // naming compat
 template<typename... T>
-auto inner(T&&... args) {
-	return dot(std::forward<T>(args)...);
+auto dot(T&&... args) {
+	return inner(std::forward<T>(args)...);
 }
 
 template<typename T>
@@ -2123,23 +2121,44 @@ requires(
 	&& A::template dim<A::rank-1> == B::template dim<0>
 )
 auto operator*(A const & a, B const & b) {
-	// TODO this is lazy.  inline the lambdas and don't waste the outer()'s operation expenses
-	return contract<A::rank-1, A::rank>(outer(a,b));
-}
-
-#if 0
-// vector * vector
-// c_i := a_i * b_i
-template<typename T, int N>
-requires std::is_same_v<typename _vec<T,N>::Scalar, T>
-_vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
-	_vec<T,N> c;
-	for (int i = 0; i < N; ++i) {
-		c[i] = a[i] * b[i];
-	}
-	return c;
-}
+	using S = typename A::Scalar;
+	if constexpr (A::rank == 1 && B::rank == 1) {
+		// rank-0 result case
+		static_assert(A::dims == B::dims);	//thanks to the 3rd requires condition
+		//scalar return case
+		S sum = a(0) * b(0);
+		for (int k = 1; k < A::template dim<0>; ++k) {
+			sum += a(k) * b(k);
+		}
+		return sum;
+	} else {
+#if 0	// lazy way.  inline the lambdas and don't waste the outer()'s operation expenses
+		return contract<A::rank-1, A::rank>(outer(a,b));
+#else	// some optimizations, no wasted storage
+		using R = typename A
+			::template ReplaceScalar<B>
+			::template RemoveIndex<A::rank-1, A::rank>;
+		return R([&](typename R::intN i) -> S {
+			auto ai = typename A::intN([&](int j) -> int {
+				if (j == A::rank-1) return 0;
+				return i[j];
+			});
+			auto bi = typename B::intN([&](int j) -> int {
+				if (j == 0) return 0;
+				j -= A::rank;
+				return i[j];
+			});
+			S sum = a(ai) * b(bi);
+			for (int k = 1; k < A::template dim<A::rank-1>; ++k) {
+				ai(A::rank-1) = k;
+				bi(0) = k;
+				sum += a(ai) * b(bi);
+			}
+			return sum;
+		});
 #endif
+	}
+}
 
 // specific typed vectors
 

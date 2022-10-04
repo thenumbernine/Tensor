@@ -30,7 +30,8 @@ So I guess overall this library is midway between a mathematician's and a progra
 
 ### Matrices:
 `_mat<type, dim1, dim2>` = `_vec<_vec<type,dim2>,dim1>` = matrices:
-- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A_{ij}$.  This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
+- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A_{ij}$.
+	This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
 
 ### Symmetric Matrices:
 `_sym<type, dim>` = symmetric matrices:
@@ -63,7 +64,10 @@ So I guess overall this library is midway between a mathematician's and a progra
 		- `_mat * _mat` as matrix-multiplication.  
 
 ### Tensor properties:
+- `::This` = The current type.  Maybe not useful outside the class definition, but pretty useful within it when defining inner classes.
 - `::Scalar` = Get the scalar type used for this tensor.
+		Mind you, wrt the tensor library, 'Scalar' refers to the nested-most Inner class that is not a tensor.
+		You could always use a vector-of-functions and I won't try to stop you, so long as you implement the necessary functions to perform whatever operations you are doing with it.
 - `::Inner` = The next most nested vector/matrix/symmetric.
 - `::Template<T, N>` = The template of this class, useful for nesting operations.
 - `::rank` = For determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
@@ -80,9 +84,10 @@ So I guess overall this library is midway between a mathematician's and a progra
 	Equivalent to `::Nested<numNestingsToIndex<i>>`  `_vec`'s 0 will point to itself, `_sym`'s and `_asym`'s 0 and 1 will point to themselves, all others drill down.
 - `::ReplaceInner<T>` = Replaces this tensor's Inner with a new type, T.
 - `::ReplaceNested<i,T>` = Replace the i'th nesting of this tensor with the type 'T', where i is from 0 to numNestings-1.
+- `::ReplaceScalar<T>` = Create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
+	Should be equivalent to `This::ReplaceNested<This::numNestings, T>`.
 - `::ReplaceLocalDim<n>` = Replaces this tensor's localDim with a new dimension, n.
 - `::ReplaceDim<i,n>` = Replace the i'th index dimension with the dimension, n.
-- `::ReplaceScalar<T>` = Create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
 - `::ExpandIthIndex<i>` = Produce a type with only the storage at the i'th index replaced with expanded storage.
 	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
 	So a `_sym`'s ExpandIthIndex<0> or <1> would produce a `_vec`-of-`_vec`, a `_sym`-of-`_vec`'s ExpandIthIndex<2> would return the same type, and a `_vec`-of-`_sym`'s ExpandIthIndex<0> would return the same type.
@@ -91,7 +96,7 @@ So I guess overall this library is midway between a mathematician's and a progra
 - `::ExpandAllIndexes<>` = Produce a type with all storage replaced with expanded storage.
 	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
 	Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `_tensori<Scalar, dim1, ..., dimN>`.
-- `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into `_vec`s.
+- `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into `_vec`s.  Then removes it.
 - `::RemoveIndex<i1, i2, ...>` = Removes all the indexes, `i1` ..., from the tensor.
 
 ### Template Helpers (subject to change)
@@ -129,7 +134,7 @@ Swizzling will return a vector-of-references:
 - 4D: `.xxxx() ... .wwww()` 
 
 ### Functions
-- `dot(a,b), inner(a,b)` = Frobenius dot.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
+- `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	- rank-N x rank-N -> rank-0.
 	$$dot(a,b) := a^I \cdot b_I$$
 - `lenSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
