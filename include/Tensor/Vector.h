@@ -53,11 +53,36 @@ TODO TODO
 
 namespace Tensor {
 
+
+// _sym and _asym have Accessor return for inter-rank indexing
+// vec doesn't, it just uses Scalar&
+// hmm this is failing if I call it (even in constexpr) before the inner-classes are defined ...
+// so (can you?) forward-declare this? 
+// but if I did forward-declare then still tensor storage couldn't be extended.
+// so I'll just move the flag into the outermost _sym _asym classes.
+//get a random field in the Accessor class
+// WARNING mind you it better be there in all tensor::Accessor classes.
+// so how about putting a static in it just for this's sake.
+// For now I'm manually setting this in all classes that require an Accessor for intermediate indexing
+//  however .... as a rule-of-thumb, intermediate-indexing is only required for classes that are localRank>1
+// so in theory I *could* set this flag automatically for rank>1
+//  ofc then if a rank>1 tensor class was made but forgot its Accessor, there would be some compile errors that may or may not direct the programmer to this being the problem. 
+template<typename T>
+constexpr bool has_Accessor_v = requires(T const & ) { T::localRank > 1; };
+
+// I was using optional<> to capture types without instanciating them
+// but optional can't wrap references, so ...
+template<typename T>
+struct TypeWrapper {
+	using type = T;
+};
+
 // Template<> is used for rearranging internal structure when performing linear operations on tensors
 // Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
 #define TENSOR_FIRST(classname)\
 	using This = classname;\
-	template<typename T2, int dim2> using Template = classname<T2,dim2>;
+	template<typename T2, int dim2> using Template = classname<T2,dim2>;\
+	static constexpr bool isTensorFlag = {};
 
 #define TENSOR_VECTOR_HEADER(localDim_)\
 \
@@ -93,10 +118,10 @@ namespace Tensor {
 			if constexpr (is_tensor_v<Inner>) {\
 				return Inner::ScalarImpl::value();\
 			} else {\
-				return std::optional<Inner>();\
+				return TypeWrapper<Inner>();\
 			}\
 		}\
-		using type = typename decltype(value())::value_type;\
+		using type = typename decltype(value())::type;\
 	};\
 	using Scalar = typename ScalarImpl::type;\
 \
@@ -272,6 +297,70 @@ namespace Tensor {
 	};\
 	template<int index, int newDim>\
 	using ReplaceDim = typename ReplaceDimImpl<index, newDim>::type;
+
+// https://codereview.stackexchange.com/a/208195
+template <typename U>
+struct constness_of {
+	static constexpr bool value = std::is_const_v<U>;
+	template <typename T>
+	using apply_t = typename std::conditional_t<
+		value,
+		typename std::add_const_t<T>,
+		typename std::remove_const_t<T>
+	>;
+};
+
+// this isn't working ... and it seems like TypeWrapper is the problem ...
+//  is std::optional<> better at wrapping types for some reason?  inner template class?
+#define TENSOR_ADD_INDEX_RESULT()\
+	/* ok _vec () and [] return Scalar& , which makes things easy */\
+	/* but _sym and _asym need [] to return Accessor */\
+	/* which makes it so subsequent []() will return Accessor (whereas typical () would just return Scalar& */\
+	/* so now I need a type for the return value of our operator() and operator[]'s */\
+	/* what to name it?  how come I call operator[] the index or dereference operator, when cppreference calls it the subscript operator?  I have never heard that term in 30+ years of C++ programming. */\
+	/* NOTICE this doesn't compile unless I template the 'using' in the outer-nesting class that points to this */\
+	template<typename ThisConstness>\
+	struct IndexResultImpl {\
+		template<typename ThisConstness2>\
+		static constexpr auto cond1() {\
+			using R = TypeWrapper<\
+				typename ThisConstness2::template Accessor<ThisConstness2>\
+			>;\
+			return R();\
+		}\
+		static constexpr auto value() {\
+			if constexpr (has_Accessor_v<ThisConstness>) {\
+				return cond1<ThisConstness>();\
+			} else if constexpr (is_tensor_v<typename ThisConstness::Inner>) {\
+				using InnerConstness = typename constness_of<ThisConstness>::template apply_t<ThisConstness::Inner>;\
+				using R = typename ThisConstness::Inner::template IndexResultImpl<InnerConstness>::type;\
+				return R();\
+			} else {\
+				using R = TypeWrapper<\
+					typename constness_of<ThisConstness>::template apply_t<typename ThisConstness::Inner> &\
+				>;\
+				return R();\
+			}\
+		}\
+		using type = decltype(value());\
+	};\
+	template<typename Defer = This>\
+	using IndexResult = typename IndexResultImpl<Defer>::type;\
+	template<typename Defer = This const>\
+	using IndexResultConst = typename IndexResultImpl<Defer>::type;
+
+#define TENSOR_ADD_INDEX_RESULT_TEST()\
+	template<typename Defer = void>\
+	struct IndexResultImpl {\
+		static constexpr auto value() {\
+			return int();\
+		}\
+		using type = decltype(value());\
+	};\
+	template<typename Defer = void>\
+	using IndexResult = typename IndexResultImpl<Defer>::type;\
+	template<typename Defer = void>\
+	using IndexResultConst = typename IndexResultImpl<Defer>::type;
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_DIMS()\
@@ -923,7 +1012,8 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_SUBSET_ACCESS()\
 	TENSOR_ADD_DOT()\
 	TENSOR_ADD_VOLUME()\
-	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()
+	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()\
+	TENSOR_ADD_INDEX_RESULT()
 
 template<typename T, int dim_>
 struct _vec;
@@ -1255,6 +1345,7 @@ int symIndex(int i, int j) {
 \
 	template<typename OwnerConstness>\
 	struct Accessor {\
+		static constexpr bool isAccessorFlag = {};\
 		OwnerConstness & owner;\
 		int i;\
 		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
@@ -1265,7 +1356,7 @@ int symIndex(int i, int j) {
 	auto operator[](int i) const { return Accessor<This const>(*this, i); }\
 \
 	/* a(i) := a_i */\
-	/* this is incomplete so it returns the operator[] which returns the accessor */\
+	/* this is incomplete so it returns the operator[] which returns the Accessor */\
 	auto operator()(int i) 		 { return (*this)[i]; }\
 	auto operator()(int i) const { return (*this)[i]; }\
 \
@@ -1298,7 +1389,8 @@ so the accessors need nested call indexing too
 #define TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
-	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()
+	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
+	TENSOR_ADD_INDEX_RESULT() /* after indexing */
 
 template<typename T, int dim_>
 struct _sym {
@@ -1514,6 +1606,7 @@ struct _sym<T,4> {
 \
 	template<typename OwnerConstness>\
 	struct Accessor {\
+		static constexpr bool isAccessorFlag = {};\
 		OwnerConstness & owner;\
 		int i;\
 		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
@@ -1562,7 +1655,8 @@ struct _sym<T,4> {
 #define TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(classname)\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
-	TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()
+	TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
+	TENSOR_ADD_INDEX_RESULT() /* after indexing */
 
 /*
 for asym because I need to return reference-wrappers to support the + vs - depending on the index

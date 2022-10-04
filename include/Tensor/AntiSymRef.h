@@ -9,13 +9,12 @@
 namespace Tensor {
 
 /*
-use the 'rank' field to check and see if we're in a _vec (or a _sym) or not
- TODO use something more specific to this file in case other classes elsewhere use 'rank'
+Detects if a class is a "tensor".
+These include _vec _sym _asym and subclasses (like _quat).
+It's defined in the class in the TENSOR_HEADER, as a static constexpr field.
 */
 template<typename T>
-constexpr bool is_tensor_v = requires(T const & t) { T::rank; };
-
-
+constexpr bool is_tensor_v = requires(T const & t) { &T::isTensorFlag; };
 
 //https://stackoverflow.com/a/61040973
 namespace {

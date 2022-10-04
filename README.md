@@ -258,3 +258,11 @@ TODO:
 - rank-n interior aka contract-n-times on neighboring indexes?
 	technically an 'interior' product is one that does contract n-indexes depending on the rank of the vector that the form is being applied to.
 	well typicall the ranks match, but in a few texts a partial-inner is allowed, where the vector rank is <= the form rank.
+
+
+- TODO in C++23 operator[] can be variadic.
+	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().
+	in fact, why don't I just do that now?
+	that would spare me the need for `_sym`'s operator[int]
+	but dno't forget `_asym` still needs to return an AntiSymRef , whether we allow off-storage indexing or not.
+	so meh i might as well keep it around?
