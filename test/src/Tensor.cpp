@@ -347,6 +347,11 @@ void operatorScalarTest(T const & t) {
 	TEST_EQ(t / T((S)1), t);
 }
 
+template<typename T>
+void operatorMatrixTest() {
+	static_assert(T::rank >= 2);
+}
+
 void test_Tensor() {
 	//vector
 	
@@ -552,6 +557,9 @@ void test_Tensor() {
 		TEST_EQ(fa[1], f[1]);
 		TEST_EQ(fa[2], f[2]);
 	
+		// operators
+		operatorScalarTest(f);
+	
 		// contract
 
 		TEST_EQ((Tensor::contract<0,0>(Tensor::float3(1,2,3))), 6);
@@ -710,6 +718,87 @@ void test_Tensor() {
 	
 		// operators
 		operatorScalarTest(m);
+
+		// operator *
+		{
+			auto a = Tensor::int2{7, -2};
+			TEST_EQ((Tensor::contract<0,0>(a)), 5);
+			auto b = Tensor::int2x2
+				{{6, 9},
+				{6, -6}};
+			TEST_EQ((Tensor::contract<0,1>(b)), 0);
+			TEST_EQ((Tensor::contract<1,0>(b)), 0);
+			static_assert(std::is_same_v<Tensor::int2x2::RemoveIndex<0>, Tensor::int2>);
+			ECHO((Tensor::contract<0,0>(b)));
+			ECHO((Tensor::contract<1,1>(b)));
+
+			auto aouterb = Tensor::_tensorr<int,2,3>{{{42, 63}, {42, -42}}, {{-12, -18}, {-12, 12}}};
+			TEST_EQ(outer(a,b), aouterb);
+			ECHO((Tensor::contract<0,0>(aouterb)));
+			
+			static_assert(std::is_same_v<Tensor::_tensorr<int,2,3>::RemoveIndex<0,1>, Tensor::int2>);
+			ECHO((Tensor::contract<0,1>(aouterb)));
+			
+			ECHO((Tensor::contract<0,2>(aouterb)));
+			ECHO((Tensor::contract<1,0>(aouterb)));
+			ECHO((Tensor::contract<1,1>(aouterb)));
+			ECHO((Tensor::contract<1,2>(aouterb)));
+			ECHO((Tensor::contract<2,0>(aouterb)));
+			ECHO((Tensor::contract<2,1>(aouterb)));
+			ECHO((Tensor::contract<2,2>(aouterb)));
+			auto atimesb = Tensor::int2{30, 75};
+			TEST_EQ(a * b, atimesb);
+			
+			TEST_EQ( (Tensor::int2{-3, 6}
+				* Tensor::int2x3{
+					{-5, 0, -3},
+					{1, 3, 0}}),
+				(Tensor::int3{21, 18, 9}))
+			TEST_EQ( (Tensor::int2{9, 9}
+				* Tensor::int2x4{
+					{3, -8, -10, -8},
+					{5, 2, -5, 6}}),
+				(Tensor::int4{72, -54, -135, -18}))
+			TEST_EQ( (Tensor::int3{-7, -2, -8}
+				* Tensor::int3x2{
+					{-8, 0},
+					{10, 7},
+					{-6, 2}}),
+				(Tensor::int2{84, -30}))
+			TEST_EQ( (Tensor::int3{-4, 3, 1}
+				* Tensor::int3x3{
+					{0, 6, -2},
+					{10, 1, 8},
+					{-4, 6, -5}}),
+				(Tensor::int3{26, -15, 27}))
+			TEST_EQ( (Tensor::int3{-3, 6, 9}
+				* Tensor::int3x4{
+					{-9, -9, 8, -10},
+					{9, -6, -3, -1},
+					{1, 3, -9, -9}}),
+				(Tensor::int4{90, 18, -123, -57}))
+			TEST_EQ( (Tensor::int4{-5, 10, 8, 7}
+				* Tensor::int4x2{
+					{-5, 0},
+					{1, 4},
+					{-3, 1},
+					{5, -10}}),
+				(Tensor::int2{46, -22}))
+			TEST_EQ( (Tensor::int4{-1, 9, 9, 5}
+				* Tensor::int4x3{
+					{-5, 4, 7},
+					{5, -7, -4},
+					{3, -1, -6},
+					{-3, 8, 8}}),
+				(Tensor::int3{62, -36, -57}))
+			TEST_EQ( (Tensor::int4{-3, 4, 10, 2}
+				* Tensor::int4x4{
+					{3, -2, 0, -7},
+					{8, 7, -6, 8},
+					{-1, 4, 9, 3},
+					{9, 9, 9, -1}}),
+				(Tensor::int4{31, 92, 84, 81}))
+		}
 
 		// TODO make sure operator* matrix/vector, matrix/matrix, vector/matrix works
 		// TODO I don't think I have marix *= working yet	
@@ -887,6 +976,7 @@ so a.s == {0,1,2,4,5,8};
 		
 		// operators
 		operatorScalarTest(a);
+		operatorMatrixTest<Tensor::float3s3>();
 	
 		TEST_EQ(Tensor::trace(Tensor::float3s3({1,2,3,4,5,6})), 10);
 	}
@@ -975,6 +1065,10 @@ so a.s == {0,1,2,4,5,8};
 		// TODO won't work until you get intN dereference in _asym
 		Tensor::float3x3 b = f;
 		TEST_EQ(b, (Tensor::float3x3{{0, -2, -3}, {2, 0, -4}, {3, 4, 0}}));
+	
+		//can't do yet until I fix asym access
+		//operatorScalarTest(f);
+		operatorMatrixTest<Tensor::float3a3>();
 	}
 
 	// rank-3 tensor: vector-vector-vector
@@ -1034,6 +1128,7 @@ so a.s == {0,1,2,4,5,8};
 
 		// operators
 		operatorScalarTest(t);
+		operatorMatrixTest<T2S3>();
 	}
 	{
 		using T3S3 = Tensor::_tensori<float, Tensor::index_vec<3>, Tensor::index_sym<3>>;

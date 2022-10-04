@@ -230,7 +230,7 @@ TODO:
 - change all those functions types to be `is_tensor_v` when possible.
 - try to work around github's mathjax rendering errors.  looks fine on my own mathjax and on stackedit, but not on github.
 
-- InnerForIndex doesn't really get the inner, it gets the index, so call it something like "TypeForIndex"
+- InnerForIndex doesn't really get the inner, it gets the index, where index = corresponds with This, so call it something like "TypeForIndex"
 
 - ReplaceDim and ReplaceLocalDim that take a int pack and insert that many new dimensions into that index' location.
 	- would be nice to insert the template to wedge into it, like `tuple<index_int<3>, index_sym<3>>`.

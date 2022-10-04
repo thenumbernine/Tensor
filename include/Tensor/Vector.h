@@ -1809,28 +1809,6 @@ TENSOR_TENSOR_OP(+)
 TENSOR_TENSOR_OP(-)
 TENSOR_TENSOR_OP(/)
 
-// vector op scalar, scalar op vector, matrix op scalar, scalar op matrix, tensor op scalar, scalar op tensor operations
-// need to require that T == _vec<T,N>::Scalar otherwise this will spill into vector/matrix operations
-// c_i := a_i * b
-// c_i := a * b_i
-
-template<typename T, int N>
-_vec<T,N> operator*(_vec<T,N> const & a, typename _vec<T,N>::Scalar const & b) {
-	_vec<T,N> c;
-	for (int i = 0; i < N; ++i) {
-		c[i] = a[i] * b;
-	}
-	return c;
-}
-template<typename T, int N>
-_vec<T,N> operator*(typename _vec<T,N>::Scalar const & a, _vec<T,N> const & b) {
-	_vec<T,N> c;
-	for (int i = 0; i < N; ++i) {
-		c[i] = a * b[i];
-	}
-	return c;
-}
-
 //element-wise multiplication
 // c_i1_i2_... := a_i1_i2_... * b_i1_i2_...
 // Hadamard product / per-element multiplication
@@ -2042,12 +2020,13 @@ auto contract(T const & t) {
 			return R([&](typename R::intN i) -> S {
 				// static_assert R::intN::dims == T::intN::dims-1
 				auto j = typename T::intN([&](int jk) -> int {
-					if (jk < m) return i[jk];
-					if (jk == m) return 0;
-					return i[jk-1];
+					if (jk == m) return 0; // set j[m] = 0
+					if (jk > m) --jk;
+					return i[jk];
 				});
-				S sum = {};
-				for (int k = 0; k < T::template dim<m>; ++k) {
+				//j[m] == 0 ...
+				S sum = t(j);
+				for (int k = 1; k < T::template dim<m>; ++k) {
 					j[m] = k;
 					sum += t(j);
 				}
@@ -2066,14 +2045,16 @@ auto contract(T const & t) {
 			return R([&](typename R::intN i) -> S {
 				// static_assert R::intN::dims == T::intN::dims-2
 				auto j = typename T::intN([&](int jk) -> int {
-					if (jk < m) return i[jk];
-					if (jk == m) return 0;
-					if (jk < n) return i[jk-1];
-					if (jk == n) return 0;
-					return i[jk-2];
+					if (jk == m) return 0; // j[m] = 0
+					if (jk == n) return 0; // j[n] = 0
+					// make sure you compare in decreasing order or else a decrement can destroy iteration and lead to oob lookups
+					if (jk > n) --jk; // if m != n then do this twice
+					if (jk > m) --jk; //  but (case above) if m == n do this once
+					return i[jk];
 				});
-				S sum = {};
-				for (int k = 0; k < T::template dim<m>; ++k) {
+				// j[m] = j[n] = 0 ...
+				S sum = t(j);
+				for (int k = 1; k < T::template dim<m>; ++k) {
 					j[m] = j[n] = k;
 					sum += t(j);
 				}
@@ -2131,25 +2112,22 @@ auto diagonal(T const & t) {
 	});
 }
 
-
 // operator* is outer+contract 
 // TODO maybe generalize further with the # of indexes to contract: 
 // c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
 
-#if 0
 template<typename A, typename B>
 requires(
-	is_tensor_t<A>
-	&& is_tensor_t<B>
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& A::template dim<A::rank-1> == B::template dim<0>
 )
 auto operator*(A const & a, B const & b) {
-	return contract<a.rank-1, a.rank>(outer(a,b));
+	// TODO this is lazy.  inline the lambdas and don't waste the outer()'s operation expenses
+	return contract<A::rank-1, A::rank>(outer(a,b));
 }
-#endif
 
 // vector * vector
-//TENSOR_ADD_VECTOR_VECTOR_OP(*) will cause ambiguous evaluation of matrix/matrix mul
-// so it has to be constrained to only T == _vec<T,N>:Scalar
 // c_i := a_i * b_i
 template<typename T, int N>
 requires std::is_same_v<typename _vec<T,N>::Scalar, T>
@@ -2161,63 +2139,7 @@ _vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
 	return c;
 }
 
-// matrix * matrix operators
-// c_ik := a_ij * b_jk
-template<typename T, int dim1, int dim2, int dim3>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
-_mat<T,dim1,dim3> operator*(_mat<T,dim1,dim2> const & a, _mat<T,dim2,dim3> const & b) {
-	_mat<T,dim1,dim3> c;
-	for (int i = 0; i < dim1; ++i) {
-		for (int j = 0; j < dim3; ++j) {
-			T sum = {};
-			for (int k = 0; k < dim2; ++k) {
-				sum += a[i][k] * b[k][j];
-			}
-			c[i][j] = sum;
-		}
-	}
-	return c;
-}
-
-// (row-)vector * matrix operator
-// c_j := a_i * b_ij
-
-template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
-_vec<T,dim2> operator*(_vec<T,dim1> const & a, _mat<T,dim1,dim2> const & b) {
-	_vec<T,dim2> c;
-	for (int j = 0; j < dim2; ++j) {
-		T sum = {};
-		for (int i = 0; i < dim1; ++i) {
-			sum += a[i] * b[i][j];
-		}
-		c[j] = sum;
-	}
-	return c;
-}
-
-// matrix * (column-)vector operator
-// c_i := a_ij * b_j
-
-template<typename T, int dim1, int dim2>
-requires std::is_same_v<typename _mat<T,dim1,dim2>::Scalar, T>
-_vec<T,dim1> operator*(_mat<T,dim1,dim2> const & a, _vec<T,dim2> const & b) {
-	_vec<T,dim1> c;
-	for (int i = 0; i < dim1; ++i) {
-		T sum = {};
-		for (int j = 0; j < dim2; ++j) {
-			sum += a[i][j] * b[j];
-		}
-		c[i] = sum;
-	}
-	return c;
-}
-
-
-
-
 // specific typed vectors
-
 
 #define TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, dim1)\
 using nick##dim1 = nick##N<dim1>;\
