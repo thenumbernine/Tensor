@@ -340,10 +340,23 @@ namespace HasAccessorTest {
 	static_assert(Tensor::has_Accessor_v<Tensor::float3a3>);
 	
 	static_assert(std::is_same_v<Tensor::float3::template IndexResult<>, float&>);
+	static_assert(std::is_same_v<Tensor::float3::template IndexResultConst<>, float const&>);
 	static_assert(std::is_same_v<Tensor::float3x3::template IndexResult<>, float&>);
+	static_assert(std::is_same_v<Tensor::float3x3::template IndexResultConst<>, float const&>);
+	static_assert(std::is_same_v<Tensor::float3x3::template IndexResult<>, float&>);
+	static_assert(std::is_same_v<Tensor::float3x3::template IndexResultConst<>, float const&>);
 	static_assert(std::is_same_v<Tensor::float3s3::template IndexResult<>, Tensor::float3s3::Accessor<Tensor::float3s3>>);
+	static_assert(std::is_same_v<Tensor::float3s3::template IndexResultConst<>, Tensor::float3s3::Accessor<Tensor::float3s3 const>>);
 	static_assert(std::is_same_v<Tensor::float3a3::template IndexResult<>, Tensor::float3a3::Accessor<Tensor::float3a3>>);
+	static_assert(std::is_same_v<Tensor::float3a3::template IndexResultConst<>, Tensor::float3a3::Accessor<Tensor::float3a3 const>>);
 }
+
+//is adding "const" to "float&" the same as adding "&" to "float const" ?
+// no.  it's not.  "float & const"  (which can't exist) vs "float const &"
+static_assert(!std::is_same_v<typename Tensor::constness_of<float const>::template apply_t<float&>, std::add_lvalue_reference_t<float const>>);
+// for pointers this should be false.
+// "float * const" vs "float const *"
+static_assert(!std::is_same_v<typename Tensor::constness_of<float const>::template apply_t<float*>, std::add_pointer_t<float const>>);
 
 template<typename T>
 void operatorScalarTest(T const & t) {

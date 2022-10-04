@@ -321,46 +321,31 @@ struct constness_of {
 	/* NOTICE this doesn't compile unless I template the 'using' in the outer-nesting class that points to this */\
 	template<typename ThisConstness>\
 	struct IndexResultImpl {\
-		template<typename ThisConstness2>\
-		static constexpr auto cond1() {\
-			using R = TypeWrapper<\
-				typename ThisConstness2::template Accessor<ThisConstness2>\
-			>;\
-			return R();\
-		}\
 		static constexpr auto value() {\
-			if constexpr (has_Accessor_v<ThisConstness>) {\
-				return cond1<ThisConstness>();\
-			} else if constexpr (is_tensor_v<typename ThisConstness::Inner>) {\
-				using InnerConstness = typename constness_of<ThisConstness>::template apply_t<ThisConstness::Inner>;\
-				using R = typename ThisConstness::Inner::template IndexResultImpl<InnerConstness>::type;\
-				return R();\
+			using ThisConstnessInner = typename ThisConstness::Inner; /* Inner itself probably works, but meh*/\
+			using InnerConstness = typename constness_of<ThisConstness>::template apply_t<ThisConstnessInner>;\
+			if constexpr (is_tensor_v<ThisConstnessInner>) {\
+				return ThisConstnessInner::template IndexResultImpl<InnerConstness>::value();\
 			} else {\
-				using R = TypeWrapper<\
-					typename constness_of<ThisConstness>::template apply_t<typename ThisConstness::Inner> &\
-				>;\
-				return R();\
+				return TypeWrapper<InnerConstness &>();\
 			}\
 		}\
-		using type = decltype(value());\
+		using type = typename decltype(value())::type;\
 	};\
 	template<typename Defer = This>\
 	using IndexResult = typename IndexResultImpl<Defer>::type;\
 	template<typename Defer = This const>\
 	using IndexResultConst = typename IndexResultImpl<Defer>::type;
 
-#define TENSOR_ADD_INDEX_RESULT_TEST()\
-	template<typename Defer = void>\
-	struct IndexResultImpl {\
-		static constexpr auto value() {\
-			return int();\
-		}\
-		using type = decltype(value());\
-	};\
-	template<typename Defer = void>\
-	using IndexResult = typename IndexResultImpl<Defer>::type;\
-	template<typename Defer = void>\
-	using IndexResultConst = typename IndexResultImpl<Defer>::type;
+//use this for rank-2+ storage:
+#define TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR()\
+	template<typename Defer = This>\
+	using IndexResult = Accessor<Defer>;\
+	template<typename Defer = This const>\
+	using IndexResultConst = Accessor<Defer>;
+
+//#define TENSOR_ADD_INDEX_RESULT()
+//#define TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR()
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_DIMS()\
@@ -521,8 +506,8 @@ struct constness_of {
 // works for nesting _vec's, not for _sym's
 // I am using operator[] as the de-facto correct reference
 #define TENSOR_ADD_VECTOR_BRACKET_INDEX()\
-	T & operator[](int i) { return s[i]; }\
-	T const & operator[](int i) const { return s[i]; }
+	auto & operator[](int i) { return s[i]; }\
+	auto const & operator[](int i) const { return s[i]; }
 
 // operator() should default through operator[]
 #define TENSOR_ADD_RECURSIVE_CALL_INDEX()\
@@ -668,9 +653,9 @@ struct constness_of {
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
 			/* TODO ensure if i.readIndex is in This's bounds ... */\
-			/* TODO get operator()(intN<>) access working for _asym ... */\
+			/* get operator()(intN<>) access working for _asym ... */\
 			/**i = (Scalar)t(i.readIndex);*/\
-			/* until then ... */\
+			/* ... or just replace the internal storage with std::array ... */\
 			*i = std::apply(t, i.readIndex.s);\
 		}\
 	}
@@ -1390,7 +1375,7 @@ so the accessors need nested call indexing too
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
 	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	TENSOR_ADD_INDEX_RESULT() /* after indexing */
+	TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR() /* after indexing */
 
 template<typename T, int dim_>
 struct _sym {
@@ -1656,7 +1641,7 @@ struct _sym<T,4> {
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
 	TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	TENSOR_ADD_INDEX_RESULT() /* after indexing */
+	TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR() /* after indexing */
 
 /*
 for asym because I need to return reference-wrappers to support the + vs - depending on the index
