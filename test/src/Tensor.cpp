@@ -445,7 +445,8 @@ void test_Tensor() {
 			// TODO verify cbegin/cend
 			// TODO support for rbegin/rend const/not const and crbegin/crend
 		}
-		
+	
+		// operators 
 		// vector/scalar operations
 		TEST_EQ(f+1.f, Tensor::float3(5,6,8));
 		TEST_EQ(f-1.f, Tensor::float3(3,4,6));
@@ -459,9 +460,11 @@ void test_Tensor() {
 		// vector/vector operations
 		TEST_EQ(f+g, Tensor::float3(11, 6, 9));
 		TEST_EQ(f-g, Tensor::float3(-3, 4, 5));
-		TEST_EQ(f*g, Tensor::float3(28, 5, 14));	//the controversial default-per-element-mul
 		TEST_EQ(f/g, Tensor::float3(0.57142857142857, 5.0, 3.5));	// wow, this equality passes while sqrt(90) fails
-		// hmm, do I have vector*vector => scalar default to dot product?
+	
+		// for vector*vector I'm picking the scalar-result of the 2 GLSL options (are there three? can you do mat = vec * vec in GLSL?)
+		//  this fits with general compatability of tensor operator* being outer+contract
+		TEST_EQ(f*g, 47)
 
 		// op= scalar
 		{ Tensor::float3 h = f; h += 2; TEST_EQ(h, Tensor::float3(6,7,9)); }
@@ -586,7 +589,7 @@ void test_Tensor() {
 			
 			TEST_EQ(b + a, Tensor::float3(5,7,9));
 			TEST_EQ(b - a, Tensor::float3(3,3,3));
-			TEST_EQ(b * a, Tensor::float3(4, 10, 18));
+			TEST_EQ(b * a, 32);
 			TEST_EQ(Tensor::float3(2,4,6)/Tensor::float3(1,2,3), Tensor::float3(2,2,2));
 			TEST_EQ(b * 2., Tensor::float3(8, 10, 12));
 			TEST_EQ(Tensor::float3(2,4,6)/2., Tensor::float3(1,2,3));	

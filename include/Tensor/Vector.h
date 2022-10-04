@@ -2127,6 +2127,7 @@ auto operator*(A const & a, B const & b) {
 	return contract<A::rank-1, A::rank>(outer(a,b));
 }
 
+#if 0
 // vector * vector
 // c_i := a_i * b_i
 template<typename T, int N>
@@ -2138,6 +2139,7 @@ _vec<T,N> operator*(_vec<T, N> const & a, _vec<T,N> const & b) {
 	}
 	return c;
 }
+#endif
 
 // specific typed vectors
 

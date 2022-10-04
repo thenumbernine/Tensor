@@ -56,8 +56,11 @@ So I guess overall this library is midway between a mathematician's and a progra
 - `operator + - /` = Scalar/tensor, tensor/scalar, per-element tensor/tensor operations.
 - `operator *` 
 	- Scalar/tensor, tensor/scalar for per-element multiplication.
-	- Including vector/vector multiply for GLSL compat, though I might change this.
-	- `_vec * _mat` as row-multplication, `_mat * _vec` as column-multiplication, and `_mat * _mat` as _mat-multiplication.  Once again, GLSL compat.
+	- Tensor/tensor multiplication is an outer then a contraction of the adjacent indexes.  Therefore:
+		- `_vec * _vec` multiplication is a dot product.
+		- `_vec * _mat` as row-multplication.
+		- `_mat * _vec` as column-multiplication
+		- `_mat * _mat` as matrix-multiplication.  
 
 ### Tensor properties:
 - `::Scalar` = Get the scalar type used for this tensor.
