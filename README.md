@@ -1,10 +1,17 @@
 ## Tensor Library
 
-This is for differential geometry numerics.  That's right AI folks, "tensor" doesn't mean "n-index array of numbers", it means "geometric object that lives in the tangent space at some point on a manifold and is invariant to coordinate transform."
-This library is centered around compile-time sized small arrays and larger ranks/degrees (whatever the term is for the number of indexes).
+After using fixed-dimension vectors and tensors for a few decades, and having a few goes at designing a C++ math library around them, 
+and then getting into differential geometry and relativity, and trying to design a C++ math library around that,
+this is the latest result.
+
+I know I've put the word "Tensor" in the title.
+Ever since the deep learning revolution in AI that computer scientists have come to believe that a "tensor" is an arbitrary dimensioned array of numbers, preferrably larger dimensioned.
+But this library is moreso centered around "tensor" in the original definition, as "geometric object that lives in the tangent space at some point on a manifold and is invariant to coordinate transform."
+That means I am designing this library is centered around compile-time sized small arrays and larger ranks/degrees (whatever the term is for the number of indexes).
+
 The old and pre-C++11 and ugly version had extra math indicators like Upper<> and Lower<> for tracking variance, but I've done away with that now.
 This version got rid of that and has added a lot of C++20 tricks.
-So I guess overall this library is halfway between a mathematician's and a programmer's implementation.
+So I guess overall this library is midway between a mathematician's and a programmer's and a physicist's implementation.
 
 - Familiar vector and math support, 2D 3D 4D.
 - Arbitrary-dimension, arbitrary-rank.
@@ -15,63 +22,85 @@ So I guess overall this library is halfway between a mathematician's and a progr
 
 ## Reference:
 
-`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_sym`, `_asym`.
-
+### Vectors:
 `_vec<type, dim>` = vectors:
-- `std::array<T> s` = element std::array access.  Tempted to change it back to `T[] s` for ease of ue as pointer access... but I do like the ease of iterator use with `std::array`... hmm...
+- `.s` = `std::array<type>` = element std::array access.  Tempted to change it back to `type[] s` for ease of ue as pointer access... but I do like the ease of iterator use with `std::array`... hmm...
 - for 1D through 4D: `.x .y .z .w`, `.s0 .s1 .s2 .s2` storage.
 - `.subset<size>(index), .subset<size,index>()` = return a vector reference to a subset of this vector.
-- `operator + - * /` scalar/vector, vector/scalar, and per-element vector/vector operations.  Including vector/vector multiply for GLSL compat, though I might change this.
 
+### Matrices:
 `_mat<type, dim1, dim2>` = `_vec<_vec<type,dim2>,dim1>` = matrices:
-- `operator + - /` scalar/matrix, matrix/scalar, and per-element matrix/matrix operations.
-- `vector * matrix` as row-multplication, `matrix * vector` as column-multiplication, and `matrix * matrix` as matrix-multiplication.  Once again, GLSL compat.
 - Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A_{ij}$.  This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
 
+### Symmetric Matrices:
 `_sym<type, dim>` = symmetric matrices:
 - `.x_x .x_y .x_z .y_y .y_z .z_z .x_w .y_w .z_w .w_w` storage, `.y_x .z_x, .z_y` union'd access.
 
+### Antisymmetric Matrices:
 `_asym<type, dim>` = antisymmetric matrices:
 - `.x_x() .w_w()` access methods
 
+### Quaternions:
 `_quat<type>` = quaternion.  Subclass of `_vec4<type>`.
 
-- Tensors (which are just typedef'd vectors-of-vectors-of-...)
-- `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `vec< ..., dimI>`.
-- `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific pairs of indexes symmetric storage.  `I1 I2` etc are one of the following: `index_vec<dim>` for a single index of dimension `dim`, `index_sym<dimI>` for two symmetric indexes of dimension `dim`, or `index_asym<dim>` for two antisymmetric indexes of dimension `dim`.
+### Tensors: (with rank>2)
+`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_sym`, `_asym`.
+
+### Tensor creation:
+- `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
+- `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific pairs of indexes symmetric storage. 
+	`I1 I2` etc are one of the following: `index_vec<dim>` for a single index of dimension `dim`,
+		`index_sym<dim>` for two symmetric indexes of dimension `dim`, or `index_asym<dim>` for two antisymmetric indexes of dimension `dim`.
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
-- `::Scalar` = get the scalar type used for this tensor.
-- `::Inner` = the next most nested vector/matrix/symmetric.
-- `::Template<T, N>` = the template of this class, useful for nesting operations.
-- `::rank` = for determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
-- `::dim<i>` = get the i'th dimension size , where i is from 0 to rank-1.
-- `::dims` = get a int-vector with all the dimensions.  For rank-1 this is just an int.  Maybe I'll change it to be intN for all ranks, not sure.
-- `::localDim` = get the dimension size of the current class, equal to `dim<0>`.
-- `::numNestings` = get the number of nested classes.
-- `::count<i>` = get the storage size of the i'th nested class.  i is from 0 to numNestings-1.
-- `::localCount` = get the storage size of the current class, equal to `count<0>`.
-- `::Nested<i>` = get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
-- `::numNestingsToIndex<i>` = gets the number of nestings deep that the index 'i' is located, where i is from 0 to rank.  `numNestingsToIndex<0>` will always return 0, `numNestingsToIndex<rank>` will always return `numNestings`.
-- `::InnerForIndex<i>` = get the type associated with the i'th index, where i is from 0 to rank-1.  Equivalent to `::Nested<numNestingsToIndex<i>>`  vec's 0 will point to itself, sym's and asym's 0 and 1 will point to themselves, all others drill down.
+
+### Tensor operators
+- `operator += -= /=` = In-place per-element operations.
+- `operator == !=` = Tensor comparison.  So long as the rank and dimensions match then this should evaluate successfully.
+- `operator + - /` = Scalar/tensor, tensor/scalar, per-element tensor/tensor operations.
+- `operator *` 
+	- Scalar/tensor, tensor/scalar for per-element multiplication.
+	- Including vector/vector multiply for GLSL compat, though I might change this.
+	- `_vec * _mat` as row-multplication, `_mat * _vec` as column-multiplication, and `_mat * _mat` as _mat-multiplication.  Once again, GLSL compat.
+
+### Tensor properties:
+- `::Scalar` = Get the scalar type used for this tensor.
+- `::Inner` = The next most nested vector/matrix/symmetric.
+- `::Template<T, N>` = The template of this class, useful for nesting operations.
+- `::rank` = For determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
+- `::dim<i>` = Get the i'th dimension size , where i is from 0 to rank-1.
+- `::dims` = Get a int-vector with all the dimensions.  For rank-1 this is just an int.  Maybe I'll change it to be intN for all ranks, not sure.
+- `::localDim` = Get the dimension size of the current class, equal to `dim<0>`.
+- `::numNestings` = Get the number of nested classes.
+- `::count<i>` = Get the storage size of the i'th nested class.  i is from 0 to numNestings-1.
+- `::localCount` = Get the storage size of the current class, equal to `count<0>`.
+- `::Nested<i>` = Get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
+- `::numNestingsToIndex<i>` = Gets the number of nestings deep that the index 'i' is located, where i is from 0 to rank.
+	`numNestingsToIndex<0>` will always return 0, `numNestingsToIndex<rank>` will always return `numNestings`.
+- `::InnerForIndex<i>` = Get the type associated with the i'th index, where i is from 0 to rank-1.
+	Equivalent to `::Nested<numNestingsToIndex<i>>`  `_vec`'s 0 will point to itself, `_sym`'s and `_asym`'s 0 and 1 will point to themselves, all others drill down.
 - `::ReplaceInner<T>` = Replaces this tensor's Inner with a new type, T.
 - `::ReplaceNested<i,T>` = Replace the i'th nesting of this tensor with the type 'T', where i is from 0 to numNestings-1.
-- `::ReplaceLocalDim<n>` = replaces this tensor's localDim with a new dimension, n.
+- `::ReplaceLocalDim<n>` = Replaces this tensor's localDim with a new dimension, n.
 - `::ReplaceDim<i,n>` = Replace the i'th index dimension with the dimension, n.
-- `::ReplaceScalar<T>` = create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
-- `::ExpandIthIndex<i>` = produce a type with only the storage at the i'th index replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  So a sym's ExpandIthIndex<0> or <1> would produce a vec-of-vec.  a sym-of-vec's ExpandIthIndex<2> would return the same type, and a vec-of-sym's ExpandIthIndex<0> would return the same type.
-- `::ExpandIndex<i1, i2, ...>` = expand the all indexes listed.
-- `::ExpandIndexSeq<std::integer_sequence<int, i1...>>` = expands the indexes in the `integer_sequence<int, ...>`
-- `::ExpandAllIndexes<>` = produce a type with all storage replaced with expanded storage.  Expanded storage being a vec-of-vec-of...-vec's with nesting equal to the desired tensor rank.  Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `_tensori<Scalar, dim1, ..., dimN>`.
-- `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into vecs.
-- `::RemoveIndex<i1, i2, ...>` = Removes all indexes.  
+- `::ReplaceScalar<T>` = Create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
+- `::ExpandIthIndex<i>` = Produce a type with only the storage at the i'th index replaced with expanded storage.
+	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
+	So a `_sym`'s ExpandIthIndex<0> or <1> would produce a `_vec`-of-`_vec`, a `_sym`-of-`_vec`'s ExpandIthIndex<2> would return the same type, and a `_vec`-of-`_sym`'s ExpandIthIndex<0> would return the same type.
+- `::ExpandIndex<i1, i2, ...>` = Expand the all indexes listed.
+- `::ExpandIndexSeq<std::integer_sequence<int, i1...>>` = Expands the indexes in the `integer_sequence<int, ...>`.
+- `::ExpandAllIndexes<>` = Produce a type with all storage replaced with expanded storage.
+	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
+	Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `_tensori<Scalar, dim1, ..., dimN>`.
+- `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into `_vec`s.
+- `::RemoveIndex<i1, i2, ...>` = Removes all the indexes, `i1` ..., from the tensor.
 
-Tensor Template Helpers (subject to change)
+### Template Helpers (subject to change)
 - `is_tensor_v<T>` = is it a tensor storage type?
 - `is_vec_v<T>` = is it a _vec<T,N>?
 - `is_sym_v<T>` = is it a _sym<T,N>?
 - `is_asym_v<T>` = is it a _asym<T,N>?
 
-Constructors:
+### Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.
 - `(s)` = initialize with all elements set to `s`.
 - `(x, y), (x, y, z), (x, y, z, w)` for dimensions 1-4, initialize with scalar values.
@@ -79,20 +108,22 @@ Constructors:
 - `(function<Scalar(intN i)>)` = initialize with a lambda, same as above except the index is stored as an int-vector in `i`.
 - `(tensor t)` = initialize from another tensor.  Truncate dimensions.  Uninitialized elements are set to {}.
 
-Overloaded Indexing
+### Overloaded Indexing
 - `(int i1, ...)` = dereference based on a list of ints.  Math `a_ij` = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.  
 	Mind you that in the case of symmetric storage being used this means the [][] indexing __DOES NOT MATCH__ the .s[].s[] indexing.
 	In the case of symmetric storage, for intermediate-indexes, a wrapper object will be returned.
 
-Iterating
+### Iterating
 - `.begin() / .end() / .cbegin() / .cend()` = read-iterators, for iterating over indexes (including duplicate elements in symmetric matrices).
 - `.write().begin(), ...` = write-iterators, for iterating over the stored elements (excluding duplicates for symmetric indexes).
 - read-iterators have `.index` as the int-vector of the index into the tensor.
 - write-iterators have `.readIndex` as the int-vector lookup index and `.writeIndex` as the nested-storage int-vector.
 
-Swizzle will return a vector-of-references:
+### Swizzling
+Swizzling is only available for expanded storage, i.e. `_vec` and compositions of `_vec` (like `_mat`), i.e. it is not available for `_sym` and `_asym`.
+Swizzling will return a vector-of-references:
 - 2D: `.xx() .xy() ... .wz() .ww()`
 - 3D: `.xxx() ... .www()`
 - 4D: `.xxxx() ... .wwww()` 
@@ -119,10 +150,13 @@ functions:
 - `cross(a,b)` = 3D vector cross product.
 	- rank-1 dim-3 x rank-1 dim-3 -> rank-1 dim-3:
 	$${cross(a,b)_i} := {\epsilon_{ijk}} b^j c^k$$ 
-- `outer(a,b), outerProduct(a,b)` = Tensor outer product.  Two vectors make a matrix.  A vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a sym and a sym produces a sym-of-syms.
+- `outer(a,b), outerProduct(a,b)` = Tensor outer product.  The outer of a `_vec` and a `_vec` make a `_mat` (i.e. a `_vec`-of-`_vec`).
+	The outer of a vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a `_sym` and a `_sym` produces a `_sym`-of-`_sym`s.
 	- rank-M x rank-N -> rank-(M+N):
 	$$outer(a,b)_{IJ} := a_I b_J$$
-- `transpose<from=0,to=1>(a)` = Transpose indexes `from` and `to`.  This will preserve storage optimizations, so transposing 0,1 of a sym-of-vec will produce a sym-of-vec, but transposing 0,2 or 1,2 of a sym-of-vec will produce a vec-of-vec-of-vec.
+- `transpose<from=0,to=1>(a)` = Transpose indexes `from` and `to`.
+	This will preserve storage optimizations, so transposing 0,1 of a `_sym`-of-`_vec` will produce a `_sym`-of-`_vec`,
+	but transposing 0,2 or 1,2 of a `_sym`-of-`_vec` will produce a `_vec`-of-`_vec`-of-`_vec`.
 	- rank-M -> rank-M, M >= 2
 	$$transpose(a)_{{i_1}...{i_p}...{i_q}...{i_n}} = a_{{i_1}...{i_q}...{i_p}...{i_n}}$$
 - `contract<m=0,n=1>(a), interior(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to `trace(t)`.
@@ -155,9 +189,9 @@ Sorry GLSL, Cg wins this round:
 Depends on the "Common" project, for Exception, template metaprograms, etc.
 
 TODO:
-- finishing up antisym , it needs intN access, and a loooot of wrapper classes.  
-	- once we have this, why not rank-3 rank-4 etc sym or antisym ... I'm sure there's some math on how to calculate the unique # of vars
-- sym needs some index help when it's mixing accessors and normal derefs. one signature is Scalar&, the other is Accessor
+- finishing up `_asym` , it needs intN access, and a loooot of wrapper classes.  
+	- once we have this, why not rank-3 rank-4 etc `_sym` or `_asym` ... I'm sure there's some math on how to calculate the unique # of vars
+- `_sym` needs some index help when it's mixing accessors and normal derefs. one signature is Scalar&, the other is Accessor
 
 - make a permuteIndexes() function, have this "ExpandIndex<>" on all its passed indexes, then have it run across the permute indexes.
 	- mind you that for transposes then you can respect symmetry and you don't need to expand those indexes.
@@ -166,13 +200,13 @@ TODO:
 - get matrix-mul working for arbitrary tensors without expanding all internal storage optimizations.
 	- multiply as contraction of indexes
 	- for multiply and for permute, some way to extract the flags for symmetric/not on dif indexes
-	- so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into vec-of-vec
+	- so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into `_vec`-of-`_vec`
 	- more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
 	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "ReplaceScalar" the nesting-minus-one of A with the nesting-1 of B
 - shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
 
 - more flexible exterior product (cross, wedge, determinant).  Generalize to something with Levi-Civita permutation tensor.
-- asym is 2-rank totally-antisymmetric .. I should do a N-rank totally-antisymmetric and N-rank totally-symmetric 
+- `_asym` is 2-rank totally-antisymmetric .. I should do a N-rank totally-antisymmetric and N-rank totally-symmetric 
 	- then use it for an implementation of LeviCivita as constexpr
 	- then use that for cross, determinant, inverse, wedge
 
