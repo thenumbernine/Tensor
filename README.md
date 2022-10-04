@@ -208,13 +208,7 @@ TODO:
 	- mind you that for transposes then you can respect symmetry and you don't need to expand those indexes.
 	- make transpose a specialization of permuteIndexes()
 - index notation summation?  mind you that it shoud preserve non-summed index memory-optimization structures.
-- get matrix-mul working for arbitrary tensors without expanding all internal storage optimizations.
-	- multiply as contraction of indexes
-	- for multiply and for permute, some way to extract the flags for symmetric/not on dif indexes
-	- so when i produce result types with some indexes moved/removed, i'll know when to expand symmetric into `_vec`-of-`_vec`
-	- more flexible multiplication ... it's basically outer then contract of lhs last and rhs first indexes ... though I could optimize to a outer+contract-N indexes
-	- for mul(A a, B b), this would be "expandStorage" on the last of A and first of B b, then "ReplaceScalar" the nesting-minus-one of A with the nesting-1 of B
-- shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "transpose"=>"tr" "normalize"=>"unit"
+- shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "trace"=>"tr", "transpose"=>...? T? tr?  what? "normalize"=>"unit"
 
 - more flexible exterior product (cross, wedge, determinant).  Generalize to something with Levi-Civita permutation tensor.
 - `_asym` is 2-rank totally-antisymmetric .. I should do a N-rank totally-antisymmetric and N-rank totally-symmetric 
@@ -241,7 +235,9 @@ TODO:
 - InnerForIndex doesn't really get the inner, it gets the index, where index = corresponds with This, so call it something like "TypeForIndex"
 
 - ReplaceDim and ReplaceLocalDim that take a int pack and insert that many new dimensions into that index' location.
-	- would be nice to insert the template to wedge into it, like `tuple<index_int<3>, index_sym<3>>`.
+- would be nice to insert the template to wedge into it, like `tuple<index_int<3>, index_sym<3>>`.
+	like `InsertIndexes<index, index_vec<3>, index_sym<3> >` etc,
+		which would insert the listed structure into the nest of tensors.  make sure 'index' was expanded, expand it otherwise.
 
 - shorter names for `index_*` for building tensors.
 
@@ -258,5 +254,7 @@ TODO:
 - range-iterator as a function of the tensor, like `for (auto i : a.range) {` 
 	- then maybe see how it can be merged with read and write iterator? maybe?  btw write iterator is just a range iterator over the sequence `count<0>...count<numNestings-1>` with a different lookup 
 	- so make a generic multi-dim iterator that acts on `index_sequence`. then use it with read and write iters.
-
+ 
 - rank-n interior aka contract-n-times on neighboring indexes?
+	technically an 'interior' product is one that does contract n-indexes depending on the rank of the vector that the form is being applied to.
+	well typicall the ranks match, but in a few texts a partial-inner is allowed, where the vector rank is <= the form rank.

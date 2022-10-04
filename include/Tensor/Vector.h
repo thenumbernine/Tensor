@@ -2088,7 +2088,7 @@ auto diagonal(T const & t) {
 	... maybe instead
 	using R = T
 		::RemoveIndex<m>
-		::InsertInsert<m, index_sym<T::dim<m>>>
+		::InsertIndex<m, index_sym<T::dim<m>>>
 	*/
 	using E = typename T::template ExpandIndex<m>;
 	constexpr int nest = E::template numNestingsToIndex<m>;
