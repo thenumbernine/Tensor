@@ -40,9 +40,6 @@ So I guess overall this library is midway between a mathematician's and a progra
 `_asym<type, dim>` = antisymmetric matrices:
 - `.x_x() .w_w()` access methods
 
-### Quaternions:
-`_quat<type>` = quaternion.  Subclass of `_vec4<type>`.
-
 ### Tensors: (with rank>2)
 `tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_sym`, `_asym`.
 
@@ -128,7 +125,7 @@ Swizzling will return a vector-of-references:
 - 3D: `.xxx() ... .www()`
 - 4D: `.xxxx() ... .wwww()` 
 
-functions:
+### Functions
 - `dot(a,b), inner(a,b)` = Frobenius dot.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	- rank-N x rank-N -> rank-0.
 	$$dot(a,b) := a^I \cdot b_I$$
@@ -172,7 +169,7 @@ functions:
 	- rank-2 -> rank-2:
 	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
 
-## Familiar Types
+### Familiar Types
 
 Sorry GLSL, Cg wins this round:
 - `floatN<N>` = N-dimensional float vector.
@@ -185,6 +182,12 @@ Sorry GLSL, Cg wins this round:
 - `_mat2x2<T>, _mat2x3<T>, _mat2x4<T>, _mat3x2<T>, _mat3x3<T>, _mat3x4<T>, _mat4x2<T>, _mat4x3<T>, _mat4x4<T>` = templated fixed-size matrices.
 - `_sym2<T>, _sym3<T>, _sym4<T>` = templated fixed-size symmetric matrices.
 - `_asym2<T>, _asym3<T>, _asym4<T>` = templated fixed-size antisymmetric matrices.
+
+## Quaternions:
+`_quat` is the odd one out, where it does have a few of the tensor operations, but it is stuck at 4D.  Maybe I will implement Cayley-Dickson constructs later for higher dimension.
+`_quat<type>` = Quaternion.  Subclass of `_vec4<type>`.
+`operator *` = Quaternion multiplication.
+
 
 Depends on the "Common" project, for Exception, template metaprograms, etc.
 
