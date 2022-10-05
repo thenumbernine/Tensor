@@ -171,8 +171,8 @@ namespace StaticTest1 {
 	static_assert(is_same_v<_tensor<int,2,3,4>::RemoveIndex<2>, _tensor<int,2,3>>);
 
 	// verify RemoveIndex<> is order indepenent
-	//[a,b,c,d] remove 0 => [a,c,d] => remove 3 => compiler error 
-	//[a,b,c,d] remove 3 => [a,b,c] => remove 0 => [b,c] 
+	//[a,b,c,d] remove 0 => [a,c,d] => remove 3 => compiler error
+	//[a,b,c,d] remove 3 => [a,b,c] => remove 0 => [b,c]
 	static_assert(
 		is_same_v<
 			_tensor<int,2,3,4,5>::RemoveIndex<3,0>,
@@ -258,7 +258,7 @@ namespace StaticTest1 {
 			float3s3
 		>
 	);
-#if 0 // TODO fixme by implementing _asym's operator(intN)	
+#if 0 // TODO fixme by implementing _asym's operator(intN)
 	static_assert(
 		is_same_v<
 			decltype(
@@ -267,7 +267,7 @@ namespace StaticTest1 {
 			float3x3
 		>
 	);
-#endif	
+#endif
 	// test swapping dimensions correctly
 	namespace transposeTest1 {
 		using T = _tensor<int, 2,3,4,5>;
@@ -413,7 +413,7 @@ namespace Test3 {
 
 
 // so more use cases ... for Scalar type S
-// 
+//
 
 	// get the IndexResult i.e. result of indexing operations (call, subscript)
 	//  if any template-nested classes have a member Accessor<This [const]> then use that
@@ -431,7 +431,7 @@ namespace Test3 {
 
 	//operator[] and operator()
 		
-		// rank-1	
+		// rank-1
 	
 	//_tensor<S, index_vec<3>>
 	static_assert(is_same_v<decltype(S3()(0)), S&>);
@@ -497,7 +497,7 @@ namespace Test3 {
 
 	//TODO
 	//this requires _vec's operator(int, int...) to return its IndexResult
-	// but which IndexResult? that depends on the # of (int...)'s 
+	// but which IndexResult? that depends on the # of (int...)'s
 	// so for (int, int), it should be This::InnerForIndex<2>::IndexResult
 //	static_assert(is_same_v<decltype(S3x3s3()(0,0)), S3s3::IndexResult>);
 	
@@ -542,7 +542,7 @@ void operatorScalarTest(T const & t) {
 	TEST_EQ(t * (S)0, T());
 	TEST_EQ(t / (S)1, t);
 	TEST_EQ(t / (S).5, (S)2 * t);
-	//TEST_EQ(t / t, T((S)1)); // if t(I) == 0 then this gives nan ... so ... 
+	//TEST_EQ(t / t, T((S)1)); // if t(I) == 0 then this gives nan ... so ...
 	TEST_EQ(t / T((S)1), t);
 }
 
@@ -553,7 +553,24 @@ void operatorMatrixTest() {
 
 void test_Tensor() {
 	//vector
-	
+
+	auto verifyAccessRank1 = []<typename T, typename F>(T & t, F f){
+		for (int i = 0; i < T::template dim<0>; ++i) {
+			typename T::Scalar x = f(i);
+			// various [] and (int...) and (intN)
+			TEST_EQ(t(i), x);
+			TEST_EQ(t(Tensor::intN<1>(i)), x);
+			TEST_EQ(t[i], x);
+			TEST_EQ(t.s[i], x);
+			if constexpr (!std::is_const_v<T>) {
+				t(i) = x;
+				t(Tensor::intN<1>(i)) = x;
+				t[i] = x;
+				t.s[i] = x;
+			}
+		}
+	};
+
 	{
 		// default ctor
 		Tensor::float3 f;
@@ -601,19 +618,9 @@ void test_Tensor() {
 		// indexing
 		{
 			auto f = [](int i) -> float { return i+1; };
-			auto verifyAccess = []<typename T, typename F>(T & t, F f){
-				for (int i = 0; i < T::template dim<0>; ++i) {
-					typename T::Scalar e = f(i);
-					// various [] and (int...) and (intN)
-					TEST_EQ(t(i), e);
-					TEST_EQ(t(Tensor::intN<1>(i)), e);
-					TEST_EQ(t[i], e);
-					TEST_EQ(t.s[i], e);
-				}
-			};
 			Tensor::float3 t(f);
-			verifyAccess.template operator()<decltype(t)>(t, f);
-			verifyAccess.template operator()<decltype(t) const>(t, f);
+			verifyAccessRank1.template operator()<decltype(t)>(t, f);
+			verifyAccessRank1.template operator()<decltype(t) const>(t, f);
 		}
 
 		//lambda ctor
@@ -647,7 +654,7 @@ void test_Tensor() {
 			// TODO support for rbegin/rend const/not const and crbegin/crend
 		}
 	
-		// operators 
+		// operators
 		// vector/scalar operations
 		TEST_EQ(f+1.f, Tensor::float3(5,6,8));
 		TEST_EQ(f-1.f, Tensor::float3(3,4,6));
@@ -793,7 +800,7 @@ void test_Tensor() {
 			TEST_EQ(b * a, 32);
 			TEST_EQ(Tensor::float3(2,4,6)/Tensor::float3(1,2,3), Tensor::float3(2,2,2));
 			TEST_EQ(b * 2., Tensor::float3(8, 10, 12));
-			TEST_EQ(Tensor::float3(2,4,6)/2., Tensor::float3(1,2,3));	
+			TEST_EQ(Tensor::float3(2,4,6)/2., Tensor::float3(1,2,3));
 		}
 	}
 	
@@ -809,6 +816,14 @@ void test_Tensor() {
 				TEST_EQ(t[i](j), x);
 				TEST_EQ(t(i)[j], x);
 				TEST_EQ(t[i][j], x);
+				if constexpr (!std::is_const_v<T>) {
+					t(i)(j) = x;
+					t(i,j) = x;
+					t(Tensor::int2(i,j)) = x;
+					t[i](j) = x;
+					t(i)[j] = x;
+					t[i][j] = x;
+				}
 			}
 		}
 	};
@@ -875,7 +890,7 @@ void test_Tensor() {
 		verifyAccessMat.template operator()<decltype(m) const>(m, f);
 
 		// scalar ctor
-		// TODO how do GLSL matrix ctor from scalars work? 
+		// TODO how do GLSL matrix ctor from scalars work?
 		// do they initialize to full scalars like vecs do?
 		// do they initialize to ident times scalar like math do?
 		TEST_EQ(Tensor::float3x3(3), (Tensor::float3x3{{3,3,3},{3,3,3},{3,3,3}}));
@@ -940,6 +955,8 @@ void test_Tensor() {
 		// operators
 		operatorScalarTest(m);
 
+		// TODO since operator* is based on tensor products, maybe put it later?
+		//  put all the tensor operations at the end
 		// operator *
 		{
 			auto a = Tensor::int2{7, -2};
@@ -1022,7 +1039,7 @@ void test_Tensor() {
 		}
 
 		// TODO make sure operator* matrix/vector, matrix/matrix, vector/matrix works
-		// TODO I don't think I have marix *= working yet	
+		// TODO I don't think I have marix *= working yet
 
 		auto m2 = elemMul(m,m);
 		for (int i = 0; i < m.dim<0>; ++i) {
@@ -1085,8 +1102,8 @@ so a.s == {0,1,2,4,5,8};
 		
 		// verify index access works
 
-		auto verifyAccessSym = []<typename T>(T & a){	
-			// testing fields 
+		auto verifyAccessSym = []<typename T>(T & a){
+			// testing fields
 			TEST_EQ(a.x_x, 0);
 			TEST_EQ(a.x_y, 1);
 			TEST_EQ(a.x_z, 4);
@@ -1135,7 +1152,7 @@ so a.s == {0,1,2,4,5,8};
 			3 4 5
 			6 7 8
 		... in a symmetric tensor
-		if storage / write iterate is lower-triangular then this will be 
+		if storage / write iterate is lower-triangular then this will be
 		   0 3 6
 		   3 4 7
 		   6 7 8
@@ -1157,7 +1174,7 @@ so a.s == {0,1,2,4,5,8};
 		TEST_EQ(b.s[3], 6); // xz
 		TEST_EQ(b.s[4], 7); // yz
 		TEST_EQ(b.s[5], 8); // zz
-		// test arg ctor 
+		// test arg ctor
 		TEST_EQ(b, Tensor::float3s3(0,3,4,6,7,8));
 #else // lower triangular
 		// test storage order
@@ -1169,7 +1186,7 @@ so a.s == {0,1,2,4,5,8};
 		TEST_EQ(b.s[3], 2); // xz
 		TEST_EQ(b.s[4], 5); // yz
 		TEST_EQ(b.s[5], 8); // zz
-		// test arg ctor 
+		// test arg ctor
 		TEST_EQ(b, Tensor::float3s3(0,1,4,2,5,8));
 #endif
 
@@ -1254,7 +1271,7 @@ so a.s == {0,1,2,4,5,8};
 			}
 		}
 
-		// TODO verify that 'float3a3::ExpandStorage<0> == float3x3' & same with <1> 
+		// TODO verify that 'float3a3::ExpandStorage<0> == float3x3' & same with <1>
 
 		// verify assignment to expanded type
 		// TODO won't work until you get intN dereference in _asym
@@ -1266,6 +1283,62 @@ so a.s == {0,1,2,4,5,8};
 		operatorMatrixTest<Tensor::float3a3>();
 	}
 
+	// rank 3
+
+	auto verifyAccessRank3 = []<typename T, typename F>(T & t, F f){
+		for (int i = 0; i < T::template dim<0>; ++i) {
+			for (int j = 0; j < T::template dim<1>; ++j) {
+				for (int k = 0; k < T::template dim<2>; ++k) {
+					float x = f(i,j,k);
+				
+					// for _vec interchangeability , do by grouping first then () then [] instead of by () then [] then grouping
+					//()()() and any possible merged ()'s
+					TEST_EQ(t(i)(j)(k), x);
+					TEST_EQ(t[i](j)(k), x);
+					TEST_EQ(t(i)[j](k), x);
+					TEST_EQ(t(i)(j)[k], x);
+					TEST_EQ(t[i][j](k), x);
+					TEST_EQ(t[i](j)[k], x);
+					TEST_EQ(t(i)[j][k], x);
+					TEST_EQ(t[i][j][k], x);
+					TEST_EQ(t(i,j)(k), x);
+					TEST_EQ(t(i,j)[k], x);
+					// fails for float3x3s3
+					//TEST_EQ(t(Tensor::int2(i,j))(k), x);
+					//TEST_EQ(t(Tensor::int2(i,j))[k], x);
+					TEST_EQ(t(i)(j,k), x);
+					TEST_EQ(t[i](j,k), x);
+					TEST_EQ(t(i)(Tensor::int2(j,k)), x);
+					TEST_EQ(t[i](Tensor::int2(j,k)), x);
+					TEST_EQ(t(i,j,k), x);
+					TEST_EQ(t(Tensor::int3(i,j,k)), x);
+				
+					if constexpr (!std::is_const_v<T>) {
+						t(i)(j)(k) = x;
+						t[i](j)(k) = x;
+						t(i)[j](k) = x;
+						t(i)(j)[k] = x;
+						t[i][j](k) = x;
+						t[i](j)[k] = x;
+						t(i)[j][k] = x;
+						t[i][j][k] = x;
+						t(i,j)(k) = x;
+						t(i,j)[k] = x;
+						// fails for float3x3s3
+						//t(Tensor::int2(i,j))(k) = x;
+						//t(Tensor::int2(i,j))[k] = x;
+						t(i)(j,k) = x;
+						t[i](j,k) = x;
+						t(i)(Tensor::int2(j,k)) = x;
+						t[i](Tensor::int2(j,k)) = x;
+						t(i,j,k) = x;
+						t(Tensor::int3(i,j,k)) = x;
+					}
+				}
+			}
+		}
+	};
+
 	// rank-3 tensor: vector-vector-vector
 	{
 		using T = Tensor::_tensor<float, 2, 4, 5>;
@@ -1274,13 +1347,17 @@ so a.s == {0,1,2,4,5,8};
 		static_assert(t.dim<0> == 2);
 		static_assert(t.dim<1> == 4);
 		static_assert(t.dim<2> == 5);
+
+		auto f = [](int i, int j, int k) -> float { return 3*i + 4*j*j + 5*k*k*k; };
+		t = T(f);
+		verifyAccessRank3.template operator()<decltype(t)>(t,f);
+		verifyAccessRank3.template operator()<decltype(t) const>(t,f);
 		
 		// operators
 		operatorScalarTest(t);
 
 		//TODO tensor mul
 	}
-
 
 	// rank-3 tensor with intermixed non-vec types:
 	// vector-of-symmetric
@@ -1307,37 +1384,10 @@ so a.s == {0,1,2,4,5,8};
 		TEST_EQ(a.y.y_z, 1);
 		TEST_EQ(a.y.z_z, 2);
 
-		auto t = T2S3([](int i, int j, int k) -> float { return 4*i - j*j - k*k; });
-		auto verifyAccess = []<typename T>(T & t){
-			for (int i = 0; i < T::template dim<0>; ++i) {
-				for (int j = 0; j < T::template dim<1>; ++j) {
-					for (int k = 0; k < T::template dim<2>; ++k) {
-						float e = 4*i - j*j - k*k;
-					
-						//()()() and any possible merged ()'s
-						TEST_EQ(t(i)(j)(k), e);
-						TEST_EQ(t(i)(j,k), e);
-						TEST_EQ(t(i,j)(k), e);
-						TEST_EQ(t(i,j,k), e);
-						//[]()() ...
-						TEST_EQ(t[i](j)(k), e);
-						TEST_EQ(t[i](j,k), e);
-						//()[]()
-						TEST_EQ(t(i)[j](k), e);
-						//()()[]
-						TEST_EQ(t(i)(j)[k], e);
-						TEST_EQ(t(i,j)[k], e);
-						// [][]() []()[] ()[][] [][][]
-						TEST_EQ(t[i][j](k), e);
-						TEST_EQ(t[i](j)[k], e);
-						TEST_EQ(t(i)[j][k], e);
-						TEST_EQ(t[i][j][k], e);
-					}
-				}
-			}
-		};
-		verifyAccess.template operator()<decltype(t)>(t);
-		verifyAccess.template operator()<decltype(t) const>(t);
+		auto f = [](int i, int j, int k) -> float { return 4*i - j*j - k*k; };
+		auto t = T2S3(f);
+		verifyAccessRank3.template operator()<decltype(t)>(t,f);
+		verifyAccessRank3.template operator()<decltype(t) const>(t,f);
 
 		// operators
 		operatorScalarTest(t);
@@ -1345,37 +1395,11 @@ so a.s == {0,1,2,4,5,8};
 	}
 	{
 		using T3S3 = Tensor::_tensori<float, Tensor::index_vec<3>, Tensor::index_sym<3>>;
-		auto t = T3S3([](int i, int j, int k) -> float { return i+j+k; });
-		auto verifyAccess = []<typename T>(T & t){
-			for (int i = 0; i < T::template dim<0>; ++i) {
-				for (int j = 0; j < T::template dim<1>; ++j) {
-					for (int k = 0; k < T::template dim<2>; ++k) {
-						float e=i+j+k;
-					
-						//()()() and any possible merged ()'s
-						TEST_EQ(t(i)(j)(k), e);
-						TEST_EQ(t(i)(j,k), e);
-						TEST_EQ(t(i,j)(k), e);
-						TEST_EQ(t(i,j,k), e);
-						//[]()() ...
-						TEST_EQ(t[i](j)(k), e);
-						TEST_EQ(t[i](j,k), e);
-						//()[]()
-						TEST_EQ(t(i)[j](k), e);
-						//()()[]
-						TEST_EQ(t(i)(j)[k], e);
-						TEST_EQ(t(i,j)[k], e);
-						// [][]() []()[] ()[][] [][][]
-						TEST_EQ(t[i][j](k), e);
-						TEST_EQ(t[i](j)[k], e);
-						TEST_EQ(t(i)[j][k], e);
-						TEST_EQ(t[i][j][k], e);
-					}
-				}
-			}
-		};
-		verifyAccess.template operator()<decltype(t)>(t);
-		verifyAccess.template operator()<decltype(t) const>(t);
+// TODO
+//		auto f = [](int i, int j, int k) -> float { return i+j+k; };
+//		auto t = T3S3(f);
+//		verifyAccessRank3.template operator()<decltype(t)>(t, f);
+//		verifyAccessRank3.template operator()<decltype(t) const>(t, f);
 	}
 	
 	// symmetric-of-vector
@@ -1488,7 +1512,7 @@ so a.s == {0,1,2,4,5,8};
 		using Real = double;
 		using Riemann2 = Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<2>>;
 		//using Riemann2 = Tensor::_asym<Tensor::_asym<Real, 2>, 2>;	// R_[ij][kl]
-		//using Riemann2 = Tensor::_sym<Tensor::_asym<Real, 2>, 2>;	// ... R_(ij)[kl] ... 
+		//using Riemann2 = Tensor::_sym<Tensor::_asym<Real, 2>, 2>;	// ... R_(ij)[kl] ...
 		// how would I define R_( [ij] [kl ) ... i.e. R_ijkl = R_klij and R_ijkl = -R_jikl ?
 		auto r = Riemann2{{1}};
 		static_assert(Riemann2::rank == 4);
@@ -1500,7 +1524,7 @@ so a.s == {0,1,2,4,5,8};
 		static_assert(Riemann2::count<0> == 1);
 		static_assert(Riemann2::count<1> == 1);
 		static_assert(sizeof(Riemann2) == sizeof(Real));
-		auto r00 = r(0,0);	// this type will be a ZERO AntiSymRef wrapper around ... nothing ... 
+		auto r00 = r(0,0);	// this type will be a ZERO AntiSymRef wrapper around ... nothing ...
 		ECHO(r00);
 		TEST_EQ(r00, (Tensor::AntiSymRef<Tensor::_asym<Real, 2>>()));	// r(0,0) is this type
 		TEST_EQ(r00, (Tensor::_asym<Real, 2>{}));	// ... and r(0,0)'s operator== accepts its wrapped type

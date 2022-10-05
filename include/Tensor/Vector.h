@@ -63,7 +63,7 @@ struct TypeWrapper {
 // _sym and _asym have Accessor return for inter-rank indexing
 // vec doesn't, it just uses Scalar&
 // hmm this is failing if I call it (even in constexpr) before the inner-classes are defined ...
-// so (can you?) forward-declare this? 
+// so (can you?) forward-declare this?
 // but if I did forward-declare then still tensor storage couldn't be extended.
 // so I'll just move the flag into the outermost _sym _asym classes.
 //get a random field in the Accessor class
@@ -72,7 +72,7 @@ struct TypeWrapper {
 // For now I'm manually setting this in all classes that require an Accessor for intermediate indexing
 //  however .... as a rule-of-thumb, intermediate-indexing is only required for classes that are localRank>1
 // so in theory I *could* set this flag automatically for rank>1
-//  ofc then if a rank>1 tensor class was made but forgot its Accessor, there would be some compile errors that may or may not direct the programmer to this being the problem. 
+//  ofc then if a rank>1 tensor class was made but forgot its Accessor, there would be some compile errors that may or may not direct the programmer to this being the problem.
 // https://stackoverflow.com/a/66523751
 template <typename T>
 struct has_Accessor {
@@ -337,11 +337,11 @@ struct constness_of {
 };
 
 /*
-ok _vec () and [] return Scalar& , which makes things easy 
-but _sym and _asym need [] to return Accessor 
-which makes it so subsequent []() will return Accessor (whereas typical () would just return Scalar& 
-so now I need a type for the return value of our operator() and operator[]'s 
-what to name it?  how come I call operator[] the index or dereference operator, when cppreference calls it the subscript operator?  I have never heard that term in 30+ years of C++ programming. 
+ok _vec () and [] return Scalar& , which makes things easy
+but _sym and _asym need [] to return Accessor
+which makes it so subsequent []() will return Accessor (whereas typical () would just return Scalar&
+so now I need a type for the return value of our operator() and operator[]'s
+what to name it?  how come I call operator[] the index or dereference operator, when cppreference calls it the subscript operator?  I have never heard that term in 30+ years of C++ programming.
 */
 #define TENSOR_ADD_INDEX_RESULT()\
 	using IndexResult = GetAccessor_t<Inner, false>;\
@@ -494,7 +494,7 @@ what to name it?  how come I call operator[] the index or dereference operator, 
 	}
 
 // vector-dot
-// TODO this is only valid for _vec's 
+// TODO this is only valid for _vec's
 // _sym will need to double up on the symmetric components' influences
 #define TENSOR_ADD_DOT()\
 	T dot(This const & b) const {\
@@ -994,7 +994,7 @@ ReadIterator vs WriteIterator
 		return _vec<int,localRank>{writeIndex};\
 	}
 
-//these are all per-element assignment operators, 
+//these are all per-element assignment operators,
 // so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
 #define TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_DIMS() /* needed by TENSOR_ADD_CTORS */\
@@ -1036,7 +1036,7 @@ template<typename Scalar, int dim, int rank>
 struct _tensorr_impl {
 	using T = _vec<typename _tensorr_impl<Scalar, dim, rank-1>::T, dim>;
 };
-template<typename Scalar, int dim> 
+template<typename Scalar, int dim>
 struct _tensorr_impl<Scalar, dim, 0> {
 	using T = Scalar;
 };
@@ -1330,7 +1330,7 @@ int symIndex(int i, int j) {
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim);
 
-// TODO decltype() doesn't work with the operator(int, int...) template vararg 
+// TODO decltype() doesn't work with the operator(int, int...) template vararg
 #define TENSOR_SYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
@@ -1636,7 +1636,7 @@ struct _sym<T,4> {
 	static constexpr int localCount = triangleSize(localDim - 1);
 
 // these need a return type depending on # of args
-//  cuz it could be a Scalar& or it could be an Accessor 
+//  cuz it could be a Scalar& or it could be an Accessor
 #define TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
@@ -1651,7 +1651,7 @@ struct _sym<T,4> {
 	}
 
 // This only works if _asym's Accessor's operator(_vec<int,N>) works
-// and while the default TENSOR_ADD_INT_VEC_CALL_INDEX right now uses auto& still so can't be used here 
+// and while the default TENSOR_ADD_INT_VEC_CALL_INDEX right now uses auto& still so can't be used here
 //  (btw how is it working in Symmetric?)
 // _asym returns AntiSymRef which is an object, so maybe I can just use this one in _asym and _asym::Accessor
 #define TENSOR_ADD_ANTISYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()\
@@ -1853,7 +1853,7 @@ template<typename T, int dim1, int dim2> using _mat = _vec<_vec<T, dim2>, dim1>;
 
 
 // some template metaprogram helpers
-//  needed for the math function 
+//  needed for the math function
 //  including operators, esp *
 
 // _tensori helpers:
@@ -2055,8 +2055,8 @@ auto hadamard(T&&... args) {
 // 	c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
 template<typename A, typename B>
 requires (
-	is_tensor_v<A> 
-	&& is_tensor_v<B> 
+	is_tensor_v<A>
+	&& is_tensor_v<B>
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
 auto inner(A const & a, B const & b) {
@@ -2089,8 +2089,8 @@ auto length(T const & v) {
 
 template<typename A, typename B>
 requires (
-	is_tensor_v<A> 
-	&& is_tensor_v<B> 
+	is_tensor_v<A>
+	&& is_tensor_v<B>
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
 auto distance(A const & a, B const & b) {
@@ -2123,8 +2123,8 @@ auto cross(A const & a, B const & b) {
 // for vectors: c_ij := a_i * b_j
 template<typename A, typename B>
 requires (
-	is_tensor_v<A> 
-	&& is_tensor_v<B> 
+	is_tensor_v<A>
+	&& is_tensor_v<B>
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
 auto outer(A const & a, B const & b) {
@@ -2206,7 +2206,7 @@ auto transpose(T const & t) {
 
 // contraction of two indexes of a tensor
 template<int m=0, int n=1, typename T>
-requires (is_tensor_v<T> 
+requires (is_tensor_v<T>
 	&& m < T::rank
 	&& n < T::rank
 	&& T::template dim<m> == T::template dim<n>
@@ -2251,7 +2251,7 @@ auto contract(T const & t) {
 			for (int k = 1; k < T::template dim<m>; ++k) {
 				sum += t(k,k);
 			}
-			return sum;	
+			return sum;
 		} else {
 			using R = typename T::template RemoveIndex<m,n>;
 			return R([&](typename R::intN i) -> S {
@@ -2288,7 +2288,7 @@ auto trace(T&&... args) {
 	return contract(std::forward<T>(args)...);
 }
 
-// diagonalize an index 
+// diagonalize an index
 // well if it's diagonal, might as well use _sym
 template<int m=0, typename T>
 requires (is_tensor_v<T>)
@@ -2324,8 +2324,8 @@ auto diagonal(T const & t) {
 	});
 }
 
-// operator* is outer+contract 
-// TODO maybe generalize further with the # of indexes to contract: 
+// operator* is outer+contract
+// TODO maybe generalize further with the # of indexes to contract:
 // c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
 
 template<typename A, typename B>
@@ -2533,7 +2533,7 @@ std::ostream & operator<<(std::ostream & o, _asym<T,N> const & t) {
 
 namespace std {
 
-// tostring 
+// tostring
 
 template<typename T, int n>
 std::string to_string(Tensor::_vec<T, n> const & x) {
@@ -2546,16 +2546,16 @@ std::string to_string(Tensor::_vec<T, n> const & x) {
 // tuple_size, make this match array i.e. storage size, returns localCount
 
 template<typename T, int N>
-struct tuple_size<Tensor::_vec<T,N>> { 
+struct tuple_size<Tensor::_vec<T,N>> {
 	static constexpr auto value = Tensor::_vec<T,N>::localCount;
 };
 
 template<typename T, int N>
-struct tuple_size<Tensor::_sym<T,N>> { 
+struct tuple_size<Tensor::_sym<T,N>> {
 	static constexpr auto value = Tensor::_sym<T,N>::localCount; 	// (N*(N+1))/2
 };
 
-// std::get ... all the dif impls ... 
+// std::get ... all the dif impls ...
 
 template<std::size_t I, typename T, std::size_t N> constexpr T & get(Tensor::_vec<T,N> & v) noexcept { return v[I]; }
 template<std::size_t I, typename T, std::size_t N> constexpr T && get(Tensor::_vec<T,N> && v) noexcept { return v[I]; }
