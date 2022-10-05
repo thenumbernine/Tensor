@@ -334,21 +334,21 @@ namespace HasAccessorTest {
 	static_assert(Tensor::is_tensor_v<Tensor::float3a3>);
 	//static_assert(Tensor::is_tensor_v<Tensor::quatf>);	// TODO put this in the src/Quat.cpp test, or #include "Tensor/Quat.h" ... either way
 	static_assert(!Tensor::has_Accessor_v<float>);
-	static_assert(Tensor::has_Accessor_v<Tensor::float3>);
-	static_assert(Tensor::has_Accessor_v<Tensor::float3x3>);
+	static_assert(!Tensor::has_Accessor_v<Tensor::float3>);
+	static_assert(!Tensor::has_Accessor_v<Tensor::float3x3>);
 	static_assert(Tensor::has_Accessor_v<Tensor::float3s3>);
 	static_assert(Tensor::has_Accessor_v<Tensor::float3a3>);
 	
-	static_assert(std::is_same_v<Tensor::float3::template IndexResult<>, float&>);
-	static_assert(std::is_same_v<Tensor::float3::template IndexResultConst<>, float const&>);
-	static_assert(std::is_same_v<Tensor::float3x3::template IndexResult<>, float&>);
-	static_assert(std::is_same_v<Tensor::float3x3::template IndexResultConst<>, float const&>);
-	static_assert(std::is_same_v<Tensor::float3x3::template IndexResult<>, float&>);
-	static_assert(std::is_same_v<Tensor::float3x3::template IndexResultConst<>, float const&>);
-	static_assert(std::is_same_v<Tensor::float3s3::template IndexResult<>, Tensor::float3s3::Accessor<Tensor::float3s3>>);
-	static_assert(std::is_same_v<Tensor::float3s3::template IndexResultConst<>, Tensor::float3s3::Accessor<Tensor::float3s3 const>>);
-	static_assert(std::is_same_v<Tensor::float3a3::template IndexResult<>, Tensor::float3a3::Accessor<Tensor::float3a3>>);
-	static_assert(std::is_same_v<Tensor::float3a3::template IndexResultConst<>, Tensor::float3a3::Accessor<Tensor::float3a3 const>>);
+	static_assert(std::is_same_v<Tensor::float3::IndexResult, float&>);
+	static_assert(std::is_same_v<Tensor::float3::IndexResultConst, float const&>);
+	static_assert(std::is_same_v<Tensor::float3x3::IndexResult, float&>);
+	static_assert(std::is_same_v<Tensor::float3x3::IndexResultConst, float const&>);
+	static_assert(std::is_same_v<Tensor::float3x3::IndexResult, float&>);
+	static_assert(std::is_same_v<Tensor::float3x3::IndexResultConst, float const&>);
+	static_assert(std::is_same_v<Tensor::float3s3::IndexResult, Tensor::float3s3::Accessor<Tensor::float3s3>>);
+	static_assert(std::is_same_v<Tensor::float3s3::IndexResultConst, Tensor::float3s3::Accessor<Tensor::float3s3 const>>);
+	static_assert(std::is_same_v<Tensor::float3a3::IndexResult, Tensor::float3a3::Accessor<Tensor::float3a3>>);
+	static_assert(std::is_same_v<Tensor::float3a3::IndexResultConst, Tensor::float3a3::Accessor<Tensor::float3a3 const>>);
 }
 
 //is adding "const" to "float&" the same as adding "&" to "float const" ?

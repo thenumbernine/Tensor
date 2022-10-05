@@ -53,6 +53,12 @@ TODO TODO
 
 namespace Tensor {
 
+// I was using optional<> to capture types without instanciating them
+// but optional can't wrap references, so ...
+template<typename T>
+struct TypeWrapper {
+	using type = T;
+};
 
 // _sym and _asym have Accessor return for inter-rank indexing
 // vec doesn't, it just uses Scalar&
@@ -67,15 +73,36 @@ namespace Tensor {
 //  however .... as a rule-of-thumb, intermediate-indexing is only required for classes that are localRank>1
 // so in theory I *could* set this flag automatically for rank>1
 //  ofc then if a rank>1 tensor class was made but forgot its Accessor, there would be some compile errors that may or may not direct the programmer to this being the problem. 
-template<typename T>
-constexpr bool has_Accessor_v = requires(T const & ) { T::localRank > 1; };
-
-// I was using optional<> to capture types without instanciating them
-// but optional can't wrap references, so ...
-template<typename T>
-struct TypeWrapper {
-	using type = T;
+// https://stackoverflow.com/a/66523751
+template <typename T>
+struct has_Accessor {
+    typedef char yes;
+    struct no {char x[2];};
+    template<typename C> static yes test(typename C::template Accessor<C> *);
+    template<typename C> static no test(...);
+public:
+    static constexpr bool value = sizeof(test<T>(0)) == sizeof(char);
 };
+template<typename T>
+constexpr bool has_Accessor_v = has_Accessor<T>::value;
+
+//IndexResult recurses until a type IS THERE and uses that
+template<typename T, bool makeConst>
+struct GetAccessor {
+	static constexpr auto value() {
+		using TConst = std::conditional_t<makeConst, T const, T>;
+		if constexpr (has_Accessor_v<T>) {
+			return TypeWrapper<typename T::template Accessor<TConst>>();
+		} else if constexpr (!is_tensor_v<T>) {
+			return TypeWrapper<TConst &>();
+		} else {
+			return GetAccessor<typename T::Inner, makeConst>::value();
+		}
+	}
+	using type = typename decltype(value())::type;
+};
+template<typename T, bool makeConst>
+using GetAccessor_t = typename GetAccessor<T, makeConst>::type;
 
 // Template<> is used for rearranging internal structure when performing linear operations on tensors
 // Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
@@ -318,31 +345,13 @@ struct constness_of {
 	/* which makes it so subsequent []() will return Accessor (whereas typical () would just return Scalar& */\
 	/* so now I need a type for the return value of our operator() and operator[]'s */\
 	/* what to name it?  how come I call operator[] the index or dereference operator, when cppreference calls it the subscript operator?  I have never heard that term in 30+ years of C++ programming. */\
-	/* NOTICE this doesn't compile unless I template the 'using' in the outer-nesting class that points to this */\
-	template<typename ThisConstness>\
-	struct IndexResultImpl {\
-		static constexpr auto value() {\
-			using ThisConstnessInner = typename ThisConstness::Inner; /* Inner itself probably works, but meh*/\
-			using InnerConstness = typename constness_of<ThisConstness>::template apply_t<ThisConstnessInner>;\
-			if constexpr (is_tensor_v<ThisConstnessInner>) {\
-				return ThisConstnessInner::template IndexResultImpl<InnerConstness>::value();\
-			} else {\
-				return TypeWrapper<InnerConstness &>();\
-			}\
-		}\
-		using type = typename decltype(value())::type;\
-	};\
-	template<typename Defer = This>\
-	using IndexResult = typename IndexResultImpl<Defer>::type;\
-	template<typename Defer = This const>\
-	using IndexResultConst = typename IndexResultImpl<Defer>::type;
+	using IndexResult = GetAccessor_t<Inner, false>;\
+	using IndexResultConst = GetAccessor_t<Inner, true>;
 
 //use this for rank-2+ storage:
 #define TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR()\
-	template<typename Defer = This>\
-	using IndexResult = Accessor<Defer>;\
-	template<typename Defer = This const>\
-	using IndexResultConst = Accessor<Defer>;
+	using IndexResult = Accessor<This>;\
+	using IndexResultConst = Accessor<This const>;
 
 //#define TENSOR_ADD_INDEX_RESULT()
 //#define TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR()
