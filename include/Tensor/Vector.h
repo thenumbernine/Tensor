@@ -521,10 +521,21 @@ what to name it?  how come I call operator[] the index or dereference operator, 
 		return s[i];\
 	}
 
-// operator() should default through operator[]
-#define TENSOR_ADD_RECURSIVE_CALL_INDEX()\
+// used for single-rank objects: _vec, and _sym::Accessor
+#define TENSOR_ADD_VECTOR_CALL_INDEX()\
+\
+	/* a(i) := a_i */\
+	auto operator()(int i)\
+	-> decltype((*this)[i]) {\
+		return (*this)[i];\
+	}\
+	auto operator()(int i) const\
+	-> decltype((*this)[i]) {\
+		return (*this)[i];\
+	}\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
+	/* operator() should default through operator[] */\
 	template<typename... Rest>\
 	auto operator()(int i, Rest... rest)\
 	-> decltype((*this)[i](rest...)) {\
@@ -534,14 +545,7 @@ what to name it?  how come I call operator[] the index or dereference operator, 
 	auto operator()(int i, Rest... rest) const\
 	-> decltype((*this)[i](rest...)) {\
 		return (*this)[i](rest...);\
-	}
-
-/*
-TODO getting the proper auto decltype() ...
-if I use constexpr (N == 1) then that makes decltype() difficult
-if I use a specialization for _vec<int,1> then the compiler complains about using _vec<int,1> before it's defined
-*/
-#define TENSOR_ADD_RANK1_INT_VEC_CALL_INDEX()\
+	}\
 \
 	/* a(intN(i,...)) */\
 	template<int N>\
@@ -556,7 +560,6 @@ if I use a specialization for _vec<int,1> then the compiler complains about usin
 			return (*this)[i(0)](i.template subset<N-1, 1>());\
 		}\
 	}\
-\
 	template<int N>\
 	auto const &\
 	/*auto*/\
@@ -569,23 +572,6 @@ if I use a specialization for _vec<int,1> then the compiler complains about usin
 			return (*this)[i(0)](i.template subset<N-1, 1>());\
 		}\
 	}
-
-// used for single-rank objects: _vec, and _sym::Accessor
-#define TENSOR_ADD_RANK1_CALL_INDEX()\
-\
-	/* a(i) := a_i */\
-	auto operator()(int i)\
-	-> decltype((*this)[i]) {\
-		return (*this)[i];\
-	}\
-\
-	auto operator()(int i) const\
-	-> decltype((*this)[i]) {\
-		return (*this)[i];\
-	}\
-\
-	TENSOR_ADD_RECURSIVE_CALL_INDEX()\
-	TENSOR_ADD_RANK1_INT_VEC_CALL_INDEX()
 
 // TODO is this safe?
 #define TENSOR_ADD_SUBSET_ACCESS()\
@@ -1028,7 +1014,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_INDEX_RESULT() /* needs to go before operator() and operator[] */\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_VECTOR_BRACKET_INDEX() /* operator[] */\
-	TENSOR_ADD_RANK1_CALL_INDEX() /* operator() */\
+	TENSOR_ADD_VECTOR_CALL_INDEX() /* operator() */\
 	TENSOR_ADD_SUBSET_ACCESS()\
 	TENSOR_ADD_DOT()\
 	TENSOR_ADD_VOLUME()\
@@ -1378,7 +1364,7 @@ int symIndex(int i, int j) {
 		using IndexResult = This::Accessor<This>;\
 		using IndexResultConst = This::Accessor<This const>;\
 \
-		TENSOR_ADD_RANK1_CALL_INDEX()\
+		TENSOR_ADD_VECTOR_CALL_INDEX()\
 	};
 
 #define TENSOR_ADD_SYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()\
@@ -1643,47 +1629,6 @@ struct _sym<T,4> {
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim - 1);
 
-// these need a return type depending on # of args
-//  cuz it could be a Scalar& or it could be an Accessor
-#define TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
-\
-	/* a(i1,i2,...) := a_i1_i2_... */\
-	template<typename... Rest>\
-	auto operator()(int i, int j, Rest... rest) {\
-		return (*this)(i,j)(rest...);\
-	}\
-\
-	template<typename... Rest>\
-	auto operator()(int i, int j, Rest... rest) const {\
-		return (*this)(i,j)(rest...);\
-	}
-
-// This only works if _asym's Accessor's operator(_vec<int,N>) works
-// and while the default TENSOR_ADD_INT_VEC_CALL_INDEX right now uses auto& still so can't be used here
-//  (btw how is it working in Symmetric?)
-// _asym returns AntiSymRef which is an object, so maybe I can just use this one in _asym and _asym::Accessor
-#define TENSOR_ADD_ANTISYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()\
-\
-	/* a(intN(i,...)) */\
-	template<int N>\
-	auto operator()(_vec<int,N> const & i) {\
-		if constexpr (N == 1) {\
-			return (*this)[i(0)];\
-		} else {\
-			return (*this)[i(0)](i.template subset<N-1, 1>());\
-		}\
-	}\
-\
-	template<int N>\
-	auto operator()(_vec<int,N> const & i) const {\
-		if constexpr (N == 1) {\
-			return (*this)[i(0)];\
-		} else {\
-			return (*this)[i(0)](i.template subset<N-1, 1>());\
-		}\
-	}
-
-
 #define TENSOR_ADD_ANTISYMMETRIC_MATRIX_ACCESSOR()\
 	template<typename OwnerConstness>\
 	struct Accessor {\
@@ -1708,7 +1653,7 @@ struct _sym<T,4> {
 		/* so how to fix it? */\
 		/* one way is: make everything return a wrapper of some sort, like reference_wrapper */\
 		/* another way: some requires/if constexpr's to see if the nested class is using a & or an AntiSymRef ... */\
-		/*TENSOR_ADD_RANK1_CALL_INDEX()*/\
+		/*TENSOR_ADD_VECTOR_CALL_INDEX()*/\
 		/* ...inlined and with proper return type: */\
 		auto operator()(int i)\
 		-> decltype((*this)[i]) {\
@@ -1718,8 +1663,41 @@ struct _sym<T,4> {
 		-> decltype((*this)[i]) {\
 			return (*this)[i];\
 		}\
-		TENSOR_ADD_RECURSIVE_CALL_INDEX()\
-		TENSOR_ADD_ANTISYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()\
+\
+		/* operator() should default through operator[] */\
+		/* a(i1,i2,...) := a_i1_i2_... */\
+		template<typename... Rest>\
+		auto operator()(int i, Rest... rest)\
+		-> decltype((*this)[i](rest...)) {\
+			return (*this)[i](rest...);\
+		}\
+		template<typename... Rest>\
+		auto operator()(int i, Rest... rest) const\
+		-> decltype((*this)[i](rest...)) {\
+			return (*this)[i](rest...);\
+		}\
+\
+		/* This only works if _asym's Accessor's operator(_vec<int,N>) works */\
+		/* and while the default TENSOR_ADD_INT_VEC_CALL_INDEX right now uses auto& still so can't be used here */\
+		/*  (btw how is it working in Symmetric?) */\
+		/* _asym returns AntiSymRef which is an object, so maybe I can just use this one in _asym and _asym::Accessor */\
+		/* a(intN(i,...)) */\
+		template<int N>\
+		auto operator()(_vec<int,N> const & i) {\
+			if constexpr (N == 1) {\
+				return (*this)[i(0)];\
+			} else {\
+				return (*this)[i(0)](i.template subset<N-1, 1>());\
+			}\
+		}\
+		template<int N>\
+		auto operator()(_vec<int,N> const & i) const {\
+			if constexpr (N == 1) {\
+				return (*this)[i(0)];\
+			} else {\
+				return (*this)[i(0)](i.template subset<N-1, 1>());\
+			}\
+		}\
 	};
 
 // make sure this (and the using) is set before the specific-named accessors
@@ -1760,8 +1738,39 @@ struct _sym<T,4> {
 	auto operator()(int i) const { return (*this)[i]; }\
 \
 	/* in order to do this, you would need some conditions for seeing if the nested return type is AntiSymRef or Scalar */\
-	TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
-	TENSOR_ADD_ANTISYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()
+	/* these need a return type depending on # of args */\
+	/*  cuz it could be a Scalar& or it could be an Accessor */\
+	/* a(i1,i2,...) := a_i1_i2_... */\
+	template<typename... Rest>\
+	auto operator()(int i, int j, Rest... rest) {\
+		return (*this)(i,j)(rest...);\
+	}\
+	template<typename... Rest>\
+	auto operator()(int i, int j, Rest... rest) const {\
+		return (*this)(i,j)(rest...);\
+	}\
+\
+	/* This only works if _asym's Accessor's operator(_vec<int,N>) works */\
+	/* and while the default TENSOR_ADD_INT_VEC_CALL_INDEX right now uses auto& still so can't be used here */\
+	/*  (btw how is it working in Symmetric?) */\
+	/* _asym returns AntiSymRef which is an object, so maybe I can just use this one in _asym and _asym::Accessor */\
+	/* a(intN(i,...)) */\
+	template<int N>\
+	auto operator()(_vec<int,N> const & i) {\
+		if constexpr (N == 1) {\
+			return (*this)[i(0)];\
+		} else {\
+			return (*this)[i(0)](i.template subset<N-1, 1>());\
+		}\
+	}\
+	template<int N>\
+	auto operator()(_vec<int,N> const & i) const {\
+		if constexpr (N == 1) {\
+			return (*this)[i(0)];\
+		} else {\
+			return (*this)[i(0)](i.template subset<N-1, 1>());\
+		}\
+	}
 
 // currently set to upper-triangular
 // swap iread 0 and 1 to get lower-triangular
