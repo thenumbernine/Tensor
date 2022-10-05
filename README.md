@@ -80,7 +80,7 @@ So I guess overall this library is midway between a mathematician's and a progra
 - `::Nested<i>` = Get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
 - `::numNestingsToIndex<i>` = Gets the number of nestings deep that the index 'i' is located, where i is from 0 to rank.
 	`numNestingsToIndex<0>` will always return 0, `numNestingsToIndex<rank>` will always return `numNestings`.
-- `::InnerForIndex<i>` = Get the type associated with the i'th index, where i is from 0 to rank-1.
+- `::InnerForIndex<i>` = Get the type associated with the i'th index, where i is from 0 to rank.
 	Equivalent to `::Nested<numNestingsToIndex<i>>`  `_vec`'s 0 will point to itself, `_sym`'s and `_asym`'s 0 and 1 will point to themselves, all others drill down.
 - `::ReplaceInner<T>` = Replaces this tensor's Inner with a new type, T.
 - `::ReplaceNested<i,T>` = Replace the i'th nesting of this tensor with the type 'T', where i is from 0 to numNestings-1.
@@ -233,6 +233,7 @@ TODO:
 - try to work around github's mathjax rendering errors.  looks fine on my own mathjax and on stackedit, but not on github.
 
 - InnerForIndex doesn't really get the inner, it gets the index, where index = corresponds with This, so call it something like "TypeForIndex"
+- call 'Nested' something else like 'Next', and 'numNestings' to 'numNext' ... since 'nested-class' is a term that could be mistaken with member-classes.
 
 - ReplaceDim and ReplaceLocalDim that take a int pack and insert that many new dimensions into that index' location.
 - would be nice to insert the template to wedge into it, like `tuple<index_int<3>, index_sym<3>>`.

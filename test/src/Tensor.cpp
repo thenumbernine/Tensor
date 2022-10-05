@@ -195,8 +195,125 @@ namespace StaticTest1 {
 		is_sym_v<float3s3>
 	);
 
-	namespace transposeTest {
+	namespace Test3 {
+		using float3x3x3 = _tensorr<float, 3, 3>;
+		using float3s3x3 = _tensori<float, index_sym<3>, index_vec<3>>;
+		using float3a3x3 = _tensori<float, index_asym<3>, index_vec<3>>;
+		using float3x3s3 = _tensori<float, index_vec<3>, index_sym<3>>;
+		using float3x3a3 = _tensori<float, index_vec<3>, index_asym<3>>;
+		
+		using float3x3x3x3 = _tensorr<float, 3, 4>;
+		using float3s3x3x3 = _tensori<float, index_sym<3>, index_vec<3>, index_vec<3>>;
+		using float3a3x3x3 = _tensori<float, index_asym<3>, index_vec<3>, index_vec<3>>;
+		using float3x3s3x3 = _tensori<float, index_vec<3>, index_sym<3>, index_vec<3>>;
+		using float3x3a3x3 = _tensori<float, index_vec<3>, index_asym<3>, index_vec<3>>;
+		using float3x3x3s3 = _tensori<float, index_vec<3>, index_vec<3>, index_sym<3>>;
+		using float3x3x3a3 = _tensori<float, index_vec<3>, index_vec<3>, index_asym<3>>;
+		using float3s3x3s3 = _tensori<float, index_sym<3>, index_sym<3>>;
+		using float3a3x3s3 = _tensori<float, index_asym<3>, index_sym<3>>;
+		using float3s3x3a3 = _tensori<float, index_sym<3>, index_asym<3>>;
+		using float3a3x3a3 = _tensori<float, index_asym<3>, index_asym<3>>;
 
+		static_assert(is_same_v<float3::InnerForIndex<0>, float3>);
+		static_assert(is_same_v<float3::InnerForIndex<1>, float>);
+		
+		static_assert(is_same_v<float3x3::InnerForIndex<0>, float3x3>);
+		static_assert(is_same_v<float3x3::InnerForIndex<1>, float3>);
+		static_assert(is_same_v<float3x3::InnerForIndex<2>, float>);
+		
+		static_assert(is_same_v<float3s3::InnerForIndex<0>, float3s3>);
+		static_assert(is_same_v<float3s3::InnerForIndex<1>, float3s3>);
+		static_assert(is_same_v<float3s3::InnerForIndex<2>, float>);
+		
+		static_assert(is_same_v<float3a3::InnerForIndex<0>, float3a3>);
+		static_assert(is_same_v<float3a3::InnerForIndex<1>, float3a3>);
+		static_assert(is_same_v<float3a3::InnerForIndex<2>, float>);
+
+
+		static_assert(is_same_v<float3x3x3::InnerForIndex<0>, float3x3x3>);
+		static_assert(is_same_v<float3x3x3::InnerForIndex<1>, float3x3>);
+		static_assert(is_same_v<float3x3x3::InnerForIndex<2>, float3>);
+		static_assert(is_same_v<float3x3x3::InnerForIndex<3>, float>);
+		
+		static_assert(is_same_v<float3s3x3::InnerForIndex<0>, float3s3x3>);
+		static_assert(is_same_v<float3s3x3::InnerForIndex<1>, float3s3x3>);
+		static_assert(is_same_v<float3s3x3::InnerForIndex<2>, float3>);
+		static_assert(is_same_v<float3s3x3::InnerForIndex<3>, float>);
+		
+		static_assert(is_same_v<float3a3x3::InnerForIndex<0>, float3a3x3>);
+		static_assert(is_same_v<float3a3x3::InnerForIndex<1>, float3a3x3>);
+		static_assert(is_same_v<float3a3x3::InnerForIndex<2>, float3>);
+		static_assert(is_same_v<float3a3x3::InnerForIndex<3>, float>);
+		
+		static_assert(is_same_v<float3x3s3::InnerForIndex<0>, float3x3s3>);
+		static_assert(is_same_v<float3x3s3::InnerForIndex<1>, float3s3>);
+		static_assert(is_same_v<float3x3s3::InnerForIndex<2>, float3s3>);
+		static_assert(is_same_v<float3x3s3::InnerForIndex<3>, float>);
+		
+		static_assert(is_same_v<float3x3a3::InnerForIndex<0>, float3x3a3>);
+		static_assert(is_same_v<float3x3a3::InnerForIndex<1>, float3a3>);
+		static_assert(is_same_v<float3x3a3::InnerForIndex<2>, float3a3>);
+		static_assert(is_same_v<float3x3a3::InnerForIndex<3>, float>);
+	
+
+		static_assert(is_same_v<float3x3x3x3::InnerForIndex<0>, float3x3x3x3>);
+		static_assert(is_same_v<float3x3x3x3::InnerForIndex<1>, float3x3x3>);
+		static_assert(is_same_v<float3x3x3x3::InnerForIndex<2>, float3x3>);
+		static_assert(is_same_v<float3x3x3x3::InnerForIndex<3>, float3>);
+		static_assert(is_same_v<float3x3x3x3::InnerForIndex<4>, float>);
+		static_assert(is_same_v<float3s3x3x3::InnerForIndex<0>, float3s3x3x3>);
+		static_assert(is_same_v<float3s3x3x3::InnerForIndex<1>, float3s3x3x3>);
+		static_assert(is_same_v<float3s3x3x3::InnerForIndex<2>, float3x3>);
+		static_assert(is_same_v<float3s3x3x3::InnerForIndex<3>, float3>);
+		static_assert(is_same_v<float3s3x3x3::InnerForIndex<4>, float>);
+		static_assert(is_same_v<float3a3x3x3::InnerForIndex<0>, float3a3x3x3>);
+		static_assert(is_same_v<float3a3x3x3::InnerForIndex<1>, float3a3x3x3>);
+		static_assert(is_same_v<float3a3x3x3::InnerForIndex<2>, float3x3>);
+		static_assert(is_same_v<float3a3x3x3::InnerForIndex<3>, float3>);
+		static_assert(is_same_v<float3a3x3x3::InnerForIndex<4>, float>);
+		static_assert(is_same_v<float3x3s3x3::InnerForIndex<0>, float3x3s3x3>);
+		static_assert(is_same_v<float3x3s3x3::InnerForIndex<1>, float3s3x3>);
+		static_assert(is_same_v<float3x3s3x3::InnerForIndex<2>, float3s3x3>);
+		static_assert(is_same_v<float3x3s3x3::InnerForIndex<3>, float3>);
+		static_assert(is_same_v<float3x3s3x3::InnerForIndex<4>, float>);
+		static_assert(is_same_v<float3x3a3x3::InnerForIndex<0>, float3x3a3x3>);
+		static_assert(is_same_v<float3x3a3x3::InnerForIndex<1>, float3a3x3>);
+		static_assert(is_same_v<float3x3a3x3::InnerForIndex<2>, float3a3x3>);
+		static_assert(is_same_v<float3x3a3x3::InnerForIndex<3>, float3>);
+		static_assert(is_same_v<float3x3a3x3::InnerForIndex<4>, float>);
+		static_assert(is_same_v<float3x3x3s3::InnerForIndex<0>, float3x3x3s3>);
+		static_assert(is_same_v<float3x3x3s3::InnerForIndex<1>, float3x3s3>);
+		static_assert(is_same_v<float3x3x3s3::InnerForIndex<2>, float3s3>);
+		static_assert(is_same_v<float3x3x3s3::InnerForIndex<3>, float3s3>);
+		static_assert(is_same_v<float3x3x3s3::InnerForIndex<4>, float>);
+		static_assert(is_same_v<float3x3x3a3::InnerForIndex<0>, float3x3x3a3>);
+		static_assert(is_same_v<float3x3x3a3::InnerForIndex<1>, float3x3a3>);
+		static_assert(is_same_v<float3x3x3a3::InnerForIndex<2>, float3a3>);
+		static_assert(is_same_v<float3x3x3a3::InnerForIndex<3>, float3a3>);
+		static_assert(is_same_v<float3x3x3a3::InnerForIndex<4>, float>);
+		static_assert(is_same_v<float3s3x3s3::InnerForIndex<0>, float3s3x3s3>);
+		static_assert(is_same_v<float3s3x3s3::InnerForIndex<1>, float3s3x3s3>);
+		static_assert(is_same_v<float3s3x3s3::InnerForIndex<2>, float3s3>);
+		static_assert(is_same_v<float3s3x3s3::InnerForIndex<3>, float3s3>);
+		static_assert(is_same_v<float3s3x3s3::InnerForIndex<4>, float>);
+		static_assert(is_same_v<float3a3x3s3::InnerForIndex<0>, float3a3x3s3>);
+		static_assert(is_same_v<float3a3x3s3::InnerForIndex<1>, float3a3x3s3>);
+		static_assert(is_same_v<float3a3x3s3::InnerForIndex<2>, float3s3>);
+		static_assert(is_same_v<float3a3x3s3::InnerForIndex<3>, float3s3>);
+		static_assert(is_same_v<float3a3x3s3::InnerForIndex<4>, float>);
+		static_assert(is_same_v<float3s3x3a3::InnerForIndex<0>, float3s3x3a3>);
+		static_assert(is_same_v<float3s3x3a3::InnerForIndex<1>, float3s3x3a3>);
+		static_assert(is_same_v<float3s3x3a3::InnerForIndex<2>, float3a3>);
+		static_assert(is_same_v<float3s3x3a3::InnerForIndex<3>, float3a3>);
+		static_assert(is_same_v<float3s3x3a3::InnerForIndex<4>, float>);
+		static_assert(is_same_v<float3a3x3a3::InnerForIndex<0>, float3a3x3a3>);
+		static_assert(is_same_v<float3a3x3a3::InnerForIndex<1>, float3a3x3a3>);
+		static_assert(is_same_v<float3a3x3a3::InnerForIndex<2>, float3a3>);
+		static_assert(is_same_v<float3a3x3a3::InnerForIndex<3>, float3a3>);
+		static_assert(is_same_v<float3a3x3a3::InnerForIndex<4>, float>);
+	}
+
+	namespace transposeTest {
 		using T = float2x3;
 		constexpr int m = 0;
 		constexpr int n = 1;
@@ -517,9 +634,6 @@ namespace Test3 {
 	static_assert(is_same_v<decltype(S3x3s3()[0](0)[0]), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()(0)[0][0]), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()[0][0][0]), S&>);
-
-
-
 }
 
 template<typename T>

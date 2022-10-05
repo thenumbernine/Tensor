@@ -545,7 +545,9 @@ if I use a specialization for _vec<int,1> then the compiler complains about usin
 \
 	/* a(intN(i,...)) */\
 	template<int N>\
-	auto & operator()(_vec<int,N> const & i) {\
+	auto &\
+	/*typename This::template InnerForIndex<N>::IndexResult*/\
+	operator()(_vec<int,N> const & i) {\
 		if constexpr (N == 1) {\
 			return (*this)[i(0)];\
 		} else {\
@@ -554,7 +556,9 @@ if I use a specialization for _vec<int,1> then the compiler complains about usin
 	}\
 \
 	template<int N>\
-	auto const & operator()(_vec<int,N> const & i) const {\
+	auto const &\
+	/*typename This::template InnerForIndex<N>::IndexResultConst*/\
+	operator()(_vec<int,N> const & i) const {\
 		if constexpr (N == 1) {\
 			return (*this)[i(0)];\
 		} else {\
