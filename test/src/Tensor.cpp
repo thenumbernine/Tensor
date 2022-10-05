@@ -600,18 +600,20 @@ void test_Tensor() {
 
 		// indexing
 		{
-			Tensor::float3 t(1,2,3);
-			auto verifyAccess = []<typename T>(T & t){
-				for (int i = 0; i < 3; ++i) {
+			auto f = [](int i) -> float { return i+1; };
+			auto verifyAccess = []<typename T, typename F>(T & t, F f){
+				for (int i = 0; i < T::template dim<0>; ++i) {
+					typename T::Scalar e = f(i);
 					// various [] and (int...) and (intN)
-					TEST_EQ(t(i), 1 + i);
-					TEST_EQ(t(Tensor::intN<1>(i)), 1 + i);
-					TEST_EQ(t[i], 1 + i);
-					TEST_EQ(t.s[i], 1 + i);
+					TEST_EQ(t(i), e);
+					TEST_EQ(t(Tensor::intN<1>(i)), e);
+					TEST_EQ(t[i], e);
+					TEST_EQ(t.s[i], e);
 				}
 			};
-			verifyAccess.template operator()<decltype(t)>(t);
-			verifyAccess.template operator()<decltype(t) const>(t);
+			Tensor::float3 t(f);
+			verifyAccess.template operator()<decltype(t)>(t, f);
+			verifyAccess.template operator()<decltype(t) const>(t, f);
 		}
 
 		//lambda ctor
@@ -795,6 +797,23 @@ void test_Tensor() {
 		}
 	}
 	
+	// rank-2
+
+	auto verifyAccessRank2 = []<typename T, typename F>(T & t, F f){
+		for (int i = 0; i < T::template dim<0>; ++i) {
+			for (int j = 0; j < T::template dim<1>; ++j) {
+				typename T::Scalar x = f(i,j);
+				TEST_EQ(t(i)(j), x);
+				TEST_EQ(t(i,j), x);
+				// can't compile for _asym
+				//TEST_EQ(t(Tensor::int2(i,j)), x);
+				TEST_EQ(t[i](j), x);
+				TEST_EQ(t(i)[j], x);
+				TEST_EQ(t[i][j], x);
+			}
+		}
+	};
+
 	// matrix
 	{
 		//bracket ctor
@@ -835,26 +854,27 @@ void test_Tensor() {
 		TEST_EQ(m.s2.s1, 8);
 		TEST_EQ(m.s2.s2, 9);
 		
-		// indexing
-		auto verifyAccess = []<typename T>(T & m){
-			for (int i = 0; i < 3; ++i) {
-				for (int j = 0; j < 3; ++j) {
-					// various [] and (int...) and (intN)
-					TEST_EQ(m(i)(j), 1 + j + 3 * i);
-					TEST_EQ(m(i,j), 1 + j + 3 * i);
-					TEST_EQ(m(Tensor::int2(i,j)), 1 + j + 3 * i);
-					TEST_EQ(m[i](j), 1 + j + 3 * i);
-					TEST_EQ(m.s[i](j), 1 + j + 3 * i);
-					TEST_EQ(m(i)[j], 1 + j + 3 * i);
-					TEST_EQ(m(i).s[j], 1 + j + 3 * i);
-					TEST_EQ(m[i][j], 1 + j + 3 * i);
-					TEST_EQ(m.s[i].s[j], 1 + j + 3 * i);
+		// indexing - various [] and (int...) and (intN)
+		auto f = [](int i, int j) -> float { return 1 + j + 3 * i; };
+		verifyAccessRank2.template operator()<decltype(m)>(m, f);
+		verifyAccessRank2.template operator()<decltype(m) const>(m, f);
+	
+		//matrix-specific access , doesn't work for sym or asym
+		auto verifyAccessMat = []<typename T, typename F>(T & t, F f) {
+			for (int i = 0; i < T::template dim<0>; ++i) {
+				for (int j = 0; j < T::template dim<1>; ++j) {
+					typename T::Scalar e = f(i,j);
+					TEST_EQ(t.s[i](j), e);
+					TEST_EQ(t.s[i][j], e);
+					TEST_EQ(t(i).s[j], e);
+					TEST_EQ(t[i].s[j], e);
+					TEST_EQ(t.s[i].s[j], e);
 				}
 			}
 		};
-		verifyAccess.template operator()<decltype(m)>(m);
-		verifyAccess.template operator()<decltype(m) const>(m);
-		
+		verifyAccessMat.template operator()<decltype(m)>(m, f);
+		verifyAccessMat.template operator()<decltype(m) const>(m, f);
+
 		// scalar ctor
 		// TODO how do GLSL matrix ctor from scalars work? 
 		// do they initialize to full scalars like vecs do?
@@ -1066,7 +1086,7 @@ so a.s == {0,1,2,4,5,8};
 		
 		// verify index access works
 
-		auto verifyAccess = []<typename T>(T & a){	
+		auto verifyAccessSym = []<typename T>(T & a){	
 			// testing fields 
 			TEST_EQ(a.x_x, 0);
 			TEST_EQ(a.x_y, 1);
@@ -1077,22 +1097,13 @@ so a.s == {0,1,2,4,5,8};
 			TEST_EQ(a.z_x, 4);
 			TEST_EQ(a.z_y, 5);
 			TEST_EQ(a.z_z, 8);
-
-			for (int i = 0; i < T::template dim<0>; ++i) {
-				for (int j = 0; j < T::template dim<1>; ++j) {
-					float e = i*i + j*j;
-					//various () and [] access
-					TEST_EQ(a(i)(j), e);
-					TEST_EQ(a(i,j), e);
-					TEST_EQ(a(Tensor::int2(i,j)), e);
-					TEST_EQ(a[i](j), e);
-					TEST_EQ(a(i)[j], e);
-					TEST_EQ(a[i][j], e);
-				}
-			}
 		};
-		verifyAccess.template operator()<decltype(a)>(a);
-		verifyAccess.template operator()<decltype(a) const>(a);
+		verifyAccessSym.template operator()<decltype(a)>(a);
+		verifyAccessSym.template operator()<decltype(a) const>(a);
+		
+		auto f = [](int i, int j) -> float { return i*i + j*j; };
+		verifyAccessRank2.template operator()<decltype(a)>(a, f);
+		verifyAccessRank2.template operator()<decltype(a) const>(a, f);
 
 		// lambda ctor using int,int...
 		TEST_EQ(a, Tensor::float3s3([](int i, int j) -> float { return i*i + j*j; }));
@@ -1190,104 +1201,56 @@ so a.s == {0,1,2,4,5,8};
 		[-1  0  3]
 		[-2 -3  0]
 		*/
-		auto f = Tensor::float3a3{
+		auto t = Tensor::float3a3{
 			/*x_y=*/1,
 			/*x_z=*/2,
 			/*y_z=*/3
 		};
 		// (int,int) access
-		f(0,0) = 1; //cannot write to diagonals
-		f(1,1) = 2;
-		f(2,2) = 3;
+		t(0,0) = 1; //cannot write to diagonals
+		t(1,1) = 2;
+		t(2,2) = 3;
 
 		// TODO indexes are 1 off
 		auto a = Tensor::float3a3([](int i, int j) -> float { return i + j; });
 		ECHO(a);
-		TEST_EQ(a, f);
+		TEST_EQ(a, t);
 
 		auto b = Tensor::float3a3([](Tensor::int2 ij) -> float { return ij.x + ij.y; });
 		ECHO(b);
-		TEST_EQ(b, f);
+		TEST_EQ(b, t);
 
-		auto verifyAccess = []<typename T>(T & f){
-			TEST_EQ(f(0,0), 0);
-			TEST_EQ(f(0,1), 1);
-			TEST_EQ(f(0,2), 2);
-			TEST_EQ(f(1,0), -1);
-			TEST_EQ(f(1,1), 0);
-			TEST_EQ(f(1,2), 3);
-			TEST_EQ(f(2,0), -2);
-			TEST_EQ(f(2,1), -3);
-			TEST_EQ(f(2,2), 0);
-			
-			// "field" method access
-			TEST_EQ(f.x_x(), 0);
-			TEST_EQ(f.x_y(), 1);
-			TEST_EQ(f.x_z(), 2);
-			TEST_EQ(f.y_x(), -1);
-			TEST_EQ(f.y_y(), 0);
-			TEST_EQ(f.y_z(), 3);
-			TEST_EQ(f.z_x(), -2);
-			TEST_EQ(f.z_y(), -3);
-			TEST_EQ(f.z_z(), 0);
-
-			// [][] access
-			TEST_EQ(f[0][0], 0);
-			TEST_EQ(f[0][1], 1);
-			TEST_EQ(f[0][2], 2);
-			TEST_EQ(f[1][0], -1);
-			TEST_EQ(f[1][1], 0);
-			TEST_EQ(f[1][2], 3);
-			TEST_EQ(f[2][0], -2);
-			TEST_EQ(f[2][1], -3);
-			TEST_EQ(f[2][2], 0);
-			
-			// []() access
-			TEST_EQ(f[0](0), 0);
-			TEST_EQ(f[0](1), 1);
-			TEST_EQ(f[0](2), 2);
-			TEST_EQ(f[1](0), -1);
-			TEST_EQ(f[1](1), 0);
-			TEST_EQ(f[1](2), 3);
-			TEST_EQ(f[2](0), -2);
-			TEST_EQ(f[2](1), -3);
-			TEST_EQ(f[2](2), 0);
-
-			// ()() access
-			TEST_EQ(f(0)(0), 0);
-			TEST_EQ(f(0)(1), 1);
-			TEST_EQ(f(0)(2), 2);
-			TEST_EQ(f(1)(0), -1);
-			TEST_EQ(f(1)(1), 0);
-			TEST_EQ(f(1)(2), 3);
-			TEST_EQ(f(2)(0), -2);
-			TEST_EQ(f(2)(1), -3);
-			TEST_EQ(f(2)(2), 0);
+		auto sign = [](int x) { return x == 0 ? 0 : (x < 0 ? -1 : 1); };
+		auto f = [sign](int i, int j) -> float { return sign(j-i)*(i+j); };
 		
-			// ()[] access
-			TEST_EQ(f(0)[0], 0);
-			TEST_EQ(f(0)[1], 1);
-			TEST_EQ(f(0)[2], 2);
-			TEST_EQ(f(1)[0], -1);
-			TEST_EQ(f(1)[1], 0);
-			TEST_EQ(f(1)[2], 3);
-			TEST_EQ(f(2)[0], -2);
-			TEST_EQ(f(2)[1], -3);
-			TEST_EQ(f(2)[2], 0);
+		auto verifyAccessAntisym = []<typename T>(T & t){
+			// "field" method access
+			TEST_EQ(t.x_x(), 0);
+			TEST_EQ(t.x_y(), 1);
+			TEST_EQ(t.x_z(), 2);
+			TEST_EQ(t.y_x(), -1);
+			TEST_EQ(t.y_y(), 0);
+			TEST_EQ(t.y_z(), 3);
+			TEST_EQ(t.z_x(), -2);
+			TEST_EQ(t.z_y(), -3);
+			TEST_EQ(t.z_z(), 0);
 		};
-		verifyAccess.template operator()<decltype(f)>(f);
-		verifyAccess.template operator()<decltype(f) const>(f);
+		verifyAccessAntisym.template operator()<decltype(t)>(t);
+		verifyAccessAntisym.template operator()<decltype(t) const>(t);
+		
+		verifyAccessRank2.template operator()<decltype(t)>(t, f);
+		verifyAccessRank2.template operator()<decltype(t) const>(t, f);
 
 		// verify antisymmetric writes work
-		for (int i = 0; i < f.dim<0>; ++i) {
-			for (int j = 0; j < f.dim<1>; ++j) {
+		for (int i = 0; i < t.dim<0>; ++i) {
+			for (int j = 0; j < t.dim<1>; ++j) {
 				float k = 1 + i + j;
-				f(i,j) = k;
+				t(i,j) = k;
 				if (i != j) {
-					TEST_EQ(f(i,j), k);
-					TEST_EQ(f(j,i), -k);
+					TEST_EQ(t(i,j), k);
+					TEST_EQ(t(j,i), -k);
 				} else {
-					TEST_EQ(f(i,j), 0);
+					TEST_EQ(t(i,j), 0);
 				}
 			}
 		}
@@ -1296,11 +1259,11 @@ so a.s == {0,1,2,4,5,8};
 
 		// verify assignment to expanded type
 		// TODO won't work until you get intN dereference in _asym
-		Tensor::float3x3 c = f;
+		Tensor::float3x3 c = t;
 		TEST_EQ(c, (Tensor::float3x3{{0, -2, -3}, {2, 0, -4}, {3, 4, 0}}));
 	
 		//can't do yet until I fix asym access
-		//operatorScalarTest(f);
+		//operatorScalarTest(t);
 		operatorMatrixTest<Tensor::float3a3>();
 	}
 
@@ -1327,37 +1290,55 @@ so a.s == {0,1,2,4,5,8};
 		using T2S3 = Tensor::_tensori<float, Tensor::index_vec<2>, Tensor::index_sym<3>>;
 		
 		// list ctor
-		T2S3 t = {
+		T2S3 a = {
 			{1,2,3,4,5,6}, //x_x x_y y_y x_z y_z z_z
 			{7,8,9,0,1,2},
 		};
 		// xyz field access
-		TEST_EQ(t.x.x_x, 1);
-		TEST_EQ(t.x.x_y, 2);
-		TEST_EQ(t.x.y_y, 3);
-		TEST_EQ(t.x.x_z, 4);
-		TEST_EQ(t.x.y_z, 5);
-		TEST_EQ(t.x.z_z, 6);
-		TEST_EQ(t.y.x_x, 7);
-		TEST_EQ(t.y.x_y, 8);
-		TEST_EQ(t.y.y_y, 9);
-		TEST_EQ(t.y.x_z, 0);
-		TEST_EQ(t.y.y_z, 1);
-		TEST_EQ(t.y.z_z, 2);
-	
-		// nested (int,int,int) access
-		TEST_EQ(t(0,0,0), 1);
-		TEST_EQ(t(0,0,1), 2);
-		TEST_EQ(t(0,1,1), 3);
-		TEST_EQ(t(0,0,2), 4);
-		TEST_EQ(t(0,1,2), 5);
-		TEST_EQ(t(0,2,2), 6);
-		TEST_EQ(t(1,0,0), 7);
-		TEST_EQ(t(1,0,1), 8);
-		TEST_EQ(t(1,1,1), 9);
-		TEST_EQ(t(1,0,2), 0);
-		TEST_EQ(t(1,1,2), 1);
-		TEST_EQ(t(1,2,2), 2);
+		TEST_EQ(a.x.x_x, 1);
+		TEST_EQ(a.x.x_y, 2);
+		TEST_EQ(a.x.y_y, 3);
+		TEST_EQ(a.x.x_z, 4);
+		TEST_EQ(a.x.y_z, 5);
+		TEST_EQ(a.x.z_z, 6);
+		TEST_EQ(a.y.x_x, 7);
+		TEST_EQ(a.y.x_y, 8);
+		TEST_EQ(a.y.y_y, 9);
+		TEST_EQ(a.y.x_z, 0);
+		TEST_EQ(a.y.y_z, 1);
+		TEST_EQ(a.y.z_z, 2);
+
+		auto t = T2S3([](int i, int j, int k) -> float { return 4*i - j*j - k*k; });
+		auto verifyAccess = []<typename T>(T & t){
+			for (int i = 0; i < T::template dim<0>; ++i) {
+				for (int j = 0; j < T::template dim<1>; ++j) {
+					for (int k = 0; k < T::template dim<2>; ++k) {
+						float e = 4*i - j*j - k*k;
+					
+						//()()() and any possible merged ()'s
+						TEST_EQ(t(i)(j)(k), e);
+						TEST_EQ(t(i)(j,k), e);
+						TEST_EQ(t(i,j)(k), e);
+						TEST_EQ(t(i,j,k), e);
+						//[]()() ...
+						TEST_EQ(t[i](j)(k), e);
+						TEST_EQ(t[i](j,k), e);
+						//()[]()
+						TEST_EQ(t(i)[j](k), e);
+						//()()[]
+						TEST_EQ(t(i)(j)[k], e);
+						TEST_EQ(t(i,j)[k], e);
+						// [][]() []()[] ()[][] [][][]
+						TEST_EQ(t[i][j](k), e);
+						TEST_EQ(t[i](j)[k], e);
+						TEST_EQ(t(i)[j][k], e);
+						TEST_EQ(t[i][j][k], e);
+					}
+				}
+			}
+		};
+		verifyAccess.template operator()<decltype(t)>(t);
+		verifyAccess.template operator()<decltype(t) const>(t);
 
 		// operators
 		operatorScalarTest(t);
@@ -1436,66 +1417,67 @@ so a.s == {0,1,2,4,5,8};
 	// symmetric-of-symmetric
 	{
 		using TS3S3 = Tensor::_tensori<float, Tensor::index_sym<3>, Tensor::index_sym<3>>;
-		auto t = TS3S3([](int i, int j, int k, int l) -> float { return i+j+k+l; });
-		auto verifyAccess = []<typename T>(T & t){
+		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
+		auto t = TS3S3(f);
+		auto verifyAccess = []<typename T, typename F>(T & t, F f){
 			for (int i = 0; i < T::template dim<0>; ++i) {
 				for (int j = 0; j < T::template dim<1>; ++j) {
 					for (int k = 0; k < T::template dim<2>; ++k) {
 						for (int l = 0; l < T::template dim<3>; ++l) {
-							float e =i+j+k+l;
-							TEST_EQ(t(i)(j)(k)(l), e);
-							TEST_EQ(t(i,j)(k)(l), e);
-							TEST_EQ(t(i,j)(k,l), e);
-							TEST_EQ(t(i)(j,k)(l), e);
-							TEST_EQ(t(i)(j)(k,l), e);
-							TEST_EQ(t(i)(j,k,l), e);
-							//TEST_EQ(t(i,j,k)(l), e);
-							TEST_EQ(t(i,j,k,l), e);
+							float x = f(i,j,k,l);
+							TEST_EQ(t(i)(j)(k)(l), x);
+							TEST_EQ(t(i,j)(k)(l), x);
+							TEST_EQ(t(i,j)(k,l), x);
+							TEST_EQ(t(i)(j,k)(l), x);
+							TEST_EQ(t(i)(j)(k,l), x);
+							TEST_EQ(t(i)(j,k,l), x);
+							//TEST_EQ(t(i,j,k)(l), x);
+							TEST_EQ(t(i,j,k,l), x);
 
-							TEST_EQ(t[i](j)(k)(l), e);
-							TEST_EQ(t[i](j,k)(l), e);
-							TEST_EQ(t[i](j)(k,l), e);
-							TEST_EQ(t[i](j,k,l), e);
+							TEST_EQ(t[i](j)(k)(l), x);
+							TEST_EQ(t[i](j,k)(l), x);
+							TEST_EQ(t[i](j)(k,l), x);
+							TEST_EQ(t[i](j,k,l), x);
 							
-							TEST_EQ(t(i)[j](k)(l), e);
-							TEST_EQ(t(i)[j](k,l), e);
+							TEST_EQ(t(i)[j](k)(l), x);
+							TEST_EQ(t(i)[j](k,l), x);
 							
-							TEST_EQ(t(i)(j)[k](l), e);
-							TEST_EQ(t(i,j)[k](l), e);
+							TEST_EQ(t(i)(j)[k](l), x);
+							TEST_EQ(t(i,j)[k](l), x);
 							
-							TEST_EQ(t(i)(j)(k)[l], e);
-							TEST_EQ(t(i,j)(k)[l], e);
-							TEST_EQ(t(i)(j,k)[l], e);
-							TEST_EQ(t(i,j)(k)[l], e);
+							TEST_EQ(t(i)(j)(k)[l], x);
+							TEST_EQ(t(i,j)(k)[l], x);
+							TEST_EQ(t(i)(j,k)[l], x);
+							TEST_EQ(t(i,j)(k)[l], x);
 							
-							TEST_EQ(t[i][j](k)(l), e);
-							TEST_EQ(t[i][j](k,l), e);
+							TEST_EQ(t[i][j](k)(l), x);
+							TEST_EQ(t[i][j](k,l), x);
 							
-							TEST_EQ(t[i](j)[k](l), e);
+							TEST_EQ(t[i](j)[k](l), x);
 							
-							TEST_EQ(t[i](j)(k)[l], e);
-							TEST_EQ(t[i](j,k)[l], e);
+							TEST_EQ(t[i](j)(k)[l], x);
+							TEST_EQ(t[i](j,k)[l], x);
 							
-							TEST_EQ(t(i)[j][k](l), e);
+							TEST_EQ(t(i)[j][k](l), x);
 							
-							TEST_EQ(t(i)[j](k)[l], e);
+							TEST_EQ(t(i)[j](k)[l], x);
 							
-							TEST_EQ(t(i)(j)[k][l], e);
-							TEST_EQ(t(i,j)[k][l], e);
+							TEST_EQ(t(i)(j)[k][l], x);
+							TEST_EQ(t(i,j)[k][l], x);
 							
-							TEST_EQ(t[i][j][k](l), e);
-							TEST_EQ(t[i][j](k)[l], e);
-							TEST_EQ(t[i](j)[k][l], e);
-							TEST_EQ(t(i)[j][k][l], e);
+							TEST_EQ(t[i][j][k](l), x);
+							TEST_EQ(t[i][j](k)[l], x);
+							TEST_EQ(t[i](j)[k][l], x);
+							TEST_EQ(t(i)[j][k][l], x);
 							
-							TEST_EQ(t[i][j][k][l], e);
+							TEST_EQ(t[i][j][k][l], x);
 						}
 					}
 				}
 			}
 		};
-		verifyAccess.template operator()<decltype(t)>(t);
-		verifyAccess.template operator()<decltype(t) const>(t);
+		verifyAccess.template operator()<decltype(t)>(t, f);
+		verifyAccess.template operator()<decltype(t) const>(t, f);
 	}
 
 	// TODO antisymmetric of vector

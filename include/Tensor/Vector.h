@@ -1745,7 +1745,6 @@ struct _sym<T,4> {
 		return iread;\
 	}
 
-
 #define TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(classname)\
 	TENSOR_ADD_ANTISYMMETRIC_MATRIX_ACCESSOR()\
 	TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR() /* before operator() and operator[] */\
