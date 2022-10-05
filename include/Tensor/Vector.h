@@ -541,7 +541,7 @@ TODO getting the proper auto decltype() ...
 if I use constexpr (N == 1) then that makes decltype() difficult
 if I use a specialization for _vec<int,1> then the compiler complains about using _vec<int,1> before it's defined
 */
-#define TENSOR_ADD_INT_VEC_CALL_INDEX()\
+#define TENSOR_ADD_RANK1_INT_VEC_CALL_INDEX()\
 \
 	/* a(intN(i,...)) */\
 	template<int N>\
@@ -577,7 +577,7 @@ if I use a specialization for _vec<int,1> then the compiler complains about usin
 	}\
 \
 	TENSOR_ADD_RECURSIVE_CALL_INDEX()\
-	TENSOR_ADD_INT_VEC_CALL_INDEX()
+	TENSOR_ADD_RANK1_INT_VEC_CALL_INDEX()
 
 // TODO is this safe?
 #define TENSOR_ADD_SUBSET_ACCESS()\
@@ -798,7 +798,7 @@ ReadIterator vs WriteIterator
 	const_iterator cbegin() const { return const_iterator::begin(*this); }\
 	const_iterator cend() const { return const_iterator::end(*this); }\
 \
-	/* helper function sfor WriteIterator */\
+	/* helper functions for WriteIterator */\
 	static intN getReadForWriteIndex(intW const & i) {\
 		intN res;\
 		res.template subset<This::localRank, 0>() = This::getLocalReadForWriteIndex(i[0]);\
@@ -1373,6 +1373,29 @@ int symIndex(int i, int j) {
 		TENSOR_ADD_RANK1_CALL_INDEX()\
 	};
 
+#define TENSOR_ADD_SYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()\
+\
+	/* a(intN(i,...)) */\
+	template<int N>\
+	auto & operator()(_vec<int,N> const & i) {\
+		if constexpr (N == 1) {\
+			return (*this)[i(0)];\
+		} else {\
+			return (*this)[i(0)](i.template subset<N-1, 1>());\
+		}\
+	}\
+\
+	template<int N>\
+	auto const & operator()(_vec<int,N> const & i) const {\
+		if constexpr (N == 1) {\
+			return (*this)[i(0)];\
+		} else {\
+			return (*this)[i(0)](i.template subset<N-1, 1>());\
+		}\
+	}
+
+
+
 // NOTICE this almost matches TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX
 // except this uses &'s where _asym uses AntiSymRef
 #define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
@@ -1407,7 +1430,7 @@ int symIndex(int i, int j) {
 		return (*this)[i];\
 	}\
 \
-	TENSOR_ADD_INT_VEC_CALL_INDEX()\
+	TENSOR_ADD_SYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()\
 	TENSOR_SYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()
 
 // currently set to upper-triangular
@@ -1703,9 +1726,11 @@ struct _sym<T,4> {
 	auto operator()(int i) const { return (*this)[i]; }\
 \
 	/* in order to do this, you would need some conditions for seeing if the nested return type is AntiSymRef or Scalar */\
-	/*TENSOR_ADD_INT_VEC_CALL_INDEX()*/\
+	/*TENSOR_ADD_ANTISYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()*/\
 	TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()
 
+// currently set to upper-triangular
+// swap iread 0 and 1 to get lower-triangular
 #define TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	static _vec<int,2> getLocalReadForWriteIndex(int writeIndex) {\
 		_vec<int,2> iread;\
@@ -1716,7 +1741,7 @@ struct _sym<T,4> {
 		}\
 		--iread(0);\
 		iread(1) = writeIndex - triangleSize(iread(0));\
-		++iread(1); /* for antisymmetric, skip past diagonals*/\
+		++iread(0); /* for antisymmetric, skip past diagonals*/\
 		return iread;\
 	}
 

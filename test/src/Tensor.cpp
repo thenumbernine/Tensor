@@ -1200,6 +1200,15 @@ so a.s == {0,1,2,4,5,8};
 		f(1,1) = 2;
 		f(2,2) = 3;
 
+		// TODO indexes are 1 off
+		auto a = Tensor::float3a3([](int i, int j) -> float { return i + j; });
+		ECHO(a);
+		TEST_EQ(a, f);
+
+		auto b = Tensor::float3a3([](Tensor::int2 ij) -> float { return ij.x + ij.y; });
+		ECHO(b);
+		TEST_EQ(b, f);
+
 		auto verifyAccess = []<typename T>(T & f){
 			TEST_EQ(f(0,0), 0);
 			TEST_EQ(f(0,1), 1);
@@ -1232,6 +1241,17 @@ so a.s == {0,1,2,4,5,8};
 			TEST_EQ(f[2][0], -2);
 			TEST_EQ(f[2][1], -3);
 			TEST_EQ(f[2][2], 0);
+			
+			// []() access
+			TEST_EQ(f[0](0), 0);
+			TEST_EQ(f[0](1), 1);
+			TEST_EQ(f[0](2), 2);
+			TEST_EQ(f[1](0), -1);
+			TEST_EQ(f[1](1), 0);
+			TEST_EQ(f[1](2), 3);
+			TEST_EQ(f[2](0), -2);
+			TEST_EQ(f[2](1), -3);
+			TEST_EQ(f[2](2), 0);
 
 			// ()() access
 			TEST_EQ(f(0)(0), 0);
@@ -1243,6 +1263,17 @@ so a.s == {0,1,2,4,5,8};
 			TEST_EQ(f(2)(0), -2);
 			TEST_EQ(f(2)(1), -3);
 			TEST_EQ(f(2)(2), 0);
+		
+			// ()[] access
+			TEST_EQ(f(0)[0], 0);
+			TEST_EQ(f(0)[1], 1);
+			TEST_EQ(f(0)[2], 2);
+			TEST_EQ(f(1)[0], -1);
+			TEST_EQ(f(1)[1], 0);
+			TEST_EQ(f(1)[2], 3);
+			TEST_EQ(f(2)[0], -2);
+			TEST_EQ(f(2)[1], -3);
+			TEST_EQ(f(2)[2], 0);
 		};
 		verifyAccess.template operator()<decltype(f)>(f);
 		verifyAccess.template operator()<decltype(f) const>(f);
@@ -1265,8 +1296,8 @@ so a.s == {0,1,2,4,5,8};
 
 		// verify assignment to expanded type
 		// TODO won't work until you get intN dereference in _asym
-		Tensor::float3x3 b = f;
-		TEST_EQ(b, (Tensor::float3x3{{0, -2, -3}, {2, 0, -4}, {3, 4, 0}}));
+		Tensor::float3x3 c = f;
+		TEST_EQ(c, (Tensor::float3x3{{0, -2, -3}, {2, 0, -4}, {3, 4, 0}}));
 	
 		//can't do yet until I fix asym access
 		//operatorScalarTest(f);
@@ -1344,9 +1375,7 @@ so a.s == {0,1,2,4,5,8};
 						//()()() and any possible merged ()'s
 						TEST_EQ(t(i)(j)(k), e);
 						TEST_EQ(t(i)(j,k), e);
-						//_vec's operator()(int...) returns Scalar&
-						//  but vec-of-sym needs to return a sym-Accessor object
-						//TEST_EQ(t(i,j)(k), e);
+						TEST_EQ(t(i,j)(k), e);
 						TEST_EQ(t(i,j,k), e);
 						//[]()() ...
 						TEST_EQ(t[i](j)(k), e);
@@ -1355,7 +1384,7 @@ so a.s == {0,1,2,4,5,8};
 						TEST_EQ(t(i)[j](k), e);
 						//()()[]
 						TEST_EQ(t(i)(j)[k], e);
-						//TEST_EQ(t(i,j)[k], e); // same problem as t(i,j)(k)
+						TEST_EQ(t(i,j)[k], e);
 						// [][]() []()[] ()[][] [][][]
 						TEST_EQ(t[i][j](k), e);
 						TEST_EQ(t[i](j)[k], e);
@@ -1417,15 +1446,14 @@ so a.s == {0,1,2,4,5,8};
 							TEST_EQ(t(i)(j)(k)(l), e);
 							TEST_EQ(t(i,j)(k)(l), e);
 							TEST_EQ(t(i,j)(k,l), e);
-							// TODO replace _sym's Accessor's TENSOR_ADD_RANK1_CALL_INDEX with stuff that returns objects instead of object-refs
-							//TEST_EQ(t(i)(j,k)(l), e);
+							TEST_EQ(t(i)(j,k)(l), e);
 							TEST_EQ(t(i)(j)(k,l), e);
 							TEST_EQ(t(i)(j,k,l), e);
 							//TEST_EQ(t(i,j,k)(l), e);
 							TEST_EQ(t(i,j,k,l), e);
 
 							TEST_EQ(t[i](j)(k)(l), e);
-							//TEST_EQ(t[i](j,k)(l), e);
+							TEST_EQ(t[i](j,k)(l), e);
 							TEST_EQ(t[i](j)(k,l), e);
 							TEST_EQ(t[i](j,k,l), e);
 							
@@ -1437,7 +1465,7 @@ so a.s == {0,1,2,4,5,8};
 							
 							TEST_EQ(t(i)(j)(k)[l], e);
 							TEST_EQ(t(i,j)(k)[l], e);
-							//TEST_EQ(t(i)(j,k)[l], e);
+							TEST_EQ(t(i)(j,k)[l], e);
 							TEST_EQ(t(i,j)(k)[l], e);
 							
 							TEST_EQ(t[i][j](k)(l), e);
@@ -1446,7 +1474,7 @@ so a.s == {0,1,2,4,5,8};
 							TEST_EQ(t[i](j)[k](l), e);
 							
 							TEST_EQ(t[i](j)(k)[l], e);
-							//TEST_EQ(t[i](j,k)[l], e);
+							TEST_EQ(t[i](j,k)[l], e);
 							
 							TEST_EQ(t(i)[j][k](l), e);
 							
