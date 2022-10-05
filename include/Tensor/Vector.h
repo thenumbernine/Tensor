@@ -86,7 +86,6 @@ public:
 template<typename T>
 constexpr bool has_Accessor_v = has_Accessor<T>::value;
 
-//IndexResult recurses until a type IS THERE and uses that
 template<typename T, bool makeConst>
 struct GetAccessor {
 	static constexpr auto value() {
@@ -337,14 +336,14 @@ struct constness_of {
 	>;
 };
 
-// this isn't working ... and it seems like TypeWrapper is the problem ...
-//  is std::optional<> better at wrapping types for some reason?  inner template class?
+/*
+ok _vec () and [] return Scalar& , which makes things easy 
+but _sym and _asym need [] to return Accessor 
+which makes it so subsequent []() will return Accessor (whereas typical () would just return Scalar& 
+so now I need a type for the return value of our operator() and operator[]'s 
+what to name it?  how come I call operator[] the index or dereference operator, when cppreference calls it the subscript operator?  I have never heard that term in 30+ years of C++ programming. 
+*/
 #define TENSOR_ADD_INDEX_RESULT()\
-	/* ok _vec () and [] return Scalar& , which makes things easy */\
-	/* but _sym and _asym need [] to return Accessor */\
-	/* which makes it so subsequent []() will return Accessor (whereas typical () would just return Scalar& */\
-	/* so now I need a type for the return value of our operator() and operator[]'s */\
-	/* what to name it?  how come I call operator[] the index or dereference operator, when cppreference calls it the subscript operator?  I have never heard that term in 30+ years of C++ programming. */\
 	using IndexResult = GetAccessor_t<Inner, false>;\
 	using IndexResultConst = GetAccessor_t<Inner, true>;
 
@@ -352,9 +351,6 @@ struct constness_of {
 #define TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR()\
 	using IndexResult = Accessor<This>;\
 	using IndexResultConst = Accessor<This const>;
-
-//#define TENSOR_ADD_INDEX_RESULT()
-//#define TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR()
 
 //::dims returns the total nested dimensions as an int-vec
 #define TENSOR_ADD_DIMS()\
@@ -515,23 +511,36 @@ struct constness_of {
 // works for nesting _vec's, not for _sym's
 // I am using operator[] as the de-facto correct reference
 #define TENSOR_ADD_VECTOR_BRACKET_INDEX()\
-	auto & operator[](int i) { return s[i]; }\
-	auto const & operator[](int i) const { return s[i]; }
+\
+	auto operator[](int i)\
+	-> decltype(s[i]) {\
+		return s[i];\
+	}\
+	auto operator[](int i) const\
+	-> decltype(s[i]) {\
+		return s[i];\
+	}
 
 // operator() should default through operator[]
 #define TENSOR_ADD_RECURSIVE_CALL_INDEX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	template<typename... Rest>\
-	auto & operator()(int i, Rest... rest) {\
+	auto operator()(int i, Rest... rest)\
+	-> decltype((*this)[i](rest...)) {\
 		return (*this)[i](rest...);\
 	}\
-\
 	template<typename... Rest>\
-	auto const & operator()(int i, Rest... rest) const {\
+	auto operator()(int i, Rest... rest) const\
+	-> decltype((*this)[i](rest...)) {\
 		return (*this)[i](rest...);\
 	}
 
+/*
+TODO getting the proper auto decltype() ...
+if I use constexpr (N == 1) then that makes decltype() difficult
+if I use a specialization for _vec<int,1> then the compiler complains about using _vec<int,1> before it's defined
+*/
 #define TENSOR_ADD_INT_VEC_CALL_INDEX()\
 \
 	/* a(intN(i,...)) */\
@@ -543,6 +552,7 @@ struct constness_of {
 			return (*this)[i(0)](i.template subset<N-1, 1>());\
 		}\
 	}\
+\
 	template<int N>\
 	auto const & operator()(_vec<int,N> const & i) const {\
 		if constexpr (N == 1) {\
@@ -556,8 +566,15 @@ struct constness_of {
 #define TENSOR_ADD_RANK1_CALL_INDEX()\
 \
 	/* a(i) := a_i */\
-	auto       & operator()(int i)       { return (*this)[i]; }\
-	auto const & operator()(int i) const { return (*this)[i]; }\
+	auto operator()(int i)\
+	-> decltype((*this)[i]) {\
+		return (*this)[i];\
+	}\
+\
+	auto operator()(int i) const\
+	-> decltype((*this)[i]) {\
+		return (*this)[i];\
+	}\
 \
 	TENSOR_ADD_RECURSIVE_CALL_INDEX()\
 	TENSOR_ADD_INT_VEC_CALL_INDEX()
@@ -1000,14 +1017,14 @@ ReadIterator vs WriteIterator
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
+	TENSOR_ADD_INDEX_RESULT() /* needs to go before operator() and operator[] */\
 	TENSOR_ADD_OPS(classname)\
-	TENSOR_ADD_VECTOR_BRACKET_INDEX()\
-	TENSOR_ADD_RANK1_CALL_INDEX()\
+	TENSOR_ADD_VECTOR_BRACKET_INDEX() /* operator[] */\
+	TENSOR_ADD_RANK1_CALL_INDEX() /* operator() */\
 	TENSOR_ADD_SUBSET_ACCESS()\
 	TENSOR_ADD_DOT()\
 	TENSOR_ADD_VOLUME()\
-	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()\
-	TENSOR_ADD_INDEX_RESULT()
+	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()
 
 template<typename T, int dim_>
 struct _vec;
@@ -1313,6 +1330,7 @@ int symIndex(int i, int j) {
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim);
 
+// TODO decltype() doesn't work with the operator(int, int...) template vararg 
 #define TENSOR_SYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
@@ -1326,33 +1344,68 @@ int symIndex(int i, int j) {
 		return (*this)(i,j)(rest...);\
 	}
 
+// Accessor is used to return between-rank indexes, so if sym is rank-2 this lets you get s[i] even if the storage only represents s[i,j]
+// looks like this needs to go before IndexResult, which needs to go before the operator() operator[]
+#define TENSOR_ADD_SYMMETRIC_MATRIX_ACCESSOR()\
+	template<typename OwnerConstness>\
+	struct Accessor {\
+		static constexpr bool isAccessorFlag = {};\
+		OwnerConstness & owner;\
+		int i;\
+\
+		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
+\
+		/* these should call into _sym(int,int) which is always Inner (const) & */\
+		auto operator[](int j) \
+		-> decltype(owner(i,j)) {\
+			return owner(i,j);\
+		}\
+		auto operator[](int j) const\
+		-> decltype(owner(i,j)) {\
+			return owner(i,j);\
+		}\
+\
+		/* getting an explicit-type for which result of operator() or [] we should be using (either Scalar& or one of the Accessor's) */\
+		/* hopefully I can switch this all to auto -> decltype() to avoid needing it */\
+		using IndexResult = This::Accessor<This>;\
+		using IndexResultConst = This::Accessor<This const>;\
+\
+		TENSOR_ADD_RANK1_CALL_INDEX()\
+	};
+
 // NOTICE this almost matches TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX
 // except this uses &'s where _asym uses AntiSymRef
 #define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
 \
 	/* a(i,j) := a_ij = a_ji */\
 	/* this is the direct acces */\
+	/* the type should always be Inner (const) & */\
 	/* symmetric has to define 1-arg operator() */\
 	/* that means I can't use the default so i have to make a 2-arg recursive case */\
-	Inner 		& operator()(int i, int j) 		 { return s[symIndex<localDim>(i,j)]; }\
-	Inner const & operator()(int i, int j) const { return s[symIndex<localDim>(i,j)]; }\
+	auto operator()(int i, int j)\
+	-> decltype(s[symIndex<localDim>(i,j)]) {\
+		return s[symIndex<localDim>(i,j)];\
+	}\
+	auto operator()(int i, int j) const\
+	-> decltype(s[symIndex<localDim>(i,j)]) {\
+		return s[symIndex<localDim>(i,j)];\
+	}\
 \
-	template<typename OwnerConstness>\
-	struct Accessor {\
-		static constexpr bool isAccessorFlag = {};\
-		OwnerConstness & owner;\
-		int i;\
-		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
-		auto & operator[](int j) const { return owner(i,j); }\
-		TENSOR_ADD_RANK1_CALL_INDEX()\
-	};\
-	auto operator[](int i) 		 { return Accessor<This		 >(*this, i); }\
-	auto operator[](int i) const { return Accessor<This const>(*this, i); }\
+	auto operator[](int i) {\
+		return Accessor<This>(*this, i);\
+	}\
+	auto operator[](int i) const {\
+		return Accessor<This const>(*this, i);\
+	}\
 \
 	/* a(i) := a_i */\
 	/* this is incomplete so it returns the operator[] which returns the Accessor */\
-	auto operator()(int i) 		 { return (*this)[i]; }\
-	auto operator()(int i) const { return (*this)[i]; }\
+	auto operator()(int i) {\
+		return (*this)[i];\
+	}\
+	auto operator()(int i) const {\
+		return (*this)[i];\
+	}\
 \
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	TENSOR_SYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()
@@ -1381,10 +1434,11 @@ and therein risks applying a call to an accessor
 so the accessors need nested call indexing too
 */
 #define TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
+	TENSOR_ADD_SYMMETRIC_MATRIX_ACCESSOR()\
+	TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR() /* before operator() operator[] */\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
-	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR() /* after indexing */
+	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()
 
 template<typename T, int dim_>
 struct _sym {
@@ -1560,7 +1614,44 @@ struct _sym<T,4> {
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim - 1);
 
-// have these return auto (not ref, not const) cuz they will return AntiSymRef of some sort of inner, possibly inner-const
+#define TENSOR_ADD_ANTISYMMETRIC_MATRIX_ACCESSOR()\
+	template<typename OwnerConstness>\
+	struct Accessor {\
+		static constexpr bool isAccessorFlag = {};\
+		OwnerConstness & owner;\
+		int i;\
+		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
+\
+		/* this is AntiSymRef<Inner> for OwnerConstness==This */\
+		/* this is AntiSymRef<Inner const> for OwnerConstness==This const*/\
+		auto operator[](int j)\
+		-> decltype(owner(i,j)) {\
+			return owner(i,j);\
+		}\
+		auto operator[](int j) const\
+		-> decltype(owner(i,j)) {\
+			return owner(i,j);\
+		}\
+\
+		/* TODO ... these return Inner& access ... */\
+		/* but ... we can't do that in _asym because its () []'s return AntiSym ... */\
+		/* so how to fix it? */\
+		/* one way is: make everything return a wrapper of some sort, like reference_wrapper */\
+		/* another way: some requires/if constexpr's to see if the nested class is using a & or an AntiSymRef ... */\
+		/*TENSOR_ADD_RANK1_CALL_INDEX()*/\
+		/* ...inlined and with proper return type: */\
+		auto operator()(int i)\
+		-> decltype((*this)[i]) {\
+			return (*this)[i];\
+		}\
+		auto operator()(int i) const\
+		-> decltype((*this)[i]) {\
+			return (*this)[i];\
+		}\
+	};
+
+// these need a return type depending on # of args
+//  cuz it could be a Scalar& or it could be an Accessor 
 #define TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
@@ -1581,7 +1672,7 @@ struct _sym<T,4> {
 \
 	/* a(i,j) := a_ij = -a_ji */\
 	/* this is the direct acces */\
-	AntiSymRef<Inner> operator()(int i, int j) {\
+	auto operator()(int i, int j) {\
 		if (i == j) return AntiSymRef<Inner>();\
 		if (i < j) {\
 			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRefHow::POSITIVE);\
@@ -1589,7 +1680,7 @@ struct _sym<T,4> {
 			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}\
-	AntiSymRef<Inner const> operator()(int i, int j) const {\
+	auto operator()(int i, int j) const {\
 		if (i == j) return AntiSymRef<Inner const>();\
 		if (i < j) {\
 			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRefHow::POSITIVE);\
@@ -1598,33 +1689,17 @@ struct _sym<T,4> {
 		}\
 	}\
 \
-	template<typename OwnerConstness>\
-	struct Accessor {\
-		static constexpr bool isAccessorFlag = {};\
-		OwnerConstness & owner;\
-		int i;\
-		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
-\
-		/* this is AntiSymRef<Inner> for OwnerConstness==This, this is AntiSymRef<Inner const> for OwnerConstness==This const*/\
-		auto operator[](int j) { return owner(i,j); }\
-\
-		/* TODO ... these return Inner& access ... */\
-		/* but ... we can't do that in _asym because its () []'s return AntiSym ... */\
-		/* so how to fix it? */\
-		/* one way is: make everything return a wrapper of some sort, like reference_wrapper */\
-		/* another way: some requires/if constexpr's to see if the nested class is using a & or an AntiSymRef ... */\
-		/*TENSOR_ADD_RANK1_CALL_INDEX()*/\
-		/* ...inlined and with proper return type: */\
-		auto operator()(int i) 		 { return (*this)[i]; }\
-		auto operator()(int i) const { return (*this)[i]; }\
-\
-	};\
-	auto operator[](int i) 		 { return Accessor<This		 >(*this, i); }\
-	auto operator[](int i) const { return Accessor<This const>(*this, i); }\
+	auto operator[](int i) {\
+		return Accessor<This>(*this, i);\
+	}\
+	auto operator[](int i) const {\
+		return Accessor<This const>(*this, i);\
+	}\
 \
 	/* a(i) := a_i */\
-	/* this is incomplete so it returns the operator[] which returns the accessor */\
-	auto operator()(int i) 		 { return (*this)[i]; }\
+	/* this dereference is incomplete so it returns the operator[] */\
+	/*  which returns the Accessor */\
+	auto operator()(int i) { return (*this)[i]; }\
 	auto operator()(int i) const { return (*this)[i]; }\
 \
 	/* in order to do this, you would need some conditions for seeing if the nested return type is AntiSymRef or Scalar */\
@@ -1647,10 +1722,11 @@ struct _sym<T,4> {
 
 
 #define TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(classname)\
+	TENSOR_ADD_ANTISYMMETRIC_MATRIX_ACCESSOR()\
+	TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR() /* before operator() and operator[] */\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
-	TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	TENSOR_ADD_INDEX_RESULT_AS_ACCESSOR() /* after indexing */
+	TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()
 
 /*
 for asym because I need to return reference-wrappers to support the + vs - depending on the index

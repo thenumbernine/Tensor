@@ -358,6 +358,170 @@ static_assert(!std::is_same_v<typename Tensor::constness_of<float const>::templa
 // "float * const" vs "float const *"
 static_assert(!std::is_same_v<typename Tensor::constness_of<float const>::template apply_t<float*>, std::add_pointer_t<float const>>);
 
+namespace Test3 {
+	using namespace Tensor;
+	using namespace std;
+
+	using S = float;
+	using S3 = _vec<S,3>;
+	using S3x3 = _vec<S3,3>;
+	using S3s3 = _sym<S,3>;
+	using S3a3 = _asym<S,3>;
+	using S3x3x3 = _vec<S3x3,3>;
+	using S3x3s3 = _vec<S3s3,3>;
+	using S3x3a3 = _vec<S3a3,3>;
+	using S3s3x3 = _sym<S3,3>;
+	using S3a3x3 = _asym<S3,3>;
+
+	static_assert(!is_tensor_v<S>);
+	static_assert(is_tensor_v<S3>);
+	static_assert(is_tensor_v<S3x3>);
+	static_assert(is_tensor_v<S3s3>);
+	static_assert(is_tensor_v<S3x3x3>);
+	static_assert(is_tensor_v<S3x3s3>);
+	static_assert(is_tensor_v<S3s3x3>);
+
+	// does it have an 'Accessor' member template
+	static_assert(!has_Accessor_v<S>);
+	static_assert(!has_Accessor_v<S3>);
+	static_assert(has_Accessor_v<S3s3>);
+	static_assert(!has_Accessor_v<S3x3>);
+	static_assert(!has_Accessor_v<S3x3s3>);
+	static_assert(has_Accessor_v<S3s3x3>);
+	static_assert(!has_Accessor_v<S3x3x3>);
+
+
+	static_assert(sizeof(S3) == sizeof(S) * 3);
+	static_assert(sizeof(S3x3) == sizeof(S) * 3 * 3);
+	static_assert(sizeof(S3s3) == sizeof(S) * 6);
+	static_assert(sizeof(S3x3s3) == sizeof(S) * 3 * 6);
+	static_assert(sizeof(S3x3x3) == sizeof(S) * 3 * 3 * 3);
+
+	static_assert(is_same_v<S3::Inner, S>);
+	static_assert(is_same_v<S3s3::Inner, S>);
+	static_assert(is_same_v<S3x3::Inner, S3>);
+	static_assert(is_same_v<S3x3s3::Inner, S3s3>);
+	static_assert(is_same_v<S3s3x3::Inner, S3>);
+	static_assert(is_same_v<S3x3x3::Inner, S3x3>);
+
+	static_assert(is_same_v<S3::Scalar, S>);
+	static_assert(is_same_v<S3s3::Scalar, S>);
+	static_assert(is_same_v<S3x3::Scalar, S>);
+	static_assert(is_same_v<S3x3s3::Scalar, S>);
+	static_assert(is_same_v<S3s3x3::Scalar, S>);
+	static_assert(is_same_v<S3x3x3::Scalar, S>);
+
+
+// so more use cases ... for Scalar type S
+// 
+
+	// get the IndexResult i.e. result of indexing operations (call, subscript)
+	//  if any template-nested classes have a member Accessor<This [const]> then use that
+	//  otherwise use the Scalar [const] &
+	static_assert(is_same_v<S3::IndexResult, S&>);
+	static_assert(is_same_v<S3::IndexResultConst, S const &>);
+	static_assert(is_same_v<S3s3::IndexResult, S3s3::Accessor<S3s3>>);
+	static_assert(is_same_v<S3s3::IndexResultConst, S3s3::Accessor<S3s3 const>>);
+	static_assert(is_same_v<S3x3::IndexResult, S&>);
+	static_assert(is_same_v<S3x3::IndexResultConst, S const &>);
+	static_assert(is_same_v<S3x3s3::IndexResult, S3s3::Accessor<S3s3>>);
+	static_assert(is_same_v<S3x3s3::IndexResultConst, S3s3::Accessor<S3s3 const>>);
+	static_assert(is_same_v<S3s3x3::IndexResult, S3s3x3::Accessor<S3s3x3>>);
+	static_assert(is_same_v<S3s3x3::IndexResultConst, S3s3x3::Accessor<S3s3x3 const>>);
+
+	//operator[] and operator()
+		
+		// rank-1	
+	
+	//_tensor<S, index_vec<3>>
+	static_assert(is_same_v<decltype(S3()(0)), S&>);
+	static_assert(is_same_v<decltype(S3()[0]), S&>);
+
+		//rank-2
+	
+	//_tensor<S, index_vec<3>, index_vec<3>>
+	static_assert(is_same_v<decltype(S3x3()(0)), S3&>);
+	static_assert(is_same_v<decltype(S3x3()[0]), S3&>);
+	static_assert(is_same_v<decltype(S3x3()(0)(0)), S&>);
+	static_assert(is_same_v<decltype(S3x3()(0,0)), S&>);
+	static_assert(is_same_v<decltype(S3x3()[0](0)), S&>);
+	static_assert(is_same_v<decltype(S3x3()(0)[0]), S&>);
+	static_assert(is_same_v<decltype(S3x3()[0][0]), S&>);
+
+	//_tensor<S, index_sym<3>>
+	static_assert(is_same_v<decltype(S3s3()(0)), S3s3::IndexResult>);
+	static_assert(is_same_v<decltype(S3s3()[0]), S3s3::IndexResult>);
+	static_assert(is_same_v<decltype(S3s3()(0,0)), S&>);
+	static_assert(is_same_v<decltype(S3s3()(0)(0)), S&>);
+	static_assert(is_same_v<decltype(S3s3()[0](0)), S&>);
+	static_assert(is_same_v<decltype(S3s3()(0)[0]), S&>);
+	static_assert(is_same_v<decltype(S3s3()[0][0]), S&>);
+
+	//_tensor<S, index_asym<3>>
+	static_assert(is_same_v<decltype(S3a3()(0)), S3a3::IndexResult>);
+	static_assert(is_same_v<decltype(S3a3()[0]), S3a3::IndexResult>);
+	static_assert(is_same_v<decltype(S3a3()(0,0)), AntiSymRef<S>>);
+	static_assert(is_same_v<decltype(S3a3()(0)(0)), AntiSymRef<S>>);
+	static_assert(is_same_v<decltype(S3a3()[0](0)), AntiSymRef<S>>);
+	static_assert(is_same_v<decltype(S3a3()(0)[0]), AntiSymRef<S>>);
+	static_assert(is_same_v<decltype(S3a3()[0][0]), AntiSymRef<S>>);
+
+		//rank-3
+	
+	//_tensor<S, index_vec<3>, index_vec<3>, index_vec<3>>
+	static_assert(is_same_v<decltype(S3x3x3()(0)), S3x3&>);
+	static_assert(is_same_v<decltype(S3x3x3()[0]), S3x3&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0)(0)), S3&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0,0)), S3&>);
+	static_assert(is_same_v<decltype(S3x3x3()[0](0)), S3&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0)[0]), S3&>);
+	static_assert(is_same_v<decltype(S3x3x3()[0][0]), S3&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0)(0)(0)), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0,0)(0)), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0)(0,0)), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0,0,0)), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()[0](0)(0)), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()[0](0,0)), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0)[0](0)), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0)(0)[0]), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0,0)[0]), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()[0][0](0)), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()[0](0)[0]), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()(0)[0][0]), S&>);
+	static_assert(is_same_v<decltype(S3x3x3()[0][0][0]), S&>);
+
+	//_tensor<S, index_vec<3>, index_sym<3>>
+	static_assert(is_same_v<decltype(S3x3s3()(0)), S3s3&>);
+	static_assert(is_same_v<decltype(S3x3s3()[0]), S3s3&>);
+	static_assert(is_same_v<decltype(S3x3s3()(0)(0)), S3s3::IndexResult>);
+
+	//TODO
+	//this requires _vec's operator(int, int...) to return its IndexResult
+	// but which IndexResult? that depends on the # of (int...)'s 
+	// so for (int, int), it should be This::InnerForIndex<2>::IndexResult
+//	static_assert(is_same_v<decltype(S3x3s3()(0,0)), S3s3::IndexResult>);
+	
+	static_assert(is_same_v<decltype(S3x3s3()[0](0)), S3s3::IndexResult>);
+	static_assert(is_same_v<decltype(S3x3s3()(0)[0]), S3s3::IndexResult>);
+	static_assert(is_same_v<decltype(S3x3s3()[0][0]), S3s3::IndexResult>);
+	static_assert(is_same_v<decltype(S3x3s3()(0)(0)(0)), S&>);
+//	static_assert(is_same_v<decltype(S3x3s3()(0,0)(0)), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()(0)(0,0)), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()(0,0,0)), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()[0](0)(0)), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()[0](0,0)), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()(0)[0](0)), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()(0)(0)[0]), S&>);
+//	static_assert(is_same_v<decltype(S3x3s3()(0,0)[0]), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()[0][0](0)), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()[0](0)[0]), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()(0)[0][0]), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()[0][0][0]), S&>);
+
+
+
+}
+
 template<typename T>
 void operatorScalarTest(T const & t) {
 	using S = typename T::Scalar;

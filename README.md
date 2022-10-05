@@ -74,7 +74,7 @@ So I guess overall this library is midway between a mathematician's and a progra
 - `::dim<i>` = Get the i'th dimension size , where i is from 0 to rank-1.
 - `::dims` = Get a int-vector with all the dimensions.  For rank-1 this is just an int.  Maybe I'll change it to be intN for all ranks, not sure.
 - `::localDim` = Get the dimension size of the current class, equal to `dim<0>`.
-- `::numNestings` = Get the number of nested classes.
+- `::numNestings` = Get the number of template-argument-nested classes.  Equivalent to the number of Inner's in `tensor::Inner::...::Inner`.
 - `::count<i>` = Get the storage size of the i'th nested class.  i is from 0 to numNestings-1.
 - `::localCount` = Get the storage size of the current class, equal to `count<0>`.
 - `::Nested<i>` = Get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
