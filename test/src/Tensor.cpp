@@ -805,8 +805,7 @@ void test_Tensor() {
 				typename T::Scalar x = f(i,j);
 				TEST_EQ(t(i)(j), x);
 				TEST_EQ(t(i,j), x);
-				// can't compile for _asym
-				//TEST_EQ(t(Tensor::int2(i,j)), x);
+				TEST_EQ(t(Tensor::int2(i,j)), x);
 				TEST_EQ(t[i](j), x);
 				TEST_EQ(t(i)[j], x);
 				TEST_EQ(t[i][j], x);

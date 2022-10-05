@@ -1394,8 +1394,6 @@ int symIndex(int i, int j) {
 		}\
 	}
 
-
-
 // NOTICE this almost matches TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX
 // except this uses &'s where _asym uses AntiSymRef
 #define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
@@ -1637,6 +1635,47 @@ struct _sym<T,4> {
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim - 1);
 
+// these need a return type depending on # of args
+//  cuz it could be a Scalar& or it could be an Accessor 
+#define TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
+\
+	/* a(i1,i2,...) := a_i1_i2_... */\
+	template<typename... Rest>\
+	auto operator()(int i, int j, Rest... rest) {\
+		return (*this)(i,j)(rest...);\
+	}\
+\
+	template<typename... Rest>\
+	auto operator()(int i, int j, Rest... rest) const {\
+		return (*this)(i,j)(rest...);\
+	}
+
+// This only works if _asym's Accessor's operator(_vec<int,N>) works
+// and while the default TENSOR_ADD_INT_VEC_CALL_INDEX right now uses auto& still so can't be used here 
+//  (btw how is it working in Symmetric?)
+// _asym returns AntiSymRef which is an object, so maybe I can just use this one in _asym and _asym::Accessor
+#define TENSOR_ADD_ANTISYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()\
+\
+	/* a(intN(i,...)) */\
+	template<int N>\
+	auto operator()(_vec<int,N> const & i) {\
+		if constexpr (N == 1) {\
+			return (*this)[i(0)];\
+		} else {\
+			return (*this)[i(0)](i.template subset<N-1, 1>());\
+		}\
+	}\
+\
+	template<int N>\
+	auto operator()(_vec<int,N> const & i) const {\
+		if constexpr (N == 1) {\
+			return (*this)[i(0)];\
+		} else {\
+			return (*this)[i(0)](i.template subset<N-1, 1>());\
+		}\
+	}
+
+
 #define TENSOR_ADD_ANTISYMMETRIC_MATRIX_ACCESSOR()\
 	template<typename OwnerConstness>\
 	struct Accessor {\
@@ -1671,22 +1710,9 @@ struct _sym<T,4> {
 		-> decltype((*this)[i]) {\
 			return (*this)[i];\
 		}\
+		TENSOR_ADD_RECURSIVE_CALL_INDEX()\
+		TENSOR_ADD_ANTISYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()\
 	};
-
-// these need a return type depending on # of args
-//  cuz it could be a Scalar& or it could be an Accessor 
-#define TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
-\
-	/* a(i1,i2,...) := a_i1_i2_... */\
-	template<typename... Rest>\
-	auto operator()(int i, int j, Rest... rest) {\
-		return (*this)(i,j)(rest...);\
-	}\
-\
-	template<typename... Rest>\
-	auto operator()(int i, int j, Rest... rest) const {\
-		return (*this)(i,j)(rest...);\
-	}
 
 // make sure this (and the using) is set before the specific-named accessors
 // NOTICE this almost matches TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX
@@ -1726,8 +1752,8 @@ struct _sym<T,4> {
 	auto operator()(int i) const { return (*this)[i]; }\
 \
 	/* in order to do this, you would need some conditions for seeing if the nested return type is AntiSymRef or Scalar */\
-	/*TENSOR_ADD_ANTISYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()*/\
-	TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()
+	TENSOR_ANTISYMMETRIC_MATRIX_ADD_RECURSIVE_CALL_INDEX()\
+	TENSOR_ADD_ANTISYMMETRIC_MATRIX_INT_VEC_CALL_INDEX()
 
 // currently set to upper-triangular
 // swap iread 0 and 1 to get lower-triangular
