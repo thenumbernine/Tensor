@@ -612,24 +612,23 @@ namespace Test3 {
 	static_assert(is_same_v<decltype(S3x3s3()[0]), S3s3&>);
 	static_assert(is_same_v<decltype(S3x3s3()(0)(0)), S3s3::IndexResult>);
 
-	//TODO
 	//this requires _vec's operator(int, int...) to return its IndexResult
 	// but which IndexResult? that depends on the # of (int...)'s
 	// so for (int, int), it should be This::InnerForIndex<2>::IndexResult
-//	static_assert(is_same_v<decltype(S3x3s3()(0,0)), S3s3::IndexResult>);
+	static_assert(is_same_v<decltype(S3x3s3()(0,0)), S3s3::IndexResult>);
 	
 	static_assert(is_same_v<decltype(S3x3s3()[0](0)), S3s3::IndexResult>);
 	static_assert(is_same_v<decltype(S3x3s3()(0)[0]), S3s3::IndexResult>);
 	static_assert(is_same_v<decltype(S3x3s3()[0][0]), S3s3::IndexResult>);
 	static_assert(is_same_v<decltype(S3x3s3()(0)(0)(0)), S&>);
-//	static_assert(is_same_v<decltype(S3x3s3()(0,0)(0)), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()(0,0)(0)), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()(0)(0,0)), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()(0,0,0)), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()[0](0)(0)), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()[0](0,0)), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()(0)[0](0)), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()(0)(0)[0]), S&>);
-//	static_assert(is_same_v<decltype(S3x3s3()(0,0)[0]), S&>);
+	static_assert(is_same_v<decltype(S3x3s3()(0,0)[0]), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()[0][0](0)), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()[0](0)[0]), S&>);
 	static_assert(is_same_v<decltype(S3x3s3()(0)[0][0]), S&>);

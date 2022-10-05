@@ -234,6 +234,7 @@ TODO:
 
 - InnerForIndex doesn't really get the inner, it gets the index, where index = corresponds with This, so call it something like "TypeForIndex"
 - call 'Nested' something else like 'Next', and 'numNestings' to 'numNext' ... since 'nested-class' is a term that could be mistaken with member-classes.
+- or call 'Inner" "Next" or something?
 
 - ReplaceDim and ReplaceLocalDim that take a int pack and insert that many new dimensions into that index' location.
 - would be nice to insert the template to wedge into it, like `tuple<index_int<3>, index_sym<3>>`.
