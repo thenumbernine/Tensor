@@ -64,21 +64,44 @@ struct TypeWrapper {
 	using This = classname;\
 	static constexpr bool isTensorFlag = {};
 
-#define TENSOR_SET_INNER_AND_LOCALDIM(Inner_, localDim_)\
+#define TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)\
 \
-	/*  this is the next most nested class, so vector-of-vector is a matrix. */\
-	using Inner = T;\
+	/*  This is the next most nested class, so vector-of-vector is a matrix. */\
+	using Inner = Inner_;\
 \
 	/* this is this particular dimension of our vector */\
 	/* M = matrix<T,i,j> == vec<vec<T,j>,i> so M::localDim == i and M::Inner::localDim == j  */\
 	/*  i.e. M::dims = int2(i,j) and M::dim<0> == i and M::dim<1> == j */\
-	static constexpr int localDim = localDim_;
-
-#define TENSOR_VECTOR_HEADER(localDim_)\
+	static constexpr int localDim = localDim_;\
 \
 	/*how much does this structure contribute to the overall rank. */\
 	/* for _vec it is 1, for _sym it is 2 */\
-	static constexpr int localRank = 1;\
+	static constexpr int localRank = localRank_;
+
+// used by _quat
+#define TENSOR_TEMPLATE_T(classname)\
+\
+	template<typename Inner2>\
+	using Template = classname<Inner2>;\
+\
+	template <typename NewInner>\
+	using ReplaceInner = Template<NewInner>;\
+\
+	template<int newLocalDim>\
+	using ReplaceLocalDim = Template<Inner>;
+
+#define TENSOR_TEMPLATE_T_I(classname)\
+\
+	template<typename Inner2, int localDim2>\
+	using Template = classname<Inner2, localDim2>;\
+\
+	template <typename NewInner>\
+	using ReplaceInner = Template<NewInner, localDim>;\
+\
+	template<int newLocalDim>\
+	using ReplaceLocalDim = Template<Inner, newLocalDim>;
+
+#define TENSOR_HEADER_VECTOR()\
 \
 	/*this is the storage size, used for iterting across 's' */\
 	/* for vectors etc it is 's' */\
@@ -88,7 +111,7 @@ struct TypeWrapper {
 
 // this contains definitions of types and values used in all tensors
 // TODO rename this to indicate it comes after TENSOR_*_HEADER()
-#define TENSOR_HEADER(T)\
+#define TENSOR_HEADER()\
 \
 	/*  this is the child-most nested class that isn't in our math library. */\
 	struct ScalarImpl {\
@@ -842,15 +865,6 @@ ReadIterator vs WriteIterator
 	/* wait, if Write<This> write() is called by a const object ... then the return type is const ... could I detect that from within Write to forward on to Write's inner class ctor? */\
 	Write<This const> write() const { return Write<This const>(*this); }
 
-// _quat can't handle
-#define TENSOR_ADD_REPLACE_INNER()\
-	template <typename NewInner>\
-	using ReplaceInner = Template<NewInner, localDim>;
-
-#define TENSOR_ADD_REPLACE_LOCAL_DIM()\
-	template<int newDim>\
-	using ReplaceLocalDim = Template<Inner, newDim>;
-
 #define TENSOR_ADD_REPLACE_SCALAR()\
 	template<typename NewScalar>\
 	struct ReplaceScalarImpl {\
@@ -900,9 +914,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_SCALAR_OP_EQ(/=)\
 	TENSOR_ADD_UNM()\
 	TENSOR_ADD_CMP_OP()\
-	TENSOR_ADD_REPLACE_INNER()\
-	TENSOR_ADD_REPLACE_SCALAR()\
-	TENSOR_ADD_REPLACE_LOCAL_DIM()
+	TENSOR_ADD_REPLACE_SCALAR()
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
@@ -937,11 +949,11 @@ using _tensorr = typename _tensorr_impl<Src, dim, rank>::T;
 // this is this class.  useful for templates.  you'd be surprised.
 template<typename T, int dim_>
 struct _vec {
-	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
-	TENSOR_SET_INNER_AND_LOCALDIM(T, dim_)
 	TENSOR_FIRST(_vec)
-	TENSOR_VECTOR_HEADER(dim_)
-	TENSOR_HEADER(T)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, dim_, 1)
+	TENSOR_TEMPLATE_T_I(_vec)
+	TENSOR_HEADER_VECTOR()
+	TENSOR_HEADER()
 
 	std::array<T,localCount> s = {};
 	constexpr _vec() {}
@@ -953,11 +965,11 @@ struct _vec {
 
 template<typename T>
 struct _vec<T,2> {
-	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
-	TENSOR_SET_INNER_AND_LOCALDIM(T, 2)
 	TENSOR_FIRST(_vec)
-	TENSOR_VECTOR_HEADER(2)
-	TENSOR_HEADER(T)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 2, 1)
+	TENSOR_TEMPLATE_T_I(_vec)
+	TENSOR_HEADER_VECTOR()
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -1027,11 +1039,11 @@ struct _vec<T,2> {
 
 template<typename T>
 struct _vec<T,3> {
-	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
-	TENSOR_SET_INNER_AND_LOCALDIM(T, 3)
 	TENSOR_FIRST(_vec)
-	TENSOR_VECTOR_HEADER(3)
-	TENSOR_HEADER(T)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 3, 1)
+	TENSOR_TEMPLATE_T_I(_vec)
+	TENSOR_HEADER_VECTOR()
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -1114,11 +1126,11 @@ struct _vec<T,3> {
 
 template<typename T>
 struct _vec<T,4> {
-	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
-	TENSOR_SET_INNER_AND_LOCALDIM(T, 4)
 	TENSOR_FIRST(_vec)
-	TENSOR_VECTOR_HEADER(4);
-	TENSOR_HEADER(T)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 4, 1)
+	TENSOR_TEMPLATE_T_I(_vec)
+	TENSOR_HEADER_VECTOR()
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -1221,8 +1233,7 @@ constexpr int symIndex(int i, int j) {
 	return i + triangleSize(j);
 }
 
-#define TENSOR_SYMMETRIC_MATRIX_HEADER(localDim_)\
-	static constexpr int localRank = 2;\
+#define TENSOR_HEADER_SYMMETRIC_MATRIX()\
 	static constexpr int localCount = triangleSize(localDim);
 
 // Accessor is used to return between-rank indexes, so if sym is rank-2 this lets you get s[i] even if the storage only represents s[i,j]
@@ -1322,11 +1333,11 @@ so the accessors need nested call indexing too
 
 template<typename T, int dim_>
 struct _sym {
-	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
-	TENSOR_SET_INNER_AND_LOCALDIM(T, dim_)
 	TENSOR_FIRST(_sym)
-	TENSOR_SYMMETRIC_MATRIX_HEADER(dim_)
-	TENSOR_HEADER(T)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, dim_, 2)
+	TENSOR_TEMPLATE_T_I(_sym)
+	TENSOR_HEADER_SYMMETRIC_MATRIX()
+	TENSOR_HEADER()
 
 	std::array<T,localCount> s = {};
 	constexpr _sym() {}
@@ -1336,11 +1347,11 @@ struct _sym {
 
 template<typename T>
 struct _sym<T,2> {
-	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
-	TENSOR_SET_INNER_AND_LOCALDIM(T, 2)
 	TENSOR_FIRST(_sym)
-	TENSOR_SYMMETRIC_MATRIX_HEADER(2)
-	TENSOR_HEADER(T)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 2, 2)
+	TENSOR_TEMPLATE_T_I(_sym)
+	TENSOR_HEADER_SYMMETRIC_MATRIX()
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -1369,11 +1380,11 @@ struct _sym<T,2> {
 
 template<typename T>
 struct _sym<T,3> {
-	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
-	TENSOR_SET_INNER_AND_LOCALDIM(T, 3)
 	TENSOR_FIRST(_sym)
-	TENSOR_SYMMETRIC_MATRIX_HEADER(3)
-	TENSOR_HEADER(T)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 3, 2)
+	TENSOR_TEMPLATE_T_I(_sym)
+	TENSOR_HEADER_SYMMETRIC_MATRIX()
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -1423,11 +1434,11 @@ struct _sym<T,3> {
 
 template<typename T>
 struct _sym<T,4> {
-	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
-	TENSOR_SET_INNER_AND_LOCALDIM(T, 4)
 	TENSOR_FIRST(_sym)
-	TENSOR_SYMMETRIC_MATRIX_HEADER(4)
-	TENSOR_HEADER(T)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 4, 2)
+	TENSOR_TEMPLATE_T_I(_sym)
+	TENSOR_HEADER_SYMMETRIC_MATRIX()
+	TENSOR_HEADER()
 
 	union {
 		struct {
@@ -1497,8 +1508,7 @@ struct _sym<T,4> {
 
 // antisymmetric matrices
 
-#define TENSOR_ANTISYMMETRIC_MATRIX_HEADER(localDim_)\
-	static constexpr int localRank = 2;\
+#define TENSOR_HEADER_ANTISYMMETRIC_MATRIX()\
 	static constexpr int localCount = triangleSize(localDim - 1);
 
 #define TENSOR_ADD_ANTISYMMETRIC_MATRIX_ACCESSOR()\
@@ -1573,11 +1583,11 @@ so no specialized sizes for _asym
 */
 template<typename T, int dim_>
 struct _asym {
-	template<typename T2, int localDim2> using Template = _asym<T2,localDim2>;
-	TENSOR_SET_INNER_AND_LOCALDIM(T, dim_)
 	TENSOR_FIRST(_asym)
-	TENSOR_ANTISYMMETRIC_MATRIX_HEADER(dim_)
-	TENSOR_HEADER(T)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, dim_, 2)
+	TENSOR_TEMPLATE_T_I(_asym)
+	TENSOR_HEADER_ANTISYMMETRIC_MATRIX()
+	TENSOR_HEADER()
 
 	std::array<T, localCount> s = {};
 	constexpr _asym() {}
@@ -1677,30 +1687,40 @@ static_assert(nChooseR(4,2) == 6);
 static_assert(nChooseR(4,3) == 4);
 static_assert(nChooseR(4,4) == 1);
 
-inline constexpr int symmtricSize(int d, int r) {
+inline constexpr int symmetricSize(int d, int r) {
 	return nChooseR(d + r - 1, r);
 }
 inline constexpr int antisymmetricSize(int d, int r) {
 	return nChooseR(d, r);
 }
 
-#define TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_, localRank_)\
-	static constexpr int localRank = localRank_;\
+#define TENSOR_TEMPLATE_T_I_I(classname)\
+\
+	template<typename Inner2, int localDim2, int localRank2>\
+	using Template = classname<Inner2, localDim2, localRank2>;\
+\
+	template <typename NewInner>\
+	using ReplaceInner = Template<NewInner, localDim, localRank>;\
+\
+	template<int newLocalDim>\
+	using ReplaceLocalDim = Template<Inner, newLocalDim, localRank>;
+
+#define TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_)\
 	static constexpr int localCount = symmetricSize(localDim, localRank);
 
 // TODO need to pull Template out of TENSOR_FIRST
 //  need to generalize the Template params somehow
 //  need to remove use of 'T' in macros
-#if 0
-template<typename T, int localDim_, int localRank_>
+
+template<typename Inner_, int localDim_, int localRank_>
 struct _symR {
-	TENSOR_SET_INNER_AND_LOCALDIM(T, localDim_)
 	TENSOR_FIRST(_symR)
-	TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_, localRank_)
-	TENSOR_HEADER(T)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)
+	TENSOR_TEMPLATE_T_I_I(_symR)
+	TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_)
+	//TENSOR_HEADER()
 };
 
-#endif
 // dense vec-of-vec
 
 //convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]

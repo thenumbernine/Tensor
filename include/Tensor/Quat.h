@@ -9,23 +9,21 @@
 
 namespace Tensor {
 
-template<typename T>
-struct _quat : public _vec4<T> {
-	using Super = _vec4<T>;
-	template<typename T2> using Template = _quat<T2>;
-	TENSOR_SET_INNER_AND_LOCALDIM(T, 4)
+template<typename Inner_>
+struct _quat : public _vec4<Inner_> {
+	using Super = _vec4<Inner_>;
 	TENSOR_FIRST(_quat)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 1)
+	TENSOR_TEMPLATE_T(_quat)
 
-	//TENSOR_REPLACE_INNER is also atypical because no dimension template arg
-	template <typename NewInner> using ReplaceInner = Template<NewInner>;
-
-	TENSOR_VECTOR_HEADER(4)
-	TENSOR_HEADER(T)
-	using vec3 = _vec3<T>;
+	TENSOR_HEADER_VECTOR()
+	TENSOR_HEADER()
+	using vec3 = _vec3<Inner>;
 
 	constexpr _quat() : Super(0,0,0,1) {}
-	constexpr _quat(T const & w) : Super(0,0,0,w) {}
-	constexpr _quat(T const & x, T const & y, T const & z, T const & w) : Super(x,y,z,w) {}
+	constexpr _quat(Inner const & w) : Super(0,0,0,w) {}
+	constexpr _quat(Inner const & x, Inner const & y, Inner const & z, Inner const & w) : Super(x,y,z,w) {}
+	
 	TENSOR_ADD_DIMS()	// needed by TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS
 	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(_quat, _vec)
 	TENSOR_ADD_LAMBDA_CTOR(_quat)
@@ -45,31 +43,31 @@ struct _quat : public _vec4<T> {
 
 	//angle-axis, where angle is in radians
 	_quat fromAngleAxis() const {
-		T const c = cos(this->w / 2);
-		T const n = sqrt(this->x * this->x + this->y * this->y + this->z * this->z);
-		T const sn = sin(this->w / 2) / n;
+		Inner const c = cos(this->w / 2);
+		Inner const n = sqrt(this->x * this->x + this->y * this->y + this->z * this->z);
+		Inner const sn = sin(this->w / 2) / n;
 		return {sn * this->x, sn * this->y, sn * this->z, c};
 	}
 
-	static T angleAxisEpsilon;
+	static Inner angleAxisEpsilon;
 
 	_quat toAngleAxis() const {
-		T const cosHalfAngle = clamp(this->w, (T)-1, (T)1);
-		T const halfAngle = acos(cosHalfAngle);
-		T const scale = sin(halfAngle);
+		Inner const cosHalfAngle = clamp(this->w, (Inner)-1, (Inner)1);
+		Inner const halfAngle = acos(cosHalfAngle);
+		Inner const scale = sin(halfAngle);
 		if (std::abs(scale) <= angleAxisEpsilon) return _quat(0,0,1,0);
 		return {this->x / scale, this->y / scale, this->z / scale, 2 * halfAngle};
 	}
 
 	static _quat mul(_quat const &q, _quat const &r) {
-		T const a = (q.w + q.x) * (r.w + r.x);
-		T const b = (q.z - q.y) * (r.y - r.z);
-		T const c = (q.x - q.w) * (r.y + r.z);
-		T const d = (q.y + q.z) * (r.x - r.w);
-		T const e = (q.x + q.z) * (r.x + r.y);
-		T const f = (q.x - q.z) * (r.x - r.y);
-		T const g = (q.w + q.y) * (r.w - r.z);
-		T const h = (q.w - q.y) * (r.w + r.z);
+		Inner const a = (q.w + q.x) * (r.w + r.x);
+		Inner const b = (q.z - q.y) * (r.y - r.z);
+		Inner const c = (q.x - q.w) * (r.y + r.z);
+		Inner const d = (q.y + q.z) * (r.x - r.w);
+		Inner const e = (q.x + q.z) * (r.x + r.y);
+		Inner const f = (q.x - q.z) * (r.x - r.y);
+		Inner const g = (q.w + q.y) * (r.w - r.z);
+		Inner const h = (q.w - q.y) * (r.w + r.z);
 
 		return {
 			 a - ( e + f + g + h) / 2,
