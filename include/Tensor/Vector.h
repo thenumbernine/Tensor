@@ -64,20 +64,22 @@ struct TypeWrapper {
 	using This = classname;\
 	static constexpr bool isTensorFlag = {};
 
-#define TENSOR_VECTOR_HEADER(localDim_)\
+#define TENSOR_SET_INNER_AND_LOCALDIM(Inner_, localDim_)\
 \
-	/* TRUE FOR _vec (NOT FOR _sym) */\
+	/*  this is the next most nested class, so vector-of-vector is a matrix. */\
+	using Inner = T;\
+\
 	/* this is this particular dimension of our vector */\
 	/* M = matrix<T,i,j> == vec<vec<T,j>,i> so M::localDim == i and M::Inner::localDim == j  */\
 	/*  i.e. M::dims = int2(i,j) and M::dim<0> == i and M::dim<1> == j */\
-	static constexpr int localDim = localDim_;\
+	static constexpr int localDim = localDim_;
+
+#define TENSOR_VECTOR_HEADER(localDim_)\
 \
-	/* TRUE FOR _vec (NOT FOR _sym) */\
 	/*how much does this structure contribute to the overall rank. */\
 	/* for _vec it is 1, for _sym it is 2 */\
 	static constexpr int localRank = 1;\
 \
-	/* TRUE FOR _vec (NOT FOR _sym) */\
 	/*this is the storage size, used for iterting across 's' */\
 	/* for vectors etc it is 's' */\
 	/* for (anti?)symmetric it is N*(N+1)/2 */\
@@ -87,10 +89,6 @@ struct TypeWrapper {
 // this contains definitions of types and values used in all tensors
 // TODO rename this to indicate it comes after TENSOR_*_HEADER()
 #define TENSOR_HEADER(T)\
-\
-	/*  TRUE FOR ALL TENSORS */\
-	/*  this is the next most nested class, so vector-of-vector is a matrix. */\
-	using Inner = T;\
 \
 	/*  this is the child-most nested class that isn't in our math library. */\
 	struct ScalarImpl {\
@@ -940,6 +938,7 @@ using _tensorr = typename _tensorr_impl<Src, dim, rank>::T;
 template<typename T, int dim_>
 struct _vec {
 	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
+	TENSOR_SET_INNER_AND_LOCALDIM(T, dim_)
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(dim_)
 	TENSOR_HEADER(T)
@@ -955,6 +954,7 @@ struct _vec {
 template<typename T>
 struct _vec<T,2> {
 	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
+	TENSOR_SET_INNER_AND_LOCALDIM(T, 2)
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(2)
 	TENSOR_HEADER(T)
@@ -1028,6 +1028,7 @@ struct _vec<T,2> {
 template<typename T>
 struct _vec<T,3> {
 	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
+	TENSOR_SET_INNER_AND_LOCALDIM(T, 3)
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(3)
 	TENSOR_HEADER(T)
@@ -1114,6 +1115,7 @@ struct _vec<T,3> {
 template<typename T>
 struct _vec<T,4> {
 	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
+	TENSOR_SET_INNER_AND_LOCALDIM(T, 4)
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(4);
 	TENSOR_HEADER(T)
@@ -1220,7 +1222,6 @@ constexpr int symIndex(int i, int j) {
 }
 
 #define TENSOR_SYMMETRIC_MATRIX_HEADER(localDim_)\
-	static constexpr int localDim = localDim_;\
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim);
 
@@ -1322,6 +1323,7 @@ so the accessors need nested call indexing too
 template<typename T, int dim_>
 struct _sym {
 	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
+	TENSOR_SET_INNER_AND_LOCALDIM(T, dim_)
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(dim_)
 	TENSOR_HEADER(T)
@@ -1335,6 +1337,7 @@ struct _sym {
 template<typename T>
 struct _sym<T,2> {
 	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
+	TENSOR_SET_INNER_AND_LOCALDIM(T, 2)
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(2)
 	TENSOR_HEADER(T)
@@ -1367,6 +1370,7 @@ struct _sym<T,2> {
 template<typename T>
 struct _sym<T,3> {
 	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
+	TENSOR_SET_INNER_AND_LOCALDIM(T, 3)
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(3)
 	TENSOR_HEADER(T)
@@ -1420,6 +1424,7 @@ struct _sym<T,3> {
 template<typename T>
 struct _sym<T,4> {
 	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
+	TENSOR_SET_INNER_AND_LOCALDIM(T, 4)
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(4)
 	TENSOR_HEADER(T)
@@ -1493,7 +1498,6 @@ struct _sym<T,4> {
 // antisymmetric matrices
 
 #define TENSOR_ANTISYMMETRIC_MATRIX_HEADER(localDim_)\
-	static constexpr int localDim = localDim_;\
 	static constexpr int localRank = 2;\
 	static constexpr int localCount = triangleSize(localDim - 1);
 
@@ -1570,6 +1574,7 @@ so no specialized sizes for _asym
 template<typename T, int dim_>
 struct _asym {
 	template<typename T2, int localDim2> using Template = _asym<T2,localDim2>;
+	TENSOR_SET_INNER_AND_LOCALDIM(T, dim_)
 	TENSOR_FIRST(_asym)
 	TENSOR_ANTISYMMETRIC_MATRIX_HEADER(dim_)
 	TENSOR_HEADER(T)
@@ -1680,7 +1685,6 @@ inline constexpr int antisymmetricSize(int d, int r) {
 }
 
 #define TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_, localRank_)\
-	static constexpr int localDim = localDim_;\
 	static constexpr int localRank = localRank_;\
 	static constexpr int localCount = symmetricSize(localDim, localRank);
 
@@ -1690,6 +1694,7 @@ inline constexpr int antisymmetricSize(int d, int r) {
 #if 0
 template<typename T, int localDim_, int localRank_>
 struct _symR {
+	TENSOR_SET_INNER_AND_LOCALDIM(T, localDim_)
 	TENSOR_FIRST(_symR)
 	TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_, localRank_)
 	TENSOR_HEADER(T)

@@ -13,6 +13,7 @@ template<typename T>
 struct _quat : public _vec4<T> {
 	using Super = _vec4<T>;
 	template<typename T2> using Template = _quat<T2>;
+	TENSOR_SET_INNER_AND_LOCALDIM(T, 4)
 	TENSOR_FIRST(_quat)
 
 	//TENSOR_REPLACE_INNER is also atypical because no dimension template arg
