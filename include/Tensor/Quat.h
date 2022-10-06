@@ -12,11 +12,8 @@ namespace Tensor {
 template<typename T>
 struct _quat : public _vec4<T> {
 	using Super = _vec4<T>;
-
-	//TENSOR_FIRST(_quat)
-	//TENSOR_FIRST expects a <T,size> for the current template ... so here it is for _quat
-	using This = _quat;
 	template<typename T2> using Template = _quat<T2>;
+	TENSOR_FIRST(_quat)
 
 	//TENSOR_REPLACE_INNER is also atypical because no dimension template arg
 	template <typename NewInner> using ReplaceInner = Template<NewInner>;

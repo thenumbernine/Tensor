@@ -62,7 +62,6 @@ struct TypeWrapper {
 // Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
 #define TENSOR_FIRST(classname)\
 	using This = classname;\
-	template<typename T2, int dim2> using Template = classname<T2,dim2>;\
 	static constexpr bool isTensorFlag = {};
 
 #define TENSOR_VECTOR_HEADER(localDim_)\
@@ -940,6 +939,7 @@ using _tensorr = typename _tensorr_impl<Src, dim, rank>::T;
 // this is this class.  useful for templates.  you'd be surprised.
 template<typename T, int dim_>
 struct _vec {
+	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(dim_)
 	TENSOR_HEADER(T)
@@ -954,6 +954,7 @@ struct _vec {
 
 template<typename T>
 struct _vec<T,2> {
+	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(2)
 	TENSOR_HEADER(T)
@@ -1026,6 +1027,7 @@ struct _vec<T,2> {
 
 template<typename T>
 struct _vec<T,3> {
+	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(3)
 	TENSOR_HEADER(T)
@@ -1111,6 +1113,7 @@ struct _vec<T,3> {
 
 template<typename T>
 struct _vec<T,4> {
+	template<typename T2, int localDim2> using Template = _vec<T2,localDim2>;
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(4);
 	TENSOR_HEADER(T)
@@ -1318,6 +1321,7 @@ so the accessors need nested call indexing too
 
 template<typename T, int dim_>
 struct _sym {
+	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(dim_)
 	TENSOR_HEADER(T)
@@ -1330,6 +1334,7 @@ struct _sym {
 
 template<typename T>
 struct _sym<T,2> {
+	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(2)
 	TENSOR_HEADER(T)
@@ -1361,6 +1366,7 @@ struct _sym<T,2> {
 
 template<typename T>
 struct _sym<T,3> {
+	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(3)
 	TENSOR_HEADER(T)
@@ -1413,6 +1419,7 @@ struct _sym<T,3> {
 
 template<typename T>
 struct _sym<T,4> {
+	template<typename T2, int localDim2> using Template = _sym<T2,localDim2>;
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(4)
 	TENSOR_HEADER(T)
@@ -1562,6 +1569,7 @@ so no specialized sizes for _asym
 */
 template<typename T, int dim_>
 struct _asym {
+	template<typename T2, int localDim2> using Template = _asym<T2,localDim2>;
 	TENSOR_FIRST(_asym)
 	TENSOR_ANTISYMMETRIC_MATRIX_HEADER(dim_)
 	TENSOR_HEADER(T)
