@@ -268,3 +268,5 @@ TODO:
 	that would spare me the need for `_sym`'s operator[int]
 	but dno't forget `_asym` still needs to return an AntiSymRef , whether we allow off-storage indexing or not.
 	so meh i might as well keep it around?
+
+- might do some constexpr loop unrolling stuff maybe.

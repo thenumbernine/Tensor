@@ -960,8 +960,8 @@ void test_Tensor() {
 		// row-major, sequential in memory:
 		TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(1) + 3 * i(0); }));
 		// col-major, sequential in memory:
+		//  why I don't do col-major? because then it's transposed of C construction, and that means m[i][j] == m.s[j].s[i] so your indexes are transposed the storage indexes
 		//TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(0) + 3 * i(1); }));
-		
 		
 		// TODO casting ctor
 
@@ -1364,15 +1364,14 @@ so a.s == {0,1,2,4,5,8};
 					TEST_EQ(t[i][j][k], x);
 					TEST_EQ(t(i,j)(k), x);
 					TEST_EQ(t(i,j)[k], x);
-					// fails for float3x3s3
-					//TEST_EQ(t(Tensor::int2(i,j))(k), x);
-					//TEST_EQ(t(Tensor::int2(i,j))[k], x);
+					TEST_EQ(t(Tensor::int2(i,j))(k), x);
+					TEST_EQ(t(Tensor::int2(i,j))[k], x);
 					TEST_EQ(t(i)(j,k), x);
 					TEST_EQ(t[i](j,k), x);
 					TEST_EQ(t(i)(Tensor::int2(j,k)), x);
 					TEST_EQ(t[i](Tensor::int2(j,k)), x);
 					TEST_EQ(t(i,j,k), x);
-					TEST_EQ(t(Tensor::int3(i,j,k)), x);	//fails for float3x3a3
+					TEST_EQ(t(Tensor::int3(i,j,k)), x);
 				
 					if constexpr (!std::is_const_v<T>) {
 						t(i)(j)(k) = x;
@@ -1385,15 +1384,14 @@ so a.s == {0,1,2,4,5,8};
 						t[i][j][k] = x;
 						t(i,j)(k) = x;
 						t(i,j)[k] = x;
-						// fails for float3x3s3
-						//t(Tensor::int2(i,j))(k) = x;
-						//t(Tensor::int2(i,j))[k] = x;
+						t(Tensor::int2(i,j))(k) = x;
+						t(Tensor::int2(i,j))[k] = x;
 						t(i)(j,k) = x;
 						t[i](j,k) = x;
 						t(i)(Tensor::int2(j,k)) = x;
 						t[i](Tensor::int2(j,k)) = x;
 						t(i,j,k) = x;
-						t(Tensor::int3(i,j,k)) = x;	// fails for float3x3a3
+						t(Tensor::int3(i,j,k)) = x;
 					}
 				}
 			}
@@ -1464,7 +1462,7 @@ so a.s == {0,1,2,4,5,8};
 		verifyAccessRank3.template operator()<decltype(t) const>(t, f);
 	}
 
-#if 0	// TODO
+#if 0	// TODO write/read assertions fail
 	//vector-of-antisymmetric
 	{
 		using T3x3a3 = Tensor::_tensori<float, Tensor::index_vec<3>, Tensor::index_asym<3>>;
@@ -1474,6 +1472,7 @@ so a.s == {0,1,2,4,5,8};
 		verifyAccessRank3.template operator()<decltype(t) const>(t, f);
 	}
 #endif	
+	
 	// symmetric-of-vector
 	{
 		using T3s3x3 = Tensor::_tensori<float, Tensor::index_sym<3>, Tensor::index_vec<3>>;
@@ -1524,25 +1523,25 @@ so a.s == {0,1,2,4,5,8};
 						TEST_EQ(t(i,j)(k)[l], x);
 						TEST_EQ(t(i,j)(k)[l], x);
 						TEST_EQ(t(i,j)[k][l], x);
-						//TEST_EQ(t(Tensor::int2(i,j))(k)(l), x);	//fails for vec-sym-vec
-						//TEST_EQ(t(Tensor::int2(i,j))[k](l), x);	//fails for vec-sym-vec
-						//TEST_EQ(t(Tensor::int2(i,j))(k)[l], x);	//fails for vec-sym-vec
-						//TEST_EQ(t(Tensor::int2(i,j))(k)[l], x);	//fails for vec-sym-vec
-						//TEST_EQ(t(Tensor::int2(i,j))[k][l], x);	//fails for vec-sym-vec
+						TEST_EQ(t(Tensor::int2(i,j))(k)(l), x);
+						TEST_EQ(t(Tensor::int2(i,j))[k](l), x);
+						TEST_EQ(t(Tensor::int2(i,j))(k)[l], x);
+						TEST_EQ(t(Tensor::int2(i,j))(k)[l], x);
+						TEST_EQ(t(Tensor::int2(i,j))[k][l], x);
 	
 						TEST_EQ(t(i,j)(k,l), x);
-						//TEST_EQ(t(Tensor::int2(i,j))(k,l), x);	//fails for vec-sym-vec
+						TEST_EQ(t(Tensor::int2(i,j))(k,l), x);
 						TEST_EQ(t(i,j)(Tensor::int2(k,l)), x);
-						//TEST_EQ(t(Tensor::int2(i,j))(Tensor::int2(k,l)), x);	//fails for vec-sym-vec
+						TEST_EQ(t(Tensor::int2(i,j))(Tensor::int2(k,l)), x);
 						
 						TEST_EQ(t(i)(j,k)(l), x);
 						TEST_EQ(t[i](j,k)(l), x);
 						TEST_EQ(t(i)(j,k)[l], x);
 						TEST_EQ(t[i](j,k)[l], x);
-						//TEST_EQ(t(i)(Tensor::int2(j,k))(l), x);	//fails for vec-vec-sym
-						//TEST_EQ(t[i](Tensor::int2(j,k))(l), x);	//fails for vec-vec-sym
-						//TEST_EQ(t(i)(Tensor::int2(j,k))[l], x);	//fails for vec-vec-sym
-						//TEST_EQ(t[i](Tensor::int2(j,k))[l], x);	//fails for vec-vec-sym
+						TEST_EQ(t(i)(Tensor::int2(j,k))(l), x);
+						TEST_EQ(t[i](Tensor::int2(j,k))(l), x);
+						TEST_EQ(t(i)(Tensor::int2(j,k))[l], x);
+						TEST_EQ(t[i](Tensor::int2(j,k))[l], x);
 
 						TEST_EQ(t(i)(j)(k,l), x);
 						TEST_EQ(t[i](j)(k,l), x);
@@ -1558,8 +1557,8 @@ so a.s == {0,1,2,4,5,8};
 						TEST_EQ(t(i)(Tensor::int3(j,k,l)), x);
 						TEST_EQ(t[i](Tensor::int3(j,k,l)), x);
 						
-						TEST_EQ(t(i,j,k)(l), x);	//fails for sym-sym
-						//TEST_EQ(t(Tensor::int3(i,j,k))(l), x);	// fails for vec-vec-sym
+						TEST_EQ(t(i,j,k)(l), x);
+						TEST_EQ(t(Tensor::int3(i,j,k))(l), x);
 						
 						TEST_EQ(t(i,j,k,l), x);
 						TEST_EQ(t(Tensor::int4(i,j,k,l)), x);
@@ -1637,7 +1636,6 @@ so a.s == {0,1,2,4,5,8};
 	}
 #endif
 
-#if 0	//fails for t(i,j,k)(l)
 	// sym-sym
 	{
 		using T = Tensor::_tensori<float, Tensor::index_sym<3>, Tensor::index_sym<3>>;
@@ -1646,7 +1644,6 @@ so a.s == {0,1,2,4,5,8};
 		verifyAccessRank4.template operator()<decltype(t)>(t, f);
 		verifyAccessRank4.template operator()<decltype(t) const>(t, f);
 	}
-#endif
 
 #if 0	// asym-asym
 	{
