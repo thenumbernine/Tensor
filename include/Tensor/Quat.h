@@ -22,8 +22,8 @@ struct _quat : public _vec4<Inner_> {
 	constexpr _quat() : Super(0,0,0,1) {}
 	constexpr _quat(Inner const & w) : Super(0,0,0,w) {}
 	constexpr _quat(Inner const & x, Inner const & y, Inner const & z, Inner const & w) : Super(x,y,z,w) {}
-	
-	TENSOR_ADD_DIMS()	// needed by TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS
+
+	//TENSOR_ADD_OPS parts:
 	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(_quat, _vec)
 	TENSOR_ADD_LAMBDA_CTOR(_quat)
 	TENSOR_ADD_ITERATOR()

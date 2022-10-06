@@ -109,8 +109,31 @@ struct TypeWrapper {
 	/* TODO make a 'count<int nesting>', same as dim? */\
 	static constexpr int localCount = localDim;
 
-// this contains definitions of types and values used in all tensors
-// TODO rename this to indicate it comes after TENSOR_*_HEADER()
+/*
+This contains definitions of types and values used in all tensors.
+Defines the following:
+Scalar
+rank
+intN
+numNestings
+intW
+ReplaceNested<int, typename>
+ExpandIthIndex<int> ... requires numNestingsToIndex<int>
+ExpandIndex<int...>
+ExpandIndexSeq<std::integer_sequence<T, T...>>
+ExpandAllIndexes<>
+RemoveIthNesting<int>
+RemoveIthIndex<int>
+RemoveIndex<int...>
+RemoveIndexSeq<std::integer_sequence<T, T...>>
+ReplaceDim<int, int>
+Nested<int>
+count<int>
+numNestingsToIndex<int>
+InnerForIndex<int>
+dim<int>
+dims
+*/
 #define TENSOR_HEADER()\
 \
 	/*  this is the child-most nested class that isn't in our math library. */\
@@ -305,10 +328,7 @@ struct TypeWrapper {
 		using type = typename decltype(value())::type;\
 	};\
 	template<int index, int newDim>\
-	using ReplaceDim = typename ReplaceDimImpl<index, newDim>::type;
-
-//::dims returns the total nested dimensions as an int-vec
-#define TENSOR_ADD_DIMS()\
+	using ReplaceDim = typename ReplaceDimImpl<index, newDim>::type;\
 \
 	template<int index>\
 	struct NestedImpl {\
@@ -901,7 +921,6 @@ ReadIterator vs WriteIterator
 //these are all per-element assignment operators,
 // so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
 #define TENSOR_ADD_OPS(classname)\
-	TENSOR_ADD_DIMS() /* needed by TENSOR_ADD_CTORS */\
 	TENSOR_ADD_ITERATOR() /* needed by TENSOR_ADD_CTORS */\
 	TENSOR_ADD_CTORS(classname) /* ctors, namely lambda ctor, needs read iterators*/ \
 	TENSOR_ADD_VECTOR_OP_EQ(+=)\
@@ -1705,7 +1724,7 @@ inline constexpr int antisymmetricSize(int d, int r) {
 	template<int newLocalDim>\
 	using ReplaceLocalDim = Template<Inner, newLocalDim, localRank>;
 
-#define TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_)\
+#define TENSOR_HEADER_TOTALLY_SYMMETRIC()\
 	static constexpr int localCount = symmetricSize(localDim, localRank);
 
 // TODO need to pull Template out of TENSOR_THIS
@@ -1717,8 +1736,8 @@ struct _symR {
 	TENSOR_THIS(_symR)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)
 	TENSOR_TEMPLATE_T_I_I(_symR)
-	TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_)
-	//TENSOR_HEADER()
+	TENSOR_HEADER_TOTALLY_SYMMETRIC()
+	TENSOR_HEADER()
 };
 
 // dense vec-of-vec
