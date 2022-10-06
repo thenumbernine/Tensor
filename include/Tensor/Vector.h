@@ -266,15 +266,23 @@ struct TypeWrapper {
 \
 	template<int index, int newDim>\
 	struct ReplaceDimImpl {\
-		using expanded = typename This\
-			::template ExpandIndex<index>;\
-		using type = typename expanded\
-			::template ReplaceNested<\
-				expanded::template numNestingsToIndex<index>,\
-				typename expanded\
-					::template InnerForIndex<index>\
-					::template ReplaceLocalDim<newDim>\
-			>;\
+		static constexpr auto value() {\
+			/*if constexpr (This::template dim<index> == newDim) {*/\
+			/*	return TypeWrapper<This>();*/\
+			/*} else */{\
+				using expanded = typename This\
+					::template ExpandIndex<index>;\
+				using type = typename expanded\
+					::template ReplaceNested<\
+						expanded::template numNestingsToIndex<index>,\
+						typename expanded\
+							::template InnerForIndex<index>\
+							::template ReplaceLocalDim<newDim>\
+					>;\
+				return TypeWrapper<type>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
 	};\
 	template<int index, int newDim>\
 	using ReplaceDim = typename ReplaceDimImpl<index, newDim>::type;
@@ -440,29 +448,29 @@ struct TypeWrapper {
 #define TENSOR_ADD_VECTOR_CALL_INDEX_PRIMARY()\
 \
 	/* a(i) := a_i */\
-	auto operator()(int i) -> decltype(s[i]) { return s[i]; }\
-	auto operator()(int i) const -> decltype(s[i]) { return s[i]; }
+	constexpr auto operator()(int i) -> decltype(s[i]) { return s[i]; }\
+	constexpr auto operator()(int i) const -> decltype(s[i]) { return s[i]; }
 
 #define TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
 \
 	/* a[i] := a_i */\
 	/* operator[int] calls through operator(int) */\
-	decltype(auto) operator[](int i) { return (*this)(i); }\
-	decltype(auto) operator[](int i) const { return (*this)(i); }\
+	constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
+	constexpr decltype(auto) operator[](int i) const { return (*this)(i); }\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	/* operator(int, int...) calls through operator(int) */\
 	template<typename... Rest>\
-	decltype(auto) operator()(int i, Rest... rest) { return (*this)(i)(rest...); }\
+	constexpr decltype(auto) operator()(int i, Rest... rest) { return (*this)(i)(rest...); }\
 	template<typename... Rest>\
-	decltype(auto) operator()(int i, Rest... rest) const { return (*this)(i)(rest...); }\
+	constexpr decltype(auto) operator()(int i, Rest... rest) const { return (*this)(i)(rest...); }\
 \
 	/* a(intN(i,...)) */\
 	/* operator(_vec<int,N>) calls through operator(int...) */\
 	template<int N>\
-	decltype(auto) operator()(_vec<int,N> const & i) { return std::apply(*this, i.s); }\
+	constexpr decltype(auto) operator()(_vec<int,N> const & i) { return std::apply(*this, i.s); }\
 	template<int N>\
-	decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }
+	constexpr decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }
 
 // TODO is this safe?
 #define TENSOR_ADD_SUBSET_ACCESS()\
@@ -1231,8 +1239,8 @@ int symIndex(int i, int j) {
 		using IndexResultConst = This::Accessor<This const>;\
 \
 		/* these should call into _sym(int,int) which is always Inner (const) & */\
-		auto operator()(int j) -> decltype(owner(i,j)) { return owner(i,j); }\
-		auto operator()(int j) const -> decltype(owner(i,j)) { return owner(i,j); }\
+		constexpr auto operator()(int j) -> decltype(owner(i,j)) { return owner(i,j); }\
+		constexpr auto operator()(int j) const -> decltype(owner(i,j)) { return owner(i,j); }\
 \
 		/* this provides the rest of the () [] operators that will be driven by operator(int) */\
 		TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
@@ -1247,11 +1255,11 @@ int symIndex(int i, int j) {
 	/* the type should always be Inner (const) & */\
 	/* symmetric has to define 1-arg operator() */\
 	/* that means I can't use the default so i have to make a 2-arg recursive case */\
-	auto operator()(int i, int j)\
+	constexpr auto operator()(int i, int j)\
 	-> decltype(s[symIndex<localDim>(i,j)]) {\
 		return s[symIndex<localDim>(i,j)];\
 	}\
-	auto operator()(int i, int j) const\
+	constexpr auto operator()(int i, int j) const\
 	-> decltype(s[symIndex<localDim>(i,j)]) {\
 		return s[symIndex<localDim>(i,j)];\
 	}
@@ -1261,23 +1269,23 @@ int symIndex(int i, int j) {
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	template<typename... Rest>\
-	decltype(auto) operator()(int i, int j, Rest... rest) { return (*this)(i,j)(rest...); }\
+	constexpr decltype(auto) operator()(int i, int j, Rest... rest) { return (*this)(i,j)(rest...); }\
 	template<typename... Rest>\
-	decltype(auto) operator()(int i, int j, Rest... rest) const { return (*this)(i,j)(rest...); }\
+	constexpr decltype(auto) operator()(int i, int j, Rest... rest) const { return (*this)(i,j)(rest...); }\
 \
-	decltype(auto) operator[](int i) { return Accessor<This>(*this, i); }\
-	decltype(auto) operator[](int i) const { return Accessor<This const>(*this, i); }\
+	constexpr decltype(auto) operator[](int i) { return Accessor<This>(*this, i); }\
+	constexpr decltype(auto) operator[](int i) const { return Accessor<This const>(*this, i); }\
 \
 	/* a(i) := a_i */\
 	/* this is incomplete so it returns the operator[] which returns the Accessor */\
-	decltype(auto) operator()(int i) { return (*this)[i]; }\
-	decltype(auto) operator()(int i) const { return (*this)[i]; }\
+	constexpr decltype(auto) operator()(int i) { return (*this)[i]; }\
+	constexpr decltype(auto) operator()(int i) const { return (*this)[i]; }\
 \
 	/* a(intN(i,...)) */\
 	template<int N>\
-	decltype(auto) operator()(_vec<int,N> const & i) { return std::apply(*this, i.s); }\
+	constexpr decltype(auto) operator()(_vec<int,N> const & i) { return std::apply(*this, i.s); }\
 	template<int N>\
-	decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }\
+	constexpr decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }\
 
 // currently set to upper-triangular
 // swap iread 0 and 1 to get lower-triangular
@@ -1493,8 +1501,8 @@ struct _sym<T,4> {
 \
 		/* this is AntiSymRef<Inner> for OwnerConstness==This */\
 		/* this is AntiSymRef<Inner const> for OwnerConstness==This const*/\
-		auto operator()(int j) -> decltype(owner(i,j)) { return owner(i,j); }\
-		auto operator()(int j) const -> decltype(owner(i,j)) { return owner(i,j); }\
+		constexpr auto operator()(int j) -> decltype(owner(i,j)) { return owner(i,j); }\
+		constexpr auto operator()(int j) const -> decltype(owner(i,j)) { return owner(i,j); }\
 \
 		/* this provides the rest of the () [] operators that will be driven by operator(int) */\
 		TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
@@ -1505,7 +1513,7 @@ struct _sym<T,4> {
 \
 	/* a(i,j) := a_ij = -a_ji */\
 	/* this is the direct acces */\
-	auto operator()(int i, int j) {\
+	constexpr auto operator()(int i, int j) {\
 		if (i == j) return AntiSymRef<Inner>();\
 		if (i < j) {\
 			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRefHow::POSITIVE);\
@@ -1513,7 +1521,7 @@ struct _sym<T,4> {
 			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}\
-	auto operator()(int i, int j) const {\
+	constexpr auto operator()(int i, int j) const {\
 		if (i == j) return AntiSymRef<Inner const>();\
 		if (i < j) {\
 			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRefHow::POSITIVE);\
@@ -1914,7 +1922,7 @@ auto outerProduct(T&&... args) {
 #if 0
 //https://stackoverflow.com/a/50471331
 template<typename T, std::size_t N, typename... Ts>
-constexpr std::array<T, N> permute(
+constexpr std::array<T, N> permuteArray(
 	std::array<T, N> const & arr,
 	std::array<int, N> const & permutation,
 	Ts&&... processed
@@ -1930,7 +1938,21 @@ constexpr std::array<T, N> permute(
 		);
 	}
 }
-// TODO how to unpack a tuple-of-ints into an argument list
+
+//aka 'reshape' ?  
+// nah reshape in matlab is for resizing dimensions and maintaining storage.
+// this is more of a swizzle (dimension-swap) but for ranks ... rank-swap ... index-swap ...
+template<typename T, typename I, I... Is>
+require (is_tensor_v<T>)
+auto permuteIndexes(T const & t) {
+	using R = 
+		T
+			... for each i ...
+			::template ReplaceDim<i, T::template dim<Is[i]>>;
+	return R([](typename R::intN i) -> typename R::Scalar {
+		return t(permuteArray(i));
+	});
+}
 #endif
 
 /*
@@ -1950,18 +1972,25 @@ auto transpose(T const & t) {
 	if constexpr (m == n) {
 		//don't reshape if we're flipping the same index with itself
 		return t;
-	} else if constexpr(
-		// don't reshape internal structure if we're using a symmetric matrix
+	} else if constexpr (
+		// don't reshape symmetric -- their transpose is identity
 		T::template numNestingsToIndex<m> == T::template numNestingsToIndex<n>
 		&& is_sym_v<T>
 	) {
 		return t;
+	} else if constexpr (
+		// don't reshape antisymmetric -- their transpose is negative
+		T::template numNestingsToIndex<m> == T::template numNestingsToIndex<n>
+		&& is_asym_v<T>
+	) {
+		return -t;
 	} else {	// m < n and they are different storage nestings
 		constexpr int mdim = T::template dim<m>;
 		constexpr int ndim = T::template dim<n>;
 		// now re-index E to exchange dimensions
 		// replace the storage at index m with an equivalent one but of dimension of n's index
 		using Tnm = typename T
+			::template ExpandIndex<m, n> //ReplaceDim doesn't guarantee to expand if the dims match
 			::template ReplaceDim<m, ndim>
 			::template ReplaceDim<n, mdim>;
 		return Tnm([&](typename Tnm::intN i) {
@@ -1980,7 +2009,7 @@ requires (is_tensor_v<T>
 )
 auto contract(T const & t) {
 	using S = typename T::Scalar;
-	if constexpr(m > n) {
+	if constexpr (m > n) {
 		//ensure m < n esp for swizzling index's sake
 		return contract<n,m,T>(t);
 	} else if constexpr (m == n) {

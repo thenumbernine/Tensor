@@ -47,6 +47,10 @@ determinant
 inverse
 */
 
+template<typename T>
+T sign (T x) {
+	return x == T{} ? T{} : (x < T{} ? (T)-1 : (T)1);
+};
 
 
 namespace StaticTest1 {
@@ -359,32 +363,9 @@ namespace StaticTest1 {
 
 		static_assert(is_same_v<Enm, float3x2>);
 	}
-	static_assert(
-		is_same_v<
-			decltype(
-				transpose(float3x3())
-			),
-			float3x3
-		>
-	);
-	static_assert(
-		is_same_v<
-			decltype(
-				transpose(float3s3())
-			),
-			float3s3
-		>
-	);
-#if 0 // TODO fixme by implementing _asym's operator(intN)
-	static_assert(
-		is_same_v<
-			decltype(
-				transpose(float3a3())
-			),
-			float3x3
-		>
-	);
-#endif
+	static_assert(is_same_v<decltype(transpose(float3x3())),float3x3>);
+	static_assert(is_same_v<decltype(transpose(float3s3())),float3s3>);
+	static_assert(is_same_v<decltype(transpose(float3a3())),float3a3>);
 	// test swapping dimensions correctly
 	namespace transposeTest1 {
 		using T = _tensor<int, 2,3,4,5>;
@@ -1297,8 +1278,7 @@ so a.s == {0,1,2,4,5,8};
 		ECHO(b);
 		TEST_EQ(b, t);
 
-		auto sign = [](int x) { return x == 0 ? 0 : (x < 0 ? -1 : 1); };
-		auto f = [sign](int i, int j) -> float { return sign(j-i)*(i+j); };
+		auto f = [](int i, int j) -> float { return sign(j-i)*(i+j); };
 		
 		auto verifyAccessAntisym = []<typename T>(T & t){
 			// "field" method access
@@ -1462,16 +1442,16 @@ so a.s == {0,1,2,4,5,8};
 		verifyAccessRank3.template operator()<decltype(t) const>(t, f);
 	}
 
-#if 0	// TODO write/read assertions fail
+#if 0
 	//vector-of-antisymmetric
 	{
 		using T3x3a3 = Tensor::_tensori<float, Tensor::index_vec<3>, Tensor::index_asym<3>>;
-		auto f = [](int i, int j, int k) -> float { return 4*i - j*j + k*k; };
+		auto f = [](int i, int j, int k) -> float { return sign(k-j)*(j+k+4*i); };
 		auto t = T3x3a3(f);
-		verifyAccessRank3.template operator()<decltype(t)>(t, f);
 		verifyAccessRank3.template operator()<decltype(t) const>(t, f);
+		verifyAccessRank3.template operator()<decltype(t)>(t, f);
 	}
-#endif	
+#endif
 	
 	// symmetric-of-vector
 	{

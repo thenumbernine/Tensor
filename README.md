@@ -5,7 +5,7 @@ and then getting into differential geometry and relativity, and trying to design
 this is the latest result.
 
 I know I've put the word "Tensor" in the title.
-Ever since the deep learning revolution in AI that computer scientists have come to believe that a "tensor" is an arbitrary dimensioned array of numbers, preferrably larger dimensioned.
+Ever since the deep learning revolution in AI that computer scientists have come to believe that a "tensor" is an arbitrary dimensioned array of numbers, preferrably larger dimensioned and smaller-indexed.
 But this library is moreso centered around "tensor" in the original definition, as "geometric object that lives in the tangent space at some point on a manifold and is invariant to coordinate transform."
 That means I am designing this library is centered around compile-time sized small arrays and larger ranks/degrees (whatever the term is for the number of indexes).
 
@@ -87,7 +87,7 @@ So I guess overall this library is midway between a mathematician's and a progra
 - `::ReplaceScalar<T>` = Create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
 	Should be equivalent to `This::ReplaceNested<This::numNestings, T>`.
 - `::ReplaceLocalDim<n>` = Replaces this tensor's localDim with a new dimension, n.
-- `::ReplaceDim<i,n>` = Replace the i'th index dimension with the dimension, n.
+- `::ReplaceDim<i,n>` = Replace the i'th index dimension with the dimension, n.  If the dimensions already match then nothing is done.  If not then the stroage at this index is expanded.
 - `::ExpandIthIndex<i>` = Produce a type with only the storage at the i'th index replaced with expanded storage.
 	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
 	So a `_sym`'s ExpandIthIndex<0> or <1> would produce a `_vec`-of-`_vec`, a `_sym`-of-`_vec`'s ExpandIthIndex<2> would return the same type, and a `_vec`-of-`_sym`'s ExpandIthIndex<0> would return the same type.
@@ -226,11 +226,12 @@ TODO:
 	This will allow for flexible allocations: a degree-2 tensor can have one dimension statically allocated and one dimension dynmamically allocated
 
 - should I even keep separate member functions for .dot() etc?
-- __complex__ support.  Especially in norms.
+- `__complex__` support.  Especially in norms.
 - preserve storage optimizations between tensor op tensor per-elem operations.  right now its just expanding all storage optimizations.
 
-- change all those functions types to be `is_tensor_v` when possible.
 - try to work around github's mathjax rendering errors.  looks fine on my own mathjax and on stackedit, but not on github.
+
+- `contractN` for contracting multiple indexes at once
 
 - InnerForIndex doesn't really get the inner, it gets the index, where index = corresponds with This, so call it something like "TypeForIndex"
 - call 'Nested' something else like 'Next', and 'numNestings' to 'numNext' ... since 'nested-class' is a term that could be mistaken with member-classes.
@@ -248,7 +249,7 @@ TODO:
 	maybe diagonalized rank-2 (N-DOF),
 	and then rank-N symmetric and antisymmetric.
 
-- any way to optimize symmetries between non-nested dimensions?
+- any way to optimize symmetries between non-neighboring dimensions?
 	- like $t_{ijkl} = a_{ij} b_{kl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
 
 - somehow for differing-typed tensors get operator== constexpr
@@ -270,3 +271,4 @@ TODO:
 	so meh i might as well keep it around?
 
 - might do some constexpr loop unrolling stuff maybe.
+- test case write tests should be writing different values and verifying
