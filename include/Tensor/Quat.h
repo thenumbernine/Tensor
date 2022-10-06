@@ -20,7 +20,10 @@ struct _quat : public _vec4<Inner_> {
 	using vec3 = _vec3<Inner>;
 
 	constexpr _quat() : Super(0,0,0,1) {}
+	
+	// mathematically, a real is equivalent to a quaternion with only the real component defined ...
 	constexpr _quat(Inner const & w) : Super(0,0,0,w) {}
+	
 	constexpr _quat(Inner const & x, Inner const & y, Inner const & z, Inner const & w) : Super(x,y,z,w) {}
 
 	//TENSOR_ADD_OPS parts:

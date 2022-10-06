@@ -430,7 +430,6 @@ namespace HasAccessorTest {
 	static_assert(Tensor::is_tensor_v<Tensor::float3x3>);
 	static_assert(Tensor::is_tensor_v<Tensor::float3s3>);
 	static_assert(Tensor::is_tensor_v<Tensor::float3a3>);
-	//static_assert(Tensor::is_tensor_v<Tensor::quatf>);	// TODO put this in the src/Quat.cpp test, or #include "Tensor/Quat.h" ... either way
 }
 
 namespace Test3 {

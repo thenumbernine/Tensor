@@ -559,6 +559,32 @@ ReplaceScalar<typename>
 		return Common::iteratorToOStream(o, *this);\
 	}
 
+#define TENSOR_ADD_SCALAR_CTOR(classname)\
+	constexpr classname(Scalar const & x) {\
+		for (int i = 0; i < localCount; ++i) {\
+			s[i] = x;\
+		}\
+	}
+
+// vector cast operator
+// TODO not sure how to write this to generalize into _sym and others (or if I should try to?)
+// explicit 'this->s' so subclasses can use this macro (like _quat)
+#define TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname, othername)\
+	template<typename U>\
+	/* TODO find a way to compare 'dims' instead of 'rank', then bounds would be guaranteed */\
+	/* or do I want to force matching bounds? */\
+	requires (is_tensor_v<U> && rank == U::rank)\
+	constexpr classname(U const & t) {\
+		auto w = write();\
+		for (auto i = w.begin(); i != w.end(); ++i) {\
+			/* TODO ensure if i.readIndex is in This's bounds ... */\
+			/* If we use operator()(intN<>) access working for _asym ... */\
+			/**i = (Scalar)t(i.readIndex);*/\
+			/* ... or just replace the internal storage with std::array ... */\
+			*i = std::apply(t, i.readIndex.s);\
+		}\
+	}
+
 // lambda ctor
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
 	/* use _vec<int, rank> as our lambda index: */\
@@ -609,36 +635,64 @@ ReplaceScalar<typename>
 		}\
 	}
 
-#define TENSOR_ADD_SCALAR_CTOR(classname)\
-	constexpr classname(Scalar const & x) {\
-		for (int i = 0; i < localCount; ++i) {\
-			s[i] = x;\
-		}\
-	}
-
-// vector cast operator
-// TODO not sure how to write this to generalize into _sym and others (or if I should try to?)
-// explicit 'this->s' so subclasses can use this macro (like _quat)
-#define TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname, othername)\
-	template<typename U>\
-	/* TODO find a way to compare 'dims' instead of 'rank', then bounds would be guaranteed */\
-	requires (is_tensor_v<U> && rank == U::rank)\
-	constexpr classname(U const & t) {\
-		auto w = write();\
-		for (auto i = w.begin(); i != w.end(); ++i) {\
-			/* TODO ensure if i.readIndex is in This's bounds ... */\
-			/* If we use operator()(intN<>) access working for _asym ... */\
-			/**i = (Scalar)t(i.readIndex);*/\
-			/* ... or just replace the internal storage with std::array ... */\
-			*i = std::apply(t, i.readIndex.s);\
-		}\
-	}
+#define TENSOR_ADD_ARG_CTOR(classname)\
+\
+	/* vec2 */\
+	constexpr classname(\
+		Inner const & s0_,\
+		Inner const & s1_)\
+	requires (localCount >= 2)\
+	: s({s0_, s1_}) {}\
+\
+	/* vec3, sym2, asym3 */\
+	constexpr classname(\
+		Inner const & s0_,\
+		Inner const & s1_,\
+		Inner const & s2_)\
+	requires (localCount >= 3)\
+	: s({s0_, s1_, s2_}) {}\
+\
+	/* vec4, quat */\
+	constexpr classname(\
+		Inner const & s0_,\
+		Inner const & s1_,\
+		Inner const & s2_,\
+		Inner const & s3_)\
+	requires (localCount >= 4)\
+	: s({s0_, s1_, s2_, s3_}) {}\
+\
+	/* sym3, asym4 */\
+	constexpr classname(\
+		Inner const & s0_,\
+		Inner const & s1_,\
+		Inner const & s2_,\
+		Inner const & s3_,\
+		Inner const & s4_,\
+		Inner const & s5_)\
+	requires (localCount >= 6)\
+	: s({s0_, s1_, s2_, s3_, s4_, s5_}) {}\
+\
+	/* sym4 */\
+	constexpr classname(\
+		Inner const & s0_,\
+		Inner const & s1_,\
+		Inner const & s2_,\
+		Inner const & s3_,\
+		Inner const & s4_,\
+		Inner const & s5_,\
+		Inner const & s6_,\
+		Inner const & s7_,\
+		Inner const & s8_,\
+		Inner const & s9_)\
+	requires (localCount >= 10)\
+	: s({s0_, s1_, s2_, s3_, s4_, s5_, s6_, s7_, s8_, s9_}) {}
 
 #define TENSOR_ADD_CTORS(classname)\
 	TENSOR_ADD_SCALAR_CTOR(classname)\
 	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname, classname)\
 	TENSOR_ADD_LAMBDA_CTOR(classname)\
-	TENSOR_ADD_LIST_CTOR(classname)
+	TENSOR_ADD_LIST_CTOR(classname)\
+	TENSOR_ADD_ARG_CTOR(classname)
 
 /*
 TODO InnerIterator (iterator i1 first) vs OuterIterator (iterator iN first)
@@ -991,17 +1045,14 @@ struct _vec<Inner_,2> {
 
 	union {
 		struct {
-			Inner x;
-			Inner y;
+			Inner x, y;
 		};
 		struct {
-			Inner s0;
-			Inner s1;
+			Inner s0, s1;
 		};
-		std::array<Inner,localCount> s = {};
+		std::array<Inner, localCount> s = {};
 	};
 	constexpr _vec() {}
-	constexpr _vec(Inner x_, Inner y_) : x(x_), y(y_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1065,19 +1116,14 @@ struct _vec<Inner_,3> {
 
 	union {
 		struct {
-			Inner x;
-			Inner y;
-			Inner z;
+			Inner x, y, z;
 		};
 		struct {
-			Inner s0;
-			Inner s1;
-			Inner s2;
+			Inner s0, s1, s2;
 		};
 		std::array<Inner, localCount> s = {};
 	};
 	constexpr _vec() {}
-	constexpr _vec(Inner x_, Inner y_, Inner z_) : x(x_), y(y_), z(z_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1152,21 +1198,14 @@ struct _vec<Inner_,4> {
 
 	union {
 		struct {
-			Inner x;
-			Inner y;
-			Inner z;
-			Inner w;
+			Inner x, y, z, w;
 		};
 		struct {
-			Inner s0;
-			Inner s1;
-			Inner s2;
-			Inner s3;
+			Inner s0, s1, s2, s3;
 		};
 		std::array<Inner, localCount> s = {};
 	};
 	constexpr _vec() {}
-	constexpr _vec(Inner x_, Inner y_, Inner z_, Inner w_) : x(x_), y(y_), z(z_), w(w_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1383,7 +1422,6 @@ struct _sym<Inner_,2> {
 		std::array<Inner, localCount> s = {};
 	};
 	constexpr _sym() {}
-	constexpr _sym(Inner x_x_, Inner x_y_, Inner y_y_) : x_x(x_x_), x_y(x_y_), y_y(y_y_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x_x", &This::x_x),
@@ -1417,19 +1455,6 @@ struct _sym<Inner_,3> {
 		std::array<Inner, localCount> s = {};
 	};
 	constexpr _sym() {}
-	constexpr _sym(
-		Inner const & x_x_,
-		Inner const & x_y_,
-		Inner const & y_y_,
-		Inner const & x_z_,
-		Inner const & y_z_,
-		Inner const & z_z_
-	) : x_x(x_x_),
-		x_y(x_y_),
-		y_y(y_y_),
-		x_z(x_z_),
-		y_z(y_z_),
-		z_z(z_z_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x_x", &This::x_x),
@@ -1470,27 +1495,6 @@ struct _sym<Inner_,4> {
 		std::array<Inner, localCount> s = {};
 	};
 	constexpr _sym() {}
-	constexpr _sym(
-		Inner const & x_x_,
-		Inner const & x_y_,
-		Inner const & y_y_,
-		Inner const & x_z_,
-		Inner const & y_z_,
-		Inner const & z_z_,
-		Inner const & x_w_,
-		Inner const & y_w_,
-		Inner const & z_w_,
-		Inner const & w_w_
-	) : x_x(x_x_),
-		x_y(x_y_),
-		y_y(y_y_),
-		x_z(x_z_),
-		y_z(y_z_),
-		z_z(z_z_),
-		x_w(x_w_),
-		y_w(y_w_),
-		z_w(z_w_),
-		w_w(w_w_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x_x", &This::x_x),
@@ -1593,14 +1597,6 @@ struct _asym {
 
 	std::array<Inner, localCount> s = {};
 	constexpr _asym() {}
-
-	//don't need cuz scalar ctor in TENSOR_ADD_SCALAR_CTOR
-	//constexpr _asym(Inner x_y_) requires (localDim == 2) : s{x_y_} {}
-	
-	// TODO how about vararg, require they all match and match the dim, and then array init?
-	// for every-case (and every tensor type) ... could go in a macro
-	constexpr _asym(Inner xy, Inner xz, Inner yz) requires (localDim == 3) : s{xy, xz, yz} {}
-	constexpr _asym(Inner xy, Inner xz, Inner yz, Inner xw, Inner yw, Inner zw, Inner ww) requires (localDim == 4) : s{xy, xz, yz, xw, yw, zw, ww} {}
 
 	// I figured I could do the union/struct thing like in _sym, but then half would be methods that returned refs and the other half would be fields..
 	// so if I just make everything methods then there is some consistancy.

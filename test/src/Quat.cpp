@@ -1,6 +1,9 @@
 #include "Tensor/Quat.h"
 #include "Common/Test.h"
 
+//ehhh ?
+static_assert(Tensor::is_tensor_v<Tensor::quatf>);
+
 constexpr float epsilon = 1e-6;
 
 //#define TEST_QUAT_EQ(a,b) TEST_EQ_EPS(Tensor::distance(a,b), 0, epsilon)
