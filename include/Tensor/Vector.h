@@ -267,9 +267,9 @@ struct TypeWrapper {
 	template<int index, int newDim>\
 	struct ReplaceDimImpl {\
 		static constexpr auto value() {\
-			/*if constexpr (This::template dim<index> == newDim) {*/\
-			/*	return TypeWrapper<This>();*/\
-			/*} else */{\
+			if constexpr (This::template dim<index> == newDim) {\
+				return TypeWrapper<This>();\
+			} else {\
 				using expanded = typename This\
 					::template ExpandIndex<index>;\
 				using type = typename expanded\
