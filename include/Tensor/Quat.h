@@ -27,7 +27,6 @@ struct _quat : public _vec4<Inner_> {
 	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(_quat, _vec)
 	TENSOR_ADD_LAMBDA_CTOR(_quat)
 	TENSOR_ADD_ITERATOR()
-	TENSOR_ADD_REPLACE_SCALAR()
 	
 	//conjugate 
 	// same as inverse if the quat is unit length

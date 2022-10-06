@@ -84,7 +84,7 @@ struct TypeWrapper {
 	template<typename Inner2>\
 	using Template = classname<Inner2>;\
 \
-	template <typename NewInner>\
+	template<typename NewInner>\
 	using ReplaceInner = Template<NewInner>;\
 \
 	template<int newLocalDim>\
@@ -95,7 +95,7 @@ struct TypeWrapper {
 	template<typename Inner2, int localDim2>\
 	using Template = classname<Inner2, localDim2>;\
 \
-	template <typename NewInner>\
+	template<typename NewInner>\
 	using ReplaceInner = Template<NewInner, localDim>;\
 \
 	template<int newLocalDim>\
@@ -133,6 +133,7 @@ numNestingsToIndex<int>
 InnerForIndex<int>
 dim<int>
 dims
+ReplaceScalar<typename>
 */
 #define TENSOR_HEADER()\
 \
@@ -244,7 +245,7 @@ dims
 	using ExpandAllIndexes = ExpandIndexSeq<std::make_integer_sequence<int, deferRank>>;\
 \
 	/* remove the i'th nesting, i from 0 to numNestings-1 */\
-	template <int i>\
+	template<int i>\
 	struct RemoveIthNestingImpl {\
 		static constexpr auto value() {\
 			if constexpr (i == 0) {\
@@ -405,7 +406,21 @@ dims
 		}\
 	}\
 	static constexpr auto dims = DimsImpl();\
-	/* TODO index_sequence of dims? */
+	/* TODO index_sequence of dims? */\
+\
+	template<typename NewScalar>\
+	struct ReplaceScalarImpl {\
+		static constexpr auto value() {\
+			if constexpr (numNestings == 1) {\
+				return NewScalar();\
+			} else {\
+				return typename Inner::template ReplaceScalar<NewScalar>();\
+			}\
+		}\
+		using type = decltype(value());\
+	};\
+	template<typename NewScalar>\
+	using ReplaceScalar = ReplaceInner<typename ReplaceScalarImpl<NewScalar>::type>;
 
 //for giving operators to tensor classes
 //how can you add correctly-typed ops via crtp to a union?
@@ -558,7 +573,7 @@ dims
 	/* since I can't just accept function(Scalar(int,...)), I need to require the type to match */\
 	/* mind you in C++ I can't just say the signature is FunctionFromLambda<Lambda>::FuncType ... */\
 	/* no ... I have to accept all and then requires that part */\
-	template <typename Lambda>\
+	template<typename Lambda>\
 	classname(Lambda lambda)\
 	requires (\
 		std::is_same_v<\
@@ -885,21 +900,6 @@ ReadIterator vs WriteIterator
 	/* wait, if Write<This> write() is called by a const object ... then the return type is const ... could I detect that from within Write to forward on to Write's inner class ctor? */\
 	Write<This const> write() const { return Write<This const>(*this); }
 
-#define TENSOR_ADD_REPLACE_SCALAR()\
-	template<typename NewScalar>\
-	struct ReplaceScalarImpl {\
-		static constexpr auto value() {\
-			if constexpr (numNestings == 1) {\
-				return NewScalar();\
-			} else {\
-				return typename Inner::template ReplaceScalar<NewScalar>();\
-			}\
-		}\
-		using type = decltype(value());\
-	};\
-	template<typename NewScalar>\
-	using ReplaceScalar = ReplaceInner<typename ReplaceScalarImpl<NewScalar>::type>;
-
 // vector.volume() == the volume of a size reprensted by the vector
 // assumes Inner operator* exists
 // TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims
@@ -932,8 +932,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_SCALAR_OP_EQ(*=)\
 	TENSOR_ADD_SCALAR_OP_EQ(/=)\
 	TENSOR_ADD_UNM()\
-	TENSOR_ADD_CMP_OP()\
-	TENSOR_ADD_REPLACE_SCALAR()
+	TENSOR_ADD_CMP_OP()
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
@@ -1379,9 +1378,7 @@ struct _sym<Inner_,2> {
 			Inner y_y;
 		};
 		struct {
-			Inner s00;
-			Inner s01;
-			Inner s11;
+			Inner s00, s01, s11;
 		};
 		std::array<Inner, localCount> s = {};
 	};
@@ -1415,12 +1412,7 @@ struct _sym<Inner_,3> {
 			Inner z_z;
 		};
 		struct {
-			Inner s00;
-			Inner s01;
-			Inner s11;
-			Inner s02;
-			Inner s12;
-			Inner s22;
+			Inner s00, s01, s11, s02, s12, s22;
 		};
 		std::array<Inner, localCount> s = {};
 	};
@@ -1473,16 +1465,7 @@ struct _sym<Inner_,4> {
 			Inner w_w;
 		};
 		struct {
-			Inner s00;
-			Inner s01;
-			Inner s11;
-			Inner s02;
-			Inner s12;
-			Inner s22;
-			Inner s03;
-			Inner s13;
-			Inner s23;
-			Inner s33;
+			Inner s00, s01, s11, s02, s12, s22, s03, s13, s23, s33;
 		};
 		std::array<Inner, localCount> s = {};
 	};
@@ -1718,7 +1701,7 @@ inline constexpr int antisymmetricSize(int d, int r) {
 	template<typename Inner2, int localDim2, int localRank2>\
 	using Template = classname<Inner2, localDim2, localRank2>;\
 \
-	template <typename NewInner>\
+	template<typename NewInner>\
 	using ReplaceInner = Template<NewInner, localDim, localRank>;\
 \
 	template<int newLocalDim>\
@@ -1781,15 +1764,15 @@ struct index_asym {
 };
 
 // hmm, I'm trying to use these index_*'s in combination with is_instance_v<T, index_*<dim>::template type> but it's failing, so here they are specialized
-template <typename T> struct is_vec : public std::false_type {};
+template<typename T> struct is_vec : public std::false_type {};
 template<typename T, int i> struct is_vec<_vec<T,i>> : public std::true_type {};
 template<typename T> constexpr bool is_vec_v = is_vec<T>::value;
 
-template <typename T> struct is_sym : public std::false_type {};
+template<typename T> struct is_sym : public std::false_type {};
 template<typename T, int i> struct is_sym<_sym<T,i>> : public std::true_type {};
 template<typename T> constexpr bool is_sym_v = is_sym<T>::value;
 
-template <typename T> struct is_asym : public std::false_type {};
+template<typename T> struct is_asym : public std::false_type {};
 template<typename T, int i> struct is_asym<_asym<T,i>> : public std::true_type {};
 template<typename T> constexpr bool is_asym_v = is_asym<T>::value;
 
