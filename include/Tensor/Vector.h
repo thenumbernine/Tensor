@@ -946,7 +946,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_VOLUME()\
 	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()
 
-template<typename T, int dim_>
+template<typename Inner, int localDim>
 struct _vec;
 
 // type of a tensor with specific rank and dimension (for all indexes)
@@ -954,27 +954,27 @@ struct _vec;
 
 template<typename Scalar, int dim, int rank>
 struct _tensorr_impl {
-	using T = _vec<typename _tensorr_impl<Scalar, dim, rank-1>::T, dim>;
+	using type = _vec<typename _tensorr_impl<Scalar, dim, rank-1>::type, dim>;
 };
 template<typename Scalar, int dim>
 struct _tensorr_impl<Scalar, dim, 0> {
-	using T = Scalar;
+	using type = Scalar;
 };
 template<typename Src, int dim, int rank>
-using _tensorr = typename _tensorr_impl<Src, dim, rank>::T;
+using _tensorr = typename _tensorr_impl<Src, dim, rank>::type;
 
 // default
 
 // this is this class.  useful for templates.  you'd be surprised.
-template<typename T, int dim_>
+template<typename Inner_, int localDim_>
 struct _vec {
 	TENSOR_THIS(_vec)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, dim_, 1)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 1)
 	TENSOR_TEMPLATE_T_I(_vec)
 	TENSOR_HEADER_VECTOR()
 	TENSOR_HEADER()
 
-	std::array<T,localCount> s = {};
+	std::array<Inner, localCount> s = {};
 	constexpr _vec() {}
 	
 	TENSOR_VECTOR_CLASS_OPS(_vec)
@@ -982,27 +982,27 @@ struct _vec {
 
 // size == 2 specialization
 
-template<typename T>
-struct _vec<T,2> {
+template<typename Inner_>
+struct _vec<Inner_,2> {
 	TENSOR_THIS(_vec)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 2, 1)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 2, 1)
 	TENSOR_TEMPLATE_T_I(_vec)
 	TENSOR_HEADER_VECTOR()
 	TENSOR_HEADER()
 
 	union {
 		struct {
-			T x;
-			T y;
+			Inner x;
+			Inner y;
 		};
 		struct {
-			T s0;
-			T s1;
+			Inner s0;
+			Inner s1;
 		};
-		std::array<T,localCount> s = {};
+		std::array<Inner,localCount> s = {};
 	};
 	constexpr _vec() {}
-	constexpr _vec(T x_, T y_) : x(x_), y(y_) {}
+	constexpr _vec(Inner x_, Inner y_) : x(x_), y(y_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1013,7 +1013,7 @@ struct _vec<T,2> {
 
 	// 2-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE2_ij(i, j)\
-	auto i ## j () { return _vec<std::reference_wrapper<T>, 2>(i, j); }
+	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }
 #define TENSOR_VEC2_ADD_SWIZZLE2_i(i)\
 	TENSOR_VEC2_ADD_SWIZZLE2_ij(i,x)\
 	TENSOR_VEC2_ADD_SWIZZLE2_ij(i,y)
@@ -1024,7 +1024,7 @@ struct _vec<T,2> {
 	
 	// 3-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE3_ijk(i, j, k)\
-	auto i ## j ## k() { return _vec<std::reference_wrapper<T>, 3>(i, j, k); }
+	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }
 #define TENSOR_VEC2_ADD_SWIZZLE3_ij(i,j)\
 	TENSOR_VEC2_ADD_SWIZZLE3_ijk(i,j,x)\
 	TENSOR_VEC2_ADD_SWIZZLE3_ijk(i,j,y)
@@ -1038,7 +1038,7 @@ struct _vec<T,2> {
 
 	// 4-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i, j, k, l)\
-	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<T>, 4>(i, j, k, l); }
+	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }
 #define TENSOR_VEC2_ADD_SWIZZLE4_ijk(i,j,k)\
 	TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,x)\
 	TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,y)
@@ -1056,29 +1056,29 @@ struct _vec<T,2> {
 
 // size == 3 specialization
 
-template<typename T>
-struct _vec<T,3> {
+template<typename Inner_>
+struct _vec<Inner_,3> {
 	TENSOR_THIS(_vec)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 3, 1)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 3, 1)
 	TENSOR_TEMPLATE_T_I(_vec)
 	TENSOR_HEADER_VECTOR()
 	TENSOR_HEADER()
 
 	union {
 		struct {
-			T x;
-			T y;
-			T z;
+			Inner x;
+			Inner y;
+			Inner z;
 		};
 		struct {
-			T s0;
-			T s1;
-			T s2;
+			Inner s0;
+			Inner s1;
+			Inner s2;
 		};
-		std::array<T, localCount> s = {};
+		std::array<Inner, localCount> s = {};
 	};
 	constexpr _vec() {}
-	constexpr _vec(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
+	constexpr _vec(Inner x_, Inner y_, Inner z_) : x(x_), y(y_), z(z_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1090,7 +1090,7 @@ struct _vec<T,3> {
 
 	// 2-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE2_ij(i, j)\
-	auto i ## j () { return _vec<std::reference_wrapper<T>, 2>(i, j); }
+	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }
 #define TENSOR_VEC3_ADD_SWIZZLE2_i(i)\
 	TENSOR_VEC3_ADD_SWIZZLE2_ij(i,x)\
 	TENSOR_VEC3_ADD_SWIZZLE2_ij(i,y)\
@@ -1103,7 +1103,7 @@ struct _vec<T,3> {
 	
 	// 3-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE3_ijk(i, j, k)\
-	auto i ## j ## k() { return _vec<std::reference_wrapper<T>, 3>(i, j, k); }
+	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }
 #define TENSOR_VEC3_ADD_SWIZZLE3_ij(i,j)\
 	TENSOR_VEC3_ADD_SWIZZLE3_ijk(i,j,x)\
 	TENSOR_VEC3_ADD_SWIZZLE3_ijk(i,j,y)\
@@ -1120,7 +1120,7 @@ struct _vec<T,3> {
 
 	// 4-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i, j, k, l)\
-	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<T>, 4>(i, j, k, l); }
+	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }
 #define TENSOR_VEC3_ADD_SWIZZLE4_ijk(i,j,k)\
 	TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,x)\
 	TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,y)\
@@ -1143,31 +1143,31 @@ struct _vec<T,3> {
 // TODO specialization for & types -- don't initialize the s[] array (cuz in C++ you can't)
 /// tho a workaround is just use std::reference<>
 
-template<typename T>
-struct _vec<T,4> {
+template<typename Inner_>
+struct _vec<Inner_,4> {
 	TENSOR_THIS(_vec)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 4, 1)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 1)
 	TENSOR_TEMPLATE_T_I(_vec)
 	TENSOR_HEADER_VECTOR()
 	TENSOR_HEADER()
 
 	union {
 		struct {
-			T x;
-			T y;
-			T z;
-			T w;
+			Inner x;
+			Inner y;
+			Inner z;
+			Inner w;
 		};
 		struct {
-			T s0;
-			T s1;
-			T s2;
-			T s3;
+			Inner s0;
+			Inner s1;
+			Inner s2;
+			Inner s3;
 		};
-		std::array<T, localCount> s = {};
+		std::array<Inner, localCount> s = {};
 	};
 	constexpr _vec() {}
-	constexpr _vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
+	constexpr _vec(Inner x_, Inner y_, Inner z_, Inner w_) : x(x_), y(y_), z(z_), w(w_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1180,7 +1180,7 @@ struct _vec<T,4> {
 
 	// 2-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE2_ij(i, j)\
-	auto i ## j () { return _vec<std::reference_wrapper<T>, 2>(i, j); }
+	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }
 #define TENSOR_VEC4_ADD_SWIZZLE2_i(i)\
 	TENSOR_VEC4_ADD_SWIZZLE2_ij(i,x)\
 	TENSOR_VEC4_ADD_SWIZZLE2_ij(i,y)\
@@ -1195,7 +1195,7 @@ struct _vec<T,4> {
 	
 	// 3-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE3_ijk(i, j, k)\
-	auto i ## j ## k() { return _vec<std::reference_wrapper<T>, 3>(i, j, k); }
+	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }
 #define TENSOR_VEC4_ADD_SWIZZLE3_ij(i,j)\
 	TENSOR_VEC4_ADD_SWIZZLE3_ijk(i,j,x)\
 	TENSOR_VEC4_ADD_SWIZZLE3_ijk(i,j,y)\
@@ -1215,7 +1215,7 @@ struct _vec<T,4> {
 
 	// 4-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i, j, k, l)\
-	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<T>, 4>(i, j, k, l); }
+	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }
 #define TENSOR_VEC4_ADD_SWIZZLE4_ijk(i,j,k)\
 	TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,x)\
 	TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,y)\
@@ -1350,43 +1350,43 @@ so the accessors need nested call indexing too
 	TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
 	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()
 
-template<typename T, int dim_>
+template<typename Inner_, int localDim_>
 struct _sym {
 	TENSOR_THIS(_sym)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, dim_, 2)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)
 	TENSOR_TEMPLATE_T_I(_sym)
 	TENSOR_HEADER_SYMMETRIC_MATRIX()
 	TENSOR_HEADER()
 
-	std::array<T,localCount> s = {};
+	std::array<Inner,localCount> s = {};
 	constexpr _sym() {}
 
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
 };
 
-template<typename T>
-struct _sym<T,2> {
+template<typename Inner_>
+struct _sym<Inner_,2> {
 	TENSOR_THIS(_sym)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 2, 2)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 2, 2)
 	TENSOR_TEMPLATE_T_I(_sym)
 	TENSOR_HEADER_SYMMETRIC_MATRIX()
 	TENSOR_HEADER()
 
 	union {
 		struct {
-			T x_x;
-			union { T x_y; T y_x; };
-			T y_y;
+			Inner x_x;
+			union { Inner x_y; Inner y_x; };
+			Inner y_y;
 		};
 		struct {
-			T s00;
-			T s01;
-			T s11;
+			Inner s00;
+			Inner s01;
+			Inner s11;
 		};
-		std::array<T, localCount> s = {};
+		std::array<Inner, localCount> s = {};
 	};
 	constexpr _sym() {}
-	constexpr _sym(T x_x_, T x_y_, T y_y_) : x_x(x_x_), x_y(x_y_), y_y(y_y_) {}
+	constexpr _sym(Inner x_x_, Inner x_y_, Inner y_y_) : x_x(x_x_), x_y(x_y_), y_y(y_y_) {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x_x", &This::x_x),
@@ -1397,41 +1397,41 @@ struct _sym<T,2> {
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
 };
 
-template<typename T>
-struct _sym<T,3> {
+template<typename Inner_>
+struct _sym<Inner_,3> {
 	TENSOR_THIS(_sym)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 3, 2)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 3, 2)
 	TENSOR_TEMPLATE_T_I(_sym)
 	TENSOR_HEADER_SYMMETRIC_MATRIX()
 	TENSOR_HEADER()
 
 	union {
 		struct {
-			T x_x;
-			union { T x_y; T y_x; };
-			T y_y;
-			union { T x_z; T z_x; };
-			union { T y_z; T z_y; };
-			T z_z;
+			Inner x_x;
+			union { Inner x_y; Inner y_x; };
+			Inner y_y;
+			union { Inner x_z; Inner z_x; };
+			union { Inner y_z; Inner z_y; };
+			Inner z_z;
 		};
 		struct {
-			T s00;
-			T s01;
-			T s11;
-			T s02;
-			T s12;
-			T s22;
+			Inner s00;
+			Inner s01;
+			Inner s11;
+			Inner s02;
+			Inner s12;
+			Inner s22;
 		};
-		std::array<T,localCount> s = {};
+		std::array<Inner, localCount> s = {};
 	};
 	constexpr _sym() {}
 	constexpr _sym(
-		T const & x_x_,
-		T const & x_y_,
-		T const & y_y_,
-		T const & x_z_,
-		T const & y_z_,
-		T const & z_z_
+		Inner const & x_x_,
+		Inner const & x_y_,
+		Inner const & y_y_,
+		Inner const & x_z_,
+		Inner const & y_z_,
+		Inner const & z_z_
 	) : x_x(x_x_),
 		x_y(x_y_),
 		y_y(y_y_),
@@ -1451,53 +1451,53 @@ struct _sym<T,3> {
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
 };
 
-template<typename T>
-struct _sym<T,4> {
+template<typename Inner_>
+struct _sym<Inner_,4> {
 	TENSOR_THIS(_sym)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 4, 2)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 2)
 	TENSOR_TEMPLATE_T_I(_sym)
 	TENSOR_HEADER_SYMMETRIC_MATRIX()
 	TENSOR_HEADER()
 
 	union {
 		struct {
-			T x_x;
-			union { T x_y; T y_x; };
-			T y_y;
-			union { T x_z; T z_x; };
-			union { T y_z; T z_y; };
-			T z_z;
-			union { T x_w; T w_x; };
-			union { T y_w; T w_y; };
-			union { T z_w; T w_z; };
-			T w_w;
+			Inner x_x;
+			union { Inner x_y; Inner y_x; };
+			Inner y_y;
+			union { Inner x_z; Inner z_x; };
+			union { Inner y_z; Inner z_y; };
+			Inner z_z;
+			union { Inner x_w; Inner w_x; };
+			union { Inner y_w; Inner w_y; };
+			union { Inner z_w; Inner w_z; };
+			Inner w_w;
 		};
 		struct {
-			T s00;
-			T s01;
-			T s11;
-			T s02;
-			T s12;
-			T s22;
-			T s03;
-			T s13;
-			T s23;
-			T s33;
+			Inner s00;
+			Inner s01;
+			Inner s11;
+			Inner s02;
+			Inner s12;
+			Inner s22;
+			Inner s03;
+			Inner s13;
+			Inner s23;
+			Inner s33;
 		};
-		std::array<T, localCount> s = {};
+		std::array<Inner, localCount> s = {};
 	};
 	constexpr _sym() {}
 	constexpr _sym(
-		T const & x_x_,
-		T const & x_y_,
-		T const & y_y_,
-		T const & x_z_,
-		T const & y_z_,
-		T const & z_z_,
-		T const & x_w_,
-		T const & y_w_,
-		T const & z_w_,
-		T const & w_w_
+		Inner const & x_x_,
+		Inner const & x_y_,
+		Inner const & y_y_,
+		Inner const & x_z_,
+		Inner const & y_z_,
+		Inner const & z_z_,
+		Inner const & x_w_,
+		Inner const & y_w_,
+		Inner const & z_w_,
+		Inner const & w_w_
 	) : x_x(x_x_),
 		x_y(x_y_),
 		y_y(y_y_),
@@ -1600,62 +1600,62 @@ so next thought, expose all as methods to return references
 but then if I'm not using any fields then I don't need any specializations
 so no specialized sizes for _asym
 */
-template<typename T, int dim_>
+template<typename Inner_, int localDim_>
 struct _asym {
 	TENSOR_THIS(_asym)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, dim_, 2)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)
 	TENSOR_TEMPLATE_T_I(_asym)
 	TENSOR_HEADER_ANTISYMMETRIC_MATRIX()
 	TENSOR_HEADER()
 
-	std::array<T, localCount> s = {};
+	std::array<Inner, localCount> s = {};
 	constexpr _asym() {}
 
 	//don't need cuz scalar ctor in TENSOR_ADD_SCALAR_CTOR
-	//constexpr _asym(T x_y_) requires (dim_ == 2) : s{x_y_} {}
+	//constexpr _asym(Inner x_y_) requires (localDim == 2) : s{x_y_} {}
 	
 	// TODO how about vararg, require they all match and match the dim, and then array init?
 	// for every-case (and every tensor type) ... could go in a macro
-	constexpr _asym(T xy, T xz, T yz) requires (dim_ == 3) : s{xy, xz, yz} {}
-	constexpr _asym(T xy, T xz, T yz, T xw, T yw, T zw, T ww) requires (dim_ == 4) : s{xy, xz, yz, xw, yw, zw, ww} {}
+	constexpr _asym(Inner xy, Inner xz, Inner yz) requires (localDim == 3) : s{xy, xz, yz} {}
+	constexpr _asym(Inner xy, Inner xz, Inner yz, Inner xw, Inner yw, Inner zw, Inner ww) requires (localDim == 4) : s{xy, xz, yz, xw, yw, zw, ww} {}
 
 	// I figured I could do the union/struct thing like in _sym, but then half would be methods that returned refs and the other half would be fields..
 	// so if I just make everything methods then there is some consistancy.
-	AntiSymRef<Inner		> x_x() 		requires (dim_ > 0) { return (*this)(0,0); }
-	AntiSymRef<Inner const	> x_x() const 	requires (dim_ > 0) { return (*this)(0,0); }
+	AntiSymRef<Inner		> x_x() 		requires (localDim > 0) { return (*this)(0,0); }
+	AntiSymRef<Inner const	> x_x() const 	requires (localDim > 0) { return (*this)(0,0); }
 	
-	AntiSymRef<Inner		> x_y() 		requires (dim_ > 1) { return (*this)(0,1); }
-	AntiSymRef<Inner const	> x_y() const 	requires (dim_ > 1) { return (*this)(0,1); }
-	AntiSymRef<Inner		> y_x() 		requires (dim_ > 1) { return (*this)(1,0); }
-	AntiSymRef<Inner const	> y_x() const 	requires (dim_ > 1) { return (*this)(1,0); }
-	AntiSymRef<Inner		> y_y() 		requires (dim_ > 1) { return (*this)(1,1); }
-	AntiSymRef<Inner const	> y_y() const 	requires (dim_ > 1) { return (*this)(1,1); }
+	AntiSymRef<Inner		> x_y() 		requires (localDim > 1) { return (*this)(0,1); }
+	AntiSymRef<Inner const	> x_y() const 	requires (localDim > 1) { return (*this)(0,1); }
+	AntiSymRef<Inner		> y_x() 		requires (localDim > 1) { return (*this)(1,0); }
+	AntiSymRef<Inner const	> y_x() const 	requires (localDim > 1) { return (*this)(1,0); }
+	AntiSymRef<Inner		> y_y() 		requires (localDim > 1) { return (*this)(1,1); }
+	AntiSymRef<Inner const	> y_y() const 	requires (localDim > 1) { return (*this)(1,1); }
 	
-	AntiSymRef<Inner		> x_z() 		requires (dim_ > 2) { return (*this)(0,2); }
-	AntiSymRef<Inner const	> x_z() const 	requires (dim_ > 2) { return (*this)(0,2); }
-	AntiSymRef<Inner		> z_x() 		requires (dim_ > 2) { return (*this)(2,0); }
-	AntiSymRef<Inner const	> z_x() const 	requires (dim_ > 2) { return (*this)(2,0); }
-	AntiSymRef<Inner		> y_z() 		requires (dim_ > 2) { return (*this)(1,2); }
-	AntiSymRef<Inner const	> y_z() const 	requires (dim_ > 2) { return (*this)(1,2); }
-	AntiSymRef<Inner		> z_y() 		requires (dim_ > 2) { return (*this)(2,1); }
-	AntiSymRef<Inner const	> z_y() const 	requires (dim_ > 2) { return (*this)(2,1); }
-	AntiSymRef<Inner		> z_z() 		requires (dim_ > 2) { return (*this)(2,2); }
-	AntiSymRef<Inner const	> z_z() const 	requires (dim_ > 2) { return (*this)(2,2); }
+	AntiSymRef<Inner		> x_z() 		requires (localDim > 2) { return (*this)(0,2); }
+	AntiSymRef<Inner const	> x_z() const 	requires (localDim > 2) { return (*this)(0,2); }
+	AntiSymRef<Inner		> z_x() 		requires (localDim > 2) { return (*this)(2,0); }
+	AntiSymRef<Inner const	> z_x() const 	requires (localDim > 2) { return (*this)(2,0); }
+	AntiSymRef<Inner		> y_z() 		requires (localDim > 2) { return (*this)(1,2); }
+	AntiSymRef<Inner const	> y_z() const 	requires (localDim > 2) { return (*this)(1,2); }
+	AntiSymRef<Inner		> z_y() 		requires (localDim > 2) { return (*this)(2,1); }
+	AntiSymRef<Inner const	> z_y() const 	requires (localDim > 2) { return (*this)(2,1); }
+	AntiSymRef<Inner		> z_z() 		requires (localDim > 2) { return (*this)(2,2); }
+	AntiSymRef<Inner const	> z_z() const 	requires (localDim > 2) { return (*this)(2,2); }
 	
-	AntiSymRef<Inner		> x_w() 		requires (dim_ > 3) { return (*this)(0,3); }
-	AntiSymRef<Inner const	> x_w() const 	requires (dim_ > 3) { return (*this)(0,3); }
-	AntiSymRef<Inner		> w_x() 		requires (dim_ > 3) { return (*this)(3,0); }
-	AntiSymRef<Inner const	> w_x() const 	requires (dim_ > 3) { return (*this)(3,0); }
-	AntiSymRef<Inner		> y_w() 		requires (dim_ > 3) { return (*this)(1,3); }
-	AntiSymRef<Inner const	> y_w() const 	requires (dim_ > 3) { return (*this)(1,3); }
-	AntiSymRef<Inner		> w_y() 		requires (dim_ > 3) { return (*this)(3,1); }
-	AntiSymRef<Inner const	> w_y() const 	requires (dim_ > 3) { return (*this)(3,1); }
-	AntiSymRef<Inner		> z_w() 		requires (dim_ > 3) { return (*this)(2,3); }
-	AntiSymRef<Inner const	> z_w() const 	requires (dim_ > 3) { return (*this)(2,3); }
-	AntiSymRef<Inner		> w_z() 		requires (dim_ > 3) { return (*this)(3,2); }
-	AntiSymRef<Inner const	> w_z() const 	requires (dim_ > 3) { return (*this)(3,2); }
-	AntiSymRef<Inner		> w_w() 		requires (dim_ > 3) { return (*this)(3,3); }
-	AntiSymRef<Inner const	> w_w() const 	requires (dim_ > 3) { return (*this)(3,3); }
+	AntiSymRef<Inner		> x_w() 		requires (localDim > 3) { return (*this)(0,3); }
+	AntiSymRef<Inner const	> x_w() const 	requires (localDim > 3) { return (*this)(0,3); }
+	AntiSymRef<Inner		> w_x() 		requires (localDim > 3) { return (*this)(3,0); }
+	AntiSymRef<Inner const	> w_x() const 	requires (localDim > 3) { return (*this)(3,0); }
+	AntiSymRef<Inner		> y_w() 		requires (localDim > 3) { return (*this)(1,3); }
+	AntiSymRef<Inner const	> y_w() const 	requires (localDim > 3) { return (*this)(1,3); }
+	AntiSymRef<Inner		> w_y() 		requires (localDim > 3) { return (*this)(3,1); }
+	AntiSymRef<Inner const	> w_y() const 	requires (localDim > 3) { return (*this)(3,1); }
+	AntiSymRef<Inner		> z_w() 		requires (localDim > 3) { return (*this)(2,3); }
+	AntiSymRef<Inner const	> z_w() const 	requires (localDim > 3) { return (*this)(2,3); }
+	AntiSymRef<Inner		> w_z() 		requires (localDim > 3) { return (*this)(3,2); }
+	AntiSymRef<Inner const	> w_z() const 	requires (localDim > 3) { return (*this)(3,2); }
+	AntiSymRef<Inner		> w_w() 		requires (localDim > 3) { return (*this)(3,3); }
+	AntiSymRef<Inner const	> w_w() const 	requires (localDim > 3) { return (*this)(3,3); }
 
 	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(_asym)
 };
@@ -1738,6 +1738,9 @@ struct _symR {
 	TENSOR_TEMPLATE_T_I_I(_symR)
 	TENSOR_HEADER_TOTALLY_SYMMETRIC()
 	TENSOR_HEADER()
+
+	std::array<Inner, localCount> s = {};
+	constexpr _symR() {}
 };
 
 // dense vec-of-vec
@@ -1745,7 +1748,8 @@ struct _symR {
 //convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
 // ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed
 // ... also GLSL is column-major so between this and GLSL the indexes have to be transposed.
-template<typename T, int dim1, int dim2> using _mat = _vec<_vec<T, dim2>, dim1>;
+template<typename T, int dim1, int dim2>
+using _mat = _vec<_vec<T, dim2>, dim1>;
 
 
 // some template metaprogram helpers
