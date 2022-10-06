@@ -12,10 +12,9 @@ namespace Tensor {
 template<typename Inner_>
 struct _quat : public _vec4<Inner_> {
 	using Super = _vec4<Inner_>;
-	TENSOR_FIRST(_quat)
+	TENSOR_THIS(_quat)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 1)
 	TENSOR_TEMPLATE_T(_quat)
-
 	TENSOR_HEADER_VECTOR()
 	TENSOR_HEADER()
 	using vec3 = _vec3<Inner>;

@@ -60,7 +60,7 @@ struct TypeWrapper {
 
 // Template<> is used for rearranging internal structure when performing linear operations on tensors
 // Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
-#define TENSOR_FIRST(classname)\
+#define TENSOR_THIS(classname)\
 	using This = classname;\
 	static constexpr bool isTensorFlag = {};
 
@@ -949,7 +949,7 @@ using _tensorr = typename _tensorr_impl<Src, dim, rank>::T;
 // this is this class.  useful for templates.  you'd be surprised.
 template<typename T, int dim_>
 struct _vec {
-	TENSOR_FIRST(_vec)
+	TENSOR_THIS(_vec)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, dim_, 1)
 	TENSOR_TEMPLATE_T_I(_vec)
 	TENSOR_HEADER_VECTOR()
@@ -965,7 +965,7 @@ struct _vec {
 
 template<typename T>
 struct _vec<T,2> {
-	TENSOR_FIRST(_vec)
+	TENSOR_THIS(_vec)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 2, 1)
 	TENSOR_TEMPLATE_T_I(_vec)
 	TENSOR_HEADER_VECTOR()
@@ -1039,7 +1039,7 @@ struct _vec<T,2> {
 
 template<typename T>
 struct _vec<T,3> {
-	TENSOR_FIRST(_vec)
+	TENSOR_THIS(_vec)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 3, 1)
 	TENSOR_TEMPLATE_T_I(_vec)
 	TENSOR_HEADER_VECTOR()
@@ -1126,7 +1126,7 @@ struct _vec<T,3> {
 
 template<typename T>
 struct _vec<T,4> {
-	TENSOR_FIRST(_vec)
+	TENSOR_THIS(_vec)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 4, 1)
 	TENSOR_TEMPLATE_T_I(_vec)
 	TENSOR_HEADER_VECTOR()
@@ -1333,7 +1333,7 @@ so the accessors need nested call indexing too
 
 template<typename T, int dim_>
 struct _sym {
-	TENSOR_FIRST(_sym)
+	TENSOR_THIS(_sym)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, dim_, 2)
 	TENSOR_TEMPLATE_T_I(_sym)
 	TENSOR_HEADER_SYMMETRIC_MATRIX()
@@ -1347,7 +1347,7 @@ struct _sym {
 
 template<typename T>
 struct _sym<T,2> {
-	TENSOR_FIRST(_sym)
+	TENSOR_THIS(_sym)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 2, 2)
 	TENSOR_TEMPLATE_T_I(_sym)
 	TENSOR_HEADER_SYMMETRIC_MATRIX()
@@ -1380,7 +1380,7 @@ struct _sym<T,2> {
 
 template<typename T>
 struct _sym<T,3> {
-	TENSOR_FIRST(_sym)
+	TENSOR_THIS(_sym)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 3, 2)
 	TENSOR_TEMPLATE_T_I(_sym)
 	TENSOR_HEADER_SYMMETRIC_MATRIX()
@@ -1434,7 +1434,7 @@ struct _sym<T,3> {
 
 template<typename T>
 struct _sym<T,4> {
-	TENSOR_FIRST(_sym)
+	TENSOR_THIS(_sym)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, 4, 2)
 	TENSOR_TEMPLATE_T_I(_sym)
 	TENSOR_HEADER_SYMMETRIC_MATRIX()
@@ -1583,7 +1583,7 @@ so no specialized sizes for _asym
 */
 template<typename T, int dim_>
 struct _asym {
-	TENSOR_FIRST(_asym)
+	TENSOR_THIS(_asym)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(T, dim_, 2)
 	TENSOR_TEMPLATE_T_I(_asym)
 	TENSOR_HEADER_ANTISYMMETRIC_MATRIX()
@@ -1708,13 +1708,13 @@ inline constexpr int antisymmetricSize(int d, int r) {
 #define TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_)\
 	static constexpr int localCount = symmetricSize(localDim, localRank);
 
-// TODO need to pull Template out of TENSOR_FIRST
+// TODO need to pull Template out of TENSOR_THIS
 //  need to generalize the Template params somehow
 //  need to remove use of 'T' in macros
 
 template<typename Inner_, int localDim_, int localRank_>
 struct _symR {
-	TENSOR_FIRST(_symR)
+	TENSOR_THIS(_symR)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)
 	TENSOR_TEMPLATE_T_I_I(_symR)
 	TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_)
