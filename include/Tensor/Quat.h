@@ -22,7 +22,7 @@ struct _quat : public _vec4<T> {
 	template <typename NewInner> using ReplaceInner = Template<NewInner>;
 
 	TENSOR_VECTOR_HEADER(4)
-	TENSOR_HEADER()
+	TENSOR_HEADER(T)
 	using vec3 = _vec3<T>;
 
 	constexpr _quat() : Super(0,0,0,1) {}

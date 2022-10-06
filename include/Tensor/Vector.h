@@ -87,7 +87,7 @@ struct TypeWrapper {
 
 // this contains definitions of types and values used in all tensors
 // TODO rename this to indicate it comes after TENSOR_*_HEADER()
-#define TENSOR_HEADER()\
+#define TENSOR_HEADER(T)\
 \
 	/*  TRUE FOR ALL TENSORS */\
 	/*  this is the next most nested class, so vector-of-vector is a matrix. */\
@@ -405,7 +405,7 @@ struct TypeWrapper {
 #define TENSOR_ADD_CAST_BOOL_OP()\
 	operator bool() const {\
 		for (int i = 0; i < localCount; ++i) {\
-			if (s[i] != T()) return true;\
+			if (s[i] != Inner()) return true;\
 		}\
 		return false;\
 	}
@@ -432,15 +432,15 @@ struct TypeWrapper {
 // TODO this is only valid for _vec's
 // _sym will need to double up on the symmetric components' influences
 #define TENSOR_ADD_DOT()\
-	T dot(This const & b) const {\
-		T result = {};\
-		for (int i = 0; i < localCount; ++i) {\
+	Inner dot(This const & b) const {\
+		Inner result = s[0] * b.s[0];\
+		for (int i = 1; i < localCount; ++i) {\
 			result += s[i] * b.s[i];\
 		}\
 		return result;\
 	}\
-	T lenSq() const { return dot(*this); }\
-	T length() const { return (T)sqrt(lenSq()); }\
+	Inner lenSq() const { return dot(*this); }\
+	Inner length() const { return (Inner)sqrt(lenSq()); }\
 	This normalize() const { return (*this) / length(); }
 
 // for rank-1 objects (_vec, _sym::Accessor, _asym::Accessor) 
@@ -538,7 +538,7 @@ struct TypeWrapper {
 	}
 
 #define TENSOR_ADD_LIST_CTOR(classname)\
-	classname(std::initializer_list<T> l)\
+	classname(std::initializer_list<Inner> l)\
 	 /* only do list constructor for non-specialized types */\
 	 /*(cuz they already accept lists via matching with their ctor args) */\
 	/* a better requires would check for these ctors existence */\
@@ -873,8 +873,8 @@ ReadIterator vs WriteIterator
 // assumes Inner operator* exists
 // TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims
 #define TENSOR_ADD_VOLUME()\
-	T volume() const {\
-		T res = s[0];\
+	Inner volume() const {\
+		Inner res = s[0];\
 		for (int i = 1; i < localCount; ++i) {\
 			res *= s[i];\
 		}\
@@ -942,7 +942,7 @@ template<typename T, int dim_>
 struct _vec {
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(dim_)
-	TENSOR_HEADER()
+	TENSOR_HEADER(T)
 
 	std::array<T,localCount> s = {};
 	constexpr _vec() {}
@@ -956,7 +956,7 @@ template<typename T>
 struct _vec<T,2> {
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(2)
-	TENSOR_HEADER()
+	TENSOR_HEADER(T)
 
 	union {
 		struct {
@@ -1028,7 +1028,7 @@ template<typename T>
 struct _vec<T,3> {
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(3)
-	TENSOR_HEADER()
+	TENSOR_HEADER(T)
 
 	union {
 		struct {
@@ -1113,7 +1113,7 @@ template<typename T>
 struct _vec<T,4> {
 	TENSOR_FIRST(_vec)
 	TENSOR_VECTOR_HEADER(4);
-	TENSOR_HEADER()
+	TENSOR_HEADER(T)
 
 	union {
 		struct {
@@ -1211,9 +1211,8 @@ inline constexpr int triangleSize(int n) {
 	return (n * (n + 1)) / 2;
 }
 
-template<int N>
-int symIndex(int i, int j) {
-	if (i > j) return symIndex<N>(j,i);
+constexpr int symIndex(int i, int j) {
+	if (i > j) return symIndex(j,i);
 	return i + triangleSize(j);
 }
 
@@ -1256,12 +1255,12 @@ int symIndex(int i, int j) {
 	/* symmetric has to define 1-arg operator() */\
 	/* that means I can't use the default so i have to make a 2-arg recursive case */\
 	constexpr auto operator()(int i, int j)\
-	-> decltype(s[symIndex<localDim>(i,j)]) {\
-		return s[symIndex<localDim>(i,j)];\
+	-> decltype(s[symIndex(i,j)]) {\
+		return s[symIndex(i,j)];\
 	}\
 	constexpr auto operator()(int i, int j) const\
-	-> decltype(s[symIndex<localDim>(i,j)]) {\
-		return s[symIndex<localDim>(i,j)];\
+	-> decltype(s[symIndex(i,j)]) {\
+		return s[symIndex(i,j)];\
 	}
 
 // this assumes the class has a member template<ThisConstness> Accessor for its [] and (int) access
@@ -1321,7 +1320,7 @@ template<typename T, int dim_>
 struct _sym {
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(dim_)
-	TENSOR_HEADER()
+	TENSOR_HEADER(T)
 
 	std::array<T,localCount> s = {};
 	constexpr _sym() {}
@@ -1333,7 +1332,7 @@ template<typename T>
 struct _sym<T,2> {
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(2)
-	TENSOR_HEADER()
+	TENSOR_HEADER(T)
 
 	union {
 		struct {
@@ -1364,7 +1363,7 @@ template<typename T>
 struct _sym<T,3> {
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(3)
-	TENSOR_HEADER()
+	TENSOR_HEADER(T)
 
 	union {
 		struct {
@@ -1416,7 +1415,7 @@ template<typename T>
 struct _sym<T,4> {
 	TENSOR_FIRST(_sym)
 	TENSOR_SYMMETRIC_MATRIX_HEADER(4)
-	TENSOR_HEADER()
+	TENSOR_HEADER(T)
 
 	union {
 		struct {
@@ -1516,17 +1515,17 @@ struct _sym<T,4> {
 	constexpr auto operator()(int i, int j) {\
 		if (i == j) return AntiSymRef<Inner>();\
 		if (i < j) {\
-			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRefHow::POSITIVE);\
+			return AntiSymRef<Inner>(std::ref(s[symIndex(j-1,i)]), AntiSymRefHow::POSITIVE);\
 		} else {\
-			return AntiSymRef<Inner>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRefHow::NEGATIVE);\
+			return AntiSymRef<Inner>(std::ref(s[symIndex(i-1,j)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}\
 	constexpr auto operator()(int i, int j) const {\
 		if (i == j) return AntiSymRef<Inner const>();\
 		if (i < j) {\
-			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(j-1,i)]), AntiSymRefHow::POSITIVE);\
+			return AntiSymRef<Inner const>(std::ref(s[symIndex(j-1,i)]), AntiSymRefHow::POSITIVE);\
 		} else {\
-			return AntiSymRef<Inner const>(std::ref(s[symIndex<localDim-1>(i-1,j)]), AntiSymRefHow::NEGATIVE);\
+			return AntiSymRef<Inner const>(std::ref(s[symIndex(i-1,j)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}
 
@@ -1565,7 +1564,7 @@ template<typename T, int dim_>
 struct _asym {
 	TENSOR_FIRST(_asym)
 	TENSOR_ANTISYMMETRIC_MATRIX_HEADER(dim_)
-	TENSOR_HEADER()
+	TENSOR_HEADER(T)
 
 	std::array<T, localCount> s = {};
 	constexpr _asym() {}
@@ -1619,6 +1618,76 @@ struct _asym {
 	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(_asym)
 };
 
+/*
+higher-rank totally-symmetricc (might replace _sym)
+https://math.stackexchange.com/a/3795166
+# of elements in rank-M dim-N storage: (d + r - 1) choose r
+so for r=2 we get (d+1)! / (2! (d-1)!) = d * (d + 1) / 2
+*/
+
+//https://en.cppreference.com/w/cpp/language/constexpr
+inline constexpr int factorial(int n) {
+	return n <= 1 ? 1 : (n * factorial(n-1));
+}
+static_assert(factorial(0) == 1);
+static_assert(factorial(1) == 1);
+static_assert(factorial(2) == 2);
+static_assert(factorial(3) == 6);
+static_assert(factorial(4) == 24);
+
+//https://stackoverflow.com/a/9331125
+constexpr int nChooseR(int n, int k) {
+    if (k > n) return 0;
+    if (k << 1 > n) k = n - k;
+    if (k == 0) return 1;
+    int result = n;
+    // TODO can you guarantee that /=i will always have 'i' as a divisor? or do we need two loops?
+	for (int i = 2; i <= k; ++i) {
+        result *= (n - i + 1);
+        result /= i;
+    }
+    return result;
+}
+static_assert(nChooseR(0,0) == 1);
+static_assert(nChooseR(1,0) == 1);
+static_assert(nChooseR(1,1) == 1);
+static_assert(nChooseR(2,0) == 1);
+static_assert(nChooseR(2,1) == 2);
+static_assert(nChooseR(2,2) == 1);
+static_assert(nChooseR(3,0) == 1);
+static_assert(nChooseR(3,1) == 3);
+static_assert(nChooseR(3,2) == 3);
+static_assert(nChooseR(3,3) == 1);
+static_assert(nChooseR(4,0) == 1);
+static_assert(nChooseR(4,1) == 4);
+static_assert(nChooseR(4,2) == 6);
+static_assert(nChooseR(4,3) == 4);
+static_assert(nChooseR(4,4) == 1);
+
+inline constexpr int symmtricSize(int d, int r) {
+	return nChooseR(d + r - 1, r);
+}
+inline constexpr int antisymmetricSize(int d, int r) {
+	return nChooseR(d, r);
+}
+
+#define TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_, localRank_)\
+	static constexpr int localDim = localDim_;\
+	static constexpr int localRank = localRank_;\
+	static constexpr int localCount = symmetricSize(localDim, localRank);
+
+// TODO need to pull Template out of TENSOR_FIRST
+//  need to generalize the Template params somehow
+//  need to remove use of 'T' in macros
+#if 0
+template<typename T, int localDim_, int localRank_>
+struct _symR {
+	TENSOR_FIRST(_symR)
+	TENSOR_TOTALLY_SYMMETRIC_HEADER(localDim_, localRank_)
+	TENSOR_HEADER(T)
+};
+
+#endif
 // dense vec-of-vec
 
 //convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
