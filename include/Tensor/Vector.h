@@ -1406,11 +1406,11 @@ This is used by _sym , while _asym uses something different since it uses the An
 		_vec<int,2> iread;\
 		int w = writeIndex+1;\
 		for (int i = 1; w > 0; ++i) {\
-			++iread(0);\
+			++iread(1);\
 			w -= i;\
 		}\
-		--iread(0);\
-		iread(1) = writeIndex - triangleSize(iread(0));\
+		--iread(1);\
+		iread(0) = writeIndex - triangleSize(iread(1));\
 		return iread;\
 	}\
 \
@@ -1612,17 +1612,17 @@ struct _ident {
 	constexpr auto operator()(int i, int j) {\
 		if (i == j) return AntiSymRef<Inner>();\
 		if (i < j) {\
-			return AntiSymRef<Inner>(std::ref(s[symIndex(j-1,i)]), AntiSymRefHow::POSITIVE);\
+			return AntiSymRef<Inner>(std::ref(s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
 		} else {\
-			return AntiSymRef<Inner>(std::ref(s[symIndex(i-1,j)]), AntiSymRefHow::NEGATIVE);\
+			return AntiSymRef<Inner>(std::ref(s[symIndex(j,i-1)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}\
 	constexpr auto operator()(int i, int j) const {\
 		if (i == j) return AntiSymRef<Inner const>();\
 		if (i < j) {\
-			return AntiSymRef<Inner const>(std::ref(s[symIndex(j-1,i)]), AntiSymRefHow::POSITIVE);\
+			return AntiSymRef<Inner const>(std::ref(s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
 		} else {\
-			return AntiSymRef<Inner const>(std::ref(s[symIndex(i-1,j)]), AntiSymRefHow::NEGATIVE);\
+			return AntiSymRef<Inner const>(std::ref(s[symIndex(j,i-1)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}
 
@@ -1634,12 +1634,12 @@ struct _ident {
 		_vec<int,2> iread;\
 		int w = writeIndex+1;\
 		for (int i = 1; w > 0; ++i) {\
-			++iread(0);\
+			++iread(1);\
 			w -= i;\
 		}\
-		--iread(0);\
-		iread(1) = writeIndex - triangleSize(iread(0));\
-		++iread(0); /* for antisymmetric, skip past diagonals*/\
+		--iread(1);\
+		iread(0) = writeIndex - triangleSize(iread(1));\
+		++iread(1); /* for antisymmetric, skip past diagonals*/\
 		return iread;\
 	}
 

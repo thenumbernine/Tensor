@@ -1,5 +1,8 @@
 #include "Test/Test.h"
 
+//#define STORAGE_LOWER	//lower-triangular
+#define STORAGE_UPPER	//upper-triangular
+
 template<typename T>
 void verifyAccessSym(T & a){
 	// testing fields
@@ -76,6 +79,36 @@ so a.s == {0,1,2,4,5,8};
 	}));
 
 
+#ifdef STORAGE_LOWER // lower-triangular
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(0), Tensor::int2(0,0));
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(1), Tensor::int2(1,0));
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(2), Tensor::int2(1,1));
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(3), Tensor::int2(2,0));
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(4), Tensor::int2(2,1));
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(5), Tensor::int2(2,2));
+#endif                                                                       
+#ifdef STORAGE_UPPER // upper-triangular                                     
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(0), Tensor::int2(0,0));
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(1), Tensor::int2(0,1));
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(2), Tensor::int2(1,1));
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(3), Tensor::int2(0,2));
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(4), Tensor::int2(1,2));
+	TEST_EQ(Tensor::float3s3::getLocalReadForWriteIndex(5), Tensor::int2(2,2));
+#endif
+
+	for (int i = 0; i < Tensor::float3s3::localCount; ++i) {
+		std::cout << i << "\t" << Tensor::float3s3::getLocalReadForWriteIndex(i) << std::endl;
+	}
+	
+	// this is symmetric, it shouldn't matter
+	std::cout << "getLocalWriteForReadIndex" << std::endl;
+	for (int i = 0; i < 3; ++i) {
+		for (int j = 0; j < 3; ++j) {
+			std::cout << "\t" << Tensor::float3s3::getLocalWriteForReadIndex(i,j);
+		}
+		std::cout << std::endl;
+	}
+
 	/*
 	test storing matrix
 	for this test, construct from an asymmetric matrix
@@ -95,7 +128,7 @@ so a.s == {0,1,2,4,5,8};
 	auto b = Tensor::float3s3([](int i, int j) -> float {
 		return 3 * i + j;
 	});
-#if 1 // upper triangular
+#ifdef STORAGE_LOWER // lower triangular
 	// test storage order
 	// this order is for sym/asym getLocalReadForWriteIndex incrementing iread(0) first
 	// it also means for _asym that i<j <=> POSITIVE, j<i <=> NEGATIVE
@@ -107,7 +140,8 @@ so a.s == {0,1,2,4,5,8};
 	TEST_EQ(b.s[5], 8); // zz
 	// test arg ctor
 	TEST_EQ(b, Tensor::float3s3(0,3,4,6,7,8));
-#else // lower triangular
+#endif // upper triangular
+#ifdef STORAGE_UPPER	
 	// test storage order
 	// this order is for sym/asym getLocalReadForWriteIndex incrementing iread(1) first
 	// it also means for _asym that i<j <=> NEGATIVE, j<i <=> POSITIVE
@@ -139,5 +173,4 @@ so a.s == {0,1,2,4,5,8};
 	operatorMatrixTest<Tensor::float3s3>();
 
 	TEST_EQ(Tensor::trace(Tensor::float3s3({1,2,3,4,5,6})), 10);
-
 }
