@@ -1348,7 +1348,7 @@ Tank-2 based default indexing access.  ALl other indexing of rank-2 's relies on
 
 This depends on getLocalWriteForReadIndex() which is in TENSR_*_LOCAL_READ_FOR_WRITE_INDEX.
 
-This is used by _sym and _symR, while _asym uses something different since it uses the AntiSymRef accessors.
+This is used by _sym , while _asym uses something different since it uses the AntiSymRef accessors.
 */
 #define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
 \
@@ -1651,11 +1651,6 @@ so for r=2 we get (d+1)! / (2! (d-1)!) = d * (d + 1) / 2
 inline constexpr int factorial(int n) {
 	return n <= 1 ? 1 : (n * factorial(n-1));
 }
-static_assert(factorial(0) == 1);
-static_assert(factorial(1) == 1);
-static_assert(factorial(2) == 2);
-static_assert(factorial(3) == 6);
-static_assert(factorial(4) == 24);
 
 //https://stackoverflow.com/a/9331125
 constexpr int nChooseR(int n, int k) {
@@ -1670,21 +1665,6 @@ constexpr int nChooseR(int n, int k) {
     }
     return result;
 }
-static_assert(nChooseR(0,0) == 1);
-static_assert(nChooseR(1,0) == 1);
-static_assert(nChooseR(1,1) == 1);
-static_assert(nChooseR(2,0) == 1);
-static_assert(nChooseR(2,1) == 2);
-static_assert(nChooseR(2,2) == 1);
-static_assert(nChooseR(3,0) == 1);
-static_assert(nChooseR(3,1) == 3);
-static_assert(nChooseR(3,2) == 3);
-static_assert(nChooseR(3,3) == 1);
-static_assert(nChooseR(4,0) == 1);
-static_assert(nChooseR(4,1) == 4);
-static_assert(nChooseR(4,2) == 6);
-static_assert(nChooseR(4,3) == 4);
-static_assert(nChooseR(4,4) == 1);
 
 inline constexpr int symmetricSize(int d, int r) {
 	return nChooseR(d + r - 1, r);
@@ -1769,10 +1749,14 @@ struct _symR {
 	constexpr _symR() {}
 
 //TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS
+	/* TODO TENSOR_ADD_TOTALLY_SYMMETRIC_ACCESSOR() */
 	TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() // needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS
 	TENSOR_ADD_OPS(_symR)
-	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()
-	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
+	// ok for arbitrary-rank, I'll have to use arbitrary-rank accessors for indexing < localRank
+	// and for equal rank use () 
+	// and for greater rank, drill down as always
+	//TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()
+	//TENSOR_ADD_RANK2_CALL_INDEX_AUX()
 };
 
 // TODO totally antisymmetric

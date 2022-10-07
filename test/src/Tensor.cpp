@@ -563,6 +563,33 @@ namespace Test3 {
 	static_assert(is_same_v<decltype(S3x3s3()[0][0][0]), S&>);
 }
 
+namespace TestTotallySymmetric {
+	using namespace Tensor;
+	static_assert(factorial(0) == 1);
+	static_assert(factorial(1) == 1);
+	static_assert(factorial(2) == 2);
+	static_assert(factorial(3) == 6);
+	static_assert(factorial(4) == 24);
+
+	static_assert(nChooseR(0,0) == 1);
+	static_assert(nChooseR(1,0) == 1);
+	static_assert(nChooseR(1,1) == 1);
+	static_assert(nChooseR(2,0) == 1);
+	static_assert(nChooseR(2,1) == 2);
+	static_assert(nChooseR(2,2) == 1);
+	static_assert(nChooseR(3,0) == 1);
+	static_assert(nChooseR(3,1) == 3);
+	static_assert(nChooseR(3,2) == 3);
+	static_assert(nChooseR(3,3) == 1);
+	static_assert(nChooseR(4,0) == 1);
+	static_assert(nChooseR(4,1) == 4);
+	static_assert(nChooseR(4,2) == 6);
+	static_assert(nChooseR(4,3) == 4);
+	static_assert(nChooseR(4,4) == 1);
+
+	static_assert(sizeof(_symR<float, 1, 1>) == sizeof(float));
+}
+
 template<typename T>
 void operatorScalarTest(T const & t) {
 	using S = typename T::Scalar;
