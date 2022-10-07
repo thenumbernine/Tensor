@@ -1551,8 +1551,8 @@ struct _sym<Inner_,4> {
 		return AntiSymRef<Inner>(std::ref(s[0]), AntiSymRefHow::POSITIVE);\
 	}\
 	constexpr auto operator()(int i, int j) const {\
-		if (i != j) return AntiSymRef<Inner>();\
-		return AntiSymRef<Inner>(std::ref(s[0]), AntiSymRefHow::POSITIVE);\
+		if (i != j) return AntiSymRef<Inner const>();\
+		return AntiSymRef<Inner const>(std::ref(s[0]), AntiSymRefHow::POSITIVE);\
 	}
 
 // shouldn't even need this, cuz nobody should be calling i
@@ -1864,6 +1864,18 @@ template<int dim>
 struct index_asym {
 	template<typename T>
 	using type = _asym<T,dim>;
+};
+
+template<int dim>
+struct index_ident {
+	template<typename T>
+	using type = _ident<T,dim>;
+};
+
+template<int dim, int rank>
+struct index_symR {
+	template<typename T>
+	using type = _symR<T,dim,rank>;
 };
 
 // hmm, I'm trying to use these index_*'s in combination with is_instance_v<T, index_*<dim>::template type> but it's failing, so here they are specialized
@@ -2342,6 +2354,10 @@ requires(
 	&& A::template dim<A::rank-1> == B::template dim<0>
 )
 auto operator*(A const & a, B const & b) {
+#if 1	// lazy way.  inline the lambdas and don't waste the outer()'s operation expenses
+		return contract<A::rank-1, A::rank>(outer(a,b));
+#else	// some optimizations, no wasted storage
+// TODO FIXME has some bugs.
 	using S = typename A::Scalar;
 	if constexpr (A::rank == 1 && B::rank == 1) {
 		// rank-0 result case
@@ -2353,9 +2369,6 @@ auto operator*(A const & a, B const & b) {
 		}
 		return sum;
 	} else {
-#if 0	// lazy way.  inline the lambdas and don't waste the outer()'s operation expenses
-		return contract<A::rank-1, A::rank>(outer(a,b));
-#else	// some optimizations, no wasted storage
 		using R = typename A
 			::template ReplaceScalar<B>
 			::template RemoveIndex<A::rank-1, A::rank>;
@@ -2377,8 +2390,8 @@ auto operator*(A const & a, B const & b) {
 			}
 			return sum;
 		});
-#endif
 	}
+#endif
 }
 
 // specific typed vectors

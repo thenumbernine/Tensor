@@ -37,23 +37,11 @@ void test_Antisymmetric() {
 	[-2 -3  0]
 	*/
 	auto f = [](int i, int j) -> float { return sign(j-i)*(i+j); };
-#if 0 // list initializer with lambda is failing	
 	auto t = Tensor::float3a3{
 		/*x_y=*/f(0,1),
 		/*x_z=*/f(0,2),
 		/*y_z=*/f(1,2)
 	};
-#endif
-#if 0 //same	
-	auto t = Tensor::float3a3{
-		/*x_y=*/1,
-		/*x_z=*/2,
-		/*y_z=*/3
-	};
-#endif
-#if 1
-	auto t = Tensor::float3a3(1, 2, 3);
-#endif
 #ifdef STORAGE_UPPER
 	TEST_EQ(t.s[0], 1);
 	TEST_EQ(t.s[1], 2);
@@ -171,5 +159,37 @@ void test_Antisymmetric() {
 			}
 		}
 		TEST_EQ(as,m);
+	}
+
+
+	{
+		Tensor::float3x3 m = {
+			{1,2,3},
+			{4,5,6},
+			{7,8,9},
+		};
+		Tensor::float3a3 a([](int i, int j) -> float { return sign(j-i)*(i+j); });
+
+// works with unoptimized matrix-mul
+// crashing with the optimized version of matrix-mul
+		auto ma = m * a;
+		static_assert(std::is_same_v<decltype(ma), Tensor::float3x3>);
+		TEST_EQ(ma, (Tensor::float3x3{
+			{-8, -8, 8},
+			{-17, -14, 23},
+			{-26, -20, 38},
+		}));
+
+		// TODO outer of antisym and ident is failing ...
+		auto I = Tensor::_ident<float, 3>(1);
+		auto aOuterI = outer(a, I);
+		static_assert(std::is_same_v<decltype(aOuterI), Tensor::_tensori<float, index_asym<3>, index_ident<3>>);
+		static_assert(std::is_same_v<decltype(outer(I, a)), Tensor::_tensori<float, index_ident<3>, index_asym<3>>);
+
+		auto aTimesI = a * I;
+		// the matrix-mul will expand the antisymmetric matrix storage to a matrix
+		static_assert(std::is_same_v<decltype(aTimesI), Tensor::float3x3>);
+		// crashing
+		TEST_EQ(aTimesI, a);
 	}
 }
