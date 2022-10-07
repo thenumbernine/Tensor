@@ -16,7 +16,6 @@ namespace Tensor {
 	TENSOR_HEADER_VECTOR_SPECIFIC() /* defines localCount=localDim, matching for _vec and _quat */\
 	TENSOR_HEADER()
 
-
 template<typename Inner_>
 struct _quat : public _vec4<Inner_> {
 	using Super = _vec4<Inner_>;

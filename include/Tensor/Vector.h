@@ -1343,8 +1343,13 @@ constexpr int symIndex(int i, int j) {
 		TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
 	};
 
-// NOTICE this almost matches TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX
-// except this uses &'s where _asym uses AntiSymRef
+/*
+Tank-2 based default indexing access.  ALl other indexing of rank-2 's relies on this.
+
+This depends on getLocalWriteForReadIndex() which is in TENSR_*_LOCAL_READ_FOR_WRITE_INDEX.
+
+This is used by _sym and _symR, while _asym uses something different since it uses the AntiSymRef accessors.
+*/
 #define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
 \
 	/* a(i,j) := a_ij = a_ji */\
@@ -1353,12 +1358,12 @@ constexpr int symIndex(int i, int j) {
 	/* symmetric has to define 1-arg operator() */\
 	/* that means I can't use the default so i have to make a 2-arg recursive case */\
 	constexpr auto operator()(int i, int j)\
-	-> decltype(s[symIndex(i,j)]) {\
-		return s[symIndex(i,j)];\
+	-> decltype(s[getLocalWriteForReadIndex(i,j)]) {\
+		return s[getLocalWriteForReadIndex(i,j)];\
 	}\
 	constexpr auto operator()(int i, int j) const\
-	-> decltype(s[symIndex(i,j)]) {\
-		return s[symIndex(i,j)];\
+	-> decltype(s[getLocalWriteForReadIndex(i,j)]) {\
+		return s[getLocalWriteForReadIndex(i,j)];\
 	}
 
 // TODO double-check this is upper-triangular
@@ -1375,6 +1380,10 @@ constexpr int symIndex(int i, int j) {
 		--iread(0);\
 		iread(1) = writeIndex - triangleSize(iread(0));\
 		return iread;\
+	}\
+\
+	static constexpr int getLocalWriteForReadIndex(int i, int j) {\
+		return symIndex(i,j);\
 	}
 
 /*
@@ -1695,9 +1704,17 @@ inline constexpr int antisymmetricSize(int d, int r) {
 	template<int newLocalDim>\
 	using ReplaceLocalDim = Template<Inner, newLocalDim, localRank>;
 
-#define TENSOR_HEADER_TOTALLY_SYMMETRIC()\
+#define TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
 	static constexpr int localCount = symmetricSize(localDim, localRank);
 
+#define TENSOR_HEADER_TOTALLY_SYMMETRIC(classname, Inner_, localDim_, localRank_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)\
+	TENSOR_TEMPLATE_T_I_I(classname)\
+	TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
+	TENSOR_HEADER()
+
+// using 'upper-triangular' i.e. i<=j<=k<=...
 // right now i'm counting into this.  is there a faster way?
 #define TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX()\
 	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
@@ -1715,22 +1732,52 @@ inline constexpr int antisymmetricSize(int d, int r) {
 			if (inc(localRank-1)) break;\
 		}\
 		return iread;\
+	}\
+\
+	static int getLocalWriteForReadIndex(intN targetReadIndex) {\
+		/* put indexes in increasing order */\
+		std::sort(targetReadIndex.s.begin(), targetReadIndex.s.end());\
+		/* loop until you find the element */\
+		std::array<int, localRank> iread = {};\
+		for (int writeIndex = 0; writeIndex < localCount; ++writeIndex) {\
+			if (iread == targetReadIndex) return writeIndex;\
+			std::function<bool(int)> inc = [&iread, &inc](int j) {\
+				if (j < 0) return true;\
+				iread[j]++;\
+				if (iread[j] >= localDim) {\
+					if (inc(j-1)) return true;\
+					iread[j] = j == 0 ? 0 : iread[j-1];\
+				}\
+				return false;\
+			};\
+			if (inc(localRank-1)) break;\
+		}\
+		/* how should I deal with bad indexes? */\
+		/*throw Common::Exception() << "failed to find write index";*/\
+		/* return oob range? for iteration's sake? */\
+		return localCount;\
 	}
+
+#define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()
+
 
 template<typename Inner_, int localDim_, int localRank_>
 struct _symR {
-	TENSOR_THIS(_symR)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)
-	TENSOR_TEMPLATE_T_I_I(_symR)
-	TENSOR_HEADER_TOTALLY_SYMMETRIC()
-	TENSOR_HEADER()
+	TENSOR_HEADER_TOTALLY_SYMMETRIC(_symR, Inner_, localDim_, localRank_)
 
 	std::array<Inner, localCount> s = {};
 	constexpr _symR() {}
 
+//TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS
 	TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() // needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS
 	TENSOR_ADD_OPS(_symR)
+	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()
+	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
 };
+
+// TODO totally antisymmetric
+
+// then TODO Levi-Civita tensor
 
 // dense vec-of-vec
 
