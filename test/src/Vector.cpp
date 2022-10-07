@@ -3,23 +3,6 @@
 void test_Vector() {
 	//vector
 
-	auto verifyAccessRank1 = []<typename T, typename F>(T & t, F f){
-		for (int i = 0; i < T::template dim<0>; ++i) {
-			typename T::Scalar x = f(i);
-			// various [] and (int...) and (intN)
-			TEST_EQ(t(i), x);
-			TEST_EQ(t(Tensor::intN<1>(i)), x);
-			TEST_EQ(t[i], x);
-			TEST_EQ(t.s[i], x);
-			if constexpr (!std::is_const_v<T>) {
-				t(i) = x;
-				t(Tensor::intN<1>(i)) = x;
-				t[i] = x;
-				t.s[i] = x;
-			}
-		}
-	};
-
 	{
 		// default ctor
 		Tensor::float3 f;
@@ -68,8 +51,8 @@ void test_Vector() {
 		{
 			auto f = [](int i) -> float { return i+1; };
 			Tensor::float3 t(f);
-			verifyAccessRank1.template operator()<decltype(t)>(t, f);
-			verifyAccessRank1.template operator()<decltype(t) const>(t, f);
+			verifyAccessRank1<decltype(t)>(t, f);
+			verifyAccessRank1<decltype(t) const>(t, f);
 		}
 
 		//lambda ctor
