@@ -475,21 +475,6 @@ ReplaceScalar<typename>
 		return result;\
 	}
 
-// vector-dot
-// TODO this is only valid for _vec's
-// _sym will need to double up on the symmetric components' influences
-#define TENSOR_ADD_DOT()\
-	Inner dot(This const & b) const {\
-		Inner result = s[0] * b.s[0];\
-		for (int i = 1; i < localCount; ++i) {\
-			result += s[i] * b.s[i];\
-		}\
-		return result;\
-	}\
-	Inner lenSq() const { return dot(*this); }\
-	Inner length() const { return (Inner)sqrt(lenSq()); }\
-	This normalize() const { return (*this) / length(); }
-
 // for rank-1 objects (_vec, _sym::Accessor, _asym::Accessor) 
 // I'm using use operator(int) as the de-facto for rank-1, operator(int,int) for rank-1 etc
 #define TENSOR_ADD_VECTOR_CALL_INDEX_PRIMARY()\
@@ -498,6 +483,8 @@ ReplaceScalar<typename>
 	constexpr auto operator()(int i) -> decltype(s[i]) { return s[i]; }\
 	constexpr auto operator()(int i) const -> decltype(s[i]) { return s[i]; }
 
+//operator[int] forwards to operator(int)
+//operator(int...) forwards to operator(int)(int...)
 #define TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
 \
 	/* a[i] := a_i */\
@@ -510,37 +497,16 @@ ReplaceScalar<typename>
 	template<typename... Rest>\
 	constexpr decltype(auto) operator()(int i, Rest... rest) { return (*this)(i)(rest...); }\
 	template<typename... Rest>\
-	constexpr decltype(auto) operator()(int i, Rest... rest) const { return (*this)(i)(rest...); }\
-\
+	constexpr decltype(auto) operator()(int i, Rest... rest) const { return (*this)(i)(rest...); }
+
+// operator(_vec<int,...>) forwards to operator(int...)
+#define TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	/* a(intN(i,...)) */\
 	/* operator(_vec<int,N>) calls through operator(int...) */\
 	template<int N>\
 	constexpr decltype(auto) operator()(_vec<int,N> const & i) { return std::apply(*this, i.s); }\
 	template<int N>\
 	constexpr decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }
-
-// TODO is this safe?
-#define TENSOR_ADD_SUBSET_ACCESS()\
-\
-	/* assumes packed tensor */\
-	template<int subdim, int offset>\
-	_vec<Inner,subdim> & subset() {\
-		static_assert(offset + subdim <= localCount);\
-		return *(_vec<Inner,subdim>*)(&s[offset]);\
-	}\
-	template<int subdim, int offset>\
-	_vec<Inner,subdim> const & subset() const {\
-		static_assert(offset + subdim <= localCount);\
-		return *(_vec<Inner,subdim>*)(&s[offset]);\
-	}\
-	template<int subdim>\
-	_vec<Inner,subdim> & subset(int offset) {\
-		return *(_vec<Inner,subdim>*)(&s[offset]);\
-	}\
-	template<int subdim>\
-	_vec<Inner,subdim> const & subset(int offset) const {\
-		return *(_vec<Inner,subdim>*)(&s[offset]);\
-	}
 
 // also TODO can't use this in conjunction with the requires to_ostream or you get ambiguous operator
 // the operator<< requires to_fields and _vec having fields probably doesn't help
@@ -569,11 +535,15 @@ ReplaceScalar<typename>
 	constexpr classname(U const & t) {\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
-			/* TODO ensure if i.readIndex is in This's bounds ... */\
-			/* If we use operator()(intN<>) access working for _asym ... */\
-			/**i = (Scalar)t(i.readIndex);*/\
-			/* ... or just replace the internal storage with std::array ... */\
-			*i = std::apply(t, i.readIndex.s);\
+			/* TODO instead an index range iterator that spans the minimum of dims of this and t */\
+			if (validIndex(i.readIndex)) {\
+				/* If we use operator()(intN<>) access working for _asym ... */\
+				/**i = (Scalar)t(i.readIndex);*/\
+				/* ... or just replace the internal storage with std::array ... */\
+				*i = std::apply(t, i.readIndex.s);\
+			} else {\
+				*i = Scalar();\
+			}\
 		}\
 	}
 
@@ -947,22 +917,30 @@ ReadIterator vs WriteIterator
 	/* wait, if Write<This> write() is called by a const object ... then the return type is const ... could I detect that from within Write to forward on to Write's inner class ctor? */\
 	Write<This const> write() const { return Write<This const>(*this); }
 
-// vector.volume() == the volume of a size reprensted by the vector
-// assumes Inner operator* exists
-// TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims
-#define TENSOR_ADD_VOLUME()\
-	Inner volume() const {\
-		Inner res = s[0];\
-		for (int i = 1; i < localCount; ++i) {\
-			res *= s[i];\
+// TODO unroll the loop / constexpr lambda
+#define TENSOR_ADD_VALID_INDEX()\
+	template<int j>\
+	struct ValidIndexImpl {\
+		static constexpr bool value(intN const & i) {\
+			if (i(j) < 0 || i(j) >= dim<j>) return false;\
+			return ValidIndexImpl<j+1>::value(i);\
 		}\
-		return res;\
+	};\
+	template<>\
+	struct ValidIndexImpl<rank> {\
+		static constexpr bool value(intN const & i) {\
+			return true;\
+		}\
+	};\
+	inline bool validIndex(typename This::intN const & i) {\
+		return ValidIndexImpl<0>::value(i);\
 	}
 
 //these are all per-element assignment operators,
 // so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
 #define TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_ITERATOR() /* needed by TENSOR_ADD_CTORS */\
+	TENSOR_ADD_VALID_INDEX()\
 	TENSOR_ADD_CTORS(classname) /* ctors, namely lambda ctor, needs read iterators*/ \
 	TENSOR_ADD_VECTOR_OP_EQ(+=)\
 	TENSOR_ADD_VECTOR_OP_EQ(-=)\
@@ -1001,6 +979,58 @@ ReadIterator vs WriteIterator
 		return _vec<int,localRank>{writeIndex};\
 	}
 
+// TODO is this safe?
+#define TENSOR_ADD_SUBSET_ACCESS()\
+\
+	/* assumes packed tensor */\
+	template<int subdim, int offset>\
+	_vec<Inner,subdim> & subset() {\
+		static_assert(offset + subdim <= localCount);\
+		return *(_vec<Inner,subdim>*)(&s[offset]);\
+	}\
+	template<int subdim, int offset>\
+	_vec<Inner,subdim> const & subset() const {\
+		static_assert(offset + subdim <= localCount);\
+		return *(_vec<Inner,subdim>*)(&s[offset]);\
+	}\
+	template<int subdim>\
+	_vec<Inner,subdim> & subset(int offset) {\
+		return *(_vec<Inner,subdim>*)(&s[offset]);\
+	}\
+	template<int subdim>\
+	_vec<Inner,subdim> const & subset(int offset) const {\
+		return *(_vec<Inner,subdim>*)(&s[offset]);\
+	}
+
+
+// vector-dot
+// TODO this is only valid for _vec's
+// _sym will need to double up on the symmetric components' influences
+#define TENSOR_ADD_DOT()\
+	Inner dot(This const & b) const {\
+		Inner result = s[0] * b.s[0];\
+		for (int i = 1; i < localCount; ++i) {\
+			result += s[i] * b.s[i];\
+		}\
+		return result;\
+	}\
+	Inner lenSq() const { return dot(*this); }\
+	Inner length() const { return (Inner)sqrt(lenSq()); }\
+	This normalize() const { return (*this) / length(); }
+
+// vector.volume() == the volume of a size reprensted by the vector
+// assumes Inner operator* exists
+// TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims
+#define TENSOR_ADD_VOLUME()\
+	Inner volume() const {\
+		Inner res = s[0];\
+		for (int i = 1; i < localCount; ++i) {\
+			res *= s[i];\
+		}\
+		return res;\
+	}
+
+
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
@@ -1008,6 +1038,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_VECTOR_CALL_INDEX_PRIMARY() /* operator(int) to access .s and operator[] */\
 	TENSOR_ADD_RANK1_CALL_INDEX_AUX() /* operator(int, int...), operator[] */\
+	TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	TENSOR_ADD_SUBSET_ACCESS()\
 	TENSOR_ADD_DOT()\
 	TENSOR_ADD_VOLUME()
@@ -1307,21 +1338,9 @@ constexpr int symIndex(int i, int j) {
 	template<int N>\
 	constexpr decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }\
 
-// symmetric matrices
-
-#define TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
-	static constexpr int localCount = triangleSize(localDim);
-
-#define TENSOR_HEADER_SYMMETRIC_MATRIX(classname, Inner_, localDim_)\
-	TENSOR_THIS(classname)\
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
-	TENSOR_TEMPLATE_T_I(classname)\
-	TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
-	TENSOR_HEADER()
-
 // Accessor is used to return between-rank indexes, so if sym is rank-2 this lets you get s[i] even if the storage only represents s[i,j]
 // looks like this needs to go before IndexResult, which needs to go before the operator() operator[]
-#define TENSOR_ADD_SYMMETRIC_MATRIX_ACCESSOR()\
+#define TENSOR_ADD_RANK2_ACCESSOR()\
 	template<typename OwnerConstness>\
 	struct Accessor {\
 		static constexpr bool isAccessorFlag = {};\
@@ -1341,7 +1360,20 @@ constexpr int symIndex(int i, int j) {
 \
 		/* this provides the rest of the () [] operators that will be driven by operator(int) */\
 		TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
+		TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	};
+
+// symmetric matrices
+
+#define TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
+	static constexpr int localCount = triangleSize(localDim);
+
+#define TENSOR_HEADER_SYMMETRIC_MATRIX(classname, Inner_, localDim_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
+	TENSOR_TEMPLATE_T_I(classname)\
+	TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
+	TENSOR_HEADER()
 
 /*
 Tank-2 based default indexing access.  ALl other indexing of rank-2 's relies on this.
@@ -1395,7 +1427,7 @@ and therein risks applying a call to an accessor
 so the accessors need nested call indexing too
 */
 #define TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
-	TENSOR_ADD_SYMMETRIC_MATRIX_ACCESSOR()\
+	TENSOR_ADD_RANK2_ACCESSOR()\
 	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
@@ -1404,10 +1436,8 @@ so the accessors need nested call indexing too
 template<typename Inner_, int localDim_>
 struct _sym {
 	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, localDim_)
-
 	std::array<Inner,localCount> s = {};
 	constexpr _sym() {}
-
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
 };
 
@@ -1509,6 +1539,59 @@ struct _sym<Inner_,4> {
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
 };
 
+// symmetric, identity ... 
+// only a single storage required
+// ... so it's just a wrapper
+// so I guess dimension doesn't really matter.
+// but meh, it works for outer product / multiply optimizations I guess?
+
+#define TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
+	constexpr auto operator()(int i, int j) {\
+		if (i != j) return AntiSymRef<Inner>();\
+		return AntiSymRef<Inner>(std::ref(s[0]), AntiSymRefHow::POSITIVE);\
+	}\
+	constexpr auto operator()(int i, int j) const {\
+		if (i != j) return AntiSymRef<Inner>();\
+		return AntiSymRef<Inner>(std::ref(s[0]), AntiSymRefHow::POSITIVE);\
+	}
+
+// shouldn't even need this, cuz nobody should be calling i
+#define TENSOR_IDENTITY_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
+	static _vec<int,0> getLocalReadForWriteIndex(int writeIndex) {\
+		return _vec<int,0>();\
+	}\
+	static constexpr int getLocalWriteForReadIndex(int i, int j) {\
+		return 0;\
+	}
+
+#define TENSOR_IDENTITY_MATRIX_CLASS_OPS(classname)\
+	TENSOR_ADD_RANK2_ACCESSOR()\
+	TENSOR_IDENTITY_MATRIX_LOCAL_READ_FOR_WRITE_INDEX() /* also works for Identity ... also any rank-2? */\
+	TENSOR_ADD_OPS(classname)\
+	TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
+	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
+
+#define TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
+	static constexpr int localCount = 0;
+
+#define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
+	TENSOR_TEMPLATE_T_I(classname)\
+	TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
+	TENSOR_HEADER()
+
+template<typename Inner_, int localDim_>
+struct _ident {
+	TENSOR_HEADER_IDENTITY_MATRIX(_ident, Inner_, localDim_)
+	std::array<Inner_, 1> s = {};
+	constexpr _ident() {}
+	TENSOR_IDENTITY_MATRIX_CLASS_OPS(_ident)
+};
+
+// TODO symmetric, scale
+// TODO symmetric, diagonal
+
 // antisymmetric matrices
 
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
@@ -1520,23 +1603,6 @@ struct _sym<Inner_,4> {
 	TENSOR_TEMPLATE_T_I(classname)\
 	TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
 	TENSOR_HEADER()
-
-#define TENSOR_ADD_ANTISYMMETRIC_MATRIX_ACCESSOR()\
-	template<typename OwnerConstness>\
-	struct Accessor {\
-		static constexpr bool isAccessorFlag = {};\
-		OwnerConstness & owner;\
-		int i;\
-		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
-\
-		/* this is AntiSymRef<Inner> for OwnerConstness==This */\
-		/* this is AntiSymRef<Inner const> for OwnerConstness==This const*/\
-		constexpr auto operator()(int j) -> decltype(owner(i,j)) { return owner(i,j); }\
-		constexpr auto operator()(int j) const -> decltype(owner(i,j)) { return owner(i,j); }\
-\
-		/* this provides the rest of the () [] operators that will be driven by operator(int) */\
-		TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
-	};
 
 // make sure this (and the using) is set before the specific-named accessors
 #define TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
@@ -1578,7 +1644,7 @@ struct _sym<Inner_,4> {
 	}
 
 #define TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(classname)\
-	TENSOR_ADD_ANTISYMMETRIC_MATRIX_ACCESSOR()\
+	TENSOR_ADD_RANK2_ACCESSOR()\
 	TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
@@ -2433,42 +2499,56 @@ template<typename T> using _asym4 = _asym<T,4>;
 // and I do have my default .fields ostream
 // but here's a manual override anyways
 // so that the .fields vec2 vec3 vec4 and the non-.fields other vecs all look the same
+#if 0 // use array.  fails cuz quat (wsubclass of _vec) can't deduce whether _vec or _quat which both are used here:
+template<typename T>
+requires (is_tensor_v<T>)
+std::ostream & operator<<(std::ostream & o, T const & t) {
+	return o << t.s;
+}
+#endif
+#if 0 // just use iterator.  but i guess AntiSymRef doesn't?
+template<typename T>
+requires (is_tensor_v<T>)
+std::ostream & operator<<(std::ostream & o, T const & t) {
+	return Common::iteratorToOStream(o, t);
+}
+#endif
+#if 1 // use array fields
 template<typename T, int N>
 std::ostream & operator<<(std::ostream & o, _vec<T,N> const & t) {
-	char const * sep = "";
-	o << "{";
-	for (int i = 0; i < t.localCount; ++i) {
-		o << sep << t.s[i];
-		sep = ", ";
-	}
-	o << "}";
-	return o;
+	return o << t.s;
 }
-
-// TODO print as fields of .sym, or print as vector?
 template<typename T, int N>
 std::ostream & operator<<(std::ostream & o, _sym<T,N> const & t) {
-	char const * sep = "";
-	o << "{";
-	for (int i = 0; i < t.localCount; ++i) {
-		o << sep << t.s[i];
-		sep = ", ";
-	}
-	o << "}";
-	return o;
+	return o << t.s;
 }
-
 template<typename T, int N>
 std::ostream & operator<<(std::ostream & o, _asym<T,N> const & t) {
-	char const * sep = "";
-	o << "{";
-	for (int i = 0; i < t.localCount; ++i) {
-		o << sep << t.s[i];
-		sep = ", ";
-	}
-	o << "}";
-	return o;
+	return o << t.s;
 }
+template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
+	return o << t.s;
+}
+#endif
+#if 0 // just use iterator.  but i guess AntiSymRef doesn't?
+template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, _vec<T,N> const & t) {
+	return Common::iteratorToOStream(o, t);
+}
+template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, _sym<T,N> const & t) {
+	return Common::iteratorToOStream(o, t);
+}
+template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, _asym<T,N> const & t) {
+	return Common::iteratorToOStream(o, t);
+}
+template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
+	return Common::iteratorToOStream(o, t);
+}
+#endif
 
 } // namespace Tensor
 
