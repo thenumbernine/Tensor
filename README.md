@@ -47,8 +47,11 @@ So I guess overall this library is midway between a mathematician's and a progra
 ### Tensor creation:
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
 - `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific pairs of indexes symmetric storage. 
-	`I1 I2` etc are one of the following: `index_vec<dim>` for a single index of dimension `dim`,
-		`index_sym<dim>` for two symmetric indexes of dimension `dim`, or `index_asym<dim>` for two antisymmetric indexes of dimension `dim`.
+	`I1 I2` etc are one of the following:
+		- `index_vec<dim>` for a single index of dimension `dim`,
+		- `index_sym<dim>` for two symmetric indexes of dimension `dim`, or
+		- `index_asym<dim>` for two antisymmetric indexes of dimension `dim`.
+	Ex: `_tensor<float, index_vec<3>, index_sym<4>, index_asym<5>>` is the type of a tensor $a_{ijklm}` where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 
 ### Tensor operators

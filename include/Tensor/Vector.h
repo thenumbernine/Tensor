@@ -635,6 +635,7 @@ ReplaceScalar<typename>
 		}\
 	}
 
+// TODO vararg ctor
 #define TENSOR_ADD_ARG_CTOR(classname)\
 \
 	/* vec2 */\
@@ -991,13 +992,13 @@ ReadIterator vs WriteIterator
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
+	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX() /* needed by TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS */\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_VECTOR_CALL_INDEX_PRIMARY() /* operator(int) to access .s and operator[] */\
 	TENSOR_ADD_RANK1_CALL_INDEX_AUX() /* operator(int, int...), operator[] */\
 	TENSOR_ADD_SUBSET_ACCESS()\
 	TENSOR_ADD_DOT()\
-	TENSOR_ADD_VOLUME()\
-	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()
+	TENSOR_ADD_VOLUME()
 
 template<typename Inner, int localDim>
 struct _vec;
@@ -1383,10 +1384,10 @@ so the accessors need nested call indexing too
 */
 #define TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(classname)\
 	TENSOR_ADD_SYMMETRIC_MATRIX_ACCESSOR()\
+	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
-	TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
-	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()
+	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
 
 template<typename Inner_, int localDim_>
 struct _sym {
@@ -1556,7 +1557,7 @@ struct _sym<Inner_,4> {
 		}\
 	}
 
-// currently set to upper-triangular
+// currently set to upper-triangular, so i < j
 // swap iread 0 and 1 to get lower-triangular
 #define TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	static _vec<int,2> getLocalReadForWriteIndex(int writeIndex) {\
@@ -1574,10 +1575,10 @@ struct _sym<Inner_,4> {
 
 #define TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(classname)\
 	TENSOR_ADD_ANTISYMMETRIC_MATRIX_ACCESSOR()\
+	TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
-	TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
-	TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()
+	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
 
 /*
 for asym because I need to return reference-wrappers to support the + vs - depending on the index
@@ -1664,7 +1665,7 @@ constexpr int nChooseR(int n, int k) {
     int result = n;
     // TODO can you guarantee that /=i will always have 'i' as a divisor? or do we need two loops?
 	for (int i = 2; i <= k; ++i) {
-        result *= (n - i + 1);
+        result *= n - i + 1;
         result /= i;
     }
     return result;
@@ -1706,9 +1707,30 @@ inline constexpr int antisymmetricSize(int d, int r) {
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC()\
 	static constexpr int localCount = symmetricSize(localDim, localRank);
 
-// TODO need to pull Template out of TENSOR_THIS
-//  need to generalize the Template params somehow
-//  need to remove use of 'T' in macros
+/*
+triangular:
+0 1 3 6
+  2 4 7
+    5 8
+	  9
+
+0 = 00..
+1 = 00...1 = 1000...
+2 = 
+*/
+#define TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX()\
+	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
+		_vec<int,localRank> iread;\
+		int w = writeIndex+1;\
+		for (int i = 1; w > 0; ++i) {\
+			++iread(0);\
+			w -= i;\
+		}\
+		--iread(0);\
+		iread(1) = writeIndex - triangleSize(iread(0));\
+		return iread;\
+	}
+
 
 template<typename Inner_, int localDim_, int localRank_>
 struct _symR {
@@ -1720,6 +1742,9 @@ struct _symR {
 
 	std::array<Inner, localCount> s = {};
 	constexpr _symR() {}
+
+	TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() // needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS
+	TENSOR_ADD_OPS(_symR)
 };
 
 // dense vec-of-vec
