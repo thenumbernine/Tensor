@@ -101,14 +101,6 @@ struct TypeWrapper {
 	template<int newLocalDim>\
 	using ReplaceLocalDim = Template<Inner, newLocalDim>;
 
-#define TENSOR_HEADER_VECTOR()\
-\
-	/*this is the storage size, used for iterting across 's' */\
-	/* for vectors etc it is 's' */\
-	/* for (anti?)symmetric it is N*(N+1)/2 */\
-	/* TODO make a 'count<int nesting>', same as dim? */\
-	static constexpr int localCount = localDim;
-
 /*
 This contains definitions of types and values used in all tensors.
 Defines the following:
@@ -967,12 +959,6 @@ ReadIterator vs WriteIterator
 		return res;\
 	}
 
-#define TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()\
-	/* accepts int into .s[] storage, returns _intN<localRank> of how to index it using operator() */\
-	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
-		return _vec<int,localRank>{writeIndex};\
-	}
-
 //these are all per-element assignment operators,
 // so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
 #define TENSOR_ADD_OPS(classname)\
@@ -989,6 +975,32 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_UNM()\
 	TENSOR_ADD_CMP_OP()
 
+
+// vector-specific macros:
+
+
+// this is the header specific to vectors.
+#define TENSOR_HEADER_VECTOR_SPECIFIC()\
+\
+	/*this is the storage size, used for iterting across 's' */\
+	/* for vectors etc it is 's' */\
+	/* for (anti?)symmetric it is N*(N+1)/2 */\
+	/* TODO make a 'count<int nesting>', same as dim? */\
+	static constexpr int localCount = localDim;
+
+#define TENSOR_HEADER_VECTOR(classname, Inner_, localDim_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 1)\
+	TENSOR_TEMPLATE_T_I(classname)\
+	TENSOR_HEADER_VECTOR_SPECIFIC()\
+	TENSOR_HEADER()
+
+#define TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()\
+	/* accepts int into .s[] storage, returns _intN<localRank> of how to index it using operator() */\
+	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
+		return _vec<int,localRank>{writeIndex};\
+	}
+
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
@@ -999,6 +1011,7 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_SUBSET_ACCESS()\
 	TENSOR_ADD_DOT()\
 	TENSOR_ADD_VOLUME()
+
 
 template<typename Inner, int localDim>
 struct _vec;
@@ -1022,15 +1035,9 @@ using _tensorr = typename _tensorr_impl<Src, dim, rank>::type;
 // this is this class.  useful for templates.  you'd be surprised.
 template<typename Inner_, int localDim_>
 struct _vec {
-	TENSOR_THIS(_vec)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 1)
-	TENSOR_TEMPLATE_T_I(_vec)
-	TENSOR_HEADER_VECTOR()
-	TENSOR_HEADER()
-
+	TENSOR_HEADER_VECTOR(_vec, Inner_, localDim_)
 	std::array<Inner, localCount> s = {};
 	constexpr _vec() {}
-	
 	TENSOR_VECTOR_CLASS_OPS(_vec)
 };
 
@@ -1038,11 +1045,7 @@ struct _vec {
 
 template<typename Inner_>
 struct _vec<Inner_,2> {
-	TENSOR_THIS(_vec)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 2, 1)
-	TENSOR_TEMPLATE_T_I(_vec)
-	TENSOR_HEADER_VECTOR()
-	TENSOR_HEADER()
+	TENSOR_HEADER_VECTOR(_vec, Inner_, 2)
 
 	union {
 		struct {
@@ -1109,11 +1112,7 @@ struct _vec<Inner_,2> {
 
 template<typename Inner_>
 struct _vec<Inner_,3> {
-	TENSOR_THIS(_vec)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 3, 1)
-	TENSOR_TEMPLATE_T_I(_vec)
-	TENSOR_HEADER_VECTOR()
-	TENSOR_HEADER()
+	TENSOR_HEADER_VECTOR(_vec, Inner_, 3)
 
 	union {
 		struct {
@@ -1191,11 +1190,7 @@ struct _vec<Inner_,3> {
 
 template<typename Inner_>
 struct _vec<Inner_,4> {
-	TENSOR_THIS(_vec)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 1)
-	TENSOR_TEMPLATE_T_I(_vec)
-	TENSOR_HEADER_VECTOR()
-	TENSOR_HEADER()
+	TENSOR_HEADER_VECTOR(_vec, Inner_, 4)
 
 	union {
 		struct {
@@ -1280,8 +1275,6 @@ struct _vec<Inner_,4> {
 
 // rank-2 optimized storage
 
-// symmetric matrices
-
 inline constexpr int triangleSize(int n) {
 	return (n * (n + 1)) / 2;
 }
@@ -1291,8 +1284,40 @@ constexpr int symIndex(int i, int j) {
 	return i + triangleSize(j);
 }
 
-#define TENSOR_HEADER_SYMMETRIC_MATRIX()\
+// this assumes the class has a member template<ThisConstness> Accessor for its [] and (int) access
+#define TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
+\
+	/* a(i1,i2,...) := a_i1_i2_... */\
+	template<typename... Rest>\
+	constexpr decltype(auto) operator()(int i, int j, Rest... rest) { return (*this)(i,j)(rest...); }\
+	template<typename... Rest>\
+	constexpr decltype(auto) operator()(int i, int j, Rest... rest) const { return (*this)(i,j)(rest...); }\
+\
+	constexpr decltype(auto) operator[](int i) { return Accessor<This>(*this, i); }\
+	constexpr decltype(auto) operator[](int i) const { return Accessor<This const>(*this, i); }\
+\
+	/* a(i) := a_i */\
+	/* this is incomplete so it returns the operator[] which returns the Accessor */\
+	constexpr decltype(auto) operator()(int i) { return (*this)[i]; }\
+	constexpr decltype(auto) operator()(int i) const { return (*this)[i]; }\
+\
+	/* a(intN(i,...)) */\
+	template<int N>\
+	constexpr decltype(auto) operator()(_vec<int,N> const & i) { return std::apply(*this, i.s); }\
+	template<int N>\
+	constexpr decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }\
+
+// symmetric matrices
+
+#define TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
 	static constexpr int localCount = triangleSize(localDim);
+
+#define TENSOR_HEADER_SYMMETRIC_MATRIX(classname, Inner_, localDim_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
+	TENSOR_TEMPLATE_T_I(classname)\
+	TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
+	TENSOR_HEADER()
 
 // Accessor is used to return between-rank indexes, so if sym is rank-2 this lets you get s[i] even if the storage only represents s[i,j]
 // looks like this needs to go before IndexResult, which needs to go before the operator() operator[]
@@ -1336,29 +1361,7 @@ constexpr int symIndex(int i, int j) {
 		return s[symIndex(i,j)];\
 	}
 
-// this assumes the class has a member template<ThisConstness> Accessor for its [] and (int) access
-#define TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
-\
-	/* a(i1,i2,...) := a_i1_i2_... */\
-	template<typename... Rest>\
-	constexpr decltype(auto) operator()(int i, int j, Rest... rest) { return (*this)(i,j)(rest...); }\
-	template<typename... Rest>\
-	constexpr decltype(auto) operator()(int i, int j, Rest... rest) const { return (*this)(i,j)(rest...); }\
-\
-	constexpr decltype(auto) operator[](int i) { return Accessor<This>(*this, i); }\
-	constexpr decltype(auto) operator[](int i) const { return Accessor<This const>(*this, i); }\
-\
-	/* a(i) := a_i */\
-	/* this is incomplete so it returns the operator[] which returns the Accessor */\
-	constexpr decltype(auto) operator()(int i) { return (*this)[i]; }\
-	constexpr decltype(auto) operator()(int i) const { return (*this)[i]; }\
-\
-	/* a(intN(i,...)) */\
-	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> const & i) { return std::apply(*this, i.s); }\
-	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }\
-
+// TODO double-check this is upper-triangular
 // currently set to upper-triangular
 // swap iread 0 and 1 to get lower-triangular
 #define TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
@@ -1391,11 +1394,7 @@ so the accessors need nested call indexing too
 
 template<typename Inner_, int localDim_>
 struct _sym {
-	TENSOR_THIS(_sym)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)
-	TENSOR_TEMPLATE_T_I(_sym)
-	TENSOR_HEADER_SYMMETRIC_MATRIX()
-	TENSOR_HEADER()
+	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, localDim_)
 
 	std::array<Inner,localCount> s = {};
 	constexpr _sym() {}
@@ -1405,11 +1404,7 @@ struct _sym {
 
 template<typename Inner_>
 struct _sym<Inner_,2> {
-	TENSOR_THIS(_sym)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 2, 2)
-	TENSOR_TEMPLATE_T_I(_sym)
-	TENSOR_HEADER_SYMMETRIC_MATRIX()
-	TENSOR_HEADER()
+	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, 2)
 
 	union {
 		struct {
@@ -1435,11 +1430,7 @@ struct _sym<Inner_,2> {
 
 template<typename Inner_>
 struct _sym<Inner_,3> {
-	TENSOR_THIS(_sym)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 3, 2)
-	TENSOR_TEMPLATE_T_I(_sym)
-	TENSOR_HEADER_SYMMETRIC_MATRIX()
-	TENSOR_HEADER()
+	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, 3)
 
 	union {
 		struct {
@@ -1471,11 +1462,7 @@ struct _sym<Inner_,3> {
 
 template<typename Inner_>
 struct _sym<Inner_,4> {
-	TENSOR_THIS(_sym)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 2)
-	TENSOR_TEMPLATE_T_I(_sym)
-	TENSOR_HEADER_SYMMETRIC_MATRIX()
-	TENSOR_HEADER()
+	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, 4)
 
 	union {
 		struct {
@@ -1515,8 +1502,15 @@ struct _sym<Inner_,4> {
 
 // antisymmetric matrices
 
-#define TENSOR_HEADER_ANTISYMMETRIC_MATRIX()\
+#define TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
 	static constexpr int localCount = triangleSize(localDim - 1);
+
+#define TENSOR_HEADER_ANTISYMMETRIC_MATRIX(classname, Inner_, localDim_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
+	TENSOR_TEMPLATE_T_I(classname)\
+	TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
+	TENSOR_HEADER()
 
 #define TENSOR_ADD_ANTISYMMETRIC_MATRIX_ACCESSOR()\
 	template<typename OwnerConstness>\
@@ -1557,6 +1551,7 @@ struct _sym<Inner_,4> {
 		}\
 	}
 
+// TODO double-check this is upper-triangular
 // currently set to upper-triangular, so i < j
 // swap iread 0 and 1 to get lower-triangular
 #define TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
@@ -1590,11 +1585,7 @@ so no specialized sizes for _asym
 */
 template<typename Inner_, int localDim_>
 struct _asym {
-	TENSOR_THIS(_asym)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)
-	TENSOR_TEMPLATE_T_I(_asym)
-	TENSOR_HEADER_ANTISYMMETRIC_MATRIX()
-	TENSOR_HEADER()
+	TENSOR_HEADER_ANTISYMMETRIC_MATRIX(_asym, Inner_, localDim_)
 
 	std::array<Inner, localCount> s = {};
 	constexpr _asym() {}
@@ -1707,30 +1698,24 @@ inline constexpr int antisymmetricSize(int d, int r) {
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC()\
 	static constexpr int localCount = symmetricSize(localDim, localRank);
 
-/*
-triangular:
-0 1 3 6
-  2 4 7
-    5 8
-	  9
-
-0 = 00..
-1 = 00...1 = 1000...
-2 = 
-*/
+// right now i'm counting into this.  is there a faster way?
 #define TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX()\
 	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
-		_vec<int,localRank> iread;\
-		int w = writeIndex+1;\
-		for (int i = 1; w > 0; ++i) {\
-			++iread(0);\
-			w -= i;\
+		std::array<int, localRank> iread = {};\
+		for (int i = 0; i < writeIndex; ++i) {\
+			std::function<bool(int)> inc = [&iread, &inc](int j) {\
+				if (j < 0) return true;\
+				iread[j]++;\
+				if (iread[j] >= localDim) {\
+					if (inc(j-1)) return true;\
+					iread[j] = j == 0 ? 0 : iread[j-1];\
+				}\
+				return false;\
+			};\
+			if (inc(localRank-1)) break;\
 		}\
-		--iread(0);\
-		iread(1) = writeIndex - triangleSize(iread(0));\
 		return iread;\
 	}
-
 
 template<typename Inner_, int localDim_, int localRank_>
 struct _symR {

@@ -9,14 +9,19 @@
 
 namespace Tensor {
 
+#define TENSOR_HEADER_QUAT(classname, Inner_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 1)\
+	TENSOR_TEMPLATE_T(classname)\
+	TENSOR_HEADER_VECTOR_SPECIFIC() /* defines localCount=localDim, matching for _vec and _quat */\
+	TENSOR_HEADER()
+
+
 template<typename Inner_>
 struct _quat : public _vec4<Inner_> {
 	using Super = _vec4<Inner_>;
-	TENSOR_THIS(_quat)
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 1)
-	TENSOR_TEMPLATE_T(_quat)
-	TENSOR_HEADER_VECTOR()
-	TENSOR_HEADER()
+	TENSOR_HEADER_QUAT(_quat, Inner_)
+	
 	using vec3 = _vec3<Inner>;
 
 	constexpr _quat() : Super(0,0,0,1) {}
