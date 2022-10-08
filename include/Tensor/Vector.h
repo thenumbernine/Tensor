@@ -685,6 +685,9 @@ ReplaceScalar<typename>
 	TENSOR_ADD_ARG_CTOR(classname)
 
 /*
+ReadIterator and WriteIterator
+depends on operator()(intN) for ReadIterator
+
 TODO InnerIterator (iterator i1 first) vs OuterIterator (iterator iN first)
 ReadIterator vs WriteIterator
 (Based on) ReadIndexIterator vs WriteIndexIterator
@@ -1382,11 +1385,7 @@ constexpr int symIndex(int i, int j) {
 	constexpr decltype(auto) operator()(int i) { return (*this)[i]; }\
 	constexpr decltype(auto) operator()(int i) const { return (*this)[i]; }\
 \
-	/* a(intN(i,...)) */\
-	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> const & i) { return std::apply(*this, i.s); }\
-	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }\
+	TENSOR_ADD_INT_VEC_CALL_INDEX()
 
 // Accessor is used to return between-rank indexes, so if sym is rank-2 this lets you get s[i] even if the storage only represents s[i,j]
 #define TENSOR_ADD_RANK2_ACCESSOR()\
@@ -1879,7 +1878,17 @@ inline constexpr int antisymmetricSize(int d, int r) {
 			static_assert(sizeof...(Ints) == localRank);\
 			return s[getLocalWriteForReadIndex(intNLocal(is...))];\
 		}\
-	}
+	}\
+	template<typename... Ints>\
+	constexpr auto operator()(Ints... is) const\
+	-> decltype(s[0]) {\
+		/*if constexpr (sizeof...(Ints) == localRank)*/ {\
+			static_assert(sizeof...(Ints) == localRank);\
+			return s[getLocalWriteForReadIndex(intNLocal(is...))];\
+		}\
+	}\
+\
+	TENSOR_ADD_INT_VEC_CALL_INDEX()
 
 #define TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_TOTALLY_SYMMETRIC_ACCESSOR()\
@@ -2594,7 +2603,7 @@ std::ostream & operator<<(std::ostream & o, T const & t) {
 	return o << t.s;
 }
 #endif
-#if 0 // just use iterator.  but i guess AntiSymRef doesn't?
+#if 0 // just use iterator
 template<typename T>
 requires (is_tensor_v<T>)
 std::ostream & operator<<(std::ostream & o, T const & t) {
@@ -2618,6 +2627,10 @@ template<typename T, int N>
 std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
 	return o << t.s;
 }
+template<typename T, int N, int R>
+std::ostream & operator<<(std::ostream & o, _symR<T,N,R> const & t) {
+	return o << t.s;
+}
 #endif
 #if 0 // just use iterator.  but i guess AntiSymRef doesn't?
 template<typename T, int N>
@@ -2634,6 +2647,10 @@ std::ostream & operator<<(std::ostream & o, _asym<T,N> const & t) {
 }
 template<typename T, int N>
 std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
+	return Common::iteratorToOStream(o, t);
+}
+template<typename T, int N, int R>
+std::ostream & operator<<(std::ostream & o, _symR<T,N,R> const & t) {
 	return Common::iteratorToOStream(o, t);
 }
 #endif
