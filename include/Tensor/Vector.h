@@ -49,6 +49,19 @@ TODO TODO
 #include <functional>	//reference_wrapper, also function<> is by Partial
 #include <cmath>		//sqrt()
 
+#define TENSOR_USE_BOUNDS_CHECKING
+
+#ifdef TENSOR_USE_BOUNDS_CHECKING //only for bounds checking ... but  maybe not if constexpr doens't like exceptions
+#include "Common/Exception.h"
+#endif
+
+#ifdef TENSOR_USE_BOUNDS_CHECKING
+#define TENSOR_INSERT_BOUNDS_CHECK(index)\
+	if (index < 0 || index >= localCount) throw Common::Exception() << "tried to read oob index " << index << " for size " << localCount << " type " << typeid(This).name();
+#else
+#define TENSOR_INSERT_BOUNDS_CHECK(index)
+#endif
+
 namespace Tensor {
 
 // I was using optional<> to capture types without instanciating them
@@ -128,6 +141,9 @@ dims
 ReplaceScalar<typename>
 */
 #define TENSOR_HEADER()\
+\
+	/* TENSOR_HEADER goes right after the struct-specific header which defines localCount...*/\
+	static_assert(localCount > 0);\
 \
 	/*  this is the child-most nested class that isn't in our math library. */\
 	struct ScalarImpl {\
@@ -458,6 +474,7 @@ ReplaceScalar<typename>
 	}
 
 // danger ... danger ...
+// don't mix overload='s with overload ctors
 #define TENSOR_ADD_ASSIGN_OP()\
 	This & operator=(This const & o) {\
 		for (int i = 0; i < localCount; ++i) {\
@@ -480,8 +497,14 @@ ReplaceScalar<typename>
 #define TENSOR_ADD_VECTOR_CALL_INDEX_PRIMARY()\
 \
 	/* a(i) := a_i */\
-	constexpr auto operator()(int i) -> decltype(s[i]) { return s[i]; }\
-	constexpr auto operator()(int i) const -> decltype(s[i]) { return s[i]; }
+	constexpr auto operator()(int i) -> decltype(s[i]) {\
+		TENSOR_INSERT_BOUNDS_CHECK(i);\
+		return s[i];\
+	}\
+	constexpr auto operator()(int i) const -> decltype(s[i]) {\
+		TENSOR_INSERT_BOUNDS_CHECK(i);\
+		return s[i];\
+	}
 
 //operator[int] forwards to operator(int)
 //operator(int...) forwards to operator(int)(int...)
@@ -773,19 +796,33 @@ ReadIterator vs WriteIterator
 		}\
 		return res;\
 	}\
-	static Scalar & getByWriteIndex(This & t, intW const & index) {\
-		if constexpr (numNestings == 1) {\
-			return t.s[index.s[0]];\
-		} else {\
-			return Inner::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());\
+\
+	template<typename ThisConstness, int numNestings_>\
+	struct GetByWriteIndexImpl {\
+		static constexpr auto value(ThisConstness & t, intW const & index)\
+		-> decltype(Inner::getByWriteIndex(\
+			t.s[index.s[0]],\
+			index.template subset<numNestings-1,1>()\
+		)) {\
+			TENSOR_INSERT_BOUNDS_CHECK(index.s[0]);\
+			return Inner::getByWriteIndex(\
+				t.s[index.s[0]],\
+				index.template subset<numNestings-1,1>()\
+			);\
 		}\
-	}\
-	static Scalar const & getByWriteIndex(This const & t, intW const & index) {\
-		if constexpr (numNestings == 1) {\
+	};\
+	template<typename ThisConstness>\
+	struct GetByWriteIndexImpl<ThisConstness, 1> {\
+		static constexpr auto value(ThisConstness & t, intW const & index)\
+		-> decltype(t.s[index.s[0]]) {\
+			TENSOR_INSERT_BOUNDS_CHECK(index.s[0]);\
 			return t.s[index.s[0]];\
-		} else {\
-			return Inner::getByWriteIndex(t.s[index.s[0]], index.template subset<numNestings-1,1>());\
 		}\
+	};\
+	template<typename ThisConstness>\
+	static constexpr auto getByWriteIndex(ThisConstness & t, intW const & index)\
+	-> decltype(GetByWriteIndexImpl<ThisConstness, numNestings>::value(t, index)) {\
+		return GetByWriteIndexImpl<ThisConstness, numNestings>::value(t, index);\
 	}\
 \
 	template<typename WriteOwnerConstness>\
@@ -877,9 +914,10 @@ ReadIterator vs WriteIterator
 			constexpr bool operator!=(WriteIterator const & o) const {\
 				return !operator==(o);\
 			}\
-			auto & operator*() {\
+			auto operator*() const\
+			-> decltype(getByWriteIndex<OwnerConstness>(owner, writeIndex)) {\
 				/* cuz it takes less operations than by-read-writeIndex */\
-				return getByWriteIndex(owner, writeIndex);\
+				return getByWriteIndex<OwnerConstness>(owner, writeIndex);\
 			}\
 \
 			WriteIterator & operator++() {\
@@ -985,20 +1023,28 @@ ReadIterator vs WriteIterator
 	/* assumes packed tensor */\
 	template<int subdim, int offset>\
 	_vec<Inner,subdim> & subset() {\
+		static_assert(subdim >= 0);\
+		static_assert(offset >= 0);\
 		static_assert(offset + subdim <= localCount);\
 		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}\
 	template<int subdim, int offset>\
 	_vec<Inner,subdim> const & subset() const {\
+		static_assert(subdim >= 0);\
+		static_assert(offset >= 0);\
 		static_assert(offset + subdim <= localCount);\
 		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}\
 	template<int subdim>\
 	_vec<Inner,subdim> & subset(int offset) {\
+		static_assert(subdim >= 0);\
+		static_assert(subdim <= localCount);\
 		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}\
 	template<int subdim>\
 	_vec<Inner,subdim> const & subset(int offset) const {\
+		static_assert(subdim >= 0);\
+		static_assert(subdim <= localCount);\
 		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}
 
@@ -1390,11 +1436,13 @@ This is used by _sym , while _asym uses something different since it uses the An
 	/* symmetric has to define 1-arg operator() */\
 	/* that means I can't use the default so i have to make a 2-arg recursive case */\
 	constexpr auto operator()(int i, int j)\
-	-> decltype(s[getLocalWriteForReadIndex(i,j)]) {\
+	-> decltype(s[0]) {\
+		TENSOR_INSERT_BOUNDS_CHECK(getLocalWriteForReadIndex(i,j));\
 		return s[getLocalWriteForReadIndex(i,j)];\
 	}\
 	constexpr auto operator()(int i, int j) const\
-	-> decltype(s[getLocalWriteForReadIndex(i,j)]) {\
+	-> decltype(s[0]) {\
+		TENSOR_INSERT_BOUNDS_CHECK(getLocalWriteForReadIndex(i,j));\
 		return s[getLocalWriteForReadIndex(i,j)];\
 	}
 
@@ -1557,8 +1605,8 @@ struct _sym<Inner_,4> {
 
 // shouldn't even need this, cuz nobody should be calling i
 #define TENSOR_IDENTITY_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	static _vec<int,0> getLocalReadForWriteIndex(int writeIndex) {\
-		return _vec<int,0>();\
+	static _vec<int,1> getLocalReadForWriteIndex(int writeIndex) {\
+		return _vec<int,1>();\
 	}\
 	static constexpr int getLocalWriteForReadIndex(int i, int j) {\
 		return 0;\
@@ -1572,7 +1620,7 @@ struct _sym<Inner_,4> {
 	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
 
 #define TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
-	static constexpr int localCount = 0;
+	static constexpr int localCount = 1;
 
 #define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1612,16 +1660,20 @@ struct _ident {
 	constexpr auto operator()(int i, int j) {\
 		if (i == j) return AntiSymRef<Inner>();\
 		if (i < j) {\
+			TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
 			return AntiSymRef<Inner>(std::ref(s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
 		} else {\
+			TENSOR_INSERT_BOUNDS_CHECK(symIndex(j,i-1));\
 			return AntiSymRef<Inner>(std::ref(s[symIndex(j,i-1)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}\
 	constexpr auto operator()(int i, int j) const {\
 		if (i == j) return AntiSymRef<Inner const>();\
 		if (i < j) {\
+			TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
 			return AntiSymRef<Inner const>(std::ref(s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
 		} else {\
+			TENSOR_INSERT_BOUNDS_CHECK(symIndex(j,i-1));\
 			return AntiSymRef<Inner const>(std::ref(s[symIndex(j,i-1)]), AntiSymRefHow::NEGATIVE);\
 		}\
 	}

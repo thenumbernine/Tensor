@@ -275,3 +275,5 @@ TODO:
 
 - might do some constexpr loop unrolling stuff maybe.
 - test case write tests should be writing different values and verifying
+
+- make `*=` use `operator*` equivalent multiply.
