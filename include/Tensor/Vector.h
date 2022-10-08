@@ -192,6 +192,10 @@ ReplaceScalar<typename>
 	/* used for write-iterators and converting write-iterator indexes to read index vectors */\
 	using intW = _vec<int,numNestings>;\
 \
+	/* used for getLocalReadForWriteIndex() return type */\
+	/* and ofc the write local index is always 1 */\
+	using intNLocal = _vec<int,localRank>;\
+\
 	template<int i, typename NewNestedInner>\
 	struct ReplaceNestedImpl {\
 		static constexpr auto value() {\
@@ -1013,8 +1017,8 @@ ReadIterator vs WriteIterator
 
 #define TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()\
 	/* accepts int into .s[] storage, returns _intN<localRank> of how to index it using operator() */\
-	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
-		return _vec<int,localRank>{writeIndex};\
+	static intNLocal getLocalReadForWriteIndex(int writeIndex) {\
+		return intNLocal{writeIndex};\
 	}
 
 // TODO is this safe?
@@ -1605,8 +1609,8 @@ struct _sym<Inner_,4> {
 
 // shouldn't even need this, cuz nobody should be calling i
 #define TENSOR_IDENTITY_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	static _vec<int,1> getLocalReadForWriteIndex(int writeIndex) {\
-		return _vec<int,1>();\
+	static intNLocal getLocalReadForWriteIndex(int writeIndex) {\
+		return intNLocal();\
 	}\
 	static constexpr int getLocalWriteForReadIndex(int i, int j) {\
 		return 0;\
@@ -1682,8 +1686,8 @@ struct _ident {
 // currently set to upper-triangular, so i < j
 // swap iread 0 and 1 to get lower-triangular
 #define TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	static _vec<int,2> getLocalReadForWriteIndex(int writeIndex) {\
-		_vec<int,2> iread;\
+	static intNLocal getLocalReadForWriteIndex(int writeIndex) {\
+		intNLocal iread;\
 		int w = writeIndex+1;\
 		for (int i = 1; w > 0; ++i) {\
 			++iread(1);\
@@ -1815,7 +1819,7 @@ inline constexpr int antisymmetricSize(int d, int r) {
 // using 'upper-triangular' i.e. i<=j<=k<=...
 // right now i'm counting into this.  is there a faster way?
 #define TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX()\
-	static _vec<int,localRank> getLocalReadForWriteIndex(int writeIndex) {\
+	static intNLocal getLocalReadForWriteIndex(int writeIndex) {\
 		std::array<int, localRank> iread = {};\
 		for (int i = 0; i < writeIndex; ++i) {\
 			std::function<bool(int)> inc = [&iread, &inc](int j) {\
