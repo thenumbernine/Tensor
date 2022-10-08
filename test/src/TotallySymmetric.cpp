@@ -35,9 +35,8 @@ void test_TotallySymmetric() {
 	{
 		auto f = [](int i, int j, int k) -> float { return i + j + k; };
 		auto t = float3s3s3(f);
-// TODO needs Accessors
-//		verifyAccessRank3<decltype(t)>(t, f);
-//		verifyAccessRank3<decltype(t) const>(t, f);
+		verifyAccessRank3<decltype(t)>(t, f);
+		verifyAccessRank3<decltype(t) const>(t, f);
 
 		// operators need Iterator
 		operatorScalarTest(t);

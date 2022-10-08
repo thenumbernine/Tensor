@@ -1810,18 +1810,13 @@ inline constexpr int antisymmetricSize(int d, int r) {
 \
 		Accessor(OwnerConstness & owner_, _vec<int,subRank> i_)\
 		: owner(owner_), i(i_) {}\
-	};
-
-// working on the Accessor body...
-#if 0
 \
-		/* TODO ok we want ... */\
+		/* until I can think of how to split off parameter-packs at a specific length, I'll just do this in _vec<int> first like below */\
 		/* if subRank + sizeof...(Ints) > localRank then call-through into owner's inner */\
 		/* if subRank + sizeof...(Ints) == localRank then just call owner */\
 		/* if subRank + sizeof...(Ints) < localRank then produce another Accessor */\
-		/* but until I can think of how to split off parameter-packs at a specific length, I'll just do this in _vec<int> first like below */\
 		template<int N>\
-		constexpr declype(auto) operator()(_vec<int,N> const & i2) {\
+		constexpr decltype(auto) operator()(_vec<int,N> const & i2) {\
 			if constexpr (subRank + N < localRank) {\
 				/* returns Accessor */\
 				_vec<int,subRank+N> fulli;\
@@ -1834,7 +1829,7 @@ inline constexpr int antisymmetricSize(int d, int r) {
 				fulli.template subset<subRank,0>() = i;\
 				fulli.template subset<N,subRank>() = i2;\
 				return owner(fulli);\
-			} else if constexpr (subRank + n > localRank) {\
+			} else if constexpr (subRank + N > localRank) {\
 				/* returns something further than Inner */\
 				intN firstI;\
 				firstI.template subset<subRank,0>() = i;\
@@ -1844,7 +1839,7 @@ inline constexpr int antisymmetricSize(int d, int r) {
 			}\
 		}\
 		template<int N>\
-		constexpr declype(auto) operator()(_vec<int,N> const & i2) const {\
+		constexpr decltype(auto) operator()(_vec<int,N> const & i2) const {\
 			if constexpr (subRank + N < localRank) {\
 				/* returns Accessor */\
 				_vec<int,subRank+N> fulli;\
@@ -1857,7 +1852,7 @@ inline constexpr int antisymmetricSize(int d, int r) {
 				fulli.template subset<subRank,0>() = i;\
 				fulli.template subset<N,subRank>() = i2;\
 				return owner(fulli);\
-			} else if constexpr (subRank + n > localRank) {\
+			} else if constexpr (subRank + N > localRank) {\
 				/* returns something further than Inner */\
 				intN firstI;\
 				firstI.template subset<subRank,0>() = i;\
@@ -1866,8 +1861,19 @@ inline constexpr int antisymmetricSize(int d, int r) {
 				return owner(firstI)(restI);\
 			}\
 		}\
+\
+		template<typename... Ints>\
+		constexpr decltype(auto) operator()(Ints... is) {\
+			return (*this)(_vec<int,sizeof...(Ints)>(is...));\
+		}\
+		template<typename... Ints>\
+		constexpr decltype(auto) operator()(Ints... is) const {\
+			return (*this)(_vec<int,sizeof...(Ints)>(is...));\
+		}\
+\
+		constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
+		constexpr decltype(auto) operator[](int i) const { return (*this)(i); }\
 	};
-#endif
 
 // using 'upper-triangular' i.e. i<=j<=k<=...
 // right now i'm counting into this.  is there a faster way?
@@ -1966,19 +1972,17 @@ inline constexpr int antisymmetricSize(int d, int r) {
 	template<typename... Ints>\
 	constexpr decltype(auto) operator()(Ints... is) const {\
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
-	}
+	}\
+\
+	constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
+	constexpr decltype(auto) operator[](int i) const { return (*this)(i); }
 #endif
 
 #define TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_TOTALLY_SYMMETRIC_ACCESSOR()\
 	TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() /* needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS */\
 	TENSOR_ADD_OPS(_symR)\
-	/* ok for arbitrary-rank, I'll have to use arbitrary-rank accessors for indexing < localRank */\
-	/* and for equal rank use ()  */\
-	/* and for greater rank, drill down as always */\
-	TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
-	/*TENSOR_ADD_RANK2_CALL_INDEX_AUX()*/
-
+	TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()
 
 template<typename Inner_, int localDim_, int localRank_>
 struct _symR {
