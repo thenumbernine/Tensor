@@ -694,7 +694,7 @@ ReadIterator vs WriteIterator
 	/* inc 0 first */\
 	template<int i>\
 	struct ReadIncInner {\
-		static bool exec(intN & index) {\
+		static constexpr bool exec(intN & index) {\
 			++index[i];\
 			if (index[i] < This::template dim<i>) return true;\
 			if (i < rank-1) index[i] = 0;\
@@ -710,7 +710,7 @@ ReadIterator vs WriteIterator
 	/* inc n-1 first */\
 	template<int i>\
 	struct ReadIncOuter {\
-		static bool exec(intN & index) {\
+		static constexpr bool exec(intN & index) {\
 			constexpr int j = rank-1-i;\
 			++index[j];\
 			if (index[j] < This::template dim<j>) return true;\
@@ -791,7 +791,7 @@ ReadIterator vs WriteIterator
 	const_iterator cend() const { return const_iterator::end(*this); }\
 \
 	/* helper functions for WriteIterator */\
-	static intN getReadForWriteIndex(intW const & i) {\
+	static constexpr intN getReadForWriteIndex(intW const & i) {\
 		intN res;\
 		res.template subset<This::localRank, 0>() = This::getLocalReadForWriteIndex(i[0]);\
 		if constexpr (numNestings > 1) {\
@@ -845,7 +845,7 @@ ReadIterator vs WriteIterator
 		/* inc 0 first */\
 		template<int i>\
 		struct WriteIncInner {\
-			static bool exec(intW & writeIndex) {\
+			static constexpr bool exec(intW & writeIndex) {\
 				++writeIndex[i];\
 				if (writeIndex[i] < This::template count<i>) return true;\
 				if (i < numNestings-1) writeIndex[i] = 0;\
@@ -861,7 +861,7 @@ ReadIterator vs WriteIterator
 		/* inc n-1 first */\
 		template<int i>\
 		struct WriteIncOuter {\
-			static bool exec(intW & writeIndex) {\
+			static constexpr bool exec(intW & writeIndex) {\
 				constexpr int j = numNestings-1-i;\
 				++writeIndex[j];\
 				if (writeIndex[j] < This::template count<j>) return true;\
@@ -1017,7 +1017,7 @@ ReadIterator vs WriteIterator
 
 #define TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()\
 	/* accepts int into .s[] storage, returns _intN<localRank> of how to index it using operator() */\
-	static intNLocal getLocalReadForWriteIndex(int writeIndex) {\
+	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
 		return intNLocal{writeIndex};\
 	}
 
@@ -1389,7 +1389,6 @@ constexpr int symIndex(int i, int j) {
 	constexpr decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }\
 
 // Accessor is used to return between-rank indexes, so if sym is rank-2 this lets you get s[i] even if the storage only represents s[i,j]
-// looks like this needs to go before IndexResult, which needs to go before the operator() operator[]
 #define TENSOR_ADD_RANK2_ACCESSOR()\
 	template<typename OwnerConstness>\
 	struct Accessor {\
@@ -1398,11 +1397,6 @@ constexpr int symIndex(int i, int j) {
 		int i;\
 \
 		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
-\
-		/* getting an explicit-type for which result of operator() or [] we should be using (either Scalar& or one of the Accessor's) */\
-		/* hopefully I can switch this all to auto -> decltype() to avoid needing it */\
-		using IndexResult = This::Accessor<This>;\
-		using IndexResultConst = This::Accessor<This const>;\
 \
 		/* these should call into _sym(int,int) which is always Inner (const) & */\
 		constexpr auto operator()(int j) -> decltype(owner(i,j)) { return owner(i,j); }\
@@ -1454,8 +1448,8 @@ This is used by _sym , while _asym uses something different since it uses the An
 // currently set to upper-triangular
 // swap iread 0 and 1 to get lower-triangular
 #define TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	static _vec<int,2> getLocalReadForWriteIndex(int writeIndex) {\
-		_vec<int,2> iread;\
+	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
+		intNLocal iread;\
 		int w = writeIndex+1;\
 		for (int i = 1; w > 0; ++i) {\
 			++iread(1);\
@@ -1597,6 +1591,16 @@ struct _sym<Inner_,4> {
 // so I guess dimension doesn't really matter.
 // but meh, it works for outer product / multiply optimizations I guess?
 
+#define TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
+	static constexpr int localCount = 1;
+
+#define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
+	TENSOR_TEMPLATE_T_I(classname)\
+	TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
+	TENSOR_HEADER()
+
 #define TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
 	constexpr auto operator()(int i, int j) {\
 		if (i != j) return AntiSymRef<Inner>();\
@@ -1609,7 +1613,7 @@ struct _sym<Inner_,4> {
 
 // shouldn't even need this, cuz nobody should be calling i
 #define TENSOR_IDENTITY_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	static intNLocal getLocalReadForWriteIndex(int writeIndex) {\
+	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
 		return intNLocal();\
 	}\
 	static constexpr int getLocalWriteForReadIndex(int i, int j) {\
@@ -1622,16 +1626,6 @@ struct _sym<Inner_,4> {
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
 	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
-
-#define TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
-	static constexpr int localCount = 1;
-
-#define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
-	TENSOR_THIS(classname)\
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
-	TENSOR_TEMPLATE_T_I(classname)\
-	TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
-	TENSOR_HEADER()
 
 template<typename Inner_, int localDim_>
 struct _ident {
@@ -1686,7 +1680,7 @@ struct _ident {
 // currently set to upper-triangular, so i < j
 // swap iread 0 and 1 to get lower-triangular
 #define TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
-	static intNLocal getLocalReadForWriteIndex(int writeIndex) {\
+	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
 		intNLocal iread;\
 		int w = writeIndex+1;\
 		for (int i = 1; w > 0; ++i) {\
@@ -1816,43 +1810,60 @@ inline constexpr int antisymmetricSize(int d, int r) {
 	TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
 	TENSOR_HEADER()
 
+#define TENSOR_ADD_TOTALLY_SYMMETRIC_ACCESSOR()\
+	template<typename OwnerConstness, int subRank>\
+	struct Accessor {\
+		static_assert(subRank > 0 && subRank < localRank);\
+		static constexpr bool isAccessorFlag = {};\
+		OwnerConstness & owner;\
+		_vec<int,subRank> i;\
+\
+		Accessor(OwnerConstness & owner_, _vec<int,subRank> i_)\
+		: owner(owner_), i(i_) {}\
+\
+		/* TODO ok we want ... */\
+		/* if subRank + sizeof...(Ints) > localRank then call-through into owner's inner */\
+		/* if subRank + sizeof...(Ints) == localRank then just call owner */\
+		/* if subRank + sizeof...(Ints) < localRank then produce another Accessor */\
+		/*template<int... Ints>*/\
+		/*constexpr auto operator()(Ints... is) {*/\
+	};
+
 // using 'upper-triangular' i.e. i<=j<=k<=...
 // right now i'm counting into this.  is there a faster way?
 #define TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX()\
-	static intNLocal getLocalReadForWriteIndex(int writeIndex) {\
-		std::array<int, localRank> iread = {};\
-		for (int i = 0; i < writeIndex; ++i) {\
-			std::function<bool(int)> inc = [&iread, &inc](int j) {\
-				if (j < 0) return true;\
+	template<int j>\
+	struct GetLocalReadForWriteIndexImpl {\
+		static constexpr bool exec(intNLocal & iread) {\
+			if constexpr (j < 0) {\
+				return true;\
+			} else {\
 				iread[j]++;\
 				if (iread[j] >= localDim) {\
-					if (inc(j-1)) return true;\
+					if (GetLocalReadForWriteIndexImpl<j-1>::exec(iread)) return true;\
 					iread[j] = j == 0 ? 0 : iread[j-1];\
 				}\
 				return false;\
-			};\
-			if (inc(localRank-1)) break;\
+			}\
+		}\
+	};\
+	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
+		intNLocal iread = {};\
+		for (int i = 0; i < writeIndex; ++i) {\
+			if (GetLocalReadForWriteIndexImpl<localRank-1>::exec(iread)) break;\
 		}\
 		return iread;\
 	}\
 \
-	static int getLocalWriteForReadIndex(intN targetReadIndex) {\
+	/* I'm tempted to use a int... pack for targetReadIndex but the values would still be runtime so I can' exactly use a template-sort on them, so I might as well use std::sort, so it might as well be in an array ... */\
+	static constexpr int getLocalWriteForReadIndex(intNLocal targetReadIndex) {\
 		/* put indexes in increasing order */\
 		std::sort(targetReadIndex.s.begin(), targetReadIndex.s.end());\
 		/* loop until you find the element */\
-		std::array<int, localRank> iread = {};\
+		intNLocal iread;\
 		for (int writeIndex = 0; writeIndex < localCount; ++writeIndex) {\
 			if (iread == targetReadIndex) return writeIndex;\
-			std::function<bool(int)> inc = [&iread, &inc](int j) {\
-				if (j < 0) return true;\
-				iread[j]++;\
-				if (iread[j] >= localDim) {\
-					if (inc(j-1)) return true;\
-					iread[j] = j == 0 ? 0 : iread[j-1];\
-				}\
-				return false;\
-			};\
-			if (inc(localRank-1)) break;\
+			if (GetLocalReadForWriteIndexImpl<localRank-1>::exec(iread)) break;\
 		}\
 		/* how should I deal with bad indexes? */\
 		/*throw Common::Exception() << "failed to find write index";*/\
@@ -1860,25 +1871,33 @@ inline constexpr int antisymmetricSize(int d, int r) {
 		return localCount;\
 	}
 
-#define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()
+#define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
+	template<typename... Ints>\
+	constexpr auto operator()(Ints... is)\
+	-> decltype(s[0]) {\
+		/*if constexpr (sizeof...(Ints) == localRank)*/ {\
+			static_assert(sizeof...(Ints) == localRank);\
+			return s[getLocalWriteForReadIndex(intNLocal(is...))];\
+		}\
+	}
+
+#define TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()\
+	TENSOR_ADD_TOTALLY_SYMMETRIC_ACCESSOR()\
+	TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() /* needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS */\
+	TENSOR_ADD_OPS(_symR)\
+	/* ok for arbitrary-rank, I'll have to use arbitrary-rank accessors for indexing < localRank */\
+	/* and for equal rank use ()  */\
+	/* and for greater rank, drill down as always */\
+	TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
+	/*TENSOR_ADD_RANK2_CALL_INDEX_AUX()*/
 
 
 template<typename Inner_, int localDim_, int localRank_>
 struct _symR {
 	TENSOR_HEADER_TOTALLY_SYMMETRIC(_symR, Inner_, localDim_, localRank_)
-
 	std::array<Inner, localCount> s = {};
 	constexpr _symR() {}
-
-//TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS
-	/* TODO TENSOR_ADD_TOTALLY_SYMMETRIC_ACCESSOR() */
-	TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() // needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS
-	TENSOR_ADD_OPS(_symR)
-	// ok for arbitrary-rank, I'll have to use arbitrary-rank accessors for indexing < localRank
-	// and for equal rank use () 
-	// and for greater rank, drill down as always
-	//TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()
-	//TENSOR_ADD_RANK2_CALL_INDEX_AUX()
+	TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()
 };
 
 // TODO totally antisymmetric

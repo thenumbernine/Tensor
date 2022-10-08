@@ -185,6 +185,7 @@ void test_Antisymmetric() {
 		auto aOuterI = outer(a, I);
 		static_assert(std::is_same_v<decltype(aOuterI), Tensor::_tensori<float, Tensor::index_asym<3>, Tensor::index_ident<3>>>);
 		static_assert(std::is_same_v<decltype(outer(I, a)), Tensor::_tensori<float, Tensor::index_ident<3>, Tensor::index_asym<3>>>);
+		static_assert(sizeof(aOuterI) == sizeof(float) * 3); // expanded storage would be 3^4 = 81 floats, but this is just 3 ...
 
 		auto aTimesI = a * I;
 		// the matrix-mul will expand the antisymmetric matrix storage to a matrix

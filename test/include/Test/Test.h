@@ -13,6 +13,7 @@ void test_Symmetric();
 void test_Antisymmetric();
 void test_TensorRank3();
 void test_TensorRank4();
+void test_TotallySymmetric();
 
 template<typename T>
 T sign (T x) {

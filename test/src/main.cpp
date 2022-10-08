@@ -10,4 +10,5 @@ int main() {
 	test_Matrix();
 	test_TensorRank3();
 	test_TensorRank4();
+	test_TotallySymmetric();
 }
