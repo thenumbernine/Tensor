@@ -501,11 +501,11 @@ ReplaceScalar<typename>
 #define TENSOR_ADD_VECTOR_CALL_INDEX_PRIMARY()\
 \
 	/* a(i) := a_i */\
-	constexpr auto operator()(int i) -> decltype(s[i]) {\
+	constexpr decltype(auto) operator()(int i) {\
 		TENSOR_INSERT_BOUNDS_CHECK(i);\
 		return s[i];\
 	}\
-	constexpr auto operator()(int i) const -> decltype(s[i]) {\
+	constexpr decltype(auto) operator()(int i) const {\
 		TENSOR_INSERT_BOUNDS_CHECK(i);\
 		return s[i];\
 	}
@@ -806,11 +806,7 @@ ReadIterator vs WriteIterator
 \
 	template<typename ThisConstness, int numNestings_>\
 	struct GetByWriteIndexImpl {\
-		static constexpr auto value(ThisConstness & t, intW const & index)\
-		-> decltype(Inner::getByWriteIndex(\
-			t.s[index.s[0]],\
-			index.template subset<numNestings-1,1>()\
-		)) {\
+		static constexpr decltype(auto) value(ThisConstness & t, intW const & index) {\
 			TENSOR_INSERT_BOUNDS_CHECK(index.s[0]);\
 			return Inner::getByWriteIndex(\
 				t.s[index.s[0]],\
@@ -820,15 +816,13 @@ ReadIterator vs WriteIterator
 	};\
 	template<typename ThisConstness>\
 	struct GetByWriteIndexImpl<ThisConstness, 1> {\
-		static constexpr auto value(ThisConstness & t, intW const & index)\
-		-> decltype(t.s[index.s[0]]) {\
+		static constexpr decltype(auto) value(ThisConstness & t, intW const & index) {\
 			TENSOR_INSERT_BOUNDS_CHECK(index.s[0]);\
 			return t.s[index.s[0]];\
 		}\
 	};\
 	template<typename ThisConstness>\
-	static constexpr auto getByWriteIndex(ThisConstness & t, intW const & index)\
-	-> decltype(GetByWriteIndexImpl<ThisConstness, numNestings>::value(t, index)) {\
+	static constexpr decltype(auto) getByWriteIndex(ThisConstness & t, intW const & index) {\
 		return GetByWriteIndexImpl<ThisConstness, numNestings>::value(t, index);\
 	}\
 \
@@ -921,8 +915,7 @@ ReadIterator vs WriteIterator
 			constexpr bool operator!=(WriteIterator const & o) const {\
 				return !operator==(o);\
 			}\
-			auto operator*() const\
-			-> decltype(getByWriteIndex<OwnerConstness>(owner, writeIndex)) {\
+			decltype(auto) operator*() const {\
 				/* cuz it takes less operations than by-read-writeIndex */\
 				return getByWriteIndex<OwnerConstness>(owner, writeIndex);\
 			}\
@@ -1398,8 +1391,8 @@ constexpr int symIndex(int i, int j) {
 		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
 \
 		/* these should call into _sym(int,int) which is always Inner (const) & */\
-		constexpr auto operator()(int j) -> decltype(owner(i,j)) { return owner(i,j); }\
-		constexpr auto operator()(int j) const -> decltype(owner(i,j)) { return owner(i,j); }\
+		constexpr decltype(auto) operator()(int j) { return owner(i,j); }\
+		constexpr decltype(auto) operator()(int j) const { return owner(i,j); }\
 \
 		/* this provides the rest of the () [] operators that will be driven by operator(int) */\
 		TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
@@ -1432,13 +1425,11 @@ This is used by _sym , while _asym uses something different since it uses the An
 	/* the type should always be Inner (const) & */\
 	/* symmetric has to define 1-arg operator() */\
 	/* that means I can't use the default so i have to make a 2-arg recursive case */\
-	constexpr auto operator()(int i, int j)\
-	-> decltype(s[0]) {\
+	constexpr decltype(auto) operator()(int i, int j) {\
 		TENSOR_INSERT_BOUNDS_CHECK(getLocalWriteForReadIndex(i,j));\
 		return s[getLocalWriteForReadIndex(i,j)];\
 	}\
-	constexpr auto operator()(int i, int j) const\
-	-> decltype(s[0]) {\
+	constexpr decltype(auto) operator()(int i, int j) const {\
 		TENSOR_INSERT_BOUNDS_CHECK(getLocalWriteForReadIndex(i,j));\
 		return s[getLocalWriteForReadIndex(i,j)];\
 	}
@@ -1819,14 +1810,64 @@ inline constexpr int antisymmetricSize(int d, int r) {
 \
 		Accessor(OwnerConstness & owner_, _vec<int,subRank> i_)\
 		: owner(owner_), i(i_) {}\
+	};
+
+// working on the Accessor body...
+#if 0
 \
 		/* TODO ok we want ... */\
 		/* if subRank + sizeof...(Ints) > localRank then call-through into owner's inner */\
 		/* if subRank + sizeof...(Ints) == localRank then just call owner */\
 		/* if subRank + sizeof...(Ints) < localRank then produce another Accessor */\
-		/*template<int... Ints>*/\
-		/*constexpr auto operator()(Ints... is) {*/\
+		/* but until I can think of how to split off parameter-packs at a specific length, I'll just do this in _vec<int> first like below */\
+		template<int N>\
+		constexpr declype(auto) operator()(_vec<int,N> const & i2) {\
+			if constexpr (subRank + N < localRank) {\
+				/* returns Accessor */\
+				_vec<int,subRank+N> fulli;\
+				fulli.template subset<subRank,0>() = i;\
+				fulli.template subset<N,subRank>() = i2;\
+				return Accessor<OwnerConstness, subRank+N>(owner, fulli);\
+			} else if constexpr (subRank + N == localRank) {\
+				/* returns Inner */\
+				intN fulli;\
+				fulli.template subset<subRank,0>() = i;\
+				fulli.template subset<N,subRank>() = i2;\
+				return owner(fulli);\
+			} else if constexpr (subRank + n > localRank) {\
+				/* returns something further than Inner */\
+				intN firstI;\
+				firstI.template subset<subRank,0>() = i;\
+				firstI.template subset<localRank-subRank,subRank>() = i2.template subset<localRank-subRank, 0>();\
+				_vec<int, N - (localRank - subRank)> restI = i2.template subset<N - (localRank-subRank), localRank-subRank>();\
+				return owner(firstI)(restI);\
+			}\
+		}\
+		template<int N>\
+		constexpr declype(auto) operator()(_vec<int,N> const & i2) const {\
+			if constexpr (subRank + N < localRank) {\
+				/* returns Accessor */\
+				_vec<int,subRank+N> fulli;\
+				fulli.template subset<subRank,0>() = i;\
+				fulli.template subset<N,subRank>() = i2;\
+				return Accessor<OwnerConstness, subRank+N>(owner, fulli);\
+			} else if constexpr (subRank + N == localRank) {\
+				/* returns Inner */\
+				intN fulli;\
+				fulli.template subset<subRank,0>() = i;\
+				fulli.template subset<N,subRank>() = i2;\
+				return owner(fulli);\
+			} else if constexpr (subRank + n > localRank) {\
+				/* returns something further than Inner */\
+				intN firstI;\
+				firstI.template subset<subRank,0>() = i;\
+				firstI.template subset<localRank-subRank,subRank>() = i2.template subset<localRank-subRank, 0>();\
+				_vec<int, N - (localRank - subRank)> restI = i2.template subset<N - (localRank-subRank), localRank-subRank>();\
+				return owner(firstI)(restI);\
+			}\
+		}\
 	};
+#endif
 
 // using 'upper-triangular' i.e. i<=j<=k<=...
 // right now i'm counting into this.  is there a faster way?
@@ -1870,18 +1911,21 @@ inline constexpr int antisymmetricSize(int d, int r) {
 		return localCount;\
 	}
 
+// making operator()(int...) the primary, and operator()(intN<>) the secondary
+// TODO needs some templates for splitting a parameter-pack
+#if 0	
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
+\
 	template<typename... Ints>\
-	constexpr auto operator()(Ints... is)\
-	-> decltype(s[0]) {\
-		/*if constexpr (sizeof...(Ints) == localRank)*/ {\
-			static_assert(sizeof...(Ints) == localRank);\
+	constexpr decltype(auto) operator()(Ints... is) {\
+		if constexpr (sizeof...(Ints) == localRank) {\
 			return s[getLocalWriteForReadIndex(intNLocal(is...))];\
+		} else if constexpr (sizeof...(Ints) > localRank) {\
+			
 		}\
 	}\
 	template<typename... Ints>\
-	constexpr auto operator()(Ints... is) const\
-	-> decltype(s[0]) {\
+	constexpr decltype(auto) operator()(Ints... is) const {\
 		/*if constexpr (sizeof...(Ints) == localRank)*/ {\
 			static_assert(sizeof...(Ints) == localRank);\
 			return s[getLocalWriteForReadIndex(intNLocal(is...))];\
@@ -1889,6 +1933,41 @@ inline constexpr int antisymmetricSize(int d, int r) {
 	}\
 \
 	TENSOR_ADD_INT_VEC_CALL_INDEX()
+#endif
+// making operator()(intN<>) the primary and operator()(int...) the secondary
+#if 1
+#define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
+\
+	template<int N>\
+	constexpr decltype(auto) operator()(_vec<int,N> const & i) {\
+		if constexpr (N == localRank) {\
+			return s[getLocalWriteForReadIndex(i)];\
+		} else if constexpr (N > localRank) {\
+			return s[getLocalWriteForReadIndex(i.template subset<localRank,0>())](i.template subset<N-localRank,localRank>());\
+		} else if constexpr (N < localRank) {\
+			return Accessor<This, N>(*this, i);\
+		}\
+	}\
+	template<int N>\
+	constexpr decltype(auto) operator()(_vec<int,N> const & i) const {\
+		if constexpr (N == localRank) {\
+			return s[getLocalWriteForReadIndex(i)];\
+		} else if constexpr (N > localRank) {\
+			return s[getLocalWriteForReadIndex(i.template subset<localRank,0>())](i.template subset<N-localRank,localRank>());\
+		} else if constexpr (N < localRank) {\
+			return Accessor<This const, N>(*this, i);\
+		}\
+	}\
+\
+	template<typename... Ints>\
+	constexpr decltype(auto) operator()(Ints... is) {\
+		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
+	}\
+	template<typename... Ints>\
+	constexpr decltype(auto) operator()(Ints... is) const {\
+		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
+	}
+#endif
 
 #define TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_TOTALLY_SYMMETRIC_ACCESSOR()\
