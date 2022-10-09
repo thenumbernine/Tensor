@@ -1071,6 +1071,19 @@ requires(
 	&& A::template dim<A::rank-1> == B::template dim<0>
 ) auto operator*(A const & a, B const & b);
 
+
+template<typename T>
+typename T::Scalar determinant(T const & a);
+
+template<typename T>
+typename T::Scalar inverse(
+	T const & a,
+	typename T::Scalar const & det
+);
+
+template<typename T>
+T inverse(T const & a);
+
 #define TENSOR_ADD_MATH_MEMBER_FUNCS()\
 	auto elemMul(This&& o) const {\
 		return Tensor::elemMul<This const>(*this, std::forward<This>(o));\
@@ -1176,7 +1189,20 @@ requires(
 		&& B::rank == 2 /* ar - 1 + br - 1 == ar <=> br == 2 */\
 	) auto operator*=(B const & b) {\
 		*this = *this * b;\
+	}\
+\
+	Scalar determinant() const {\
+		return Tensor::determinant<This>(*this);\
+	}\
+\
+	This inverse(Scalar const & det) const {\
+		return Tensor::inverse<This>(*this, det);\
+	}\
+\
+	This inverse() const {\
+		return Tensor::inverse<This>(*this);\
 	}
+
 
 //these are all per-element assignment operators,
 // so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
