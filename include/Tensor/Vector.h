@@ -776,7 +776,7 @@ ReadIterator vs WriteIterator
 		constexpr bool operator!=(ReadIterator const & o) const {\
 			return !operator==(o);\
 		}\
-		auto & operator*() const {\
+		decltype(auto) operator*() const {\
 			return owner(index);\
 		}\
 \

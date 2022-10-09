@@ -4,6 +4,8 @@ void test_TotallyAntisymmetric() {
 	using float3a3a3 = Tensor::_asymR<float, 3, 3>;
 	static_assert(sizeof(float3a3a3) == sizeof(float));
 	
+	using float3x3x3 = Tensor::_tensorr<float, 3, 3>;
+	
 	{
 		auto L = float3a3a3();
 		L(0,0,0) = 1;
@@ -22,6 +24,33 @@ void test_TotallyAntisymmetric() {
 		TEST_EQ(L(2,1,0), -1);
 		TEST_EQ(L(1,0,2), -1);
 		TEST_EQ(L(0,2,1), -1);
+	}
+	
+	{
+		// do iteration bounds match between rank-3 and asym-3?
+		auto x = float3x3x3();
+		auto a = float3a3a3();
+		auto ix = x.begin();
+		auto ia = a.begin();
+		for (;;) {
+			TEST_EQ(ix.index, ia.index);
+			TEST_EQ(*ix, *ia);	//mind you *ia will be an AntiSymRef, but the value will evaluate to Scalar(0)
+			++ix;
+			++ia;
+			if (ix == x.end()) {
+				TEST_EQ(ia, a.end());
+				break;
+			}
+			if (ia == a.end()) throw Common::Exception() << "looks like iterator doesn't end in the right place";
+		}
+	}
+
+	{
+		
+
+		// does = work between two tensor types of matching dims?
+		TEST_EQ(float3a3a3(), float3x3x3());	// works
+		TEST_EQ(float3x3x3(), float3a3a3());	// fails
 	}
 
 // parity flipping chokes the decltype(auto)
