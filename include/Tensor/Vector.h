@@ -49,7 +49,9 @@ TODO TODO
 #include <functional>	//reference_wrapper, also function<> is by Partial
 #include <cmath>		//sqrt()
 
+#ifdef DEBUG
 #define TENSOR_USE_BOUNDS_CHECKING
+#endif
 
 #ifdef TENSOR_USE_BOUNDS_CHECKING //only for bounds checking ... but  maybe not if constexpr doens't like exceptions
 #include "Common/Exception.h"
