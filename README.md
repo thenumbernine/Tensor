@@ -185,7 +185,7 @@ Swizzling will return a vector-of-references:
 	$$elemMul(a,b)_I := a_I \cdot b_I$$
 - `cross(a,b)` = 3D vector cross product.
 	- rank-1 dim-3 x rank-1 dim-3 -> rank-1 dim-3:
-	$$cross(a,b)_i := e_{ijk}$$
+	$$cross(a,b)_i := b^j c^k $$
 - `outer(a,b), outerProduct(a,b)` = Tensor outer product.  The outer of a `_vec` and a `_vec` make a `_mat` (i.e. a `_vec`-of-`_vec`).
 	The outer of a vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a `_sym` and a `_sym` produces a `_sym`-of-`_sym`s.
 	- rank-M x rank-N -> rank-(M+N):
