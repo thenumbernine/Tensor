@@ -200,7 +200,7 @@ Swizzling will return a vector-of-references:
 	$$contract(a) = \delta^{i\_m i\_n} a\_I$$
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
 	- rank-N -> rank-(N+1), N>=1:
-	$${diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
+	$$diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
 	- rank-2 -> rank-0:
 	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
