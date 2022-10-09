@@ -2273,16 +2273,28 @@ struct index_asymR {
 
 // hmm, I'm trying to use these index_*'s in combination with is_instance_v<T, index_*<dim>::template type> but it's failing, so here they are specialized
 template<typename T> struct is_vec : public std::false_type {};
-template<typename T, int i> struct is_vec<_vec<T,i>> : public std::true_type {};
+template<typename T, int d> struct is_vec<_vec<T,d>> : public std::true_type {};
 template<typename T> constexpr bool is_vec_v = is_vec<T>::value;
 
+template<typename T> struct is_ident : public std::false_type {};
+template<typename T, int d> struct is_ident<_ident<T,d>> : public std::true_type {};
+template<typename T> constexpr bool is_ident_v = is_ident<T>::value;
+
 template<typename T> struct is_sym : public std::false_type {};
-template<typename T, int i> struct is_sym<_sym<T,i>> : public std::true_type {};
+template<typename T, int d> struct is_sym<_sym<T,d>> : public std::true_type {};
 template<typename T> constexpr bool is_sym_v = is_sym<T>::value;
 
 template<typename T> struct is_asym : public std::false_type {};
-template<typename T, int i> struct is_asym<_asym<T,i>> : public std::true_type {};
+template<typename T, int d> struct is_asym<_asym<T,d>> : public std::true_type {};
 template<typename T> constexpr bool is_asym_v = is_asym<T>::value;
+
+template<typename T> struct is_symR : public std::false_type {};
+template<typename T, int d, int r> struct is_symR<_symR<T,d,r>> : public std::true_type {};
+template<typename T> constexpr bool is_symR_v = is_symR<T>::value;
+
+template<typename T> struct is_asymR : public std::false_type {};
+template<typename T, int d, int r> struct is_asymR<_asymR<T,d,r>> : public std::true_type {};
+template<typename T> constexpr bool is_asymR_v = is_asymR<T>::value;
 
 // can I shorthand this? what is the syntax?
 // this has a template and not a type on the lhs so I think no?

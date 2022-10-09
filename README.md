@@ -129,9 +129,12 @@ Feel free to initialize this as the value 1 for Cartesian geometry or the value 
 
 ### Template Helpers (subject to change)
 - `is_tensor_v<T>` = is it a tensor storage type?
-- `is_vec_v<T>` = is it a _vec<T,N>?
-- `is_sym_v<T>` = is it a _sym<T,N>?
-- `is_asym_v<T>` = is it a _asym<T,N>?
+- `is_vec_v<T>` = is it a `_vec<T,N>`?
+- `is_ident_v<T>` = is it a `_ident<T,N>`?
+- `is_sym_v<T>` = is it a `_sym<T,N>`?
+- `is_asym_v<T>` = is it a `_asym<T,N>`?
+- `is_symR_v<T>` = is it a `_symR<T,N>`?
+- `is_asymR_v<T>` = is it a `_asymR<T,N>`?
 
 ### Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.
@@ -142,10 +145,10 @@ Feel free to initialize this as the value 1 for Cartesian geometry or the value 
 - `(tensor t)` = initialize from another tensor.  Truncate dimensions.  Uninitialized elements are set to {}.
 
 ### Overloaded Indexing
-- `(int i1, ...)` = dereference based on a list of ints.  $a_{ij}$ in math = `a.s[i].s[j]` in code.
+- `(int i1, ...)` = dereference based on a list of ints.  In the case of `_tensor, _tensori, _tensorr`, i.e. `_vec<_vec<_vec<...>>>` storage, this means $a_{ij}$ in math = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
-	Mind you that in the case of optimized storage being used this means the [][] indexing __DOES NOT MATCH__ the .s[].s[] indexing.
+	Mind you that in the case of optimized storage being used this means the `[][]` indexing __DOES NOT MATCH__ the `.s[].s[]` indexing.
 	In the case of optimized storage, for intermediate-indexes, a wrapper object will be returned.
 
 ### Iterating
@@ -223,24 +226,20 @@ Sorry GLSL, Cg wins this round:
 `_quat` is the odd one out, where it does have a few of the tensor operations, but it is stuck at 4D.  Maybe I will implement Cayley-Dickson constructs later for higher dimension.
 `_quat<type>` = Quaternion.  Subclass of `_vec4<type>`.
 `operator *` = Quaternion multiplication.
+- `quati, quatf, quatd` = integer, float, and double precision quaternions.
 
-
-Depends on the "Common" project, for Exception, template metaprograms, etc.
+## Dependencies:
+This project depends on the "Common" project, for Exception, template metaprograms, etc.
 
 TODO:
-- finishing up `_asym` , it needs intN access, and a loooot of wrapper classes.
-	- once we have this, why not rank-3 rank-4 etc `_sym` or `_asym` ... I'm sure there's some math on how to calculate the unique # of vars
-- `_sym` needs some index help when it's mixing accessors and normal derefs. one signature is Scalar&, the other is Accessor
-
 - make a permuteIndexes() function, have this "ExpandIndex<>" on all its passed indexes, then have it run across the permute indexes.
 	- mind you that for transposes then you can respect symmetry and you don't need to expand those indexes.
 	- make transpose a specialization of permuteIndexes()
 - index notation summation?  mind you that it shoud preserve non-summed index memory-optimization structures.
-- shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "trace"=>"tr", "transpose"=>...? T? tr?  what? "normalize"=>"unit"
+- shorthand those longwinded names like "inverse"=>"inv", "determinant"=>"det", "trace"=>"tr", "transpose"=>...? T? tr?  what? "normalize"=>"unit"
 
 - more flexible exterior product (cross, wedge, determinant).  Generalize to something with Levi-Civita permutation tensor.
-- `_asym` is 2-rank totally-antisymmetric .. I should do a N-rank totally-antisymmetric and N-rank totally-symmetric
-	- then use it for an implementation of LeviCivita as constexpr
+	- use `_asymR` for an implementation of LeviCivita as constexpr
 	- then use that for cross, determinant, inverse, wedge
 
 - better function matching for derivatives?
@@ -255,11 +254,8 @@ TODO:
 
 - should I even keep separate member functions for .dot() etc?
 - `__complex__` support.  Especially in norms.
-- preserve storage optimizations between tensor op tensor per-elem operations.  right now its just expanding all storage optimizations.
 
 - try to work around github's mathjax rendering errors.  looks fine on my own mathjax and on stackedit, but not on github.
-
-- `contractN` for contracting multiple indexes at once
 
 - InnerForIndex doesn't really get the inner, it gets the index, where index = corresponds with This, so call it something like "TypeForIndex"
 - call 'Nested' something else like 'Next', and 'numNestings' to 'numNext' ... since 'nested-class' is a term that could be mistaken with member-classes.
@@ -269,24 +265,26 @@ TODO:
 - would be nice to insert the template to wedge into it, like `tuple<index_int<3>, index_sym<3>>`.
 	like `InsertIndexes<index, index_vec<3>, index_sym<3> >` etc,
 		which would insert the listed structure into the nest of tensors.  make sure 'index' was expanded, expand it otherwise.
+- `wedge` = `_asymR<dim,rank1> x _asymR<dim,rank2> => _asymR<dim,rank1+rank2>`.
+	- make it operate on non-asym tensors too, and just symmetrize them.
+	- make symmetrize when applied to diagonals return a zero-tensor
+	- make a zero tensor.  really this is just the `_ident` with its scalar initialized to zero.  so to make `_ident` true to name, maybe make `_ident` default initialize its value to 1?
 
-- shorter names for `index_*` for building tensors.
+- shorter names for `index_*` for easier building tensors.
 
-- more tensor types:  maybe diagonalized rank-2 (N-DOF),
+- more tensor types:  maybe diagonalized rank-2 with N-DOF, where each diagonal element has a unique value.
 
 - any way to optimize symmetries between non-neighboring dimensions?
 	- like $t_{ijkl} = a_{ij} b_{kl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
-
-- somehow for differing-typed tensors get operator== constexpr
 
 - range-iterator as a function of the tensor, like `for (auto i : a.range) {`
 	- then maybe see how it can be merged with read and write iterator? maybe?  btw write iterator is just a range iterator over the sequence `count<0>...count<numNestings-1>` with a different lookup
 	- so make a generic multi-dim iterator that acts on `index_sequence`. then use it with read and write iters.
  
+- `contractN` for contracting multiple indexes at once
 - rank-n interior aka contract-n-times on neighboring indexes?
 	technically an 'interior' product is one that does contract n-indexes depending on the rank of the vector that the form is being applied to.
 	well typicall the ranks match, but in a few texts a partial-inner is allowed, where the vector rank is <= the form rank.
-
 
 - TODO in C++23 operator[] can be variadic.
 	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().
@@ -295,6 +293,7 @@ TODO:
 	but dno't forget `_asym` still needs to return an AntiSymRef , whether we allow off-storage indexing or not.
 	so meh i might as well keep it around?
 
+- somehow for differing-typed tensors get operator== constexpr
 - might do some constexpr loop unrolling stuff maybe.
 - test case write tests should be writing different values and verifying
 
