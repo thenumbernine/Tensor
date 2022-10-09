@@ -438,13 +438,13 @@ ReplaceScalar<typename>
 		static constexpr auto value() {\
 			if constexpr (std::is_same_v<Inner, Scalar>) {\
 				return TypeWrapper<\
-					This::template LocalSumWithScalarResult<\
+					typename This::template LocalSumWithScalarResult<\
 						Scalar\
 					>\
 				>();\
 			} else {\
 				return TypeWrapper<\
-					This::template LocalSumWithScalarResult<\
+					typename This::template LocalSumWithScalarResult<\
 						typename Inner::SumWithScalarResult\
 					>\
 				>();\
@@ -977,14 +977,12 @@ ReadIterator vs WriteIterator
 	template<int j>\
 	struct ValidIndexImpl {\
 		static constexpr bool value(intN const & i) {\
-			if (i(j) < 0 || i(j) >= dim<j>) return false;\
-			return ValidIndexImpl<j+1>::value(i);\
-		}\
-	};\
-	template<>\
-	struct ValidIndexImpl<rank> {\
-		static constexpr bool value(intN const & i) {\
-			return true;\
+			if constexpr (j == rank) {\
+				return true;\
+			} else {\
+				if (i(j) < 0 || i(j) >= dim<j>) return false;\
+				return ValidIndexImpl<j+1>::value(i);\
+			}\
 		}\
 	};\
 	inline bool validIndex(typename This::intN const & i) {\
