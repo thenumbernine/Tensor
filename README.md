@@ -1,6 +1,6 @@
 ## Tensor Library
 
-After using fixed-dimension vectors and tensors for a few decades, and having a few goes at designing a C++ math library around them, 
+After using fixed-dimension vectors and tensors for a few decades, and having a few goes at designing a C++ math library around them,
 and then getting into differential geometry and relativity, and trying to design a C++ math library around that,
 this is the latest result.
 
@@ -33,6 +33,10 @@ So I guess overall this library is midway between a mathematician's and a progra
 - Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A_{ij}$.
 	This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
 
+### Identity Matrix:
+`_ident<type, dim>` = identity matrix.
+This will only take up a single value of storage.  Type is still required, which enables `_ident` to be used in conjunction with outer products to produce optimized-storage tensors.
+
 ### Symmetric Matrices:
 `_sym<type, dim>` = symmetric matrices:
 - `.x_x .x_y .x_z .y_y .y_z .z_z .x_w .y_w .z_w .w_w` storage, `.y_x .z_x, .z_y` union'd access.
@@ -41,16 +45,32 @@ So I guess overall this library is midway between a mathematician's and a progra
 `_asym<type, dim>` = antisymmetric matrices:
 - `.x_x() .w_w()` access methods
 
+### Totally-symmetric tensors:
+`_symR<type, dim, rank>` = totally-symmetric tensor.
+The size of a totally-symmetric tensor storage is
+the number of unique permutations of a symmetric tensor of dimension `d` and rank `r`,
+which is `(d + r - 1) choose r`.
+
+### Totally-antisymmetric tensors:
+`_asymR<type, dim, rank>` = totally-antisymmetric tensor.
+The size of a totally-antisymmetric tensor storage is
+the number of unique permutations of an antisymmetric tensor of dimension `d` and rank `r`,
+which is `d choose r`.
+This means the Levi-Civita permutation tensor takes up exactly 1 float.  Feel free to initialize this as the value `1` for Cartesian geometry or the value of $sqrt(det(g_{uv}))$ for calculations in an arbitrary manifold.
+
 ### Tensors: (with rank>2)
 `tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_sym`, `_asym`.
 
 ### Tensor creation:
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
-- `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific pairs of indexes symmetric storage. 
+- `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific pairs of indexes symmetric storage.
 	`I1 I2` etc are one of the following:
 		- `index_vec<dim>` for a single index of dimension `dim`,
-		- `index_sym<dim>` for two symmetric indexes of dimension `dim`, or
-		- `index_asym<dim>` for two antisymmetric indexes of dimension `dim`.
+		- `index_ident<dim>` for rank-two identity indexes of dimension `dim`,
+		- `index_sym<dim>` for two symmetric indexes of dimension `dim`,
+		- `index_asym<dim>` for two antisymmetric indexes of dimension `dim`,
+		- `index_symR<dim, rank>` for `rank` symmetric indexes of dimension `dim`,
+		- `index_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
 	Ex: `_tensor<float, index_vec<3>, index_sym<4>, index_asym<5>>` is the type of a tensor $a_{ijklm}` where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 
@@ -58,13 +78,16 @@ So I guess overall this library is midway between a mathematician's and a progra
 - `operator += -= /=` = In-place per-element operations.
 - `operator == !=` = Tensor comparison.  So long as the rank and dimensions match then this should evaluate successfully.
 - `operator + - /` = Scalar/tensor, tensor/scalar, per-element tensor/tensor operations.
-- `operator *` 
+	Notice that `+ - /` run the risk of modifying the internal storage.
+	If you add subtract or divide `_ident, _asym, _asymR` by a scalar, the type becomes promoted to `_sym, _mat, _tensorr`.
+	Division is only on this list courtesy of divide-by-zero, otherwise division would've been safe for maintaining storage.
+- `operator *`
 	- Scalar/tensor, tensor/scalar for per-element multiplication.
 	- Tensor/tensor multiplication is an outer then a contraction of the adjacent indexes.  Therefore:
 		- `_vec * _vec` multiplication is a dot product.
 		- `_vec * _mat` as row-multplication.
 		- `_mat * _vec` as column-multiplication
-		- `_mat * _mat` as matrix-multiplication.  
+		- `_mat * _mat` as matrix-multiplication.
 
 ### Tensor properties:
 - `::This` = The current type.  Maybe not useful outside the class definition, but pretty useful within it when defining inner classes.
@@ -119,7 +142,7 @@ So I guess overall this library is midway between a mathematician's and a progra
 ### Overloaded Indexing
 - `(int i1, ...)` = dereference based on a list of ints.  Math `a_ij` = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
-- `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.  
+- `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
 	Mind you that in the case of symmetric storage being used this means the [][] indexing __DOES NOT MATCH__ the .s[].s[] indexing.
 	In the case of symmetric storage, for intermediate-indexes, a wrapper object will be returned.
 
@@ -134,7 +157,7 @@ Swizzling is only available for expanded storage, i.e. `_vec` and compositions o
 Swizzling will return a vector-of-references:
 - 2D: `.xx() .xy() ... .wz() .ww()`
 - 3D: `.xxx() ... .www()`
-- 4D: `.xxxx() ... .wwww()` 
+- 4D: `.xxxx() ... .wwww()`
 
 ### Functions
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
@@ -157,7 +180,7 @@ Swizzling will return a vector-of-references:
 	$$elemMul(a,b)_I := a_I \cdot b_I$$
 - `cross(a,b)` = 3D vector cross product.
 	- rank-1 dim-3 x rank-1 dim-3 -> rank-1 dim-3:
-	$${cross(a,b)_i} := {\epsilon_{ijk}} b^j c^k$$ 
+	$${cross(a,b)_i} := {\epsilon_{ijk}} b^j c^k$$
 - `outer(a,b), outerProduct(a,b)` = Tensor outer product.  The outer of a `_vec` and a `_vec` make a `_mat` (i.e. a `_vec`-of-`_vec`).
 	The outer of a vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a `_sym` and a `_sym` produces a `_sym`-of-`_sym`s.
 	- rank-M x rank-N -> rank-(M+N):
@@ -203,7 +226,7 @@ Sorry GLSL, Cg wins this round:
 Depends on the "Common" project, for Exception, template metaprograms, etc.
 
 TODO:
-- finishing up `_asym` , it needs intN access, and a loooot of wrapper classes.  
+- finishing up `_asym` , it needs intN access, and a loooot of wrapper classes.
 	- once we have this, why not rank-3 rank-4 etc `_sym` or `_asym` ... I'm sure there's some math on how to calculate the unique # of vars
 - `_sym` needs some index help when it's mixing accessors and normal derefs. one signature is Scalar&, the other is Accessor
 
@@ -214,7 +237,7 @@ TODO:
 - shorthand those other longwinded GLSL names like "inverse"=>"inv", "determinant"=>"det", "trace"=>"tr", "transpose"=>...? T? tr?  what? "normalize"=>"unit"
 
 - more flexible exterior product (cross, wedge, determinant).  Generalize to something with Levi-Civita permutation tensor.
-- `_asym` is 2-rank totally-antisymmetric .. I should do a N-rank totally-antisymmetric and N-rank totally-symmetric 
+- `_asym` is 2-rank totally-antisymmetric .. I should do a N-rank totally-antisymmetric and N-rank totally-symmetric
 	- then use it for an implementation of LeviCivita as constexpr
 	- then use that for cross, determinant, inverse, wedge
 
@@ -222,7 +245,7 @@ TODO:
 - move secondderivative from Relativity to Tensor
 - move covariantderivative from Relativity to Tensor
 - move Hydro/Inverse.h's GaussJordan solver into Tensor/Inverse
-- get rid fo the Grid class.  
+- get rid fo the Grid class.
 	The difference between Grid and Tensor is allocation: Grid uses dynamic allocation, Tensor uses static allocation.
 	Intead, make the allocator of each dimension a templated parameter: dynamic vs static.
 	This will give dynamically-sized tensors all the operations of the Tensor template class without having to re-implement them all for Grid.
@@ -247,18 +270,15 @@ TODO:
 
 - shorter names for `index_*` for building tensors.
 
-- more tensor types: `_ident` for identity rank-2 (0 DOF),
-	`_scale` for single-variable rank-2 (1-DOF),
-	maybe diagonalized rank-2 (N-DOF),
-	and then rank-N symmetric and antisymmetric.
+- more tensor types:  maybe diagonalized rank-2 (N-DOF),
 
 - any way to optimize symmetries between non-neighboring dimensions?
 	- like $t_{ijkl} = a_{ij} b_{kl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
 
 - somehow for differing-typed tensors get operator== constexpr
 
-- range-iterator as a function of the tensor, like `for (auto i : a.range) {` 
-	- then maybe see how it can be merged with read and write iterator? maybe?  btw write iterator is just a range iterator over the sequence `count<0>...count<numNestings-1>` with a different lookup 
+- range-iterator as a function of the tensor, like `for (auto i : a.range) {`
+	- then maybe see how it can be merged with read and write iterator? maybe?  btw write iterator is just a range iterator over the sequence `count<0>...count<numNestings-1>` with a different lookup
 	- so make a generic multi-dim iterator that acts on `index_sequence`. then use it with read and write iters.
  
 - rank-n interior aka contract-n-times on neighboring indexes?
@@ -277,7 +297,7 @@ TODO:
 - test case write tests should be writing different values and verifying
 
 - make `*=` use `operator*` equivalent multiply.  But this depends on the multiply algorithm.
-	If I am using the outer-then-contract-once method then this will only work if the `*=` rhs is a tensor with rank s where `(r + s - 2 == r)` i.e. `s == 2`, you can only `*=` with matrices. 
-- make `_symR` primary index be `operator(int...)` and secondary `operator(_vec<int,N>)`
+	If I am using the outer-then-contract-once method then this will only work if the `*=` rhs is a tensor with rank s where `(r + s - 2 == r)` i.e. `s == 2`, you can only `*=` with matrices.
+- make `_symR` primary index be `operator(int...)` and secondary `operator(_vec<int,N>)`.  This requires splitting off param-packs at a specific index.
 
-- `_ident, _asym, _asymR` operator+ with scalar should return a `_tensor`
+- ExpandIthIndex of `_symR` or `_asymR` should preserve the (anti)symmetry of the remaining indexes.  Atm it just turns the whole thing into a expanded-tensor.
