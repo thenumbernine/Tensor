@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Tensor/Tensor.h"
-#include "Tensor/Inverse.h"
 #include "Common/Test.h"
 
 void test_v1_iter();

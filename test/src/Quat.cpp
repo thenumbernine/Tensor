@@ -1,5 +1,4 @@
-#include "Tensor/Quat.h"
-#include "Common/Test.h"
+#include "Test/Test.h"
 
 //ehhh ?
 static_assert(Tensor::is_tensor_v<Tensor::quatf>);

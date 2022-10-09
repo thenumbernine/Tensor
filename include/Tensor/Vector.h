@@ -3068,6 +3068,33 @@ static_assert(nick##dim12##a##dim12::dim<1> == dim12);\
 static_assert(nick##dim12##a##dim12::numNestings == 1);\
 static_assert(nick##dim12##a##dim12::count<0> == triangleSize(dim12-1));
 
+#define TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+using nick##dim12##i##dim12 = nick##NiN<dim12>;\
+static_assert(sizeof(nick##dim12##i##dim12) == sizeof(ctype));\
+static_assert(std::is_same_v<typename nick##dim12##i##dim12::Scalar, ctype>);\
+static_assert(nick##dim12##i##dim12::rank == 2);\
+static_assert(nick##dim12##i##dim12::dim<0> == dim12);\
+static_assert(nick##dim12##i##dim12::dim<1> == dim12);\
+static_assert(nick##dim12##i##dim12::numNestings == 1);\
+static_assert(nick##dim12##i##dim12::count<0> == 1);
+
+#define TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, localDim, localRank, suffix)\
+using nick##suffix = nick##NsR<localDim, localRank>;\
+static_assert(sizeof(nick##suffix) == sizeof(ctype) * symmetricSize(localDim, localRank));\
+static_assert(std::is_same_v<typename nick##suffix::Scalar, ctype>);\
+static_assert(nick##suffix::rank == localRank);\
+static_assert(nick##suffix::dim<0> == localDim); /* TODO repeat depending on dimension */\
+static_assert(nick##suffix::numNestings == 1);\
+static_assert(nick##suffix::count<0> == symmetricSize(localDim, localRank));
+
+#define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, localDim, localRank, suffix)\
+using nick##suffix = nick##NaR<localDim, localRank>;\
+static_assert(sizeof(nick##suffix) == sizeof(ctype) * antisymmetricSize(localDim, localRank));\
+static_assert(std::is_same_v<typename nick##suffix::Scalar, ctype>);\
+static_assert(nick##suffix::rank == localRank);\
+static_assert(nick##suffix::dim<0> == localDim); /* TODO repeat depending on dimension */\
+static_assert(nick##suffix::numNestings == 1);\
+static_assert(nick##suffix::count<0> == antisymmetricSize(localDim, localRank));
 
 #define TENSOR_ADD_NICKNAME_TYPE(nick, ctype)\
 /* typed vectors */\
@@ -3086,6 +3113,11 @@ TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 3, 4)\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 2)\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 3)\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 4)\
+/* identity matrix */\
+template<int N> using nick##NiN = _ident<ctype, N>;\
+TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, 2)\
+TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, 3)\
+TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, 4)\
 /* typed symmetric matrices */\
 template<int N> using nick##NsN = _sym<ctype, N>;\
 TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2)\
@@ -3095,7 +3127,23 @@ TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)\
 template<int N> using nick##NaN = _asym<ctype, N>;\
 TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2)\
 TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3)\
-TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)
+TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)\
+/* totally symmetric tensors */\
+template<int D, int R> using nick##NsR = _symR<ctype, D, R>;\
+TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 3, 2s2s2)\
+TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 3, 3s3s3)\
+TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 3, 4s4s4)\
+TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 4, 2s2s2s2)\
+TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 4, 3s3s3s3)\
+TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 4, 4s4s4s4)\
+/* totally antisymmetric tensors */\
+template<int D, int R> using nick##NaR = _asymR<ctype, D, R>;\
+/* can't exist: TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 3, 2a2a2)*/\
+TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 3, 3a3a3)\
+TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 3, 4a4a4)\
+/* can't exist: TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 4, 2a2a2a2)*/\
+/* can't exist: TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 4, 3a3a3a3)*/\
+TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 4, 4a4a4a4)
 
 
 #define TENSOR_ADD_UTYPE(x)	TENSOR_ADD_NICKNAME_TYPE(u##x,unsigned x)

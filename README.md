@@ -61,18 +61,18 @@ This means the Levi-Civita permutation tensor takes up exactly 1 float.
 Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
 
 ### Tensors: (with rank>2)
-`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_sym`, `_asym`.
+`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_ident`, `_sym`, `_asym`, `_symR`, `_asymR`.
 
 ### Tensor creation:
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
 - `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
 	`I1 I2` etc are one of the following:
-		- `index_vec<dim>` for a single index of dimension `dim`,
-		- `index_ident<dim>` for rank-two identity indexes of dimension `dim`,
-		- `index_sym<dim>` for two symmetric indexes of dimension `dim`,
-		- `index_asym<dim>` for two antisymmetric indexes of dimension `dim`,
-		- `index_symR<dim, rank>` for `rank` symmetric indexes of dimension `dim`,
-		- `index_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
+- - `index_vec<dim>` for a single index of dimension `dim`,
+- - `index_ident<dim>` for rank-two identity indexes of dimension `dim`,
+- - `index_sym<dim>` for two symmetric indexes of dimension `dim`,
+- - `index_asym<dim>` for two antisymmetric indexes of dimension `dim`,
+- - `index_symR<dim, rank>` for `rank` symmetric indexes of dimension `dim`,
+- - `index_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
 	Ex: `_tensor<float, index_vec<3>, index_sym<4>, index_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 
@@ -214,8 +214,17 @@ Sorry GLSL, Cg wins this round:
 - `floatN<N>` = N-dimensional float vector.
 - `float2, float3, float4` = 1D, 2D, 3D float vector.
 - `float2x2, float2x3, float2x4, float3x2, float3x3, float3x4, float4x2, float4x3, float4x4` = matrix types.
+- `float2i2, float3i3, float4i4` = identity matrix types.
 - `float2s2, float3s3, float4s4` = symmetric matrix types.
 - `float2a2, float3a3, float4a4` = antisymmetric matrix types.
+- `float2s2s2 float3s3s3 float4s4s4 float2s2s2s2 float3s3s3s3 float4s4s4s4` = totally-symmetric tensor of floats.
+- `float2a2a2 float3a3a3 float4a4a4 float2a2a2a2 float3a3a3a3 float4a4a4a4` = totally-antisymmetric tensor of floats.
+- `floatNxN<dim>` = matrix of floats of size `dim`.
+- `floatNiN<dim>` = identity matrix of float of size `dim`.
+- `floatNsN<dim>` = symetric matrix of floats of size `dim`.
+- `floatNaN<dim>` = antisymmetric matrix of floats of size `dim`.
+- `floatNsR<dim, rank>` = totally-symmetric tensor of arbitrary dimension and rank.
+- `floatNaR<dim, rank>` = totally-antisymmetric tensor of arbitrary dimension and rank.
 - ... same with bool, char, uchar, short, ushort, int, uint, float, double, ldouble, size, intptr, uintptr.
 - `_vec2<T>, _vec3<T>, _vec4<T>` = templated fixed-size vectors.
 - `_mat2x2<T>, _mat2x3<T>, _mat2x4<T>, _mat3x2<T>, _mat3x3<T>, _mat3x4<T>, _mat4x2<T>, _mat4x3<T>, _mat4x4<T>` = templated fixed-size matrices.

@@ -1,7 +1,7 @@
 #include "Test/Test.h"
 
 void test_TotallyAntisymmetric() {
-	using float3a3a3 = Tensor::_asymR<float, 3, 3>;
+	using float3a3a3 = Tensor::float3a3a3;
 	static_assert(sizeof(float3a3a3) == sizeof(float));
 	
 	using float3x3x3 = Tensor::_tensorr<float, 3, 3>;
@@ -113,4 +113,12 @@ void test_TotallyAntisymmetric() {
 		ECHO(z);
 	}
 #endif
+
+	{
+		auto n = Tensor::float3(3,-4,8); // 3 floats :: 3-vector
+		auto L = Tensor::float3a3a3(1); // 1 real ... value 1
+		auto basis = n * L; // 3 floats :: 3x3 antisymmetric matrix
+		static_assert(std::is_same_v<decltype(basis), Tensor::float3a3>);
+		ECHO(basis);
+	}
 }
