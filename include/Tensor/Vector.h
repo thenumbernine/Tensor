@@ -991,6 +991,175 @@ ReadIterator vs WriteIterator
 		return ValidIndexImpl<0>::value(i);\
 	}
 
+//forward-declare, body is below all tensor classes.
+template<typename T>
+requires is_tensor_v<T>
+T elemMul(T const & a, T const & b);
+
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+) auto inner(A const & a, B const & b);
+
+template<typename T> requires is_tensor_v<T> auto lenSq(T const & v);
+
+template<typename T> requires (is_tensor_v<T>) auto length(T const & v);
+
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+) auto distance(A const & a, B const & b);
+
+template<typename T> requires (is_tensor_v<T>) auto normalize(T const & v);
+
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& A::dims == 3
+	&& B::dims == 3
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+) auto cross(A const & a, B const & b);
+
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+) auto outer(A const & a, B const & b);
+
+template<typename... T>
+auto outerProduct(T&&... args);
+
+template<int m=0, int n=1, typename T>
+requires (
+	is_tensor_v<T>
+	&& T::rank >= 2
+)
+auto transpose(T const & t);
+
+template<int m=0, int n=1, typename T>
+requires (is_tensor_v<T>
+	&& m < T::rank
+	&& n < T::rank
+	&& T::template dim<m> == T::template dim<n>
+)
+auto contract(T const & t);
+
+template<typename... T>
+auto interior(T&&... args);
+
+template<typename... T>
+auto trace(T&&... args);
+
+template<int m=0, typename T>
+requires (is_tensor_v<T>)
+auto diagonal(T const & t);
+
+#define TENSOR_ADD_MATH_MEMBER_FUNCS()\
+	auto elemMul(This&& o) const {\
+		return Tensor::elemMul<This const>(*this, std::forward<This>(o));\
+	}\
+\
+	template<typename... T>\
+	auto matrixCompMult(T&&... o) const {\
+		return Tensor::elemMul<This const, T...>(*this, std::forward<T>(o)...);\
+	}\
+\
+	template<typename... T>\
+	auto hadamard(T&&... o) const {\
+		return Tensor::elemMul<This const, T...>(*this, std::forward<T>(o)...);\
+	}\
+\
+	template<typename B>\
+	requires (\
+		is_tensor_v<B>\
+		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
+	) auto inner(B&& o) const {\
+		return Tensor::inner<This const, B>(*this, std::forward<B>(o));\
+	}\
+\
+	auto dot(This const & o) const {\
+		return Tensor::inner<This const, This const>(*this, o);\
+	}\
+	auto dot(This && o) && {\
+		return Tensor::inner<This const, This const>(std::move(*this), std::forward<This>(o));\
+	}\
+\
+	auto lenSq() const { return Tensor::lenSq<This const>(*this); }\
+\
+	auto length() const { return Tensor::length<This const>(*this); }\
+\
+	template<typename B>\
+	requires (\
+		is_tensor_v<B>\
+		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
+	) auto distance(B&& o) const {\
+		return Tensor::distance<This const, B>(*this, std::forward<B>(o));\
+	}\
+\
+	auto normalize() const {\
+		return Tensor::normalize<This const>(*this);\
+	}\
+\
+	template<typename B>\
+	requires (\
+		is_tensor_v<B>\
+		&& dims == 3\
+		&& B::dims == 3\
+		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
+	) auto cross(B&& b) const {\
+		return Tensor::cross<This const, B>(*this, std::forward<B>(b));\
+	}\
+\
+	template<typename B>\
+	requires (\
+		is_tensor_v<B>\
+		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
+	) auto outer(B&& b) const {\
+		return outer<This const, B>(*this, b);\
+	}\
+\
+	template<typename... T>\
+	auto outerProduct(T&&... o) const {\
+		return outerProduct<This const, T...>(*this, std::forward<T>(o)...);\
+	}\
+\
+	template<int m=0, int n=1>\
+	requires (rank >= 2)\
+	auto transpose() const {\
+		return Tensor::transpose<m, n, This const>(*this);\
+	}\
+\
+	template<int m=0, int n=1>\
+	requires (\
+		m < rank\
+		&& n < rank\
+		&& This::template dim<m> == This::template dim<n>\
+	) auto contract() const {\
+		return Tensor::contract<m, n, This const>(*this);\
+	}\
+\
+	template<typename... T>\
+	auto interior(T&&... args) const {\
+		return interior<This const, T...>(*this, std::forward<T>(args)...);\
+	}\
+\
+	template<typename... T>\
+	auto trace(T&&... args) const {\
+		return Tensor::trace<This const, T...>(*this, std::forward<T>(args)...);\
+	}\
+\
+	template<int m=0>\
+	auto diagonal() const {\
+		return Tensor::diagonal<m, This const>(*this);\
+	}\
+
+
 //these are all per-element assignment operators,
 // so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
 #define TENSOR_ADD_OPS(classname)\
@@ -1006,7 +1175,8 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_SCALAR_OP_EQ(*=)\
 	TENSOR_ADD_SCALAR_OP_EQ(/=)\
 	TENSOR_ADD_UNM()\
-	TENSOR_ADD_CMP_OP()
+	TENSOR_ADD_CMP_OP()\
+	TENSOR_ADD_MATH_MEMBER_FUNCS()
 
 
 // vector-specific macros:
@@ -1070,21 +1240,6 @@ ReadIterator vs WriteIterator
 	}
 
 
-// vector-dot
-// TODO this is only valid for _vec's
-// _sym will need to double up on the symmetric components' influences
-#define TENSOR_ADD_DOT()\
-	Inner dot(This const & b) const {\
-		Inner result = s[0] * b.s[0];\
-		for (int i = 1; i < localCount; ++i) {\
-			result += s[i] * b.s[i];\
-		}\
-		return result;\
-	}\
-	Inner lenSq() const { return dot(*this); }\
-	Inner length() const { return (Inner)sqrt(lenSq()); }\
-	This normalize() const { return (*this) / length(); }
-
 // vector.volume() == the volume of a size reprensted by the vector
 // assumes Inner operator* exists
 // TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims
@@ -1107,7 +1262,6 @@ ReadIterator vs WriteIterator
 	TENSOR_ADD_RANK1_CALL_INDEX_AUX() /* operator(int, int...), operator[] */\
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	TENSOR_ADD_SUBSET_ACCESS()\
-	TENSOR_ADD_DOT()\
 	TENSOR_ADD_VOLUME()
 
 
@@ -2508,7 +2662,7 @@ auto dot(T&&... args) {
 }
 
 template<typename T>
-requires (is_tensor_v<T>)
+requires is_tensor_v<T>
 auto lenSq(T const & v) {
 	return dot(v, v);
 }
@@ -2621,7 +2775,7 @@ TODO if the two indexes are sequential and _asym storage is used then just negat
 Otherwise expand the internal storage at indexes m and n (i.e. convert it from _sym or _asym into _vec),
 then exchange the dimensions.
 */
-template<int m=0, int n=1, typename T>
+template<int m/*=0*/, int n/*=1*/, typename T>
 requires (
 	is_tensor_v<T>
 	&& T::rank >= 2
@@ -2659,7 +2813,7 @@ auto transpose(T const & t) {
 }
 
 // contraction of two indexes of a tensor
-template<int m=0, int n=1, typename T>
+template<int m/*=0*/, int n/*=1*/, typename T>
 requires (is_tensor_v<T>
 	&& m < T::rank
 	&& n < T::rank
@@ -2744,7 +2898,7 @@ auto trace(T&&... args) {
 
 // diagonalize an index
 // well if it's diagonal, might as well use _sym
-template<int m=0, typename T>
+template<int m/*=0*/, typename T>
 requires (is_tensor_v<T>)
 auto diagonal(T const & t) {
 	static_assert(m >= 0 && m < T::rank);
