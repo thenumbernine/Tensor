@@ -30,13 +30,13 @@ So I guess overall this library is midway between a mathematician's and a progra
 
 ### Matrices:
 `_mat<type, dim1, dim2>` = `_vec<_vec<type,dim2>,dim1>` = matrices:
-- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A_{ij}$.
+- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A\_{ij}$.
 	This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
 
 ### Identity Matrix:
 `_ident<type, dim>` = identity matrix.
 This will only take up a single value of storage.  Specifying the internal storage type is still required, which enables `_ident` to be used in conjunction with outer products to produce optimized-storage tensors,
-i.e. $a_{ij} \otimes \delta_{kl}$ = `outer( _mat<float,3,3>(...), _ident<float,3>(1) )` will produce a rank-4 tensor $c_{ijkl} = a_{ij} \cdot \delta_{kl}$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
+i.e. $a\_{ij} \otimes \delta\_{kl}$ = `outer( _mat<float,3,3>(...), _ident<float,3>(1) )` will produce a rank-4 tensor $c\_{ijkl} = a\_{ij} \cdot \delta\_{kl}$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
 
 ### Symmetric Matrices:
 `_sym<type, dim>` = symmetric matrices:
@@ -58,7 +58,7 @@ The size of a totally-antisymmetric tensor storage is
 the number of unique permutations of an antisymmetric tensor of dimension `d` and rank `r`,
 which is `d choose r`.
 This means the Levi-Civita permutation tensor takes up exactly 1 float.  
-Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g_{uv})}$ for calculations in an arbitrary manifold.
+Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
 
 ### Tensors: (with rank>2)
 `tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_sym`, `_asym`.
@@ -73,7 +73,7 @@ Feel free to initialize this as the value 1 for Cartesian geometry or the value 
 		- `index_asym<dim>` for two antisymmetric indexes of dimension `dim`,
 		- `index_symR<dim, rank>` for `rank` symmetric indexes of dimension `dim`,
 		- `index_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
-	Ex: `_tensor<float, index_vec<3>, index_sym<4>, index_asym<5>>` is the type of a tensor $a_{ijklm}` where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
+	Ex: `_tensor<float, index_vec<3>, index_sym<4>, index_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 
 ### Tensor operators
@@ -145,7 +145,7 @@ Feel free to initialize this as the value 1 for Cartesian geometry or the value 
 - `(tensor t)` = initialize from another tensor.  Truncate dimensions.  Uninitialized elements are set to {}.
 
 ### Overloaded Indexing
-- `(int i1, ...)` = dereference based on a list of ints.  In the case of `_tensor, _tensori, _tensorr`, i.e. `_vec<_vec<_vec<...>>>` storage, this means $a_{ij}$ in math = `a.s[i].s[j]` in code.
+- `(int i1, ...)` = dereference based on a list of ints.  In the case of `_tensor, _tensori, _tensorr`, i.e. `_vec<_vec<_vec<...>>>` storage, this means $a\_{ij}$ in math = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
 	Mind you that in the case of optimized storage being used this means the `[][]` indexing __DOES NOT MATCH__ the `.s[].s[]` indexing.
@@ -275,7 +275,7 @@ TODO:
 - more tensor types:  maybe diagonalized rank-2 with N-DOF, where each diagonal element has a unique value.
 
 - any way to optimize symmetries between non-neighboring dimensions?
-	- like $t_{ijkl} = a_{ij} b_{kl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
+	- like $t\_{ijkl} = a\_{ij} b\_{kl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
 
 - range-iterator as a function of the tensor, like `for (auto i : a.range) {`
 	- then maybe see how it can be merged with read and write iterator? maybe?  btw write iterator is just a range iterator over the sequence `count<0>...count<numNestings-1>` with a different lookup
