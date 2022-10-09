@@ -535,16 +535,13 @@ ReplaceScalar<typename>
 	template<int N>\
 	constexpr decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }
 
-// also TODO can't use this in conjunction with the requires to_ostream or you get ambiguous operator
-// the operator<< requires to_fields and _vec having fields probably doesn't help
-// ... not using this with tensors
-// ... but for now I am using it with _vec::ReadIterator, because it lets me define a member instead of a function outside a nested class.
-#define TENSOR_ADD_TO_OSTREAM()\
-	std::ostream & to_ostream(std::ostream & o) const {\
-		return Common::iteratorToOStream(o, *this);\
-	}
-
 #define TENSOR_ADD_SCALAR_CTOR(classname)\
+	/* would be nice to have this constructor for non-tensors, non-lambdas*/\
+	/* but lambas aren't invocable! */\
+	/*template<typename T>*/\
+	/*constexpr classname(T const & x)*/\
+	/*requires (!is_tensor_v<T> && !std::is_invocable_v<T>)*/\
+	/* so instead ... */\
 	constexpr classname(Scalar const & x) {\
 		for (int i = 0; i < localCount; ++i) {\
 			s[i] = x;\
@@ -1592,11 +1589,11 @@ struct _sym<Inner_,4> {
 	TENSOR_HEADER()
 
 #define TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
-	constexpr auto operator()(int i, int j) {\
+	constexpr decltype(auto) operator()(int i, int j) {\
 		if (i != j) return AntiSymRef<Inner>();\
 		return AntiSymRef<Inner>(std::ref(s[0]), AntiSymRefHow::POSITIVE);\
 	}\
-	constexpr auto operator()(int i, int j) const {\
+	constexpr decltype(auto) operator()(int i, int j) const {\
 		if (i != j) return AntiSymRef<Inner const>();\
 		return AntiSymRef<Inner const>(std::ref(s[0]), AntiSymRefHow::POSITIVE);\
 	}
@@ -1645,25 +1642,17 @@ struct _ident {
 \
 	/* a(i,j) := a_ij = -a_ji */\
 	/* this is the direct acces */\
-	constexpr auto operator()(int i, int j) {\
+	constexpr decltype(auto) operator()(int i, int j) {\
 		if (i == j) return AntiSymRef<Inner>();\
-		if (i < j) {\
-			TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
-			return AntiSymRef<Inner>(std::ref(s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
-		} else {\
-			TENSOR_INSERT_BOUNDS_CHECK(symIndex(j,i-1));\
-			return AntiSymRef<Inner>(std::ref(s[symIndex(j,i-1)]), AntiSymRefHow::NEGATIVE);\
-		}\
+		if (i > j) return (*this)(j, i).flip();\
+		TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
+		return AntiSymRef<Inner>(std::ref(s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
 	}\
-	constexpr auto operator()(int i, int j) const {\
+	constexpr decltype(auto) operator()(int i, int j) const {\
 		if (i == j) return AntiSymRef<Inner const>();\
-		if (i < j) {\
-			TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
-			return AntiSymRef<Inner const>(std::ref(s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
-		} else {\
-			TENSOR_INSERT_BOUNDS_CHECK(symIndex(j,i-1));\
-			return AntiSymRef<Inner const>(std::ref(s[symIndex(j,i-1)]), AntiSymRefHow::NEGATIVE);\
-		}\
+		if (i > j) return (*this)(j, i).flip();\
+		TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
+		return AntiSymRef<Inner const>(std::ref(s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
 	}
 
 // TODO double-check this is upper-triangular
@@ -1746,8 +1735,23 @@ struct _asym {
 	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(_asym)
 };
 
+// higher/arbitrary-rank tensors:
+
+#define TENSOR_TEMPLATE_T_I_I(classname)\
+\
+	template<typename Inner2, int localDim2, int localRank2>\
+	using Template = classname<Inner2, localDim2, localRank2>;\
+\
+	template<typename NewInner>\
+	using ReplaceInner = Template<NewInner, localDim, localRank>;\
+\
+	template<int newLocalDim>\
+	using ReplaceLocalDim = Template<Inner, newLocalDim, localRank>;
+
+// helper functions used for the totally-symmetric and totally-antisymmetric tensors:
+
 /*
-higher-rank totally-symmetricc (might replace _sym)
+higher-rank totally-symmetri (might replace _sym)
 https://math.stackexchange.com/a/3795166
 # of elements in rank-M dim-N storage: (d + r - 1) choose r
 so for r=2 we get (d+1)! / (2! (d-1)!) = d * (d + 1) / 2
@@ -1772,35 +1776,7 @@ constexpr int nChooseR(int n, int k) {
     return result;
 }
 
-inline constexpr int symmetricSize(int d, int r) {
-	return nChooseR(d + r - 1, r);
-}
-inline constexpr int antisymmetricSize(int d, int r) {
-	return nChooseR(d, r);
-}
-
-#define TENSOR_TEMPLATE_T_I_I(classname)\
-\
-	template<typename Inner2, int localDim2, int localRank2>\
-	using Template = classname<Inner2, localDim2, localRank2>;\
-\
-	template<typename NewInner>\
-	using ReplaceInner = Template<NewInner, localDim, localRank>;\
-\
-	template<int newLocalDim>\
-	using ReplaceLocalDim = Template<Inner, newLocalDim, localRank>;
-
-#define TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
-	static constexpr int localCount = symmetricSize(localDim, localRank);
-
-#define TENSOR_HEADER_TOTALLY_SYMMETRIC(classname, Inner_, localDim_, localRank_)\
-	TENSOR_THIS(classname)\
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)\
-	TENSOR_TEMPLATE_T_I_I(classname)\
-	TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
-	TENSOR_HEADER()
-
-#define TENSOR_ADD_TOTALLY_SYMMETRIC_ACCESSOR()\
+#define TENSOR_ADD_RANK_N_ACCESSOR()\
 	template<typename OwnerConstness, int subRank>\
 	struct Accessor {\
 		static_assert(subRank > 0 && subRank < localRank);\
@@ -1875,6 +1851,23 @@ inline constexpr int antisymmetricSize(int d, int r) {
 		constexpr decltype(auto) operator[](int i) const { return (*this)(i); }\
 	};
 
+
+// totally-symmetric
+
+inline constexpr int symmetricSize(int d, int r) {
+	return nChooseR(d + r - 1, r);
+}
+
+#define TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
+	static constexpr int localCount = symmetricSize(localDim, localRank);
+
+#define TENSOR_HEADER_TOTALLY_SYMMETRIC(classname, Inner_, localDim_, localRank_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)\
+	TENSOR_TEMPLATE_T_I_I(classname)\
+	TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
+	TENSOR_HEADER()
+
 // using 'upper-triangular' i.e. i<=j<=k<=...
 // right now i'm counting into this.  is there a faster way?
 #define TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX()\
@@ -1946,22 +1939,22 @@ inline constexpr int antisymmetricSize(int d, int r) {
 \
 	template<int N>\
 	constexpr decltype(auto) operator()(_vec<int,N> const & i) {\
-		if constexpr (N == localRank) {\
+		if constexpr (N < localRank) {\
+			return Accessor<This, N>(*this, i);\
+		} else if constexpr (N == localRank) {\
 			return s[getLocalWriteForReadIndex(i)];\
 		} else if constexpr (N > localRank) {\
-			return s[getLocalWriteForReadIndex(i.template subset<localRank,0>())](i.template subset<N-localRank,localRank>());\
-		} else if constexpr (N < localRank) {\
-			return Accessor<This, N>(*this, i);\
+			return (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
 		}\
 	}\
 	template<int N>\
 	constexpr decltype(auto) operator()(_vec<int,N> const & i) const {\
-		if constexpr (N == localRank) {\
+		if constexpr (N < localRank) {\
+			return Accessor<This const, N>(*this, i);\
+		} else if constexpr (N == localRank) {\
 			return s[getLocalWriteForReadIndex(i)];\
 		} else if constexpr (N > localRank) {\
-			return s[getLocalWriteForReadIndex(i.template subset<localRank,0>())](i.template subset<N-localRank,localRank>());\
-		} else if constexpr (N < localRank) {\
-			return Accessor<This const, N>(*this, i);\
+			return (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
 		}\
 	}\
 \
@@ -1979,7 +1972,7 @@ inline constexpr int antisymmetricSize(int d, int r) {
 #endif
 
 #define TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()\
-	TENSOR_ADD_TOTALLY_SYMMETRIC_ACCESSOR()\
+	TENSOR_ADD_RANK_N_ACCESSOR()\
 	TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() /* needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS */\
 	TENSOR_ADD_OPS(_symR)\
 	TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()
@@ -1992,7 +1985,163 @@ struct _symR {
 	TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()
 };
 
-// TODO totally antisymmetric
+// totally antisymmetric
+
+inline constexpr int antisymmetricSize(int d, int r) {
+	return nChooseR(d, r);
+}
+
+#define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
+	static constexpr int localCount = antisymmetricSize(localDim, localRank);
+
+#define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC(classname, Inner_, localDim_, localRank_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)\
+	TENSOR_TEMPLATE_T_I_I(classname)\
+	TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
+	TENSOR_HEADER()
+
+// using 'upper-triangular' i.e. i<=j<=k<=...
+// right now i'm counting into this.  is there a faster way?
+#define TENSOR_TOTALLY_ANTISYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX()\
+	template<int j>\
+	struct GetLocalReadForWriteIndexImpl {\
+		static constexpr bool execInner(intNLocal & iread) {\
+			if constexpr (j < 0) {\
+				return true;\
+			} else {\
+				iread[j]++;\
+				if (iread[j] >= localDim) {\
+					if (GetLocalReadForWriteIndexImpl<j-1>::execInner(iread)) return true;\
+					iread[j] = j == 0 ? 0 : iread[j-1];\
+				}\
+				return false;\
+			}\
+		}\
+		static constexpr bool exec(intNLocal & iread) {\
+			for (;;) {\
+				if (execInner(iread)) return true;\
+				bool skip = false;\
+				for (int k = 0; k < localRank-1; ++k) {\
+					if (iread[k] == iread[k+1]) {\
+						skip = true;\
+						break;\
+					}\
+				}\
+				if (!skip) return false;\
+			}\
+		}\
+	};\
+	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
+		intNLocal iread = {};\
+		for (int i = 0; i < writeIndex; ++i) {\
+			if (GetLocalReadForWriteIndexImpl<localRank-1>::exec(iread)) break;\
+		}\
+		return iread;\
+	}\
+\
+	/* TODO return # flips, or return if any are on the diagonal */\
+	static constexpr int getLocalWriteForReadIndex(intNLocal targetReadIndex) {\
+		/* put indexes in increasing order */\
+		std::sort(targetReadIndex.s.begin(), targetReadIndex.s.end());\
+		/* loop until you find the element */\
+		intNLocal iread;\
+		for (int writeIndex = 0; writeIndex < localCount; ++writeIndex) {\
+			if (iread == targetReadIndex) return writeIndex;\
+			if (GetLocalReadForWriteIndexImpl<localRank-1>::exec(iread)) break;\
+		}\
+		/* how should I deal with bad indexes? */\
+		/*throw Common::Exception() << "failed to find write index";*/\
+		/* return oob range? for iteration's sake? */\
+		return localCount;\
+	}
+
+// TODO bubble-sort, count # of flips, use that as parity, and then if any duplicate indexes exist, use a zero reference
+/*
+from my symmath/tensor/LeviCivita.lua
+			local indexes = {...}
+			-- duplicates mean 0
+			for i=1,#indexes-1 do
+				for j=i+1,#indexes do
+					if indexes[i] == indexes[j] then return 0 end
+				end
+			end
+			-- bubble sort, count the flips
+			local parity = 1
+			for i=1,#indexes-1 do
+				for j=1,#indexes-i do
+					if indexes[j] > indexes[j+1] then
+						indexes[j], indexes[j+1] = indexes[j+1], indexes[j]
+						parity = -parity
+					end
+				end
+			end
+
+*/
+#define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_CALL_INDEX()\
+\
+	template<int N>\
+	constexpr decltype(auto) operator()(_vec<int,N> const & i) {\
+		for (int j = 0; j < localRank-1; ++j) {\
+			if (i(j) == i(j+1)) return AntiSymRef<Inner>();\
+			if (i(j) > i(j+1)) {\
+				_vec<int,N> i2 = i;\
+				std::swap(i2(j), i2(j+1));\
+				return (*this)(i2).flip();\
+			}\
+		}\
+		if constexpr (N < localRank) {\
+			return Accessor<This, N>(*this, i);\
+		} else if constexpr (N == localRank) {\
+			return AntiSymRef<Inner>(s[getLocalWriteForReadIndex(i)], AntiSymRefHow::POSITIVE);\
+		} else if constexpr (N > localRank) {\
+			return (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
+		}\
+	}\
+	template<int N>\
+	constexpr decltype(auto) operator()(_vec<int,N> const & i) const {\
+		for (int j = 0; j < localRank-1; ++j) {\
+			if (i(j) == i(j+1)) return AntiSymRef<Inner const>();\
+			if (i(j) > i(j+1)) {\
+				_vec<int,N> i2 = i;\
+				std::swap(i2(j), i2(j+1));\
+				return (*this)(i2).flip();\
+			}\
+		}\
+		if constexpr (N < localRank) {\
+			return Accessor<This const, N>(*this, i);\
+		} else if constexpr (N == localRank) {\
+			return AntiSymRef<Inner const>(s[getLocalWriteForReadIndex(i)], AntiSymRefHow::POSITIVE);\
+		} else if constexpr (N > localRank) {\
+			return (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
+		}\
+	}\
+\
+	template<typename... Ints>\
+	constexpr decltype(auto) operator()(Ints... is) {\
+		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
+	}\
+	template<typename... Ints>\
+	constexpr decltype(auto) operator()(Ints... is) const {\
+		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
+	}\
+\
+	constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
+	constexpr decltype(auto) operator[](int i) const { return (*this)(i); }
+
+#define TENSOR_TOTALLY_ANTISYMMETRIC_CLASS_OPS()\
+	TENSOR_ADD_RANK_N_ACCESSOR()\
+	TENSOR_TOTALLY_ANTISYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() /* needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS */\
+	TENSOR_ADD_OPS(_asymR)\
+	TENSOR_ADD_TOTALLY_ANTISYMMETRIC_CALL_INDEX()
+
+template<typename Inner_, int localDim_, int localRank_>
+struct _asymR {
+	TENSOR_HEADER_TOTALLY_ANTISYMMETRIC(_asymR, Inner_, localDim_, localRank_)
+	std::array<Inner, localCount> s = {};
+	constexpr _asymR() {}
+	TENSOR_TOTALLY_ANTISYMMETRIC_CLASS_OPS()
+};
 
 // then TODO Levi-Civita tensor
 
@@ -2044,6 +2193,13 @@ struct index_symR {
 	template<typename T>
 	using type = _symR<T,dim,rank>;
 };
+
+template<int dim, int rank>
+struct index_asymR {
+	template<typename T>
+	using type = _asymR<T,dim,rank>;
+};
+
 
 // hmm, I'm trying to use these index_*'s in combination with is_instance_v<T, index_*<dim>::template type> but it's failing, so here they are specialized
 template<typename T> struct is_vec : public std::false_type {};

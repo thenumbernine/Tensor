@@ -42,9 +42,6 @@ void test_TotallySymmetric() {
 		operatorScalarTest(t);
 	}
 
-
-// TODO still need more call operator support I guess
-#if 0
 	{
 		auto f = [](int i, int j, int k) -> float { return i + j + k; };
 		auto t = float3s3s3(f);
@@ -54,5 +51,4 @@ void test_TotallySymmetric() {
 		// TODO ExpandIthIndex of a start or end index should preserve symmetry of the rest
 		static_assert(std::is_same_v<decltype(m), Tensor::float3x3>);
 	}
-#endif
 }

@@ -14,6 +14,7 @@ void test_Antisymmetric();
 void test_TensorRank3();
 void test_TensorRank4();
 void test_TotallySymmetric();
+void test_TotallyAntisymmetric();
 
 template<typename T>
 T sign (T x) {

@@ -48,7 +48,7 @@ struct AntiSymRef {
 	
 	AntiSymRef() {}
 	AntiSymRef(std::reference_wrapper<T> const & x_, AntiSymRefHow how_) : x(x_), how(how_) {}
-	AntiSymRef(AntiSymRef const & r) : x(r.x), how(x.how) {}
+	AntiSymRef(AntiSymRef const & r) : x(r.x), how(r.how) {}
 	
 	AntiSymRef(AntiSymRef && r)
 	: x(r.x), how(x.how) {}
@@ -111,6 +111,14 @@ struct AntiSymRef {
 				return AntiSymRef<R>(std::ref(r), how);
 			}
 		}
+	}
+
+	// return ref or no?
+	constexpr This flip() const {
+		if (how == AntiSymRefHow::POSITIVE || how == AntiSymRefHow::NEGATIVE) {
+			return AntiSymRef(*x, (AntiSymRefHow)((int)how ^ 1));
+		}
+		return *this;
 	}
 };
 

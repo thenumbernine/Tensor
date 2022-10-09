@@ -11,4 +11,5 @@ int main() {
 	test_TensorRank3();
 	test_TensorRank4();
 	test_TotallySymmetric();
+	test_TotallyAntisymmetric();
 }
