@@ -35,7 +35,8 @@ So I guess overall this library is midway between a mathematician's and a progra
 
 ### Identity Matrix:
 `_ident<type, dim>` = identity matrix.
-This will only take up a single value of storage.  Type is still required, which enables `_ident` to be used in conjunction with outer products to produce optimized-storage tensors.
+This will only take up a single value of storage.  Specifying the internal storage type is still required, which enables `_ident` to be used in conjunction with outer products to produce optimized-storage tensors,
+i.e. $a_{ij} \otimes \delta_{kl}$ = `outer( _mat<float,3,3>(...), _ident<float,3>(1) )` will produce a rank-4 tensor $c_{ijkl} = a_{ij} \cdot \delta_{kl}$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
 
 ### Symmetric Matrices:
 `_sym<type, dim>` = symmetric matrices:
