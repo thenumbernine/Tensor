@@ -5,6 +5,7 @@ int main() {
 	test_AntiSymRef();
 	test_Vector();
 	test_Quat();
+	test_Identity();
 	test_Symmetric();
 	test_Antisymmetric();
 	test_Matrix();

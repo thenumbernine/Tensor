@@ -8,6 +8,7 @@ void test_v1_iter();
 void test_AntiSymRef();
 void test_Vector();
 void test_Quat();
+void test_Identity();
 void test_Matrix();
 void test_Symmetric();
 void test_Antisymmetric();
@@ -24,13 +25,22 @@ T sign (T x) {
 template<typename T>
 void operatorScalarTest(T const & t) {
 	using S = typename T::Scalar;
+	constexpr bool sumTypeMatches = std::is_same_v<
+		T,
+		typename T::SumWithScalarResult
+	>;
 	TEST_EQ(t + (S)0, t);
-	TEST_EQ((S)1 + t, t + T((S)1));
+	// if the sum types don't match then constructoring a T from the scalar 1 might not give us the same as t + 1
+	if constexpr (sumTypeMatches) {
+		TEST_EQ((S)1 + t, t + T((S)1));
+	}
 	TEST_EQ(t + T(), t);
 	TEST_EQ(t - T(), t);
 	TEST_EQ((S)0 - t, -t);
 	TEST_EQ(t - (S)0, t);
-	TEST_EQ(t - (S)1, t - T((S)1));
+	if constexpr (sumTypeMatches) {
+		TEST_EQ(t - (S)1, t - T((S)1));
+	}
 	TEST_EQ(t - t, T());
 	TEST_EQ(t - t * (S)2, -t);
 	TEST_EQ(t - (S)2 * t, -t);
@@ -40,6 +50,7 @@ void operatorScalarTest(T const & t) {
 	TEST_EQ(t * (S)2, t + t);
 	TEST_EQ(t * (S)0, T());
 	TEST_EQ(t / (S)1, t);
+	// hmm, why is this failing
 	TEST_EQ(t / (S).5, (S)2 * t);
 	//TEST_EQ(t / t, T((S)1)); // if t(I) == 0 then this gives nan ... so ...
 	TEST_EQ(t / T((S)1), t);

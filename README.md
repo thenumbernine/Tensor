@@ -279,3 +279,5 @@ TODO:
 - make `*=` use `operator*` equivalent multiply.  But this depends on the multiply algorithm.
 	If I am using the outer-then-contract-once method then this will only work if the `*=` rhs is a tensor with rank s where `(r + s - 2 == r)` i.e. `s == 2`, you can only `*=` with matrices. 
 - make `_symR` primary index be `operator(int...)` and secondary `operator(_vec<int,N>)`
+
+- `_ident, _asym, _asymR` operator+ with scalar should return a `_tensor`

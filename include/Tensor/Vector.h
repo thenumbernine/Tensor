@@ -432,7 +432,27 @@ ReplaceScalar<typename>
 		using type = decltype(value());\
 	};\
 	template<typename NewScalar>\
-	using ReplaceScalar = ReplaceInner<typename ReplaceScalarImpl<NewScalar>::type>;
+	using ReplaceScalar = ReplaceInner<typename ReplaceScalarImpl<NewScalar>::type>;\
+\
+	struct SumWithScalarResultImpl {\
+		static constexpr auto value() {\
+			if constexpr (std::is_same_v<Inner, Scalar>) {\
+				return TypeWrapper<\
+					This::template LocalSumWithScalarResult<\
+						Scalar\
+					>\
+				>();\
+			} else {\
+				return TypeWrapper<\
+					This::template LocalSumWithScalarResult<\
+						typename Inner::SumWithScalarResult\
+					>\
+				>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	using SumWithScalarResult = typename SumWithScalarResultImpl::type; 
 
 //for giving operators to tensor classes
 //how can you add correctly-typed ops via crtp to a union?
@@ -560,7 +580,7 @@ ReplaceScalar<typename>
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
 			/* TODO instead an index range iterator that spans the minimum of dims of this and t */\
-			if (validIndex(i.readIndex)) {\
+			if (This::validIndex(i.readIndex)) {\
 				/* If we use operator()(intN<>) access working for _asym ... */\
 				/**i = (Scalar)t(i.readIndex);*/\
 				/* ... or just replace the internal storage with std::array ... */\
@@ -999,7 +1019,11 @@ ReadIterator vs WriteIterator
 	/* for vectors etc it is 's' */\
 	/* for (anti?)symmetric it is N*(N+1)/2 */\
 	/* TODO make a 'count<int nesting>', same as dim? */\
-	static constexpr int localCount = localDim;
+	static constexpr int localCount = localDim;\
+\
+	/* tensor/scalar +- ops will sometimes have a different result tensor type */\
+	template<typename T>\
+	using LocalSumWithScalarResult = _vec<T, localDim>;
 
 #define TENSOR_HEADER_VECTOR(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1399,7 +1423,11 @@ constexpr int symIndex(int i, int j) {
 // symmetric matrices
 
 #define TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
-	static constexpr int localCount = triangleSize(localDim);
+\
+	static constexpr int localCount = triangleSize(localDim);\
+\
+	template<typename T>\
+	using LocalSumWithScalarResult = _sym<T, localDim>;
 
 #define TENSOR_HEADER_SYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1579,7 +1607,12 @@ struct _sym<Inner_,4> {
 // but meh, it works for outer product / multiply optimizations I guess?
 
 #define TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
-	static constexpr int localCount = 1;
+\
+	static constexpr int localCount = 1;\
+\
+	/* _ident + or - a scalar is no longer ident, but still is symmetric */\
+	template<typename T>\
+	using LocalSumWithScalarResult = _sym<T, localDim>;
 
 #define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1628,7 +1661,12 @@ struct _ident {
 // antisymmetric matrices
 
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
-	static constexpr int localCount = triangleSize(localDim - 1);
+\
+	static constexpr int localCount = triangleSize(localDim - 1);\
+\
+	/* _asym + or - a scalar is no longer _asym */\
+	template<typename T>\
+	using LocalSumWithScalarResult = _tensorr<T, localDim, 2>;
 
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1859,7 +1897,11 @@ inline constexpr int symmetricSize(int d, int r) {
 }
 
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
-	static constexpr int localCount = symmetricSize(localDim, localRank);
+\
+	static constexpr int localCount = symmetricSize(localDim, localRank);\
+\
+	template<typename T>\
+	using LocalSumWithScalarResult = _symR<T, localDim, localRank>;
 
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC(classname, Inner_, localDim_, localRank_)\
 	TENSOR_THIS(classname)\
@@ -1992,7 +2034,12 @@ inline constexpr int antisymmetricSize(int d, int r) {
 }
 
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
-	static constexpr int localCount = antisymmetricSize(localDim, localRank);
+\
+	static constexpr int localCount = antisymmetricSize(localDim, localRank);\
+\
+	/* _asymR + or - a scalar is no longer _asymR */\
+	template<typename T>\
+	using LocalSumWithScalarResult = _tensorr<T, localDim, localRank>;
 
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC(classname, Inner_, localDim_, localRank_)\
 	TENSOR_THIS(classname)\
@@ -2287,11 +2334,20 @@ bool operator!=(A const & a, A const & b) {
 }
 
 //  tensor/scalar sum and scalar/tensor sum
+/*
+result type for tensor storage and scalar operation
+	_vec	_ident	_sym	_asym	_symR	_asymR
++	_vec	_sym	_sym	_mat	_symR	_tensorr
+-	_vec	_sym	_sym	_mat	_symR	_tensorr
+*	_vec	_ident	_sym	_asym	_symR	_asymR
+/	_vec	_ident	_sym	_asym	_symR	_asymR
+*/
 
-#define TENSOR_SCALAR_OP(op)\
+
+#define TENSOR_SCALAR_MUL_OP(op)\
 template<typename T>\
 requires (is_tensor_v<T>)\
-T operator op(T const & a, typename T::Scalar const & b) {\
+decltype(auto) operator op(T const & a, typename T::Scalar const & b) {\
 	return T([&](auto... is) -> typename T::Scalar {\
 		return a(is...) op b;\
 	});\
@@ -2299,18 +2355,39 @@ T operator op(T const & a, typename T::Scalar const & b) {\
 \
 template<typename T>\
 requires (is_tensor_v<T>)\
-T operator op(typename T::Scalar const & a, T const & b) {\
+decltype(auto) operator op(typename T::Scalar const & a, T const & b) {\
 	return T([&](auto... is) -> typename T::Scalar {\
 		return a op b(is...);\
 	});\
 }
 
-//  tensor/tensor op
 
-TENSOR_SCALAR_OP(+)
-TENSOR_SCALAR_OP(-)
-TENSOR_SCALAR_OP(/)
-TENSOR_SCALAR_OP(*)
+#define TENSOR_SCALAR_SUM_OP(op)\
+template<typename T>\
+requires (is_tensor_v<T>)\
+decltype(auto) operator op(T const & a, typename T::Scalar const & b) {\
+	using R = typename T::SumWithScalarResult;\
+	return R([&](auto... is) -> typename T::Scalar {\
+		return a(is...) op b;\
+	});\
+}\
+\
+template<typename T>\
+requires (is_tensor_v<T>)\
+decltype(auto) operator op(typename T::Scalar const & a, T const & b) {\
+	using R = typename T::SumWithScalarResult;\
+	return R([&](auto... is) -> typename T::Scalar {\
+		return a op b(is...);\
+	});\
+}
+
+TENSOR_SCALAR_SUM_OP(+)
+TENSOR_SCALAR_SUM_OP(-)
+TENSOR_SCALAR_MUL_OP(*)
+//TENSOR_SCALAR_MUL_OP(/) // would be using the same type if not for divide-by-zeros
+TENSOR_SCALAR_SUM_OP(/)
+
+//  tensor/tensor op
 
 #define TENSOR_TENSOR_OP(op)\
 \
@@ -2870,6 +2947,10 @@ template<typename T, int N, int R>
 std::ostream & operator<<(std::ostream & o, _symR<T,N,R> const & t) {
 	return o << t.s;
 }
+template<typename T, int N, int R>
+std::ostream & operator<<(std::ostream & o, _asymR<T,N,R> const & t) {
+	return o << t.s;
+}
 #endif
 #if 0 // just use iterator.  but i guess AntiSymRef doesn't?
 template<typename T, int N>
@@ -2890,6 +2971,10 @@ std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
 }
 template<typename T, int N, int R>
 std::ostream & operator<<(std::ostream & o, _symR<T,N,R> const & t) {
+	return Common::iteratorToOStream(o, t);
+}
+template<typename T, int N, int R>
+std::ostream & operator<<(std::ostream & o, _asymR<T,N,R> const & t) {
 	return Common::iteratorToOStream(o, t);
 }
 #endif
