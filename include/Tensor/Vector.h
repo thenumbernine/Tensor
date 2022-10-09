@@ -348,14 +348,14 @@ ReplaceScalar<typename>
 		static constexpr auto value() {\
 			static_assert(index >= 0);\
 			if constexpr (index >= numNestings) {\
-				return Scalar();\
+				return TypeWrapper<Scalar>();\
 			} else if constexpr (index == 0) {\
-				return This();\
+				return TypeWrapper<This>();\
 			} else {\
-				return typename Inner::template Nested<index-1>();\
+				return Inner::template NestedImpl<index-1>::value();\
 			}\
 		}\
-		using type = decltype(value());\
+		using type = typename decltype(value())::type;\
 	};\
 	template<int index>\
 	using Nested = typename NestedImpl<index>::type;\
@@ -580,7 +580,7 @@ ReplaceScalar<typename>
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
 			/* TODO instead an index range iterator that spans the minimum of dims of this and t */\
-			if (This::validIndex(i.readIndex)) {\
+			if (U::validIndex(i.readIndex)) {\
 				/* If we use operator()(intN<>) access working for _asym ... */\
 				/**i = (Scalar)t(i.readIndex);*/\
 				/* ... or just replace the internal storage with std::array ... */\
@@ -985,7 +985,7 @@ ReadIterator vs WriteIterator
 			}\
 		}\
 	};\
-	inline bool validIndex(typename This::intN const & i) {\
+	static constexpr bool validIndex(typename This::intN const & i) {\
 		return ValidIndexImpl<0>::value(i);\
 	}
 

@@ -236,13 +236,27 @@ void test_Vector() {
 		}
 	}
 
-#if 0
+	//equivalent of tensor ctor of varying dimension
+	{
+		Tensor::float2 t = {1,2};
+		Tensor::float3 x;
+		auto w = x.write();
+		for (auto i = w.begin(); i != w.end(); ++i) {
+			/* TODO instead an index range iterator that spans the minimum of dims of this and t */
+			if (Tensor::float2::validIndex(i.readIndex)) {
+				/* If we use operator()(intN<>) access working for _asym ... */
+				/**i = (Scalar)t(i.readIndex);*/
+				/* ... or just replace the internal storage with std::array ... */
+				*i = std::apply(t, i.readIndex.s);
+			} else {
+				*i = decltype(x)::Scalar();
+			}
+		}
+	}
 	{
 		using namespace Tensor;
 		float2 a = {1,2};
-		// TODO FIXME this incurs an oob read ... hmm what is going on here?
 		float3 b = a;
-		TEST_EQ(b, float3(1,2,-1));
+		TEST_EQ(b, float3(1,2,0));
 	}
-#endif
 }
