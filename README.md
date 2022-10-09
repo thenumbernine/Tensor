@@ -15,7 +15,7 @@ So I guess overall this library is midway between a mathematician's and a progra
 
 - Familiar vector and math support, 2D 3D 4D.
 - Arbitrary-dimension, arbitrary-rank.
-- Compressed symmetric and antisymmetric storage.
+- Compressed storage for identity, symmetric, and antisymmetric tensor indexes.
 - Lots of compile time and template driven stuff.
 - C++20
 - Some sort of GLSL half-compatability, though creative freedom where I want it.
@@ -57,14 +57,15 @@ which is `(d + r - 1) choose r`.
 The size of a totally-antisymmetric tensor storage is
 the number of unique permutations of an antisymmetric tensor of dimension `d` and rank `r`,
 which is `d choose r`.
-This means the Levi-Civita permutation tensor takes up exactly 1 float.  Feel free to initialize this as the value `1` for Cartesian geometry or the value of $sqrt(det(g_{uv}))$ for calculations in an arbitrary manifold.
+This means the Levi-Civita permutation tensor takes up exactly 1 float.  
+Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g_{uv})}$ for calculations in an arbitrary manifold.
 
 ### Tensors: (with rank>2)
 `tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_sym`, `_asym`.
 
 ### Tensor creation:
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
-- `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific pairs of indexes symmetric storage.
+- `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
 	`I1 I2` etc are one of the following:
 		- `index_vec<dim>` for a single index of dimension `dim`,
 		- `index_ident<dim>` for rank-two identity indexes of dimension `dim`,
@@ -141,11 +142,11 @@ This means the Levi-Civita permutation tensor takes up exactly 1 float.  Feel fr
 - `(tensor t)` = initialize from another tensor.  Truncate dimensions.  Uninitialized elements are set to {}.
 
 ### Overloaded Indexing
-- `(int i1, ...)` = dereference based on a list of ints.  Math `a_ij` = `a.s[i].s[j]` in code.
+- `(int i1, ...)` = dereference based on a list of ints.  $a_{ij}$ in math = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
-	Mind you that in the case of symmetric storage being used this means the [][] indexing __DOES NOT MATCH__ the .s[].s[] indexing.
-	In the case of symmetric storage, for intermediate-indexes, a wrapper object will be returned.
+	Mind you that in the case of optimized storage being used this means the [][] indexing __DOES NOT MATCH__ the .s[].s[] indexing.
+	In the case of optimized storage, for intermediate-indexes, a wrapper object will be returned.
 
 ### Iterating
 - `.begin() / .end() / .cbegin() / .cend()` = read-iterators, for iterating over indexes (including duplicate elements in symmetric matrices).
