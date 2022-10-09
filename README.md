@@ -145,7 +145,7 @@ Feel free to initialize this as the value 1 for Cartesian geometry or the value 
 - `(tensor t)` = initialize from another tensor.  Truncate dimensions.  Uninitialized elements are set to {}.
 
 ### Overloaded Indexing
-- `(int i1, ...)` = dereference based on a list of ints.  In the case of `_tensor, _tensori, _tensorr`, i.e. `_vec<_vec<_vec<...>>>` storage, this means $a\_{ij}$ in math = `a.s[i].s[j]` in code.
+- `(int i1, ...)` = dereference based on a list of ints.  In the case of `_tensori` or `_tensorr`, i.e. `_vec<_vec<_vec<...>>>` storage, this means $a\_{ij}$ in math = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
 	Mind you that in the case of optimized storage being used this means the `[][]` indexing __DOES NOT MATCH__ the `.s[].s[]` indexing.
@@ -218,7 +218,7 @@ Sorry GLSL, Cg wins this round:
 - `float2s2, float3s3, float4s4` = symmetric matrix types.
 - `float2a2, float3a3, float4a4` = antisymmetric matrix types.
 - `float2s2s2 float3s3s3 float4s4s4 float2s2s2s2 float3s3s3s3 float4s4s4s4` = totally-symmetric tensor of floats.
-- `float2a2a2 float3a3a3 float4a4a4 float2a2a2a2 float3a3a3a3 float4a4a4a4` = totally-antisymmetric tensor of floats.
+- `float3a3a3 float4a4a4 float4a4a4a4` = totally-antisymmetric tensor of floats.
 - `floatNxN<dim>` = matrix of floats of size `dim`.
 - `floatNiN<dim>` = identity matrix of float of size `dim`.
 - `floatNsN<dim>` = symetric matrix of floats of size `dim`.
