@@ -452,7 +452,7 @@ ReplaceScalar<typename>
 		}\
 		using type = typename decltype(value())::type;\
 	};\
-	using SumWithScalarResult = typename SumWithScalarResultImpl::type; 
+	using SumWithScalarResult = typename SumWithScalarResultImpl::type;
 
 //for giving operators to tensor classes
 //how can you add correctly-typed ops via crtp to a union?
@@ -516,7 +516,7 @@ ReplaceScalar<typename>
 		return result;\
 	}
 
-// for rank-1 objects (_vec, _sym::Accessor, _asym::Accessor) 
+// for rank-1 objects (_vec, _sym::Accessor, _asym::Accessor)
 // I'm using use operator(int) as the de-facto for rank-1, operator(int,int) for rank-1 etc
 #define TENSOR_ADD_VECTOR_CALL_INDEX_PRIMARY()\
 \
@@ -1600,7 +1600,7 @@ struct _sym<Inner_,4> {
 	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
 };
 
-// symmetric, identity ... 
+// symmetric, identity ...
 // only a single storage required
 // ... so it's just a wrapper
 // so I guess dimension doesn't really matter.
@@ -1954,7 +1954,7 @@ inline constexpr int symmetricSize(int d, int r) {
 
 // making operator()(int...) the primary, and operator()(intN<>) the secondary
 // TODO needs some templates for splitting a parameter-pack
-#if 0	
+#if 0
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
 \
 	template<typename... Ints>\
@@ -2033,6 +2033,15 @@ inline constexpr int antisymmetricSize(int d, int r) {
 	return nChooseR(d, r);
 }
 
+template<typename T>
+struct initIntVecWithSequence {};
+template<typename T, T... I>
+struct initIntVecWithSequence<std::integer_sequence<T, I...>> {
+	static constexpr auto value() {
+		return _vec<T, sizeof...(I)>{I...};
+	}
+};
+
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
 \
 	static constexpr int localCount = antisymmetricSize(localDim, localRank);\
@@ -2080,19 +2089,17 @@ inline constexpr int antisymmetricSize(int d, int r) {
 		}\
 	};\
 	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
-		intNLocal iread = {};\
+		intNLocal iread = initIntVecWithSequence<std::make_integer_sequence<int, localRank>>::value();\
 		for (int i = 0; i < writeIndex; ++i) {\
 			if (GetLocalReadForWriteIndexImpl<localRank-1>::exec(iread)) break;\
 		}\
 		return iread;\
 	}\
 \
-	/* TODO return # flips, or return if any are on the diagonal */\
+	/* NOTICE this assumes targetReadIndex is already sorted */\
 	static constexpr int getLocalWriteForReadIndex(intNLocal targetReadIndex) {\
-		/* put indexes in increasing order */\
-		std::sort(targetReadIndex.s.begin(), targetReadIndex.s.end());\
 		/* loop until you find the element */\
-		intNLocal iread;\
+		intNLocal iread = initIntVecWithSequence<std::make_integer_sequence<int, localRank>>::value();\
 		for (int writeIndex = 0; writeIndex < localCount; ++writeIndex) {\
 			if (iread == targetReadIndex) return writeIndex;\
 			if (GetLocalReadForWriteIndexImpl<localRank-1>::exec(iread)) break;\
@@ -2126,6 +2133,22 @@ from my symmath/tensor/LeviCivita.lua
 
 */
 #define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_CALL_INDEX()\
+\
+	/* I'm not using this, but I could use it */\
+	static constexpr AntiSymRefHow sortAndFlip(intNLocal & i) {\
+		for (int j = 0; j < localRank-1; ++j) {\
+			if (i(j) == i(j+1)) return AntiSymRefHow::ZERO;\
+			if (i(j) > i(j+1)) {\
+				std::swap(i(j), i(j+1));\
+				AntiSymRefHow result = sortAndFlip(i);\
+				if (result == AntiSymRefHow::POSITIVE || result == AntiSymRefHow::NEGATIVE) {\
+					result = (AntiSymRefHow)((int)result ^ 1);\
+				}\
+				return result;\
+			}\
+		}\
+		return AntiSymRefHow::POSITIVE;\
+	}\
 \
 	template<int N>\
 	constexpr decltype(auto) operator()(_vec<int,N> const & i) {\
@@ -2562,13 +2585,13 @@ constexpr std::array<T, N> permuteArray(
 	}
 }
 
-//aka 'reshape' ?  
+//aka 'reshape' ?
 // nah reshape in matlab is for resizing dimensions and maintaining storage.
 // this is more of a swizzle (dimension-swap) but for ranks ... rank-swap ... index-swap ...
 template<typename T, typename I, I... Is>
 require (is_tensor_v<T>)
 auto permuteIndexes(T const & t) {
-	using R = 
+	using R =
 		T
 			... for each i ...
 			::template ReplaceDim<i, T::template dim<Is[i]>>;

@@ -45,9 +45,45 @@ void test_TotallyAntisymmetric() {
 		}
 	}
 
+	//iterator test inline
 	{
-		
+		auto a = float3a3a3();
+		auto b = float3x3x3();
+		for (auto i = a.begin(); i != a.end(); ++i) {
+			ECHO(i.index);
+			Tensor::int3 sortedi = i.index;
+			auto flip = float3a3a3::sortAndFlip(sortedi);
+			ECHO(sortedi);
+			ECHO(flip);
+			auto writeIndex = float3a3a3::getLocalWriteForReadIndex(sortedi);
+			ECHO(writeIndex);
+			TEST_BOOL(
+				flip == Tensor::AntiSymRefHow::ZERO ||
+				writeIndex == 0	// requires input to be sorted
+			);
+			TEST_EQ(a(i.index), b(i.index));
+		}
+	}
+	{
+		auto a = float3x3x3();
+		auto b = float3a3a3();
+		for (auto i = a.begin(); i != a.end(); ++i) {
+			ECHO(i.index);
+			Tensor::int3 sortedi = i.index;
+			auto flip = float3a3a3::sortAndFlip(sortedi);
+			ECHO(sortedi);
+			ECHO(flip);
+			auto writeIndex = float3a3a3::getLocalWriteForReadIndex(sortedi);
+			ECHO(writeIndex);
+			TEST_BOOL(
+				flip == Tensor::AntiSymRefHow::ZERO ||
+				writeIndex == 0	// requires input to be sorted
+			);
+			TEST_EQ(a(i.index), b(i.index));
+		}
+	}
 
+	{
 		// does = work between two tensor types of matching dims?
 		TEST_EQ(float3a3a3(), float3x3x3());	// works
 		TEST_EQ(float3x3x3(), float3a3a3());	// fails
