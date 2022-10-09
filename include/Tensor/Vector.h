@@ -573,7 +573,7 @@ ReplaceScalar<typename>
 // vector cast operator
 // TODO not sure how to write this to generalize into _sym and others (or if I should try to?)
 // explicit 'this->s' so subclasses can use this macro (like _quat)
-#define TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname, othername)\
+#define TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname)\
 	template<typename U>\
 	/* TODO find a way to compare 'dims' instead of 'rank', then bounds would be guaranteed */\
 	/* or do I want to force matching bounds? */\
@@ -698,7 +698,7 @@ ReplaceScalar<typename>
 
 #define TENSOR_ADD_CTORS(classname)\
 	TENSOR_ADD_SCALAR_CTOR(classname)\
-	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname, classname)\
+	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname)\
 	TENSOR_ADD_LAMBDA_CTOR(classname)\
 	TENSOR_ADD_LIST_CTOR(classname)\
 	TENSOR_ADD_ARG_CTOR(classname)
@@ -1001,20 +1001,24 @@ requires (
 	is_tensor_v<A>
 	&& is_tensor_v<B>
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-) auto inner(A const & a, B const & b);
+) typename A::Scalar inner(A const & a, B const & b);
 
-template<typename T> requires is_tensor_v<T> auto lenSq(T const & v);
+template<typename T> requires is_tensor_v<T>
+typename T::Scalar lenSq(T const & v);
 
-template<typename T> requires (is_tensor_v<T>) auto length(T const & v);
+template<typename T> requires (is_tensor_v<T>)
+typename T::Scalar length(T const & v);
 
 template<typename A, typename B>
 requires (
 	is_tensor_v<A>
 	&& is_tensor_v<B>
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-) auto distance(A const & a, B const & b);
+) typename A::Scalar distance(A const & a, B const & b);
 
-template<typename T> requires (is_tensor_v<T>) auto normalize(T const & v);
+template<typename T>
+requires (is_tensor_v<T>)
+T normalize(T const & v);
 
 template<typename A, typename B>
 requires (
@@ -1084,9 +1088,9 @@ requires(
 \
 	template<typename B>\
 	requires (\
-		is_tensor_v<B>\
+		is_tensor_v<std::decay_t<B>>\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
-	) auto inner(B&& o) const {\
+	) Scalar inner(B&& o) const {\
 		return Tensor::inner<This const, B>(*this, std::forward<B>(o));\
 	}\
 \
@@ -1097,25 +1101,24 @@ requires(
 		return Tensor::inner<This const, This const>(std::move(*this), std::forward<This>(o));\
 	}\
 \
-	auto lenSq() const { return Tensor::lenSq<This const>(*this); }\
+	Scalar lenSq() const { return Tensor::lenSq<This const>(*this); }\
 \
-	auto length() const { return Tensor::length<This const>(*this); }\
+	Scalar length() const { return Tensor::length<This const>(*this); }\
 \
-	template<typename B>\
-	requires (\
-		is_tensor_v<B>\
-		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
-	) auto distance(B&& o) const {\
-		return Tensor::distance<This const, B>(*this, std::forward<B>(o));\
+	Scalar distance(This const & o) const {\
+		return Tensor::distance<This const, This const>(*this, o);\
+	}\
+	Scalar distance(This && o) && {\
+		return Tensor::distance<This const, This const>(std::move(*this), std::forward<This>(o));\
 	}\
 \
-	auto normalize() const {\
+	This normalize() const {\
 		return Tensor::normalize<This const>(*this);\
 	}\
 \
 	template<typename B>\
 	requires (\
-		is_tensor_v<B>\
+		is_tensor_v<std::decay_t<B>>\
 		&& dims == 3\
 		&& B::dims == 3\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
@@ -1125,7 +1128,7 @@ requires(
 \
 	template<typename B>\
 	requires (\
-		is_tensor_v<B>\
+		is_tensor_v<std::decay_t<B>>\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
 	) auto outer(B&& b) const {\
 		return outer<This const, B>(*this, b);\
@@ -2660,8 +2663,7 @@ requires (
 	is_tensor_v<A>
 	&& is_tensor_v<B>
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-)
-auto inner(A const & a, B const & b) {
+) typename A::Scalar inner(A const & a, B const & b) {
 	auto i = a.begin();
 	auto sum = a(i.index) * b(i.index);
 	for (++i; i != a.end(); ++i) {
@@ -2678,13 +2680,13 @@ auto dot(T&&... args) {
 
 template<typename T>
 requires is_tensor_v<T>
-auto lenSq(T const & v) {
+typename T::Scalar lenSq(T const & v) {
 	return dot(v, v);
 }
 
 template<typename T>
 requires (is_tensor_v<T>)
-auto length(T const & v) {
+typename T::Scalar length(T const & v) {
 	// TODO should I recast to Scalar, or just let it preserve double, or use sqrtf or what?
 	return (typename T::Scalar)sqrt(lenSq(v));
 }
@@ -2695,13 +2697,13 @@ requires (
 	&& is_tensor_v<B>
 	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
-auto distance(A const & a, B const & b) {
+typename A::Scalar distance(A const & a, B const & b) {
 	return length(b - a);
 }
 
 template<typename T>
 requires (is_tensor_v<T>)
-auto normalize(T const & v) {
+T normalize(T const & v) {
 	return v / length(v);
 }
 

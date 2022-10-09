@@ -10,7 +10,7 @@ constexpr float epsilon = 1e-6;
 #define TEST_QUAT_EQ(a,b)\
 	{\
 		std::ostringstream ss;\
-		float dist = Tensor::distance(a,b);\
+		float dist = (a).distance(b);\
 		ss << __FILE__ << ":" << __LINE__ << ": " << #a << " == " << #b << " :: " << (a) << " == " << (b);\
 		ss << " (distance=" << dist << ", epsilon=" << epsilon << ")";\
 		std::string msg = ss.str();\
@@ -120,5 +120,15 @@ void test_Quat() {
 		TEST_QUAT_EQ(rz*rx*ry, Tensor::quatf(0, sqrt_1_2, sqrt_1_2, 0));
 		TEST_QUAT_EQ(rx*ry*rz, Tensor::quatf(sqrt_1_2, 0, sqrt_1_2, 0));
 		TEST_QUAT_EQ(ry*rz*rx, Tensor::quatf(sqrt_1_2, sqrt_1_2, 0, 0));
+	
+		{
+			Tensor::quatf::vec3 v = {1,2,3};
+			auto vx = rx.rotate(v);
+			TEST_QUAT_EQ(vx, Tensor::quatf::vec3(1, -3, 2));
+			auto vy = ry.rotate(v);
+			TEST_QUAT_EQ(vy, Tensor::quatf::vec3(3, 2, -1));
+			auto vz = rz.rotate(v);
+			TEST_QUAT_EQ(vz, Tensor::quatf::vec3(-2, 1, 3));
+		}
 	}
 }

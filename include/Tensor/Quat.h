@@ -17,6 +17,12 @@ namespace Tensor {
 	TENSOR_HEADER()
 
 template<typename Inner_>
+struct _quat;
+
+template<typename T>
+_quat<T> operator*(_quat<T> a, _quat<T> b);
+
+template<typename Inner_>
 struct _quat : public _vec4<Inner_> {
 	using Super = _vec4<Inner_>;
 	TENSOR_HEADER_QUAT(_quat, Inner_)
@@ -31,7 +37,7 @@ struct _quat : public _vec4<Inner_> {
 	constexpr _quat(Inner const & x, Inner const & y, Inner const & z, Inner const & w) : Super(x,y,z,w) {}
 
 	//TENSOR_ADD_OPS parts:
-	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(_quat, _vec)
+	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(_quat)
 	TENSOR_ADD_LAMBDA_CTOR(_quat)
 	TENSOR_ADD_ITERATOR()
 	
@@ -108,6 +114,11 @@ struct _quat : public _vec4<Inner_> {
 			2 * (this->y * this->z - this->w * this->x),
 			1 - 2 * (this->x * this->x + this->y * this->y)
 		};
+	}
+
+	_quat & operator*=(_quat const & o) {
+		*this = *this * o;
+		return *this;
 	}
 };
 

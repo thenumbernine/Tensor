@@ -12,6 +12,10 @@ namespace Tensor {
 Detects if a class is a "tensor".
 These include _vec _sym _asym and subclasses (like _quat).
 It's defined in the class in the TENSOR_HEADER, as a static constexpr field.
+
+TODO put this in another file.  Tensor/Meta.h?
+
+TODO should this decay_t T or should I rely on the invoker to is_tensor_v<decay_t<T>> ?
 */
 template<typename T>
 constexpr bool is_tensor_v = requires(T const & t) { &T::isTensorFlag; };
