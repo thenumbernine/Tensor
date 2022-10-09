@@ -167,13 +167,13 @@ Swizzling will return a vector-of-references:
 ### Functions
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	- rank-N x rank-N -> rank-0.
-	$$dot(a,b) := a^I \cdot b_I$$
+	$$dot(a,b) := a^I \cdot b\_I$$
 - `lenSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
 	- rank-N -> rank-0
-	$$lenSq(a) := |a|^2 = a^I a_I$$
+	$$lenSq(a) := |a|^2 = a^I a\_I$$
 - `length(a)` = For vectors this is the length.  It is the sqrt of the self-dot.
 	- rank-N -> rank-0
-	$$length(a) := |a| = \sqrt{a^I a_I}$$
+	$$length(a) := |a| = \sqrt{a^I a\_I}$$
 - `distance(a,b)` = Length of the difference of two tensors.
 	- rank-N x rank-N -> rank-0:
 	$$distance(a,b) := |b - a|$$
@@ -182,31 +182,31 @@ Swizzling will return a vector-of-references:
 	$$normalize(a) := a / |a|$$
 - `elemMul(a,b), matrixCompMult(a,b), hadamard(a,b)` = per-element multiplication aka Hadamard product.
 	- rank-N x rank-N -> rank-N:
-	$$elemMul(a,b)_I := a_I \cdot b_I$$
+	$$elemMul(a,b)\_I := a\_I \cdot b\_I$$
 - `cross(a,b)` = 3D vector cross product.
 	- rank-1 dim-3 x rank-1 dim-3 -> rank-1 dim-3:
-	$$cross(a,b)\_i := e\_{i j k} b^j c^k$$
+	$$cross(a,b)\_i := \epsilon\_{i j k} b^j c^k$$
 - `outer(a,b), outerProduct(a,b)` = Tensor outer product.  The outer of a `_vec` and a `_vec` make a `_mat` (i.e. a `_vec`-of-`_vec`).
 	The outer of a vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a `_sym` and a `_sym` produces a `_sym`-of-`_sym`s.
 	- rank-M x rank-N -> rank-(M+N):
-	$$outer(a,b)_{IJ} := a_I b_J$$
+	$$outer(a,b)\_{IJ} := a\_I b\_J$$
 - `transpose<from=0,to=1>(a)` = Transpose indexes `from` and `to`.
 	This will preserve storage optimizations, so transposing 0,1 of a `_sym`-of-`_vec` will produce a `_sym`-of-`_vec`,
 	but transposing 0,2 or 1,2 of a `_sym`-of-`_vec` will produce a `_vec`-of-`_vec`-of-`_vec`.
 	- rank-M -> rank-M, M >= 2
-	$$transpose(a)_{{i_1}...{i_p}...{i_q}...{i_n}} = a_{{i_1}...{i_q}...{i_p}...{i_n}}$$
+	$$transpose(a)\_{{i\_1}...{i\_p}...{i\_q}...{i\_n}} = a\_{{i\_1}...{i\_q}...{i\_p}...{i\_n}}$$
 - `contract<m=0,n=1>(a), interior(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to `trace(t)`.
 	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes.). M >= 1
-	$$contract(a) = \delta^{i_m i_n} a_I$$
+	$$contract(a) = \delta^{i\_m i\_n} a\_I$$
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
 	- rank-N -> rank-(N+1), N>=1:
-	$${diagonal(a)_I = \delta_{i_m i_{m+1}} a_{i_1 ... i_m i_{m+2} ... i_n}$$
+	$${diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
 	- rank-2 -> rank-0:
-	$$determinant(a) := det(a) = \epsilon_I {a^{i_1}}_1 {a^{i_2}}_2 {a^{i_3}}_3 ... {a^{i_n}}_n$$
+	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
 - `inverse(m)` = Matrix inverse, for rank-2 tensors.
 	- rank-2 -> rank-2:
-	$${inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}$$
+	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
 
 ### Familiar Types
 
