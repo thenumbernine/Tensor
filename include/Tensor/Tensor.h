@@ -6,3 +6,4 @@
 
 #include "Tensor/Vector.h"	// #1
 #include "Tensor/Inverse.h"	// #2
+#include "Tensor/Quat.h"	// #3 (optional?)
