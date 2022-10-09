@@ -1060,6 +1060,13 @@ template<int m=0, typename T>
 requires (is_tensor_v<T>)
 auto diagonal(T const & t);
 
+template<typename A, typename B>
+requires(
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& A::template dim<A::rank-1> == B::template dim<0>
+) auto operator*(A const & a, B const & b);
+
 #define TENSOR_ADD_MATH_MEMBER_FUNCS()\
 	auto elemMul(This&& o) const {\
 		return Tensor::elemMul<This const>(*this, std::forward<This>(o));\
@@ -1158,7 +1165,15 @@ auto diagonal(T const & t);
 	auto diagonal() const {\
 		return Tensor::diagonal<m, This const>(*this);\
 	}\
-
+\
+	template<typename B>\
+	requires(\
+		is_tensor_v<B>\
+		&& This::template dim<rank-1> == B::template dim<0>\
+		&& B::rank == 2 /* ar - 1 + br - 1 == ar <=> br == 2 */\
+	) auto operator*=(B const & b) {\
+		*this = *this * b;\
+	}
 
 //these are all per-element assignment operators,
 // so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
