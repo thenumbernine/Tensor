@@ -78,29 +78,18 @@ struct TypeWrapper {
 //forward-declare everything
 
 
-template<typename Inner, int localDim>
-struct _vec;
-
-template<typename Inner, int localDim>
-struct _ident;
-
-template<typename Inner, int localDim>
-struct _sym;
-
-template<typename Inner, int localDim>
-struct _asym;
-
-template<typename Inner, int localDim, int localRank>
-struct _symR;
-
-template<typename Inner, int localDim, int localRank>
-struct _asymR;
+template<typename Inner, int localDim> struct _vec;
+template<typename Inner, int localDim> struct _ident;
+template<typename Inner, int localDim> struct _sym;
+template<typename Inner, int localDim> struct _asym;
+template<typename Inner, int localDim, int localRank> struct _symR;
+template<typename Inner, int localDim, int localRank> struct _asymR;
 
 //convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
 // ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed
 // ... also GLSL is column-major so between this and GLSL the indexes have to be transposed.
-template<typename T, int dim1, int dim2>
-using _mat = _vec<_vec<T, dim2>, dim1>;
+template<typename T, int dim1, int dim2> using _mat = _vec<_vec<T, dim2>, dim1>;
+
 
 // specific-sized templates
 template<typename T> using _vec2 = _vec<T,2>;
@@ -730,14 +719,17 @@ ReplaceScalar<typename>
 		return s[i];\
 	}
 
+#define TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()\
+	/* a[i] := a_i */\
+	/* operator[int] calls through operator(int) */\
+	constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
+	constexpr decltype(auto) operator[](int i) const { return (*this)(i); }
+
 //operator[int] forwards to operator(int)
 //operator(int...) forwards to operator(int)(int...)
 #define TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
 \
-	/* a[i] := a_i */\
-	/* operator[int] calls through operator(int) */\
-	constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
-	constexpr decltype(auto) operator[](int i) const { return (*this)(i); }\
+	TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	/* operator(int, int...) calls through operator(int) */\
@@ -952,12 +944,12 @@ ReadIterator vs WriteIterator
 	/* read iterator */\
 	/* - sized to the tensor rank (includes multiple-rank nestings) */\
 	/* - range is 0's to the tensor dims() */\
-	template<typename OwnerConstness>\
+	template<typename IteratorOwnerConstness>\
 	struct ReadIterator {\
-		using intN = typename OwnerConstness::intN;\
-		OwnerConstness & owner;\
+		using intN = typename IteratorOwnerConstness::intN;\
+		IteratorOwnerConstness & owner;\
 		intN index;\
-		ReadIterator(OwnerConstness & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
+		ReadIterator(IteratorOwnerConstness & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
 		ReadIterator(ReadIterator const & o) : owner(o.owner), index(o.index) {}\
 		ReadIterator(ReadIterator && o) : owner(o.owner), index(o.index) {}\
 		ReadIterator & operator=(ReadIterator const & o) {\
@@ -993,10 +985,10 @@ ReadIterator vs WriteIterator
 			return o << "ReadIterator(owner=" << &owner << ", index=" << index << ")";\
 		}\
 \
-		static ReadIterator begin(OwnerConstness & v) {\
+		static ReadIterator begin(IteratorOwnerConstness & v) {\
 			return ReadIterator(v);\
 		}\
-		static ReadIterator end(OwnerConstness & v) {\
+		static ReadIterator end(IteratorOwnerConstness & v) {\
 			return ReadIterator(v, ReadInc<0>::end());\
 		}\
 	};\
@@ -1097,12 +1089,12 @@ ReadIterator vs WriteIterator
 		/* write iterator */\
 		/* - sized to the # of nestings */\
 		/* - range is 0's to each nesting's .localCount */\
-		template<typename OwnerConstness>\
+		template<typename IteratorOwnerConstness>\
 		struct WriteIterator {\
-			OwnerConstness & owner;\
+			IteratorOwnerConstness & owner;\
 			intW writeIndex;\
 			intR readIndex;\
-			WriteIterator(OwnerConstness & owner_, intW writeIndex_ = {})\
+			WriteIterator(IteratorOwnerConstness & owner_, intW writeIndex_ = {})\
 			: owner(owner_),\
 				writeIndex(writeIndex_),\
 				readIndex(getReadForWriteIndex(writeIndex)) {}\
@@ -1134,7 +1126,7 @@ ReadIterator vs WriteIterator
 			}\
 			decltype(auto) operator*() const {\
 				/* cuz it takes less operations than by-read-writeIndex */\
-				return getByWriteIndex<OwnerConstness>(owner, writeIndex);\
+				return getByWriteIndex<IteratorOwnerConstness>(owner, writeIndex);\
 			}\
 \
 			WriteIterator & operator++() {\
@@ -1148,10 +1140,10 @@ ReadIterator vs WriteIterator
 				return *this;\
 			}\
 \
-			static WriteIterator begin(OwnerConstness & v) {\
+			static WriteIterator begin(IteratorOwnerConstness & v) {\
 				return WriteIterator(v);\
 			}\
-			static WriteIterator end(OwnerConstness & v) {\
+			static WriteIterator end(IteratorOwnerConstness & v) {\
 				return WriteIterator(v, WriteInc<0>::end());\
 			}\
 		};\
@@ -1189,31 +1181,45 @@ ReadIterator vs WriteIterator
 		return ValidIndexImpl<0>::value(i);\
 	}
 
+/*
+member methods as wrappers to forward to Tensor namespace methods.
+
+Bit of a hack: MOst these are written in terms of 'This'
+'This' is usu my name for the same class we are currently in.
+But I forwarded these same method defs into the inner-class Accessors
+ and I want them to use their containing class types instead of their own type
+ so I didn't define a 'This' in them.
+ But that's also why I have all the (This)*this's throughout here: 
+ so that if the Accessor uses it then it will convert back to the class...
+ ..but...
+ ...the class doesn't have the same rank ...
+ ... hmmmmmmm
+*/
 #define TENSOR_ADD_MATH_MEMBER_FUNCS()\
 \
 	auto elemMul(This const & o) const {\
-		return Tensor::elemMul<This const>(*this, o);\
+		return Tensor::elemMul((This)*this, o);\
 	}\
 	auto elemMul(This && o) && {\
-		return Tensor::elemMul<This const>(std::move(*this), std::forward<This>(o));\
+		return Tensor::elemMul(std::move(*this), std::forward<This>(o));\
 	}\
 \
 	template<typename T>\
 	auto matrixCompMult(T const & o) const {\
-		return Tensor::elemMul<This const, T const>(*this, o);\
+		return Tensor::elemMul((This)*this, o);\
 	}\
 	template<typename... T>\
 	auto matrixCompMult(T && ... o) && {\
-		return Tensor::elemMul<This const, T...>(std::move(*this), std::forward<T>(o)...);\
+		return Tensor::elemMul(std::move(*this), std::forward<T>(o)...);\
 	}\
 \
 	template<typename T>\
 	auto hadamard(T const & o) const {\
-		return Tensor::elemMul<This const, T const>(*this, o);\
+		return Tensor::elemMul((This)*this, o);\
 	}\
 	template<typename... T>\
 	auto hadamard(T && ... o) && {\
-		return Tensor::elemMul<This const, T...>(std::move(*this), std::forward<T>(o)...);\
+		return Tensor::elemMul(std::move(*this), std::forward<T>(o)...);\
 	}\
 \
 	template<typename B>\
@@ -1221,36 +1227,36 @@ ReadIterator vs WriteIterator
 		is_tensor_v<std::decay_t<B>>\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
 	) Scalar inner(B const & o) const {\
-		return Tensor::inner<This const, B>(*this, o);\
+		return Tensor::inner((This)*this, o);\
 	}\
 	template<typename B>\
 	requires (\
 		is_tensor_v<std::decay_t<B>>\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
 	) Scalar inner(B && o) && {\
-		return Tensor::inner<This const, B>(std::move(*this), std::forward<B>(o));\
+		return Tensor::inner(std::move(*this), std::forward<B>(o));\
 	}\
 \
 	auto dot(This const & o) const {\
-		return Tensor::inner<This const, This const>(*this, o);\
+		return Tensor::inner((This)*this, o);\
 	}\
 	auto dot(This && o) && {\
-		return Tensor::inner<This const, This const>(std::move(*this), std::forward<This>(o));\
+		return Tensor::inner(std::move(*this), std::forward<This>(o));\
 	}\
 \
-	Scalar lenSq() const { return Tensor::lenSq<This const>(*this); }\
+	Scalar lenSq() const { return Tensor::lenSq((This)*this); }\
 \
-	Scalar length() const { return Tensor::length<This const>(*this); }\
+	Scalar length() const { return Tensor::length((This)*this); }\
 \
 	Scalar distance(This const & o) const {\
-		return Tensor::distance<This const, This const>(*this, o);\
+		return Tensor::distance((This)*this, o);\
 	}\
 	Scalar distance(This && o) && {\
-		return Tensor::distance<This const, This const>(std::move(*this), std::forward<This>(o));\
+		return Tensor::distance(std::move(*this), std::forward<This>(o));\
 	}\
 \
 	This normalize() const {\
-		return Tensor::normalize<This const>(*this);\
+		return Tensor::normalize((This)*this);\
 	}\
 \
 	template<typename B>\
@@ -1260,7 +1266,7 @@ ReadIterator vs WriteIterator
 		&& B::dims == 3\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
 	) auto cross(B const & b) const {\
-		return Tensor::cross<This const, B>(*this, b);\
+		return Tensor::cross((This)*this, b);\
 	}\
 	template<typename B>\
 	requires (\
@@ -1269,7 +1275,7 @@ ReadIterator vs WriteIterator
 		&& B::dims == 3\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
 	) auto cross(B && b) && {\
-		return Tensor::cross<This const, B>(std::move(*this), std::forward<B>(b));\
+		return Tensor::cross(std::move(*this), std::forward<B>(b));\
 	}\
 \
 	template<typename B>\
@@ -1277,18 +1283,18 @@ ReadIterator vs WriteIterator
 		is_tensor_v<std::decay_t<B>>\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
 	) auto outer(B const & b) const {\
-		return outer<This const, B>(*this, b);\
+		return outer((This)*this, b);\
 	}\
 \
 	template<typename B>\
 	auto outerProduct(B const & o) const {\
-		return outerProduct<This const, B const>(*this, o);\
+		return outerProduct((This)*this, o);\
 	}\
 \
 	template<int m=0, int n=1>\
 	requires (rank >= 2)\
 	auto transpose() const {\
-		return Tensor::transpose<m, n, This const>(*this);\
+		return Tensor::transpose<m,n>((This)*this);\
 	}\
 \
 	template<int m=0, int n=1>\
@@ -1297,22 +1303,22 @@ ReadIterator vs WriteIterator
 		&& n < rank\
 		&& This::template dim<m> == This::template dim<n>\
 	) auto contract() const {\
-		return Tensor::contract<m, n, This const>(*this);\
+		return Tensor::contract<m, n>((This)*this);\
 	}\
 \
 	template<typename T>\
 	auto interior(T const & o) const {\
-		return interior<This const, T const>(*this, o);\
+		return interior((This)*this, o);\
 	}\
 \
 	template<typename T>\
 	auto trace(T const & o) const {\
-		return Tensor::trace<This const, T const>(*this, o);\
+		return Tensor::trace((This)*this, o);\
 	}\
 \
 	template<int m=0>\
 	auto diagonal() const {\
-		return Tensor::diagonal<m, This const>(*this);\
+		return Tensor::diagonal<m>((This)*this);\
 	}\
 \
 	template<typename B>\
@@ -1330,19 +1336,19 @@ ReadIterator vs WriteIterator
 	/*}*/\
 \
 	This inverse(Scalar const & det) const {\
-		return Tensor::inverse<This>(*this, det);\
+		return Tensor::inverse((This)*this, det);\
 	}\
 \
 	This inverse() const {\
-		return Tensor::inverse<This>(*this);\
+		return Tensor::inverse((This)*this);\
 	}
 
 
 //these are all per-element assignment operators,
 // so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
 #define TENSOR_ADD_OPS(classname)\
-	TENSOR_ADD_ITERATOR() /* needed by TENSOR_ADD_CTORS */\
-	TENSOR_ADD_VALID_INDEX()\
+	TENSOR_ADD_ITERATOR() /* needed by TENSOR_ADD_CTORS and a lot of tensor methods */\
+	TENSOR_ADD_VALID_INDEX() /* used by generic tensor ctor */\
 	TENSOR_ADD_CTORS(classname) /* ctors, namely lambda ctor, needs read iterators*/ \
 	TENSOR_ADD_VECTOR_OP_EQ(+=)\
 	TENSOR_ADD_VECTOR_OP_EQ(-=)\
@@ -1731,25 +1737,6 @@ constexpr int symIndex(int i, int j) {
 \
 	TENSOR_ADD_INT_VEC_CALL_INDEX()
 
-// Accessor is used to return between-rank indexes, so if sym is rank-2 this lets you get s[i] even if the storage only represents s[i,j]
-#define TENSOR_ADD_RANK2_ACCESSOR()\
-	template<typename OwnerConstness>\
-	struct Accessor {\
-		static constexpr bool isAccessorFlag = {};\
-		OwnerConstness & owner;\
-		int i;\
-\
-		Accessor(OwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}\
-\
-		/* these should call into _sym(int,int) which is always Inner (const) & */\
-		constexpr decltype(auto) operator()(int j) { return owner(i,j); }\
-		constexpr decltype(auto) operator()(int j) const { return owner(i,j); }\
-\
-		/* this provides the rest of the () [] operators that will be driven by operator(int) */\
-		TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
-		TENSOR_ADD_INT_VEC_CALL_INDEX()\
-	};
-
 // symmetric matrices
 
 #define TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
@@ -1809,6 +1796,32 @@ This is used by _sym , while _asym uses something different since it uses the An
 	static constexpr int getLocalWriteForReadIndex(int i, int j) {\
 		return symIndex(i,j);\
 	}
+
+template<typename AccessorOwnerConstness>
+struct Rank2Accessor {
+	static constexpr bool isAccessorFlag = {};
+	static constexpr bool isTensorFlag = {};
+	AccessorOwnerConstness & owner;
+	int i;
+
+	Rank2Accessor(AccessorOwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}
+
+	/* these should call into _sym(int,int) which is always Inner (const) & */
+	constexpr decltype(auto) operator()(int j) { return owner(i,j); }
+	constexpr decltype(auto) operator()(int j) const { return owner(i,j); }
+
+	/* this provides the rest of the () [] operators that will be driven by operator(int) */
+	TENSOR_ADD_RANK1_CALL_INDEX_AUX()
+	TENSOR_ADD_INT_VEC_CALL_INDEX()
+
+	/*TENSOR_ADD_ITERATOR()*/
+	/*TENSOR_ADD_MATH_MEMBER_FUNCS()*/
+};
+
+// Accessor is used to return between-rank indexes, so if sym is rank-2 this lets you get s[i] even if the storage only represents s[i,j]
+#define TENSOR_ADD_RANK2_ACCESSOR()\
+	template<typename AccessorOwnerConstness>\
+	using Accessor = Rank2Accessor<AccessorOwnerConstness>;
 
 /*
 for the call index operator
@@ -2147,82 +2160,6 @@ constexpr int nChooseR(int n, int k) {
     return result;
 }
 
-#define TENSOR_ADD_RANK_N_ACCESSOR()\
-	template<typename OwnerConstness, int subRank>\
-	struct Accessor {\
-		static_assert(subRank > 0 && subRank < localRank);\
-		static constexpr bool isAccessorFlag = {};\
-		OwnerConstness & owner;\
-		_vec<int,subRank> i;\
-\
-		Accessor(OwnerConstness & owner_, _vec<int,subRank> i_)\
-		: owner(owner_), i(i_) {}\
-\
-		/* until I can think of how to split off parameter-packs at a specific length, I'll just do this in _vec<int> first like below */\
-		/* if subRank + sizeof...(Ints) > localRank then call-through into owner's inner */\
-		/* if subRank + sizeof...(Ints) == localRank then just call owner */\
-		/* if subRank + sizeof...(Ints) < localRank then produce another Accessor */\
-		template<int N>\
-		constexpr decltype(auto) operator()(_vec<int,N> const & i2) {\
-			if constexpr (subRank + N < localRank) {\
-				/* returns Accessor */\
-				_vec<int,subRank+N> fulli;\
-				fulli.template subset<subRank,0>() = i;\
-				fulli.template subset<N,subRank>() = i2;\
-				return Accessor<OwnerConstness, subRank+N>(owner, fulli);\
-			} else if constexpr (subRank + N == localRank) {\
-				/* returns Inner, or for asym returns AntiSymRef<Inner> */\
-				intN fulli;\
-				fulli.template subset<subRank,0>() = i;\
-				fulli.template subset<N,subRank>() = i2;\
-				return owner(fulli);\
-			} else if constexpr (subRank + N > localRank) {\
-				/* returns something further than Inner */\
-				intN firstI;\
-				firstI.template subset<subRank,0>() = i;\
-				firstI.template subset<localRank-subRank,subRank>() = i2.template subset<localRank-subRank, 0>();\
-				_vec<int, N - (localRank - subRank)> restI = i2.template subset<N - (localRank-subRank), localRank-subRank>();\
-				return owner(firstI)(restI);\
-			}\
-		}\
-		template<int N>\
-		constexpr decltype(auto) operator()(_vec<int,N> const & i2) const {\
-			if constexpr (subRank + N < localRank) {\
-				/* returns Accessor */\
-				_vec<int,subRank+N> fulli;\
-				fulli.template subset<subRank,0>() = i;\
-				fulli.template subset<N,subRank>() = i2;\
-				return Accessor<OwnerConstness, subRank+N>(owner, fulli);\
-			} else if constexpr (subRank + N == localRank) {\
-				/* returns Inner, or for asym returns AntiSymRef<Inner> */\
-				intN fulli;\
-				fulli.template subset<subRank,0>() = i;\
-				fulli.template subset<N,subRank>() = i2;\
-				return owner(fulli);\
-			} else if constexpr (subRank + N > localRank) {\
-				/* returns something further than Inner */\
-				intN firstI;\
-				firstI.template subset<subRank,0>() = i;\
-				firstI.template subset<localRank-subRank,subRank>() = i2.template subset<localRank-subRank, 0>();\
-				_vec<int, N - (localRank - subRank)> restI = i2.template subset<N - (localRank-subRank), localRank-subRank>();\
-				return owner(firstI)(restI);\
-			}\
-		}\
-\
-		template<typename... Ints>\
-		constexpr decltype(auto) operator()(Ints... is) {\
-			return (*this)(_vec<int,sizeof...(Ints)>(is...));\
-		}\
-		template<typename... Ints>\
-		constexpr decltype(auto) operator()(Ints... is) const {\
-			return (*this)(_vec<int,sizeof...(Ints)>(is...));\
-		}\
-\
-		constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
-		constexpr decltype(auto) operator[](int i) const { return (*this)(i); }\
-	};
-
-
 // totally-symmetric
 
 inline constexpr int symmetricSize(int d, int r) {
@@ -2375,9 +2312,92 @@ inline constexpr int symmetricSize(int d, int r) {
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
 	}\
 \
-	constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
-	constexpr decltype(auto) operator[](int i) const { return (*this)(i); }
+	TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()
 #endif
+
+template<typename AccessorOwnerConstness, int subRank>
+struct RankNAccessor {
+	static constexpr int ownerLocalRank = AccessorOwnerConstness::localRank;
+	using ownerIntN = typename AccessorOwnerConstness::intN;
+
+	static_assert(subRank > 0 && subRank < ownerLocalRank);
+	static constexpr bool isAccessorFlag = {};
+	static constexpr bool isTensorFlag = {};
+	AccessorOwnerConstness & owner;
+	_vec<int,subRank> i;
+
+	RankNAccessor(AccessorOwnerConstness & owner_, _vec<int,subRank> i_)
+	: owner(owner_), i(i_) {}
+
+	/* until I can think of how to split off parameter-packs at a specific length, I'll just do this in _vec<int> first like below */
+	/* if subRank + sizeof...(Ints) > ownerLocalRank then call-through into owner's inner */
+	/* if subRank + sizeof...(Ints) == ownerLocalRank then just call owner */
+	/* if subRank + sizeof...(Ints) < ownerLocalRank then produce another Accessor */
+	template<int N>
+	constexpr decltype(auto) operator()(_vec<int,N> const & i2) {
+		if constexpr (subRank + N < ownerLocalRank) {
+			/* returns Accessor */
+			_vec<int,subRank+N> fulli;
+			fulli.template subset<subRank,0>() = i;
+			fulli.template subset<N,subRank>() = i2;
+			return RankNAccessor<AccessorOwnerConstness, subRank+N>(owner, fulli);
+		} else if constexpr (subRank + N == ownerLocalRank) {
+			/* returns Inner, or for asym returns AntiSymRef<Inner> */
+			ownerIntN fulli;
+			fulli.template subset<subRank,0>() = i;
+			fulli.template subset<N,subRank>() = i2;
+			return owner(fulli);
+		} else if constexpr (subRank + N > ownerLocalRank) {
+			/* returns something further than Inner */
+			ownerIntN firstI;
+			firstI.template subset<subRank,0>() = i;
+			firstI.template subset<ownerLocalRank-subRank,subRank>() = i2.template subset<ownerLocalRank-subRank, 0>();
+			_vec<int, N - (ownerLocalRank - subRank)> restI = i2.template subset<N - (ownerLocalRank-subRank), ownerLocalRank-subRank>();
+			return owner(firstI)(restI);
+		}
+	}
+	template<int N>
+	constexpr decltype(auto) operator()(_vec<int,N> const & i2) const {
+		if constexpr (subRank + N < ownerLocalRank) {
+			/* returns Accessor */
+			_vec<int,subRank+N> fulli;
+			fulli.template subset<subRank,0>() = i;
+			fulli.template subset<N,subRank>() = i2;
+			return RankNAccessor<AccessorOwnerConstness, subRank+N>(owner, fulli);
+		} else if constexpr (subRank + N == ownerLocalRank) {
+			/* returns Inner, or for asym returns AntiSymRef<Inner> */
+			ownerIntN fulli;
+			fulli.template subset<subRank,0>() = i;
+			fulli.template subset<N,subRank>() = i2;
+			return owner(fulli);
+		} else if constexpr (subRank + N > ownerLocalRank) {
+			/* returns something further than Inner */
+			ownerIntN firstI;
+			firstI.template subset<subRank,0>() = i;
+			firstI.template subset<ownerLocalRank-subRank,subRank>() = i2.template subset<ownerLocalRank-subRank, 0>();
+			_vec<int, N - (ownerLocalRank - subRank)> restI = i2.template subset<N - (ownerLocalRank-subRank), ownerLocalRank-subRank>();
+			return owner(firstI)(restI);
+		}
+	}
+
+	template<typename... Ints>
+	constexpr decltype(auto) operator()(Ints... is) {
+		return (*this)(_vec<int,sizeof...(Ints)>(is...));
+	}
+	template<typename... Ints>
+	constexpr decltype(auto) operator()(Ints... is) const {
+		return (*this)(_vec<int,sizeof...(Ints)>(is...));
+	}
+
+	TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()
+
+	/*TENSOR_ADD_ITERATOR()*/
+	/*TENSOR_ADD_MATH_MEMBER_FUNCS()*/
+};
+
+#define TENSOR_ADD_RANK_N_ACCESSOR()\
+	template<typename AccessorOwnerConstness, int subRank>\
+	using Accessor = RankNAccessor<AccessorOwnerConstness, subRank>;
 
 #define TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_RANK_N_ACCESSOR()\
@@ -2640,8 +2660,7 @@ from my symmath/tensor/LeviCivita.lua
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
 	}\
 \
-	constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
-	constexpr decltype(auto) operator[](int i) const { return (*this)(i); }
+	TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()
 
 #define TENSOR_TOTALLY_ANTISYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_RANK_N_ACCESSOR()\

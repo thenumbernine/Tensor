@@ -193,4 +193,40 @@ void test_Antisymmetric() {
 		// crashing
 		TEST_EQ(aTimesI, a);
 	}
+
+	{
+		auto a = Tensor::float3a3(1,2,3);
+#if 1 //tensor ctor from Accessor?  shoud need Accessor .rank etc defined ...
+		auto ax = a[0];
+		//ECHO(ax);	// TODO operator<< for Accessor?
+		// works
+		auto axt = Tensor::float3(ax);
+		ECHO(axt);
+		// but I thought .rank and .dims needed to match?
+		//ECHO(ax.rank);
+		//ECHO(ax.dims);
+		/* yeah, ax.rank doesn't exist,
+		so what kind of ctor is being used for the conversion?
+		oh wait, the Accessor might be usings its containing class' rank and dims for iterator as well
+		that would mean ... meh
+		looks like rank-2 Accessors only use
+			TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
+			TENSOR_ADD_INT_VEC_CALL_INDEX()\
+		... and neither uses 'This'
+		... then rank-N Accessors use just 
+			TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
+		so that means overall 'This' is not used by any Accessor
+		and that means I can use 'This' within the Accessor to make it more compat with things.
+		In fact I should move Accessors outside of the classes and just 'using' them in...
+		*/
+#endif
+#if 0 // TODO Accessor as tensor
+		auto ax = a[0];
+		ECHO(ax.lenSq());
+		auto ay = a[1];
+		ECHO(ay.lenSq());
+		auto az = a[2];
+		ECHO(az.lenSq());
+#endif
+	}
 }
