@@ -107,12 +107,11 @@ void test_TotallyAntisymmetric() {
 		ECHO(L);
 		auto x = float3(1,0,0);
 		ECHO(x);
-		auto dualx = L * x;
+		auto dualx = x * L;
 		ECHO(dualx);
-// TODO
-//		static_assert(std::is_same_v<decltype(dualx), Tensor::float3a3>);
+		static_assert(std::is_same_v<decltype(dualx), Tensor::float3a3>);
 		auto y = float3(0,1,0);
-		auto z = dualx * y;
+		auto z = y * dualx;
 		TEST_EQ(z, float3(0,0,1));
 	}
 
@@ -120,8 +119,7 @@ void test_TotallyAntisymmetric() {
 		auto n = Tensor::float3(3,-4,8); // 3 floats :: 3-vector
 		auto L = Tensor::float3a3a3(1); // 1 real ... value 1
 		auto basis = n * L; // 3 floats :: 3x3 antisymmetric matrix
-// TODO
-//		static_assert(std::is_same_v<decltype(basis), Tensor::float3a3>);
+		static_assert(std::is_same_v<decltype(basis), Tensor::float3a3>);
 		ECHO(basis);
 	}
 }

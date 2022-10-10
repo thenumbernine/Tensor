@@ -1,5 +1,11 @@
 #include "Test/Test.h"
 
+static_assert(std::is_same_v<Tensor::float3a3::RemoveIndex<0>, Tensor::float3>);
+static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<0>, Tensor::float3a3>);
+// TODO get this to work
+static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<1>, Tensor::float3x3>);
+static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<2>, Tensor::float3a3>);
+
 void test_TotallySymmetric() {
 	/*
 	unique indexing of 3s3s3:
@@ -48,7 +54,6 @@ void test_TotallySymmetric() {
 
 		auto v = Tensor::float3{3, 6, 9};
 		auto m = v * t;
-		// TODO ExpandIthIndex of a start or end index should preserve symmetry of the rest
-		static_assert(std::is_same_v<decltype(m), Tensor::float3x3>);
+		static_assert(std::is_same_v<decltype(m), Tensor::float3s3>);
 	}
 }

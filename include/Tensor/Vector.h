@@ -165,24 +165,6 @@ ReplaceScalar<typename>
 	};\
 	using Scalar = typename ScalarImpl::type;\
 \
-	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
-	/*  for vectors-of-vectors this is the nesting. */\
-	/*  if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each. */\
-	/**/\
-	struct RankImpl {\
-		static constexpr int value() {\
-			if constexpr (is_tensor_v<Inner>) {\
-				return localRank + Inner::RankImpl::value();\
-			} else {\
-				return localRank;\
-			}\
-		}\
-	};\
-	static constexpr int rank = RankImpl::value();\
-\
-	/* used for vector-dereferencing into the tensor. */\
-	using intN = _vec<int,rank>;\
-\
 	/* how many _vec<_vec<...'s there are ... no extra +'s for multi-rank nestings */\
 	/* so _sym<> has numNestings=1 and rank=2, _vec<> has numNestings=1 and rank=1, _vec_vec<>>==_mat<> has numNestings=2 and rank=2 */\
 	struct NumNestingImpl {\
@@ -195,6 +177,31 @@ ReplaceScalar<typename>
 		};\
 	};\
 	static constexpr int numNestings = NumNestingImpl::value();\
+\
+	/* Get the first index that this nesting represents. */\
+	template<int nest>\
+	struct IndexForNestingImpl {\
+		static constexpr int value() {\
+			if constexpr (nest == 0) {\
+				return 0;\
+			} else if constexpr (nest == 1) {\
+				return localRank;\
+			} else {\
+				return localRank + Inner::template IndexForNestingImpl<nest-1>::value();\
+			}\
+		}\
+	};\
+	template<int nest>\
+	static constexpr int indexForNesting = IndexForNestingImpl<nest>::value();\
+\
+	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
+	/*  for vectors-of-vectors this is the nesting. */\
+	/*  if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each. */\
+	/**/\
+	static constexpr int rank = indexForNesting<numNestings>;\
+\
+	/* used for vector-dereferencing into the tensor. */\
+	using intN = _vec<int,rank>;\
 \
 	/* used for write-iterators and converting write-iterator indexes to read index vectors */\
 	using intW = _vec<int,numNestings>;\
@@ -217,22 +224,6 @@ ReplaceScalar<typename>
 	};\
 	template<int i, typename NewType>\
 	using ReplaceNested = typename ReplaceNestedImpl<i, NewType>::type;\
-\
-	/* TODO use rank == indexForNesting<numNestings> */\
-	template<int nest>\
-	struct IndexForNestingImpl {\
-		static constexpr int value() {\
-			if constexpr (nest == 0) {\
-				return 0;\
-			} else if constexpr (nest == 1) {\
-				return localRank;\
-			} else {\
-				return localRank + Inner::template IndexForNestingImpl<nest-1>::value();\
-			}\
-		}\
-	};\
-	template<int nest>\
-	static constexpr int indexForNesting = IndexForNestingImpl<nest>::value();\
 \
 	/* expand the storage of the i'th index */\
 	template<int index>\
@@ -2128,18 +2119,37 @@ inline constexpr int symmetricSize(int d, int r) {
 	template<typename T>\
 	using LocalSumWithScalarResult = _symR<T, localDim, localRank>;
 
-#define notused_TENSOR_EXPAND_TEMPLATE_TOTALLY_SYMMETRIC()\
+// Expand index 0 of asym^N => vec ⊗ asym^(N-1)
+// Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
+// TODO Remove of an index will Expand it first ... but we can also shorcut Remove to *always* use this type.
+#define TENSOR_EXPAND_TEMPLATE_TOTALLY_SYMMETRIC()\
 	template<int index>\
 	struct ExpandTensorRankTemplateImpl {\
 		static constexpr auto value() {\
-			if constexpr (index == 0 || index == localRank-1) {\
+			if constexpr (index == 0) {\
+				if constexpr (localRank == 2) {\
+					return TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
+				} else if constexpr (localRank == 3) {\
+					return TypeWrapper<_vec<_sym<Inner, localDim>, localDim>>();\
+				} else {\
+					return TypeWrapper<_vec<_symR<Inner, localDim, localRank-1>, localDim>>();\
+				}\
+			} else if constexpr (index == localRank-1) {\
+				if constexpr (localRank == 2) {\
+					return TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
+				} else if constexpr (localRank == 3) {\
+					return TypeWrapper<_sym<_vec<Inner, localDim>, localDim>>();\
+				} else {\
+					return TypeWrapper<_symR<_vec<Inner, localDim>, localDim, localRank-1>>();\
+				}\
+			} else {\
+				return TypeWrapper<_tensorr<Inner, localDim, localRank>>();\
+			}\
 		}\
+		using type = typename decltype(value())::type;\
 	};\
 	template<int index>\
-	using ExpandTensorRankTemplate = _symR<Inner, localDim, localRank>;
-
-#define TENSOR_EXPAND_TEMPLATE_TOTALLY_SYMMETRIC()\
-	TENSOR_EXPAND_TEMPLATE_TENSORR()
+	using ExpandTensorRankTemplate = typename This::template ExpandTensorRankTemplateImpl<index>::type;
 
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC(classname, Inner_, localDim_, localRank_)\
 	TENSOR_THIS(classname)\
@@ -2289,12 +2299,37 @@ struct initIntVecWithSequence<std::integer_sequence<T, I...>> {
 	template<typename T>\
 	using LocalSumWithScalarResult = _tensorr<T, localDim, localRank>;
 
-#define notused_TENSOR_EXPAND_TEMPLATE_TOTALLY_ANTISYMMETRIC()\
-	template<int index>\
-	using ExpandTensorRankTemplate = _asymR<T, localDim, localRank>;
-
+// Expand index 0 of asym^N => vec ⊗ asym^(N-1)
+// Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
+// TODO Remove of an index will Expand it first ... but we can also shorcut Remove to *always* use this type.
 #define TENSOR_EXPAND_TEMPLATE_TOTALLY_ANTISYMMETRIC()\
-	TENSOR_EXPAND_TEMPLATE_TENSORR()
+	template<int index>\
+	struct ExpandTensorRankTemplateImpl {\
+		static constexpr auto value() {\
+			if constexpr (index == 0) {\
+				if constexpr (localRank == 2) {\
+					return TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
+				} else if constexpr (localRank == 3) {\
+					return TypeWrapper<_vec<_asym<Inner, localDim>, localDim>>();\
+				} else {\
+					return TypeWrapper<_vec<_asymR<Inner, localDim, localRank-1>, localDim>>();\
+				}\
+			} else if constexpr (index == localRank-1) {\
+				if constexpr (localRank == 2) {\
+					return TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
+				} else if constexpr (localRank == 3) {\
+					return TypeWrapper<_asym<_vec<Inner, localDim>, localDim>>();\
+				} else {\
+					return TypeWrapper<_asymR<_vec<Inner, localDim>, localDim, localRank-1>>();\
+				}\
+			} else {\
+				return TypeWrapper<_tensorr<Inner, localDim, localRank>>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<int index>\
+	using ExpandTensorRankTemplate = typename This::template ExpandTensorRankTemplateImpl<index>::type;
 
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC(classname, Inner_, localDim_, localRank_)\
 	TENSOR_THIS(classname)\

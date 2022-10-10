@@ -108,7 +108,7 @@ Feel free to initialize this as the value 1 for Cartesian geometry or the value 
 - `::Nested<i>` = Get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
 - `::numNestingsToIndex<i>` = Gets the number of nestings deep that the index 'i' is located, where i is from 0 to rank.
 	`numNestingsToIndex<0>` will always return 0, `numNestingsToIndex<rank>` will always return `numNestings`.
-- `::indexForNesting<i>` = Get the index of the i'th nesting.
+- `::indexForNesting<i>` = Get the index of the i'th nesting, where i is from 0 to `numNestings`.  `indexForNesting<numNestings>` will produce `rank`.
 - `::InnerForIndex<i>` = Get the type associated with the i'th index, where i is from 0 to rank.
 	Equivalent to `::Nested<numNestingsToIndex<i>>`  `_vec`'s 0 will point to itself, `_sym`'s and `_asym`'s 0 and 1 will point to themselves, all others drill down.
 - `::ReplaceInner<T>` = Replaces this tensor's Inner with a new type, T.
