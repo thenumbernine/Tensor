@@ -92,13 +92,11 @@ void test_TotallyAntisymmetric() {
 // parity flipping chokes the decltype(auto)
 	{
 		auto f = [](int i, int j, int k) -> float {
-			return sign(j-i) * sign(k-j);
+			return sign(i-j) * sign(j-k) * sign(k-i);
 		};
 		auto t = float3a3a3(f);
-#if 0
 		verifyAccessRank3<decltype(t)>(t, f);
 		verifyAccessRank3<decltype(t) const>(t, f);
-#endif
 		operatorScalarTest(t);
 	}
 
