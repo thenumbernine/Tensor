@@ -117,9 +117,27 @@ void test_TotallyAntisymmetric() {
 
 	{
 		auto n = Tensor::float3(3,-4,8); // 3 floats :: 3-vector
-		auto L = Tensor::float3a3a3(1); // 1 real ... value 1
-		auto basis = n * L; // 3 floats :: 3x3 antisymmetric matrix
-		static_assert(std::is_same_v<decltype(basis), Tensor::float3a3>);
-		ECHO(basis);
+		constexpr auto L = Tensor::float3a3a3(1); // 1 real ... value 1
+		auto dualn = n * L; // 3 floats :: 3x3 antisymmetric matrix
+		static_assert(std::is_same_v<decltype(dualn), Tensor::float3a3>);
+		ECHO((Tensor::float3x3)dualn);	// {{0, 8, 4}, {-8, 0, 3}, {-4, -3, 0}}
+// TODO this returns an Accessor.  Would be nice if we had ctors that could handle them.		
+// would be nice if Accessors had other tensor operations (like lenSq())
+#if 0
+		Tensor::float3 nx = dualn(0);
+		ECHO(nx);
+		Tensor::float3 ny = dualn(1);
+		ECHO(ny);
+		Tensor::float3 nz = dualn(2);
+		ECHO(nz);
+#else	//until then ... you still have to expand the basii before doing operations on it
+		Tensor::float3x3 dualnm = dualn;
+		Tensor::float3 nx = dualnm(0);
+		ECHO(nx);
+		Tensor::float3 ny = dualnm(1);
+		ECHO(ny);
+		Tensor::float3 nz = dualnm(2);
+		ECHO(nz);
+#endif
 	}
 }
