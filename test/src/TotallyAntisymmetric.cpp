@@ -91,6 +91,7 @@ void test_TotallyAntisymmetric() {
 
 // parity flipping chokes the decltype(auto)
 	{
+		// lambda for Levi-Civita permutation tensor
 		auto f = [](int i, int j, int k) -> float {
 			return sign(i-j) * sign(j-k) * sign(k-i);
 		};
@@ -110,11 +111,9 @@ void test_TotallyAntisymmetric() {
 		ECHO(dualx);
 // TODO
 //		static_assert(std::is_same_v<decltype(dualx), Tensor::float3a3>);
-#if 0 // mul not working yet
 		auto y = float3(0,1,0);
 		auto z = dualx * y;
-		ECHO(z);
-#endif
+		TEST_EQ(z, float3(0,0,1));
 	}
 
 	{

@@ -116,6 +116,11 @@ struct TypeWrapper {
 	template<int newLocalDim>\
 	using ReplaceLocalDim = Template<Inner, newLocalDim>;
 
+// used for ExpandIthIndex.  all tensors use _tensorr, except _symR and _asymR can use _symR and _asymR.
+#define TENSOR_EXPAND_TEMPLATE_TENSORR()\
+	template<int index>\
+	using ExpandTensorRankTemplate = _tensorr<Inner, localDim, localRank>;
+
 /*
 This contains definitions of types and values used in all tensors.
 Defines the following:
@@ -213,6 +218,22 @@ ReplaceScalar<typename>
 	template<int i, typename NewType>\
 	using ReplaceNested = typename ReplaceNestedImpl<i, NewType>::type;\
 \
+	/* TODO use rank == indexForNesting<numNestings> */\
+	template<int nest>\
+	struct IndexForNestingImpl {\
+		static constexpr int value() {\
+			if constexpr (nest == 0) {\
+				return 0;\
+			} else if constexpr (nest == 1) {\
+				return localRank;\
+			} else {\
+				return localRank + Inner::template IndexForNestingImpl<nest-1>::value();\
+			}\
+		}\
+	};\
+	template<int nest>\
+	static constexpr int indexForNesting = IndexForNestingImpl<nest>::value();\
+\
 	/* expand the storage of the i'th index */\
 	template<int index>\
 	struct ExpandIthIndexImpl {\
@@ -224,7 +245,9 @@ ReplaceScalar<typename>
 			using R = typename This\
 				::ReplaceNested<\
 					nest,\
-					_tensorr<typename N::Inner, N::localDim, N::localRank>\
+					typename N::template ExpandTensorRankTemplate<\
+						index - indexForNesting<nest>\
+					>\
 				>;\
 			return R();\
 		}\
@@ -1244,6 +1267,7 @@ T inverse(T const & a);
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 1)\
 	TENSOR_TEMPLATE_T_I(classname)\
 	TENSOR_HEADER_VECTOR_SPECIFIC()\
+	TENSOR_EXPAND_TEMPLATE_TENSORR()\
 	TENSOR_HEADER()
 
 #define TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()\
@@ -1632,6 +1656,7 @@ constexpr int symIndex(int i, int j) {
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
 	TENSOR_TEMPLATE_T_I(classname)\
 	TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
+	TENSOR_EXPAND_TEMPLATE_TENSORR()\
 	TENSOR_HEADER()
 
 /*
@@ -1817,6 +1842,7 @@ struct _sym<Inner_,4> {
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
 	TENSOR_TEMPLATE_T_I(classname)\
 	TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
+	TENSOR_EXPAND_TEMPLATE_TENSORR()\
 	TENSOR_HEADER()
 
 #define TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
@@ -1871,6 +1897,7 @@ struct _ident {
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
 	TENSOR_TEMPLATE_T_I(classname)\
 	TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
+	TENSOR_EXPAND_TEMPLATE_TENSORR()\
 	TENSOR_HEADER()
 
 // make sure this (and the using) is set before the specific-named accessors
@@ -2101,11 +2128,25 @@ inline constexpr int symmetricSize(int d, int r) {
 	template<typename T>\
 	using LocalSumWithScalarResult = _symR<T, localDim, localRank>;
 
+#define notused_TENSOR_EXPAND_TEMPLATE_TOTALLY_SYMMETRIC()\
+	template<int index>\
+	struct ExpandTensorRankTemplateImpl {\
+		static constexpr auto value() {\
+			if constexpr (index == 0 || index == localRank-1) {\
+		}\
+	};\
+	template<int index>\
+	using ExpandTensorRankTemplate = _symR<Inner, localDim, localRank>;
+
+#define TENSOR_EXPAND_TEMPLATE_TOTALLY_SYMMETRIC()\
+	TENSOR_EXPAND_TEMPLATE_TENSORR()
+
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC(classname, Inner_, localDim_, localRank_)\
 	TENSOR_THIS(classname)\
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)\
 	TENSOR_TEMPLATE_T_I_I(classname)\
 	TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
+	TENSOR_EXPAND_TEMPLATE_TOTALLY_SYMMETRIC()\
 	TENSOR_HEADER()
 
 // using 'upper-triangular' i.e. i<=j<=k<=...
@@ -2248,11 +2289,19 @@ struct initIntVecWithSequence<std::integer_sequence<T, I...>> {
 	template<typename T>\
 	using LocalSumWithScalarResult = _tensorr<T, localDim, localRank>;
 
+#define notused_TENSOR_EXPAND_TEMPLATE_TOTALLY_ANTISYMMETRIC()\
+	template<int index>\
+	using ExpandTensorRankTemplate = _asymR<T, localDim, localRank>;
+
+#define TENSOR_EXPAND_TEMPLATE_TOTALLY_ANTISYMMETRIC()\
+	TENSOR_EXPAND_TEMPLATE_TENSORR()
+
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC(classname, Inner_, localDim_, localRank_)\
 	TENSOR_THIS(classname)\
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)\
 	TENSOR_TEMPLATE_T_I_I(classname)\
 	TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
+	TENSOR_EXPAND_TEMPLATE_TOTALLY_ANTISYMMETRIC()\
 	TENSOR_HEADER()
 
 // using 'upper-triangular' i.e. i<=j<=k<=...
