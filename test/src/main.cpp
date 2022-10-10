@@ -1,7 +1,7 @@
 #include "Test/Test.h"
 
 int main() {
-	test_v1_iter();
+	test_Index();
 	test_AntiSymRef();
 	test_Vector();
 	test_Quat();

@@ -3,7 +3,7 @@
 #include "Tensor/Tensor.h"
 #include "Common/Test.h"
 
-void test_v1_iter();
+void test_Index();
 void test_AntiSymRef();
 void test_Vector();
 void test_Quat();

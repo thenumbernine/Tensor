@@ -1,38 +1,10 @@
-#include "Tensor/v1/Tensor.h"
+#include "Tensor/Tensor.h"
 #include "Common/Test.h"
 #include <algorithm>
 
-namespace Tensor {
-using namespace Tensor::v1;
-}
-
-void test_v1_iter() {
+void test_Index() {
+#if 0 // TODO	
 	using Real = double;
-
-	TEST_EQ((Tensor::Tensor<Real, Tensor::Upper<3>>::numNestings), 1);
-	TEST_EQ((Tensor::Tensor<Real, Tensor::Upper<3>>::WriteIndexInfo<0>::size), 3);
-	        
-	TEST_EQ((Tensor::Tensor<Real, Tensor::Upper<5>, Tensor::Upper<6>>::numNestings), 2);
-	TEST_EQ((Tensor::Tensor<Real, Tensor::Upper<5>, Tensor::Upper<6>>::WriteIndexInfo<0>::size), 5);
-	TEST_EQ((Tensor::Tensor<Real, Tensor::Upper<5>, Tensor::Upper<6>>::WriteIndexInfo<1>::size), 6);
-	        
-	TEST_EQ((Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Upper<3>, Tensor::Upper<3>>>::numNestings), 1);
-	TEST_EQ((Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Upper<3>, Tensor::Upper<3>>>::WriteIndexInfo<0>::size), 6);	//3*(3+1)/2
-
-	//write iterator test
-	{
-		Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Upper<2>, Tensor::Upper<2>>> s([&](Tensor::v1::int2 i){
-			return Real(i(0) + 2 * i(1));
-		});
-		TEST_EQ(s(0,0), 0);
-		TEST_EQ(s(0,1), 1);
-		TEST_EQ(s(1,1), 3);
-		
-		//would be '0' if write iter skipped a mem address present in the matrix
-		//would be '2' if write iter was traversing a non-symmetric matrix
-		TEST_EQ(s(1,0), 1);
-	}
-
 	//index assignment
 	{
 		Tensor::Tensor<Real, Tensor::Upper<3>> a(1);
@@ -113,4 +85,5 @@ void test_v1_iter() {
 		c(i) = (a(i+1) - a(i-1)) / (2 * dx)
 #endif
 	}
+#endif
 }
