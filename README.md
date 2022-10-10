@@ -22,6 +22,9 @@ So I guess overall this library is midway between a mathematician's and a progra
 
 ## Reference:
 
+### Tensors:
+`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_ident`, `_sym`, `_asym`, `_symR`, `_asymR`.
+
 ### Vectors:
 `_vec<type, dim>` = vectors:
 - `.s` = `std::array<type>` = element std::array access.  Tempted to change it back to `type[] s` for ease of ue as pointer access... but I do like the ease of iterator use with `std::array`... hmm...
@@ -60,11 +63,20 @@ which is `d choose r`.
 This means the Levi-Civita permutation tensor takes up exactly 1 float.  
 Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
 
-### Tensors: (with rank>2)
-`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_ident`, `_sym`, `_asym`, `_symR`, `_asymR`.
+### Accessors:
+An accessor is an object used for intermediate access to a tensor when it is not fully indexed.  For example, if you construct an object `auto a = float3s3()` to be a rank-2 symmetric 3x3 matrix,
+and you decided to read only a single index: `a[i]`, the result will be an Accessor object which merely wraps the owner.  From here the Accessor can be indexed a second time: `a[i][j]` to return a reference to the `_sym`'s variable.
+
+These Accessor objects can be treated like tensors for almost all intents and purposes.
+They can be passed into other tensor math operations, tensor constructors (and by virtue of this, casting).
+I even have tensor member methods that call back into the `Tensor::` namespace as I do other tensors.
+
+I still don't have `+= -= *= /=` math operators for Accessors.  This is because they are tenuous enough for the non-Accessor tensor classes themselves
+(since the non-= operator will often produce a different return type than the lhs tensor, so `a op = b; auto c = a;` in many cases cannot reproduce identical behavior to `auto c = a op b`.
 
 ### Tensor creation:
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
+- `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 - `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
 	`I1 I2` etc are one of the following:
 - - `index_vec<dim>` for a single index of dimension `dim`,
@@ -74,7 +86,6 @@ Feel free to initialize this as the value 1 for Cartesian geometry or the value 
 - - `index_symR<dim, rank>` for `rank` symmetric indexes of dimension `dim`,
 - - `index_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
 	Ex: `_tensor<float, index_vec<3>, index_sym<4>, index_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
-- `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 
 ### Tensor operators
 - `operator += -= /=` = In-place per-element operations.
@@ -150,7 +161,7 @@ Feel free to initialize this as the value 1 for Cartesian geometry or the value 
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
 	Mind you that in the case of optimized storage being used this means the `[][]` indexing __DOES NOT MATCH__ the `.s[].s[]` indexing.
-	In the case of optimized storage, for intermediate-indexes, a wrapper object will be returned.
+	In the case of optimized storage, for intermediate-indexes, an Accessor wrapper object will be returned.
 
 ### Iterating
 - `.begin() / .end() / .cbegin() / .cend()` = read-iterators, for iterating over indexes (including duplicate elements in symmetric matrices).
@@ -166,6 +177,7 @@ Swizzling will return a vector-of-references:
 - 4D: `.xxxx() ... .wwww()`
 
 ### Functions
+Functions are provided as `Tensor::` namespace or as member-functions where `this` is automatically padded into the first argument. 
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	- rank-N x rank-N -> rank-0.
 	$$dot(a,b) := a^I \cdot b\_I$$
