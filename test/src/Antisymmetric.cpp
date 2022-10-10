@@ -218,9 +218,16 @@ void test_Antisymmetric() {
 		so that means overall 'This' is not used by any Accessor
 		and that means I can use 'This' within the Accessor to make it more compat with things.
 		In fact I should move Accessors outside of the classes and just 'using' them in...
+		ok now they're added
 		*/
+		ECHO(ax.rank);
+		ECHO(ax.dims);
+		ECHO(Tensor::lenSq(ax));
 #endif
-#if 0 // TODO Accessor as tensor
+	}
+	{
+#if 1 // Accessor 's tensor member methods
+		auto a = Tensor::float3a3(1,2,3);
 		auto ax = a[0];
 		ECHO(ax.lenSq());
 		auto ay = a[1];
@@ -228,5 +235,6 @@ void test_Antisymmetric() {
 		auto az = a[2];
 		ECHO(az.lenSq());
 #endif
+exit(1);
 	}
 }

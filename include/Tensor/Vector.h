@@ -896,6 +896,7 @@ ReplaceScalar<typename>
 /*
 ReadIterator and WriteIterator
 depends on operator()(intN) for ReadIterator
+depends on getLocalReadForWriteIndex() for its getReadForWriteIndex()
 
 TODO InnerIterator (iterator i1 first) vs OuterIterator (iterator iN first)
 ReadIterator vs WriteIterator
@@ -1799,8 +1800,27 @@ This is used by _sym , while _asym uses something different since it uses the An
 
 template<typename AccessorOwnerConstness>
 struct Rank2Accessor {
+	//properties for Accessor as a tensor:
+#if 1	// NOTICE all of this is only for the Accessor-as-tensor interoperability.  You can disable it and just don't use Accessors as tensors.	
+	TENSOR_THIS(Rank2Accessor)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(
+		typename AccessorOwnerConstness::Inner,
+		AccessorOwnerConstness::localDim,
+		1); // localRank==1 always cuz we hand off to the next Accessor or Owner's Inner
+	//begin TENSOR_TEMPLATE_*
+	template<typename T> using Template = Rank2Accessor<T>;
+	template<typename NewInner> using ReplaceInner = Rank2Accessor<typename AccessorOwnerConstness::template ReplaceInner<NewInner>>;
+	template<int newLocalDim> using ReplaceLocalDim = Rank2Accessor<typename AccessorOwnerConstness::template ReplaceLocalDim<newLocalDim>>;
+	//end TENSOR_TEMPLATE_*
+	//begin TENSOR_HEADER_*_SPECIFIC
+	static constexpr int localCount = AccessorOwnerConstness::localDim;
+	template<typename T> using LocalSumWithScalarResult = typename AccessorOwnerConstness::template LocalSumWithScalarResult<T>;
+	//end TENSOR_HEADER_*_SPECIFIC
+	TENSOR_EXPAND_TEMPLATE_TENSORR()
+	TENSOR_HEADER()
+#endif
+
 	static constexpr bool isAccessorFlag = {};
-	static constexpr bool isTensorFlag = {};
 	AccessorOwnerConstness & owner;
 	int i;
 
@@ -1814,8 +1834,10 @@ struct Rank2Accessor {
 	TENSOR_ADD_RANK1_CALL_INDEX_AUX()
 	TENSOR_ADD_INT_VEC_CALL_INDEX()
 
-	/*TENSOR_ADD_ITERATOR()*/
-	/*TENSOR_ADD_MATH_MEMBER_FUNCS()*/
+	TENSOR_ADD_VALID_INDEX()	// this is needed for other tensors to generic-tensor-ctor using this tensor
+	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX() // needed by TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS
+	TENSOR_ADD_ITERATOR()
+	TENSOR_ADD_MATH_MEMBER_FUNCS()
 };
 
 // Accessor is used to return between-rank indexes, so if sym is rank-2 this lets you get s[i] even if the storage only represents s[i,j]
@@ -2317,12 +2339,32 @@ inline constexpr int symmetricSize(int d, int r) {
 
 template<typename AccessorOwnerConstness, int subRank>
 struct RankNAccessor {
+	//properties of owner, mapped here so names dont' collide with Accessor's tensor properties:
 	static constexpr int ownerLocalRank = AccessorOwnerConstness::localRank;
 	using ownerIntN = typename AccessorOwnerConstness::intN;
 
+	//properties for Accessor as a tensor:
+#if 1	// NOTICE all of this is only for the Accessor-as-tensor interoperability.  You can disable it and just don't use Accessors as tensors.	
+	TENSOR_THIS(RankNAccessor)
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(
+		typename AccessorOwnerConstness::Inner,
+		AccessorOwnerConstness::localDim,
+		1); // localRank==1 always cuz we hand off to the next Accessor or Owner's Inner
+	//begin TENSOR_TEMPLATE_*
+	template<typename T, int s> using Template = RankNAccessor<T, s>;
+	template<typename NewInner> using ReplaceInner = RankNAccessor<typename AccessorOwnerConstness::template ReplaceInner<NewInner>, subRank>;
+	template<int newLocalDim> using ReplaceLocalDim = RankNAccessor<typename AccessorOwnerConstness::template ReplaceLocalDim<newLocalDim>, subRank>;
+	//end TENSOR_TEMPLATE_*
+	//begin TENSOR_HEADER_*_SPECIFIC
+	static constexpr int localCount = AccessorOwnerConstness::localDim;
+	template<typename T> using LocalSumWithScalarResult = typename AccessorOwnerConstness::template LocalSumWithScalarResult<T>;
+	//end TENSOR_HEADER_*_SPECIFIC
+	TENSOR_EXPAND_TEMPLATE_TENSORR()
+	TENSOR_HEADER()
+#endif
+
 	static_assert(subRank > 0 && subRank < ownerLocalRank);
 	static constexpr bool isAccessorFlag = {};
-	static constexpr bool isTensorFlag = {};
 	AccessorOwnerConstness & owner;
 	_vec<int,subRank> i;
 
@@ -2391,8 +2433,10 @@ struct RankNAccessor {
 
 	TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()
 
-	/*TENSOR_ADD_ITERATOR()*/
-	/*TENSOR_ADD_MATH_MEMBER_FUNCS()*/
+	TENSOR_ADD_VALID_INDEX()	// this is needed for other tensors to generic-tensor-ctor using this tensor
+	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX() // needed by TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS
+	TENSOR_ADD_ITERATOR()
+	TENSOR_ADD_MATH_MEMBER_FUNCS()
 };
 
 #define TENSOR_ADD_RANK_N_ACCESSOR()\
