@@ -53,9 +53,7 @@ struct AntiSymRef {
 	AntiSymRef() {}
 	AntiSymRef(std::reference_wrapper<T> const & x_, AntiSymRefHow how_) : x(x_), how(how_) {}
 	AntiSymRef(AntiSymRef const & r) : x(r.x), how(r.how) {}
-	
-	AntiSymRef(AntiSymRef && r)
-	: x(r.x), how(x.how) {}
+	AntiSymRef(AntiSymRef && r) : x(r.x), how(r.how) {}
 	
 	This & operator=(T const & y) {
 		if (how == AntiSymRefHow::POSITIVE) {
@@ -94,25 +92,28 @@ struct AntiSymRef {
 	//requires (std::is_invocable_v<T()>) 
 	requires (is_tensor_v<T>)
 	{
-		using R = decltype((*x).get()(std::forward<Args>(args)...));
+		using R = std::decay_t<decltype((*x).get()(std::forward<Args>(args)...))>;
 		if constexpr (is_instance_v<R, AntiSymRef>) {
 			using RT = typename R::Type;	// TODO nested-most?  verified for two-nestings deep, what about 3?
+			using RRT = std::conditional_t<std::is_const_v<T>, const RT, RT>;
 			if (how != AntiSymRefHow::POSITIVE && how != AntiSymRefHow::NEGATIVE) {
-				return AntiSymRef<RT>();
+				return AntiSymRef<RRT>();
 			} else {
 				R && r = (*x).get()(std::forward<Args>(args)...);
 				if (r.how != AntiSymRefHow::POSITIVE && r.how != AntiSymRefHow::NEGATIVE) {
-					return AntiSymRef<RT>();
+					return AntiSymRef<RRT>();
 				} else {
-					return AntiSymRef<RT>(*r.x, (AntiSymRefHow)((int)how ^ (int)r.how));
+					return AntiSymRef<RRT>(*r.x, (AntiSymRefHow)((int)how ^ (int)r.how));
 				}
 			}
 		} else {
+			using RRT = std::conditional_t<std::is_const_v<T>, const R, R>;
 			if (how != AntiSymRefHow::POSITIVE && how != AntiSymRefHow::NEGATIVE) {
-				return AntiSymRef<R>();
+				return AntiSymRef<RRT>();
 			} else {
-				R && r = (*x).get()(std::forward<Args>(args)...);
-				return AntiSymRef<R>(std::ref(r), how);
+				return AntiSymRef<RRT>(std::ref(
+					(*x).get()(std::forward<Args>(args)...)
+				), how);
 			}
 		}
 	}

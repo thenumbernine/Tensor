@@ -5,4 +5,5 @@ depends = {'../../Common', '..'}
 -- [[
 compiler = 'clang++'
 linker = 'clang++'
+compileFlags=compileFlags..' -ftemplate-backtrace-limit=0 '
 --]]

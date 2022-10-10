@@ -213,11 +213,11 @@ Swizzling will return a vector-of-references:
 Sorry GLSL, Cg wins this round:
 - `floatN<N>` = N-dimensional float vector.
 - `float2, float3, float4` = 1D, 2D, 3D float vector.
-- `float2x2, float2x3, float2x4, float3x2, float3x3, float3x4, float4x2, float4x3, float4x4` = matrix types.
-- `float2i2, float3i3, float4i4` = identity matrix types.
-- `float2s2, float3s3, float4s4` = symmetric matrix types.
-- `float2a2, float3a3, float4a4` = antisymmetric matrix types.
+- `float2x2, float2x3, float2x4, float3x2, float3x3, float3x4, float4x2, float4x3, float4x4` = matrix of floats.
+- `float2i2, float3i3, float4i4` = identity matrix of floats.
+- `float2s2, float3s3, float4s4` = symmetric matrix of floats.
 - `float2s2s2 float3s3s3 float4s4s4 float2s2s2s2 float3s3s3s3 float4s4s4s4` = totally-symmetric tensor of floats.
+- `float2a2, float3a3, float4a4` = antisymmetric matrix of floats.
 - `float3a3a3 float4a4a4 float4a4a4a4` = totally-antisymmetric tensor of floats.
 - `floatNxN<dim>` = matrix of floats of size `dim`.
 - `floatNiN<dim>` = identity matrix of float of size `dim`.

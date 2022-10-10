@@ -2036,7 +2036,7 @@ constexpr int nChooseR(int n, int k) {
 				fulli.template subset<N,subRank>() = i2;\
 				return Accessor<OwnerConstness, subRank+N>(owner, fulli);\
 			} else if constexpr (subRank + N == localRank) {\
-				/* returns Inner */\
+				/* returns Inner, or for asym returns AntiSymRef<Inner> */\
 				intN fulli;\
 				fulli.template subset<subRank,0>() = i;\
 				fulli.template subset<N,subRank>() = i2;\
@@ -2059,7 +2059,7 @@ constexpr int nChooseR(int n, int k) {
 				fulli.template subset<N,subRank>() = i2;\
 				return Accessor<OwnerConstness, subRank+N>(owner, fulli);\
 			} else if constexpr (subRank + N == localRank) {\
-				/* returns Inner */\
+				/* returns Inner, or for asym returns AntiSymRef<Inner> */\
 				intN fulli;\
 				fulli.template subset<subRank,0>() = i;\
 				fulli.template subset<N,subRank>() = i2;\
@@ -2348,40 +2348,85 @@ from my symmath/tensor/LeviCivita.lua
 		return AntiSymRefHow::POSITIVE;\
 	}\
 \
+	/* In the case of AntiSymRef, if we have a partial-indexing then the Accessor is returned but the signs aren't flipped.*/\
+	/* It's not until the full indexing is made that the sign is determined in the AntiSymRef. */\
+	/* This way the Accessor doesn't need to remember the AntiSymRef::how state. */\
+	/* and that lets us reuse the Accessor for both sym and asym. */\
+	/* So equivalently, here we don't want to bubble-sort indexes until our index size is >= our localRank */\
 	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> const & i) {\
-		for (int j = 0; j < localRank-1; ++j) {\
-			if (i(j) == i(j+1)) return AntiSymRef<Inner>();\
-			if (i(j) > i(j+1)) {\
-				_vec<int,N> i2 = i;\
-				std::swap(i2(j), i2(j+1));\
-				return (*this)(i2).flip();\
-			}\
-		}\
+	constexpr decltype(auto) operator()(_vec<int,N> i) {\
 		if constexpr (N < localRank) {\
 			return Accessor<This, N>(*this, i);\
 		} else if constexpr (N == localRank) {\
-			return AntiSymRef<Inner>(s[getLocalWriteForReadIndex(i)], AntiSymRefHow::POSITIVE);\
+			/* bubble-sort indexes */\
+			bool flip = false;\
+			for (int k = 0; k < localRank-1; ++k) {\
+				for (int j = 0; j < localRank-k-1; ++j) {\
+					if (i[j] == i[j+1]) {\
+						return AntiSymRef<Inner>();\
+					} else if (i[j] > i[j+1]) {\
+						std::swap(i[j], i[j+1]);\
+						flip = !flip;\
+					}\
+				}\
+			}\
+			return AntiSymRef<Inner>(s[getLocalWriteForReadIndex(i)], flip ? AntiSymRefHow::NEGATIVE : AntiSymRefHow::POSITIVE);\
 		} else if constexpr (N > localRank) {\
-			return (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
+			/* bubble-sort indexes */\
+			bool flip = false;\
+			for (int k = 0; k < localRank-1; ++k) {\
+				for (int j = 0; j < localRank-k-1; ++j) {\
+					if (i[j] == i[j+1]) {\
+						using R = decltype((*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
+						return R();\
+					} else if (i[j] > i[j+1]) {\
+						std::swap(i[j], i[j+1]);\
+						flip = !flip;\
+					}\
+				}\
+			}\
+			/* call-thru of AntiSymRef returns another AntiSymRef ... */\
+			auto result = (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
+			if (flip) result.flip();\
+			return result;\
 		}\
 	}\
 	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> const & i) const {\
-		for (int j = 0; j < localRank-1; ++j) {\
-			if (i(j) == i(j+1)) return AntiSymRef<Inner const>();\
-			if (i(j) > i(j+1)) {\
-				_vec<int,N> i2 = i;\
-				std::swap(i2(j), i2(j+1));\
-				return (*this)(i2).flip();\
-			}\
-		}\
+	constexpr decltype(auto) operator()(_vec<int,N> i) const {\
 		if constexpr (N < localRank) {\
 			return Accessor<This const, N>(*this, i);\
 		} else if constexpr (N == localRank) {\
-			return AntiSymRef<Inner const>(s[getLocalWriteForReadIndex(i)], AntiSymRefHow::POSITIVE);\
+			/* bubble-sort indexes */\
+			bool flip = false;\
+			for (int k = 0; k < localRank-1; ++k) {\
+				for (int j = 0; j < localRank-k-1; ++j) {\
+					if (i[j] == i[j+1]) {\
+						return AntiSymRef<Inner const>();\
+					} else if (i[j] > i[j+1]) {\
+						std::swap(i[j], i[j+1]);\
+						flip = !flip;\
+					}\
+				}\
+			}\
+			return AntiSymRef<Inner const>(s[getLocalWriteForReadIndex(i)], flip ? AntiSymRefHow::NEGATIVE : AntiSymRefHow::POSITIVE);\
 		} else if constexpr (N > localRank) {\
-			return (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
+			/* bubble-sort indexes */\
+			bool flip = false;\
+			for (int k = 0; k < localRank-1; ++k) {\
+				for (int j = 0; j < localRank-k-1; ++j) {\
+					if (i[j] == i[j+1]) {\
+						using R = decltype((*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
+						return R();\
+					} else if (i[j] > i[j+1]) {\
+						std::swap(i[j], i[j+1]);\
+						flip = !flip;\
+					}\
+				}\
+			}\
+			/* call-thru of AntiSymRef returns another AntiSymRef ... */\
+			auto result = (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
+			if (flip) result.flip();\
+			return result;\
 		}\
 	}\
 \
