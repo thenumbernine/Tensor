@@ -1,5 +1,6 @@
 #pragma once
 
+//atm Vector.h includes Inverse.h so this is moot:
 #include "Tensor/Vector.h"
 
 namespace Tensor {
@@ -70,6 +71,10 @@ typename M::Scalar determinant44(M const & a) {
 		- a(0,3) * a(1,2) * tmp11;
 }
 
+template<typename T>
+requires is_tensor_v<T>
+inline typename T::Scalar determinant(T const & a);
+
 template<typename M>
 typename M::Scalar determinantNN(M const & a) {
 	using T = typename M::Scalar;
@@ -85,14 +90,11 @@ typename M::Scalar determinantNN(M const & a) {
 				sub(i,j) = a(i+1, j + (j>=k));
 			}
 		}
-		sum += sign * a(0,k) * determinant(sub);
+		sum += sign * a(0,k) * Tensor::determinant<M>(sub);
 		sign = -sign;
 	}
 	return sum;
 }
-
-template<typename T>
-typename T::Scalar determinant(T const & a);
 
 template<typename T>
 T determinant(_mat<T,1,1> const & a) {
@@ -152,7 +154,8 @@ T determinant(_sym<T,dim> const & a) {
 // inverse for matrix
 
 template<typename T>
-typename T::Scalar inverse(
+requires is_tensor_v<T>
+inline typename T::Scalar inverse(
 	T const & a,
 	typename T::Scalar const & det
 );
@@ -278,7 +281,8 @@ _sym3<T> inverse(_sym3<T> const & a, T const & det) {
 // inverse without determinant
 
 template<typename T>
-T inverse(T const & a) {
+requires is_tensor_v<T>
+inline T inverse(T const & a) {
 	return inverse(a, determinant(a));
 }
 

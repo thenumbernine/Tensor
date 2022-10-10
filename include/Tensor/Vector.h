@@ -43,7 +43,7 @@ TODO TODO
 
 */
 
-#include "Tensor/AntiSymRef.h"	// used in _asym
+#include "Tensor/AntiSymRef.h"
 #include "Common/String.h"
 #include <tuple>
 #include <functional>	//reference_wrapper, also function<> is by Partial
@@ -68,10 +68,194 @@ namespace Tensor {
 
 // I was using optional<> to capture types without instanciating them
 // but optional can't wrap references, so ...
+// TODO might move this somewhere like Common/Meta.h
 template<typename T>
 struct TypeWrapper {
 	using type = T;
 };
+
+
+//forward-declare everything
+
+
+template<typename Inner, int localDim>
+struct _vec;
+
+template<typename Inner, int localDim>
+struct _ident;
+
+template<typename Inner, int localDim>
+struct _sym;
+
+template<typename Inner, int localDim>
+struct _asym;
+
+template<typename Inner, int localDim, int localRank>
+struct _symR;
+
+template<typename Inner, int localDim, int localRank>
+struct _asymR;
+
+//convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
+// ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed
+// ... also GLSL is column-major so between this and GLSL the indexes have to be transposed.
+template<typename T, int dim1, int dim2>
+using _mat = _vec<_vec<T, dim2>, dim1>;
+
+// specific-sized templates
+template<typename T> using _vec2 = _vec<T,2>;
+template<typename T> using _vec3 = _vec<T,3>;
+template<typename T> using _vec4 = _vec<T,4>;
+template<typename T> using _mat2x2 = _vec2<_vec2<T>>;
+template<typename T> using _mat2x3 = _vec2<_vec3<T>>;
+template<typename T> using _mat2x4 = _vec2<_vec4<T>>;
+template<typename T> using _mat3x2 = _vec3<_vec2<T>>;
+template<typename T> using _mat3x3 = _vec3<_vec3<T>>;
+template<typename T> using _mat3x4 = _vec3<_vec4<T>>;
+template<typename T> using _mat4x2 = _vec4<_vec2<T>>;
+template<typename T> using _mat4x3 = _vec4<_vec3<T>>;
+template<typename T> using _mat4x4 = _vec4<_vec4<T>>;
+template<typename T> using _sym2 = _sym<T,2>;
+template<typename T> using _sym3 = _sym<T,3>;
+template<typename T> using _sym4 = _sym<T,4>;
+template<typename T> using _asym2 = _asym<T,2>;
+template<typename T> using _asym3 = _asym<T,3>;
+template<typename T> using _asym4 = _asym<T,4>;
+
+
+
+//forward-declare, body is below all tensor classes.
+template<typename T>
+requires is_tensor_v<T>
+T elemMul(T const & a, T const & b);
+
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+) typename A::Scalar inner(A const & a, B const & b);
+
+template<typename T> requires is_tensor_v<T>
+typename T::Scalar lenSq(T const & v);
+
+template<typename T> requires (is_tensor_v<T>)
+typename T::Scalar length(T const & v);
+
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+) typename A::Scalar distance(A const & a, B const & b);
+
+template<typename T>
+requires (is_tensor_v<T>)
+T normalize(T const & v);
+
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& A::dims == 3
+	&& B::dims == 3
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+) auto cross(A const & a, B const & b);
+
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+) auto outer(A const & a, B const & b);
+
+template<typename... T>
+auto outerProduct(T&&... args);
+
+template<int m=0, int n=1, typename T>
+requires (
+	is_tensor_v<T>
+	&& T::rank >= 2
+)
+auto transpose(T const & t);
+
+template<int m=0, int n=1, typename T>
+requires (is_tensor_v<T>
+	&& m < T::rank
+	&& n < T::rank
+	&& T::template dim<m> == T::template dim<n>
+)
+auto contract(T const & t);
+
+template<typename... T>
+auto interior(T&&... args);
+
+template<typename... T>
+auto trace(T&&... args);
+
+template<int m=0, typename T>
+requires (is_tensor_v<T>)
+auto diagonal(T const & t);
+
+template<typename A, typename B>
+requires(
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+	&& A::template dim<A::rank-1> == B::template dim<0>
+) auto operator*(A const & a, B const & b);
+
+
+template<typename T>
+requires is_tensor_v<T>
+inline typename T::Scalar determinant(T const & a);
+
+// TODO do I have to forward-declare all template partial specializations?
+
+template<typename T>
+T determinant(_mat<T,1,1> const & a);
+
+template<typename T>
+T determinant(_mat2x2<T> const & a);
+
+template<typename T>
+T determinant(_mat3x3<T> const & a);
+
+template<typename T>
+T determinant(_mat4x4<T> const & a);
+
+template<typename T, int dim>
+requires (dim > 4)
+T determinant(_mat<T,dim,dim> const & a);
+
+template<typename T>
+T determinant(_sym<T,1> const & a);
+
+template<typename T>
+T determinant(_sym2<T> const & a);
+
+template<typename T>
+T determinant(_sym3<T> const & a);
+
+template<typename T>
+T determinant(_sym4<T> const & a);
+
+template<typename T, int dim>
+requires (dim > 4)
+T determinant(_sym<T,dim> const & a);
+
+template<typename T>
+requires is_tensor_v<T>
+inline T inverse(
+	T const & a,
+	typename T::Scalar const & det
+);
+
+template<typename T>
+requires is_tensor_v<T>
+inline T inverse(T const & a);
+
+
+
 
 // Template<> is used for rearranging internal structure when performing linear operations on tensors
 // Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
@@ -1005,120 +1189,46 @@ ReadIterator vs WriteIterator
 		return ValidIndexImpl<0>::value(i);\
 	}
 
-//forward-declare, body is below all tensor classes.
-template<typename T>
-requires is_tensor_v<T>
-T elemMul(T const & a, T const & b);
-
-template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-) typename A::Scalar inner(A const & a, B const & b);
-
-template<typename T> requires is_tensor_v<T>
-typename T::Scalar lenSq(T const & v);
-
-template<typename T> requires (is_tensor_v<T>)
-typename T::Scalar length(T const & v);
-
-template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-) typename A::Scalar distance(A const & a, B const & b);
-
-template<typename T>
-requires (is_tensor_v<T>)
-T normalize(T const & v);
-
-template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& A::dims == 3
-	&& B::dims == 3
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-) auto cross(A const & a, B const & b);
-
-template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-) auto outer(A const & a, B const & b);
-
-template<typename... T>
-auto outerProduct(T&&... args);
-
-template<int m=0, int n=1, typename T>
-requires (
-	is_tensor_v<T>
-	&& T::rank >= 2
-)
-auto transpose(T const & t);
-
-template<int m=0, int n=1, typename T>
-requires (is_tensor_v<T>
-	&& m < T::rank
-	&& n < T::rank
-	&& T::template dim<m> == T::template dim<n>
-)
-auto contract(T const & t);
-
-template<typename... T>
-auto interior(T&&... args);
-
-template<typename... T>
-auto trace(T&&... args);
-
-template<int m=0, typename T>
-requires (is_tensor_v<T>)
-auto diagonal(T const & t);
-
-template<typename A, typename B>
-requires(
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& A::template dim<A::rank-1> == B::template dim<0>
-) auto operator*(A const & a, B const & b);
-
-
-template<typename T>
-typename T::Scalar determinant(T const & a);
-
-template<typename T>
-typename T::Scalar inverse(
-	T const & a,
-	typename T::Scalar const & det
-);
-
-template<typename T>
-T inverse(T const & a);
-
 #define TENSOR_ADD_MATH_MEMBER_FUNCS()\
-	auto elemMul(This&& o) const {\
-		return Tensor::elemMul<This const>(*this, std::forward<This>(o));\
+\
+	auto elemMul(This const & o) const {\
+		return Tensor::elemMul<This const>(*this, o);\
+	}\
+	auto elemMul(This && o) && {\
+		return Tensor::elemMul<This const>(std::move(*this), std::forward<This>(o));\
 	}\
 \
+	template<typename T>\
+	auto matrixCompMult(T const & o) const {\
+		return Tensor::elemMul<This const, T const>(*this, o);\
+	}\
 	template<typename... T>\
-	auto matrixCompMult(T&&... o) const {\
-		return Tensor::elemMul<This const, T...>(*this, std::forward<T>(o)...);\
+	auto matrixCompMult(T && ... o) && {\
+		return Tensor::elemMul<This const, T...>(std::move(*this), std::forward<T>(o)...);\
 	}\
 \
+	template<typename T>\
+	auto hadamard(T const & o) const {\
+		return Tensor::elemMul<This const, T const>(*this, o);\
+	}\
 	template<typename... T>\
-	auto hadamard(T&&... o) const {\
-		return Tensor::elemMul<This const, T...>(*this, std::forward<T>(o)...);\
+	auto hadamard(T && ... o) && {\
+		return Tensor::elemMul<This const, T...>(std::move(*this), std::forward<T>(o)...);\
 	}\
 \
 	template<typename B>\
 	requires (\
 		is_tensor_v<std::decay_t<B>>\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
-	) Scalar inner(B&& o) const {\
-		return Tensor::inner<This const, B>(*this, std::forward<B>(o));\
+	) Scalar inner(B const & o) const {\
+		return Tensor::inner<This const, B>(*this, o);\
+	}\
+	template<typename B>\
+	requires (\
+		is_tensor_v<std::decay_t<B>>\
+		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
+	) Scalar inner(B && o) && {\
+		return Tensor::inner<This const, B>(std::move(*this), std::forward<B>(o));\
 	}\
 \
 	auto dot(This const & o) const {\
@@ -1149,21 +1259,30 @@ T inverse(T const & a);
 		&& dims == 3\
 		&& B::dims == 3\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
-	) auto cross(B&& b) const {\
-		return Tensor::cross<This const, B>(*this, std::forward<B>(b));\
+	) auto cross(B const & b) const {\
+		return Tensor::cross<This const, B>(*this, b);\
+	}\
+	template<typename B>\
+	requires (\
+		is_tensor_v<std::decay_t<B>>\
+		&& dims == 3\
+		&& B::dims == 3\
+		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
+	) auto cross(B && b) && {\
+		return Tensor::cross<This const, B>(std::move(*this), std::forward<B>(b));\
 	}\
 \
 	template<typename B>\
 	requires (\
 		is_tensor_v<std::decay_t<B>>\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
-	) auto outer(B&& b) const {\
+	) auto outer(B const & b) const {\
 		return outer<This const, B>(*this, b);\
 	}\
 \
-	template<typename... T>\
-	auto outerProduct(T&&... o) const {\
-		return outerProduct<This const, T...>(*this, std::forward<T>(o)...);\
+	template<typename B>\
+	auto outerProduct(B const & o) const {\
+		return outerProduct<This const, B const>(*this, o);\
 	}\
 \
 	template<int m=0, int n=1>\
@@ -1181,14 +1300,14 @@ T inverse(T const & a);
 		return Tensor::contract<m, n, This const>(*this);\
 	}\
 \
-	template<typename... T>\
-	auto interior(T&&... args) const {\
-		return interior<This const, T...>(*this, std::forward<T>(args)...);\
+	template<typename T>\
+	auto interior(T const & o) const {\
+		return interior<This const, T const>(*this, o);\
 	}\
 \
-	template<typename... T>\
-	auto trace(T&&... args) const {\
-		return Tensor::trace<This const, T...>(*this, std::forward<T>(args)...);\
+	template<typename T>\
+	auto trace(T const & o) const {\
+		return Tensor::trace<This const, T const>(*this, o);\
 	}\
 \
 	template<int m=0>\
@@ -1205,9 +1324,10 @@ T inverse(T const & a);
 		*this = *this * b;\
 	}\
 \
-	Scalar determinant() const {\
-		return Tensor::determinant<This>(*this);\
-	}\
+	/* TODO can't get this to work */\
+	/*Scalar determinant() const {*/\
+		/*return (Scalar)Tensor::determinant<This>((This const &)(*this));*/\
+	/*}*/\
 \
 	This inverse(Scalar const & det) const {\
 		return Tensor::inverse<This>(*this, det);\
@@ -1323,9 +1443,6 @@ T inverse(T const & a);
 	TENSOR_ADD_SUBSET_ACCESS()\
 	TENSOR_ADD_VOLUME()
 
-
-template<typename Inner, int localDim>
-struct _vec;
 
 // type of a tensor with specific rank and dimension (for all indexes)
 // used by some _vec members
@@ -2540,16 +2657,7 @@ struct _asymR {
 	TENSOR_TOTALLY_ANTISYMMETRIC_CLASS_OPS()
 };
 
-// then TODO Levi-Civita tensor
-
 // dense vec-of-vec
-
-//convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
-// ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed
-// ... also GLSL is column-major so between this and GLSL the indexes have to be transposed.
-template<typename T, int dim1, int dim2>
-using _mat = _vec<_vec<T, dim2>, dim1>;
-
 
 // some template metaprogram helpers
 //  needed for the math function
@@ -3295,26 +3403,6 @@ TENSOR_ADD_NICKNAME_TYPE(intptr, intptr_t)
 TENSOR_ADD_NICKNAME_TYPE(uintptr, uintptr_t)
 TENSOR_ADD_NICKNAME_TYPE(ldouble, long double)
 
-// specific-sized templates
-template<typename T> using _vec2 = _vec<T,2>;
-template<typename T> using _vec3 = _vec<T,3>;
-template<typename T> using _vec4 = _vec<T,4>;
-template<typename T> using _mat2x2 = _vec2<_vec2<T>>;
-template<typename T> using _mat2x3 = _vec2<_vec3<T>>;
-template<typename T> using _mat2x4 = _vec2<_vec4<T>>;
-template<typename T> using _mat3x2 = _vec3<_vec2<T>>;
-template<typename T> using _mat3x3 = _vec3<_vec3<T>>;
-template<typename T> using _mat3x4 = _vec3<_vec4<T>>;
-template<typename T> using _mat4x2 = _vec4<_vec2<T>>;
-template<typename T> using _mat4x3 = _vec4<_vec3<T>>;
-template<typename T> using _mat4x4 = _vec4<_vec4<T>>;
-template<typename T> using _sym2 = _sym<T,2>;
-template<typename T> using _sym3 = _sym<T,3>;
-template<typename T> using _sym4 = _sym<T,4>;
-template<typename T> using _asym2 = _asym<T,2>;
-template<typename T> using _asym3 = _asym<T,3>;
-template<typename T> using _asym4 = _asym<T,4>;
-
 
 // ostream
 // _vec does have .fields
@@ -3424,3 +3512,8 @@ template<std::size_t I, typename T, std::size_t N> constexpr T const && get(Tens
 #endif
 
 }
+
+// why do I have an #include at the bottom of this file?
+// because at the top I have the forward-declaration to the functions in this include
+// so it had better come next
+#include "Tensor/Inverse.h"	
