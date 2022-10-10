@@ -307,10 +307,8 @@ TODO:
 - might do some constexpr loop unrolling stuff maybe.
 - test case write tests should be writing different values and verifying
 
-- make `*=` use `operator*` equivalent multiply.  But this depends on the multiply algorithm.
-	If I am using the outer-then-contract-once method then this will only work if the `*=` rhs is a tensor with rank s where `(r + s - 2 == r)` i.e. `s == 2`, you can only `*=` with matrices.
 - make `_symR` primary index be `operator(int...)` and secondary `operator(_vec<int,N>)`.  This requires splitting off param-packs at a specific index.
 
-- ExpandIthIndex of `_symR` or `_asymR` should preserve the (anti)symmetry of the remaining indexes.  Atm it just turns the whole thing into a expanded-tensor.
+- RemoveIthIndex of `_symR` or `_asymR` should preserve the (anti)symmetry of the remaining indexes.  Atm it just turns the whole thing into a expanded-tensor.
 
 - Note to self (and anyone else listening), while GitHub MarkDown handles `_`'s correctly within `` ` ``'s , it fails within MathJax `$`'s and `$$`'s which means you have to escape all your `_`'s within your MathJax as `\_`.
