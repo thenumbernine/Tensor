@@ -288,8 +288,6 @@ TODO:
 - should I even keep separate member functions for .dot() etc?
 - `__complex__` support.  Especially in norms.
 
-- try to work around github's mathjax rendering errors.  looks fine on my own mathjax and on stackedit, but not on github.
-
 - InnerForIndex doesn't really get the inner, it gets the index, where index = corresponds with This, so call it something like "TypeForIndex"
 - call 'Nested' something else like 'Next', and 'numNestings' to 'numNext' ... since 'nested-class' is a term that could be mistaken with member-classes.
 - or call 'Inner" "Next" or something?
@@ -298,10 +296,10 @@ TODO:
 - would be nice to insert the template to wedge into it, like `tuple<index_int<3>, index_sym<3>>`.
 	like `InsertIndexes<index, index_vec<3>, index_sym<3> >` etc,
 		which would insert the listed structure into the nest of tensors.  make sure 'index' was expanded, expand it otherwise.
-- `wedge` = `_asymR<dim,rank1> x _asymR<dim,rank2> => _asymR<dim,rank1+rank2>`.
-	- make it operate on non-asym tensors too, and just symmetrize them.
-	- make symmetrize when applied to diagonals return a zero-tensor
-	- make a zero tensor.  really this is just the `_ident` with its scalar initialized to zero.  so to make `_ident` true to name, maybe make `_ident` default initialize its value to 1?
+
+- makeAsym when applied to syms return a zero-tensor.
+	Same with makeSym applied to asyms.
+	A zero tensor is just the `_ident` with its scalar initialized to zero.  so to make `_ident` true to name, maybe make `_ident` default initialize its value to 1?
 
 - shorter names for `index_*` for easier building tensors.
 
@@ -327,7 +325,7 @@ TODO:
 
 - make `_symR` primary index be `operator(int...)` and secondary `operator(_vec<int,N>)`.  This requires splitting off param-packs at a specific index.
 
-- RemoveIthIndex of `_symR` or `_asymR` should preserve the (anti)symmetry of the remaining indexes.  Atm it just turns the whole thing into a expanded-tensor.
+- RemoveIthIndex of `_symR` or `_asymR` should preserve the (anti)symmetry of the remaining indexes.  Atm it just turns the whole thing into a expanded-tensor.  Tho I did handle this when ExpandIthIndex is called on the first or last of an (a)sym... 
 
 - Note to self (and anyone else listening), while GitHub MarkDown handles `_`'s correctly within `` ` ``'s , it fails within MathJax `$`'s and `$$`'s which means you have to escape all your `_`'s within your MathJax as `\_`.
 
