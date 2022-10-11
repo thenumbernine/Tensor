@@ -142,4 +142,13 @@ void test_TotallyAntisymmetric() {
 		ECHO(nz);
 #endif
 	}
+
+	{
+		auto n = Tensor::float3(3,-4,8);
+		auto ns = Tensor::hodgeDual(n);
+		static_assert(std::is_same_v<decltype(ns), Tensor::float3a3>);
+		ECHO(ns);
+		TEST_EQ(ns, n * Tensor::float3a3a3(1));
+		TEST_EQ((Tensor::float3x3)ns, (Tensor::float3x3)(n * Tensor::float3a3a3(1)));
+	}
 }

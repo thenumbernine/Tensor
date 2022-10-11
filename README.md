@@ -209,18 +209,22 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	but transposing 0,2 or 1,2 of a `_sym`-of-`_vec` will produce a `_vec`-of-`_vec`-of-`_vec`.
 	- rank-M -> rank-M, M >= 2
 	$$transpose(a)\_{{i\_1}...{i\_p}...{i\_q}...{i\_n}} = a\_{{i\_1}...{i\_q}...{i\_p}...{i\_n}}$$
-- `contract<m=0,n=1>(a), interior(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to `trace(t)`.
+- `contract<m=0,n=1>(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to `trace(t)`.
 	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes.). M >= 1
 	$$contract(a) = \delta^{i\_m i\_n} a\_I$$
+- `contractN<i=0,n=1>(a)` = Tensor contraction of indexes i ... i+n-1 with indexes i+n ... i+2n-1.
+- `interior<n=1>(a)` = Interior product of neighboring n indexes.  I know a proper interior product would default n to `A::rank`.  Maybe later.  For n=1 this defaults to matrix-multiply.
+- `makeSym(a)` = Create a symmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
+	$$makeSym(a)\_I = a\_{(i\_1 ... i\_ n)} $$
+- `makeAsym(a)` = Create an antisymmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
+	$$makeAsym(a)\_I = a\_{[i\_1 ... i\_ n]} $$
+- `wedge(a,b)` = The wedge product of tensors 'a' and 'b'.
+	$$wedge(a,b)\_I = (a \wedge b)\_I = Alt (a \otimes b)\_I = a\_{[i\_1 ... i\_p} b\_{i\_{p+1} ... i\_{p+q}]}$$
+- `hodgeDual(a)` = The Hodge-Dual of rank-k tensor 'a'.  This only operates on 'square' tensors.  If you really want to produce the dual of a scalar, just use `_asymR<>(s)`.
+	$$hodgeDual(a)\_I = (\star a)_I = \frac{1}{k!} T\_J {\epsilon^J}\_I$$
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
 	- rank-N -> rank-(N+1), N>=1:
 	$$diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
-- `makeSym(a)` = Create a symmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
-	$$makeSym(a) = a\_{(i\_1 ... i\_ n)} $$
-- `makeAsym(a)` = Create an antisymmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
-	$$makeAsym(a) = a\_{[i\_1 ... i\_ n]} $$
-- `wedge(a,b)` = The wedge product of tensors 'a' and 'b'.
-	$$wedge(a,b)\_I = (a \wedge b)\_I = (Alt (a \otimes b))\_I = a\_{i\_1 ... i\_p} b\_{i\_{p+1} ... i\_{p+q}}$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
 	- rank-2 -> rank-0:
 	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
@@ -310,11 +314,6 @@ TODO:
 	- then maybe see how it can be merged with read and write iterator? maybe?  btw write iterator is just a range iterator over the sequence `count<0>...count<numNestings-1>` with a different lookup
 	- so make a generic multi-dim iterator that acts on `index_sequence`. then use it with read and write iters.
  
-- `contractN` for contracting multiple indexes at once
-- rank-n interior aka contract-n-times on neighboring indexes?
-	technically an 'interior' product is one that does contract n-indexes depending on the rank of the vector that the form is being applied to.
-	well typicall the ranks match, but in a few texts a partial-inner is allowed, where the vector rank is <= the form rank.
-
 - TODO in C++23 operator[] can be variadic.
 	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().
 	in fact, why don't I just do that now?

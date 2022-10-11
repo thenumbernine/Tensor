@@ -186,10 +186,15 @@ requires (is_tensor_v<T>
 auto contract(T const & t);
 
 template<typename... T>
-auto interior(T&&... args);
-
-template<typename... T>
 auto trace(T&&... args);
+
+template<int index=0, int count=1, typename A>
+requires (is_tensor_v<A>)
+auto contractN(A const & a);
+
+template<int num=1, typename A, typename B>
+requires (is_tensor_v<A> && is_tensor_v<B>)
+auto interior(A const & a, B const & b);
 
 template<int m=0, typename T>
 requires (is_tensor_v<T>)
@@ -208,6 +213,12 @@ requires (
 	is_tensor_v<A>
 	&& is_tensor_v<B>
 ) auto wedge(A const & a, B const & b);
+
+template<typename A>
+requires (
+	is_tensor_v<A>
+	&& A::isSquare
+) auto hodgeDual(A const & a);
 
 template<typename A, typename B>
 requires(
@@ -1374,9 +1385,14 @@ But I forwarded these same method defs into the inner-class Accessors
 		return Tensor::contract<m, n>((This)*this);\
 	}\
 \
-	template<typename T>\
+	template<int index=0, int count=1>\
+	auto contractN() const {\
+		return Tensor::contractN<index, count>(*this);\
+	}\
+\
+	template<int num=1, typename T>\
 	auto interior(T const & o) const {\
-		return interior((This)*this, o);\
+		return Tensor::interior<num,This,T>((This)*this, o);\
 	}\
 \
 	template<typename T>\
@@ -1403,6 +1419,11 @@ But I forwarded these same method defs into the inner-class Accessors
 	requires (is_tensor_v<B>)\
 	auto wedge(B const & b) const {\
 		return Tensor::wedge(*this, b);\
+	}\
+\
+	auto hodgeDual() const\
+	requires (isSquare) {\
+		return Tensor::hodgeDual(*this);\
 	}\
 \
 	template<typename B>\
@@ -2972,8 +2993,30 @@ decltype(auto) operator op(typename T::Scalar const & a, T const & b) {\
 TENSOR_SCALAR_SUM_OP(+)
 TENSOR_SCALAR_SUM_OP(-)
 TENSOR_SCALAR_MUL_OP(*)
-//TENSOR_SCALAR_MUL_OP(/) // would be using the same type if not for divide-by-zeros
-TENSOR_SCALAR_SUM_OP(/)
+
+//TENSOR_SCALAR_MUL_OP(/) 
+// would be using the same type if not for divide-by-zeros
+//TENSOR_SCALAR_SUM_OP(/)
+// but tensor / scalar should still preserve structure
+// just not scalar / tensor
+// sooo .... here it is manually:
+
+template<typename T>
+requires (is_tensor_v<T>)
+decltype(auto) operator /(T const & a, typename T::Scalar const & b) {
+	return T([&](auto... is) -> typename T::Scalar {
+		return a(is...) / b;
+	});
+}
+
+template<typename T>
+requires (is_tensor_v<T>)
+decltype(auto) operator /(typename T::Scalar const & a, T const & b) {
+	using R = typename T::SumWithScalarResult;
+	return R([&](auto... is) -> typename T::Scalar {
+		return a / b(is...);
+	});
+}
 
 //  tensor/tensor op
 
@@ -3284,50 +3327,36 @@ auto contract(T const & t) {
 
 // naming compat
 template<typename... T>
-auto interior(T&&... args) {
-	return contract(std::forward<T>(args)...);
-}
-
-// naming compat
-template<typename... T>
 auto trace(T&&... args) {
 	return contract(std::forward<T>(args)...);
 }
 
-// diagonalize an index
-// well if it's diagonal, might as well use _sym
-template<int m/*=0*/, typename T>
-requires (is_tensor_v<T>)
-auto diagonal(T const & t) {
-	static_assert(m >= 0 && m < T::rank);
-	/* TODO ::InsertIndex that uses _tensor index indicators for what kind of storage to insert
-	using R = T
-		::ExpandIndex<m>
-		::InsertIndex<m, index_vec<T::dim<m>>>;
-	... but can't use InsertIndex to insert a _sym with the expanded index
-	... maybe instead
-	using R = T
-		::RemoveIndex<m>
-		::InsertIndex<m, index_sym<T::dim<m>>>
-	*/
-	using E = typename T::template ExpandIndex<m>;
-	constexpr int nest = E::template numNestingsToIndex<m>;
-	using R = typename E
-		::template ReplaceNested<
-			nest,
-			_sym<
-				typename E::template Nested<nest+1>,
-				E::template dim<m>
-			>
-		>;
-	return R([&](typename R::intN i) {
-		if (i[m] != i[m+1]) return typename T::Scalar();
-		auto isrc = typename T::intN([&](int j) {
-			if (j >= m) return i[j+1];
-			return i[j];
-		});
-		return t(isrc);
-	});
+//contracts the first index with the next count index and repeat count times
+template<int index, int count, typename A>
+requires (is_tensor_v<A>)
+auto contractN(A const & a) {
+	static_assert(index >= 0 && index < A::rank);
+	static_assert(index + count >= 0 && index + count < A::rank);
+	if constexpr (count == 0) {
+		return a;
+	} else {
+		auto ac = contract<index,index+count>(a);
+		if constexpr (count == 1) {
+			return ac;
+		} else {
+			return contractN<index,count-1>(ac);
+		}
+	}
+}
+
+// this isn't really interior, but more of a mix of interior + outer + contract
+// it is an interior product provided the num. of indexes == A::rank
+// it is matrix-mul if num == 1
+// TODO this could stand to be optimized
+template<int num, typename A, typename B>
+requires (is_tensor_v<A> && is_tensor_v<B>)
+auto interior(A const & a, B const & b) {
+	return contractN<A::rank-num,num>(outer(a,b));
 }
 
 // symmetrize or antisymmetrize a tensor
@@ -3404,7 +3433,21 @@ requires (
 	return makeAsym(outer(a,b));
 }
 
-// operator* is outer+contract
+// Hodge dual
+
+template<typename A>
+requires (
+	is_tensor_v<A>
+	&& A::isSquare
+) auto hodgeDual(A const & a) {
+	static constexpr int rank = A::rank;
+	static constexpr int dim = A::template dim<0>;
+	static_assert(rank <= dim);
+	using S = typename A::Scalar;
+	return interior<rank>(a, _asymR<S, dim, dim>(1)) / (S)factorial(rank);
+}
+
+// operator* is contract(outer(a,b)) ... aka interior1(a,b)
 // TODO maybe generalize further with the # of indexes to contract:
 // c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
 
@@ -3416,7 +3459,8 @@ requires(
 )
 auto operator*(A const & a, B const & b) {
 #if 1	// lazy way.  inline the lambdas and don't waste the outer()'s operation expenses
-		return contract<A::rank-1, A::rank>(outer(a,b));
+	//return contract<A::rank-1, A::rank>(outer(a,b));
+	return interior<1>(a,b);
 #else	// some optimizations, no wasted storage
 // TODO FIXME has some bugs.
 	using S = typename A::Scalar;
@@ -3454,6 +3498,43 @@ auto operator*(A const & a, B const & b) {
 	}
 #endif
 }
+
+// diagonalize an index
+// well if it's diagonal, might as well use _sym
+template<int m/*=0*/, typename T>
+requires (is_tensor_v<T>)
+auto diagonal(T const & t) {
+	static_assert(m >= 0 && m < T::rank);
+	/* TODO ::InsertIndex that uses _tensor index indicators for what kind of storage to insert
+	using R = T
+		::ExpandIndex<m>
+		::InsertIndex<m, index_vec<T::dim<m>>>;
+	... but can't use InsertIndex to insert a _sym with the expanded index
+	... maybe instead
+	using R = T
+		::RemoveIndex<m>
+		::InsertIndex<m, index_sym<T::dim<m>>>
+	*/
+	using E = typename T::template ExpandIndex<m>;
+	constexpr int nest = E::template numNestingsToIndex<m>;
+	using R = typename E
+		::template ReplaceNested<
+			nest,
+			_sym<
+				typename E::template Nested<nest+1>,
+				E::template dim<m>
+			>
+		>;
+	return R([&](typename R::intN i) {
+		if (i[m] != i[m+1]) return typename T::Scalar();
+		auto isrc = typename T::intN([&](int j) {
+			if (j >= m) return i[j+1];
+			return i[j];
+		});
+		return t(isrc);
+	});
+}
+
 
 // specific typed vectors
 
