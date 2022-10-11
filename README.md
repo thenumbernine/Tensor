@@ -220,7 +220,7 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 - `makeAsym(a)` = Create an antisymmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
 	$$makeAsym(a) = a\_{[i\_1 ... i\_ n]} $$
 - `wedge(a,b)` = The wedge product of tensors 'a' and 'b'.
-	$$wedge(a,b)\_I = (a \wedge b)\_I = (Alt (a \outer b))\_I = a\_{i\_1 ... i\_p} b\_{i\_{p+1} ... i\_{p+q}}$$
+	$$wedge(a,b)\_I = (a \wedge b)\_I = (Alt (a \otimes b))\_I = a\_{i\_1 ... i\_p} b\_{i\_{p+1} ... i\_{p+q}}$$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
 	- rank-2 -> rank-0:
 	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
