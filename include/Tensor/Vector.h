@@ -204,6 +204,12 @@ requires (is_tensor_v<T> && T::isSquare)
 auto makeAsym(T const & t);
 
 template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+) auto wedge(A const & a, B const & b);
+
+template<typename A, typename B>
 requires(
 	is_tensor_v<A>
 	&& is_tensor_v<B>
@@ -1391,6 +1397,12 @@ But I forwarded these same method defs into the inner-class Accessors
 	auto makeAsym() const\
 	requires (isSquare) {\
 		return Tensor::makeAsym(*this);\
+	}\
+\
+	template<typename B>\
+	requires (is_tensor_v<B>)\
+	auto wedge(B const & b) const {\
+		return Tensor::wedge(*this, b);\
 	}\
 \
 	template<typename B>\
@@ -3380,6 +3392,16 @@ std::cout << "reading " << ij << " " << t(ij) << std::endl;
 std::cout << "writing " << i << " = " << result << " / " << factorial(T::rank) << std::endl;
 		return result / (S)factorial(T::rank);
 	});
+}
+
+// wedge product
+
+template<typename A, typename B>
+requires (
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+) auto wedge(A const & a, B const & b) {
+	return makeAsym(outer(a,b));
 }
 
 // operator* is outer+contract
