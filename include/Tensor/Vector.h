@@ -182,8 +182,8 @@ requires (is_tensor_v<T>
 )
 auto contract(T const & t);
 
-template<typename... T>
-auto trace(T&&... args);
+template<int m=0, int n=1, typename T>
+auto trace(T&& o);
 
 template<int index=0, int count=1, typename A>
 requires (is_tensor_v<A>)
@@ -1262,19 +1262,11 @@ member methods as wrappers to forward to Tensor namespace methods.
 
 Bit of a hack: MOst these are written in terms of 'This'
 'This' is usu my name for the same class we are currently in.
-But I forwarded these same method defs into the inner-class Accessors
- and I want them to use their containing class types instead of their own type
- so I didn't define a 'This' in them.
- But that's also why I have all the (This)*this's throughout here: 
- so that if the Accessor uses it then it will convert back to the class...
- ..but...
- ...the class doesn't have the same rank ...
- ... hmmmmmmm
 */
 #define TENSOR_ADD_MATH_MEMBER_FUNCS()\
 \
 	auto elemMul(This const & o) const {\
-		return Tensor::elemMul((This)*this, o);\
+		return Tensor::elemMul(*this, o);\
 	}\
 	auto elemMul(This && o) && {\
 		return Tensor::elemMul(std::move(*this), std::forward<This>(o));\
@@ -1282,7 +1274,7 @@ But I forwarded these same method defs into the inner-class Accessors
 \
 	template<typename T>\
 	auto matrixCompMult(T const & o) const {\
-		return Tensor::elemMul((This)*this, o);\
+		return Tensor::elemMul(*this, o);\
 	}\
 	template<typename... T>\
 	auto matrixCompMult(T && ... o) && {\
@@ -1291,7 +1283,7 @@ But I forwarded these same method defs into the inner-class Accessors
 \
 	template<typename T>\
 	auto hadamard(T const & o) const {\
-		return Tensor::elemMul((This)*this, o);\
+		return Tensor::elemMul(*this, o);\
 	}\
 	template<typename... T>\
 	auto hadamard(T && ... o) && {\
@@ -1303,7 +1295,7 @@ But I forwarded these same method defs into the inner-class Accessors
 		is_tensor_v<std::decay_t<B>>\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
 	) Scalar inner(B const & o) const {\
-		return Tensor::inner((This)*this, o);\
+		return Tensor::inner(*this, o);\
 	}\
 	template<typename B>\
 	requires (\
@@ -1314,25 +1306,25 @@ But I forwarded these same method defs into the inner-class Accessors
 	}\
 \
 	auto dot(This const & o) const {\
-		return Tensor::inner((This)*this, o);\
+		return Tensor::inner(*this, o);\
 	}\
 	auto dot(This && o) && {\
 		return Tensor::inner(std::move(*this), std::forward<This>(o));\
 	}\
 \
-	Scalar lenSq() const { return Tensor::lenSq((This)*this); }\
+	Scalar lenSq() const { return Tensor::lenSq(*this); }\
 \
-	Scalar length() const { return Tensor::length((This)*this); }\
+	Scalar length() const { return Tensor::length(*this); }\
 \
 	Scalar distance(This const & o) const {\
-		return Tensor::distance((This)*this, o);\
+		return Tensor::distance(*this, o);\
 	}\
 	Scalar distance(This && o) && {\
 		return Tensor::distance(std::move(*this), std::forward<This>(o));\
 	}\
 \
 	This normalize() const {\
-		return Tensor::normalize((This)*this);\
+		return Tensor::normalize(*this);\
 	}\
 \
 	template<typename B>\
@@ -1342,7 +1334,7 @@ But I forwarded these same method defs into the inner-class Accessors
 		&& B::dims == 3\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
 	) auto cross(B const & b) const {\
-		return Tensor::cross((This)*this, b);\
+		return Tensor::cross(*this, b);\
 	}\
 	template<typename B>\
 	requires (\
@@ -1359,18 +1351,18 @@ But I forwarded these same method defs into the inner-class Accessors
 		is_tensor_v<std::decay_t<B>>\
 		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
 	) auto outer(B const & b) const {\
-		return outer((This)*this, b);\
+		return outer(*this, b);\
 	}\
 \
 	template<typename B>\
 	auto outerProduct(B const & o) const {\
-		return outerProduct((This)*this, o);\
+		return outerProduct(*this, o);\
 	}\
 \
 	template<int m=0, int n=1>\
 	requires (rank >= 2)\
 	auto transpose() const {\
-		return Tensor::transpose<m,n>((This)*this);\
+		return Tensor::transpose<m,n>(*this);\
 	}\
 \
 	template<int m=0, int n=1>\
@@ -1379,7 +1371,7 @@ But I forwarded these same method defs into the inner-class Accessors
 		&& n < rank\
 		&& This::template dim<m> == This::template dim<n>\
 	) auto contract() const {\
-		return Tensor::contract<m, n>((This)*this);\
+		return Tensor::contract<m, n>(*this);\
 	}\
 \
 	template<int index=0, int count=1>\
@@ -1389,17 +1381,17 @@ But I forwarded these same method defs into the inner-class Accessors
 \
 	template<int num=1, typename T>\
 	auto interior(T const & o) const {\
-		return Tensor::interior<num,This,T>((This)*this, o);\
+		return Tensor::interior<num,This,T>(*this, o);\
 	}\
 \
-	template<typename T>\
-	auto trace(T const & o) const {\
-		return Tensor::trace((This)*this, o);\
+	template<int m=0, int n=1>\
+	auto trace() const {\
+		return Tensor::trace<m,n,This>(*this);\
 	}\
 \
 	template<int m=0>\
 	auto diagonal() const {\
-		return Tensor::diagonal<m>((This)*this);\
+		return Tensor::diagonal<m>(*this);\
 	}\
 \
 	auto makeSym() const\
@@ -1438,11 +1430,11 @@ But I forwarded these same method defs into the inner-class Accessors
 	/*}*/\
 \
 	This inverse(Scalar const & det) const {\
-		return Tensor::inverse((This)*this, det);\
+		return Tensor::inverse(*this, det);\
 	}\
 \
 	This inverse() const {\
-		return Tensor::inverse((This)*this);\
+		return Tensor::inverse(*this);\
 	}
 
 #define TENSOR_ADD_INDEX_NOTATION_CALL()\
@@ -3323,9 +3315,9 @@ auto contract(T const & t) {
 }
 
 // naming compat
-template<typename... T>
-auto trace(T&&... args) {
-	return contract(std::forward<T>(args)...);
+template<int m, int n, typename T>
+auto trace(T&& args) {
+	return contract<m,n,T>(std::forward<T>(args));
 }
 
 //contracts the first index with the next count index and repeat count times
