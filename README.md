@@ -225,7 +225,9 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
 	- rank-N -> rank-(N+1), N>=1:
 	$$diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
-- `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
+- `determinant(m)` = Matrix determinant.
+		For 2D this is equivalent to `_asymR<T,2,2>(1) * m.x * m.y`.
+		For 3D this is equal to `dot(cross(m.x, m.y), m.z)`, i.e. `_asymR<T,3,3>(1) * m.x * m.y * m.z`.
 	- rank-2 -> rank-0:
 	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
 - `inverse(m)` = Matrix inverse, for rank-2 tensors.
