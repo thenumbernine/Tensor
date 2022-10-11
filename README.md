@@ -112,6 +112,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `::rank` = For determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
 - `::dim<i>` = Get the i'th dimension size , where i is from 0 to rank-1.
 - `::dims` = Get a int-vector with all the dimensions.  For rank-1 this is just an int.  Maybe I'll change it to be intN for all ranks, not sure.
+- `::isSquare` = true if all dimensions match, false otherwise.  Yes that means vectors are square.  Maybe I'll change the name.
 - `::localDim` = Get the dimension size of the current class, equal to `dim<0>`.
 - `::numNestings` = Get the number of template-argument-nested classes.  Equivalent to the number of Inner's in `tensor::Inner::...::Inner`.
 - `::count<i>` = Get the storage size of the i'th nested class.  i is from 0 to numNestings-1.
@@ -214,6 +215,10 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
 	- rank-N -> rank-(N+1), N>=1:
 	$$diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
+- `makeSym(a)` = Create a symmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
+	$$makeSym(a) = a\_{(i\_1 ... i\_ n)} $$
+- `makeAsym(a)` = Create an antisymmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
+	$$makeAsym(a) = a\_{[i\_1 ... i\_ n]} $$
 - `determinant(m)` = Matrix determinant, equal to `dot(cross(m.x, m.y), m.z)`.
 	- rank-2 -> rank-0:
 	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
@@ -312,7 +317,7 @@ TODO:
 	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().
 	in fact, why don't I just do that now?
 	that would spare me the need for `_sym`'s operator[int]
-	but dno't forget `_asym` still needs to return an AntiSymRef , whether we allow off-storage indexing or not.
+	but don't forget `_asym` still needs to return an AntiSymRef , whether we allow off-storage indexing or not.
 	so meh i might as well keep it around?
 
 - somehow for differing-typed tensors get operator== constexpr
@@ -324,3 +329,7 @@ TODO:
 - RemoveIthIndex of `_symR` or `_asymR` should preserve the (anti)symmetry of the remaining indexes.  Atm it just turns the whole thing into a expanded-tensor.
 
 - Note to self (and anyone else listening), while GitHub MarkDown handles `_`'s correctly within `` ` ``'s , it fails within MathJax `$`'s and `$$`'s which means you have to escape all your `_`'s within your MathJax as `\_`.
+
+- eventually merge `_sym` and `_asym` with `_symR` and `_asymR` ... but don't til enough sorts/loops are compile-time.
+		
+- `operator+=` etc for AntiSymRef

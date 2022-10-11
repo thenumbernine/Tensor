@@ -195,6 +195,14 @@ template<int m=0, typename T>
 requires (is_tensor_v<T>)
 auto diagonal(T const & t);
 
+template<typename T>
+requires (is_tensor_v<T> && T::isSquare)
+auto makeSym(T const & t);
+
+template<typename T>
+requires (is_tensor_v<T> && T::isSquare)
+auto makeAsym(T const & t);
+
 template<typename A, typename B>
 requires(
 	is_tensor_v<A>
@@ -202,12 +210,14 @@ requires(
 	&& A::template dim<A::rank-1> == B::template dim<0>
 ) auto operator*(A const & a, B const & b);
 
+// these are in Inverse.h:
+// they are giving me link errors.
+// do I have to forward-declare all template partial specializations to fix it?
+// idk, never fixed it, just avoid using .determinant() instead 
 
 template<typename T>
 requires is_tensor_v<T>
 inline typename T::Scalar determinant(T const & a);
-
-// TODO do I have to forward-declare all template partial specializations?
 
 template<typename T>
 T determinant(_mat<T,1,1> const & a);
@@ -648,6 +658,17 @@ ReplaceScalar<typename>
 	}\
 	static constexpr auto dims = DimsImpl();\
 	/* TODO index_sequence of dims? */\
+\
+	struct IsSquareImpl {\
+		static constexpr bool value() {\
+			if constexpr (is_tensor_v<Inner>) {\
+				return Inner::isSquare && Inner::localDim == localDim;\
+			} else {\
+				return true;\
+			}\
+		}\
+	};\
+	static constexpr bool isSquare = IsSquareImpl::value();\
 \
 	template<typename NewScalar>\
 	struct ReplaceScalarImpl {\
@@ -1360,6 +1381,16 @@ But I forwarded these same method defs into the inner-class Accessors
 	template<int m=0>\
 	auto diagonal() const {\
 		return Tensor::diagonal<m>((This)*this);\
+	}\
+\
+	auto makeSym() const\
+	requires (isSquare) {\
+		return Tensor::makeSym(*this);\
+	}\
+\
+	auto makeAsym() const\
+	requires (isSquare) {\
+		return Tensor::makeAsym(*this);\
 	}\
 \
 	template<typename B>\
@@ -2518,6 +2549,24 @@ struct initIntVecWithSequence<std::integer_sequence<T, I...>> {
 	}
 };
 
+// bubble-sorts 'i', sets 'flip' if an odd # of flips were required to sort it
+//  returns 'true' if any duplicate indexes were found (and does not finish sorting)
+template<int N>
+bool antisymSortAndCountFlips(_vec<int,N> & i, bool & flip) {
+	flip = false;
+	for (int k = 0; k < N-1; ++k) {
+		for (int j = 0; j < N-k-1; ++j) {
+			if (i[j] == i[j+1]) {
+				return true;
+			} else if (i[j] > i[j+1]) {
+				std::swap(i[j], i[j+1]);
+				flip = !flip;
+			}
+		}
+	}
+	return false;
+}
+
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
 \
 	static constexpr int localCount = antisymmetricSize(localDim, localRank);\
@@ -2643,22 +2692,6 @@ from my symmath/tensor/LeviCivita.lua
 */
 #define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_CALL_INDEX()\
 \
-	/* I'm not using this, but I could use it */\
-	static constexpr AntiSymRefHow sortAndFlip(intNLocal & i) {\
-		for (int j = 0; j < localRank-1; ++j) {\
-			if (i(j) == i(j+1)) return AntiSymRefHow::ZERO;\
-			if (i(j) > i(j+1)) {\
-				std::swap(i(j), i(j+1));\
-				AntiSymRefHow result = sortAndFlip(i);\
-				if (result == AntiSymRefHow::POSITIVE || result == AntiSymRefHow::NEGATIVE) {\
-					result = (AntiSymRefHow)((int)result ^ 1);\
-				}\
-				return result;\
-			}\
-		}\
-		return AntiSymRefHow::POSITIVE;\
-	}\
-\
 	/* In the case of AntiSymRef, if we have a partial-indexing then the Accessor is returned but the signs aren't flipped.*/\
 	/* It's not until the full indexing is made that the sign is determined in the AntiSymRef. */\
 	/* This way the Accessor doesn't need to remember the AntiSymRef::how state. */\
@@ -2669,32 +2702,14 @@ from my symmath/tensor/LeviCivita.lua
 		if constexpr (N < localRank) {\
 			return Accessor<This, N>(*this, i);\
 		} else if constexpr (N == localRank) {\
-			/* bubble-sort indexes */\
 			bool flip = false;\
-			for (int k = 0; k < localRank-1; ++k) {\
-				for (int j = 0; j < localRank-k-1; ++j) {\
-					if (i[j] == i[j+1]) {\
-						return AntiSymRef<Inner>();\
-					} else if (i[j] > i[j+1]) {\
-						std::swap(i[j], i[j+1]);\
-						flip = !flip;\
-					}\
-				}\
-			}\
+			if (antisymSortAndCountFlips(i, flip)) return AntiSymRef<Inner>();\
 			return AntiSymRef<Inner>(s[getLocalWriteForReadIndex(i)], flip ? AntiSymRefHow::NEGATIVE : AntiSymRefHow::POSITIVE);\
 		} else if constexpr (N > localRank) {\
-			/* bubble-sort indexes */\
 			bool flip = false;\
-			for (int k = 0; k < localRank-1; ++k) {\
-				for (int j = 0; j < localRank-k-1; ++j) {\
-					if (i[j] == i[j+1]) {\
-						using R = decltype((*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
-						return R();\
-					} else if (i[j] > i[j+1]) {\
-						std::swap(i[j], i[j+1]);\
-						flip = !flip;\
-					}\
-				}\
+			if (antisymSortAndCountFlips(i, flip)) {\
+				using R = decltype((*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
+				return R();\
 			}\
 			/* call-thru of AntiSymRef returns another AntiSymRef ... */\
 			auto result = (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
@@ -2707,32 +2722,14 @@ from my symmath/tensor/LeviCivita.lua
 		if constexpr (N < localRank) {\
 			return Accessor<This const, N>(*this, i);\
 		} else if constexpr (N == localRank) {\
-			/* bubble-sort indexes */\
 			bool flip = false;\
-			for (int k = 0; k < localRank-1; ++k) {\
-				for (int j = 0; j < localRank-k-1; ++j) {\
-					if (i[j] == i[j+1]) {\
-						return AntiSymRef<Inner const>();\
-					} else if (i[j] > i[j+1]) {\
-						std::swap(i[j], i[j+1]);\
-						flip = !flip;\
-					}\
-				}\
-			}\
+			if (antisymSortAndCountFlips(i, flip)) return AntiSymRef<Inner const>();\
 			return AntiSymRef<Inner const>(s[getLocalWriteForReadIndex(i)], flip ? AntiSymRefHow::NEGATIVE : AntiSymRefHow::POSITIVE);\
 		} else if constexpr (N > localRank) {\
-			/* bubble-sort indexes */\
 			bool flip = false;\
-			for (int k = 0; k < localRank-1; ++k) {\
-				for (int j = 0; j < localRank-k-1; ++j) {\
-					if (i[j] == i[j+1]) {\
-						using R = decltype((*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
-						return R();\
-					} else if (i[j] > i[j+1]) {\
-						std::swap(i[j], i[j+1]);\
-						flip = !flip;\
-					}\
-				}\
+			if (antisymSortAndCountFlips(i, flip)) {\
+				using R = decltype((*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
+				return R();\
 			}\
 			/* call-thru of AntiSymRef returns another AntiSymRef ... */\
 			auto result = (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
@@ -3321,6 +3318,70 @@ auto diagonal(T const & t) {
 	});
 }
 
+// symmetrize or antisymmetrize a tensor
+//  I am not convinced this should be the default casting operation from non-(a)sym to (a)sym since it incurs a few more operations
+// but it should def be made available
+
+template<typename T>
+requires (is_tensor_v<T> && T::isSquare)
+auto makeSym(T const & t) {
+	using S = typename T::Scalar;
+	using intN = typename T::intN;
+	using R = std::conditional_t<T::rank == 2,
+		_sym<S, T::template dim<0>>,
+		_symR<S, T::template dim<0>, T::rank>>;
+	// iterate over write index, then iterate over all permutations of the read index and sum
+	return R([&](intN i) -> S {
+		S result = {};
+		//'j' is our permutation
+		intN j = initIntVecWithSequence<std::make_integer_sequence<int, T::rank>>::value();
+		do {
+			// 'ij' is 'i' permuted by 'j'
+			intN ij = [&](int k) -> int { return i[j[k]]; };
+std::cout << "reading " << ij << " " << t(ij) << std::endl;			
+			result += t(ij);
+		} while (std::next_permutation(j.s.begin(), j.s.end()));
+std::cout << "writing " << i << " = " << result << " / " << factorial(T::rank) << std::endl;
+		return result / (S)factorial(T::rank);
+	});
+}
+
+//that's right, same function, just different return type
+template<typename T>
+requires (is_tensor_v<T> && T::isSquare)
+auto makeAsym(T const & t) {
+	using S = typename T::Scalar;
+	using intN = typename T::intN;
+	using R = std::conditional_t<T::rank == 2,
+		_asym<S, T::template dim<0>>,
+		_asymR<S, T::template dim<0>, T::rank>>;
+	// iterate over write index, then iterate over all permutations of the read index and sum
+	return R([&](intN i) -> S {
+		S result = {};
+		//'j' is our permutation
+		intN j = initIntVecWithSequence<std::make_integer_sequence<int, T::rank>>::value();
+		do {
+			//count # of flips
+			// TODO combine this with next_permutation so you don't have to keep recounting
+			intN sortedj = j;
+			bool flip = false;
+			if (antisymSortAndCountFlips(sortedj, flip)) {
+				throw Common::Exception() << "shouldn't get here";
+			}
+			// 'ij' is 'i' permuted by 'j'
+			intN ij = [&](int k) -> int { return i[j[k]]; };
+std::cout << "reading " << ij << " " << t(ij) << std::endl;			
+			if (flip) {
+				result -= t(ij);
+			} else {
+				result += t(ij);
+			}
+		} while (std::next_permutation(j.s.begin(), j.s.end()));
+std::cout << "writing " << i << " = " << result << " / " << factorial(T::rank) << std::endl;
+		return result / (S)factorial(T::rank);
+	});
+}
+
 // operator* is outer+contract
 // TODO maybe generalize further with the # of indexes to contract:
 // c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
@@ -3357,7 +3418,7 @@ auto operator*(A const & a, B const & b) {
 			});
 			auto bi = typename B::intN([&](int j) -> int {
 				if (j == 0) return 0;
-				j -= A::rank;
+				j -= A::rank-1;
 				return i[j];
 			});
 			S sum = a(ai) * b(bi);
@@ -3374,8 +3435,16 @@ auto operator*(A const & a, B const & b) {
 
 // specific typed vectors
 
-#define TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, dim1)\
-using nick##dim1 = nick##N<dim1>;\
+// TODO i think these slow the build down a bit
+//  put it in a test cpp file
+//  but that means reconstructing the macros that build the nick etc
+//#ifdef DEBUG
+//#define TENSOR_USE_STATIC_ASSERTS
+//#endif
+
+#ifdef TENSOR_USE_STATIC_ASSERTS
+
+#define TENSOR_ADD_VECTOR_STATIC_ASSERTS(nick,ctype,dim)\
 static_assert(sizeof(nick##dim1) == sizeof(ctype) * dim1);\
 static_assert(std::is_same_v<nick##dim1::Scalar, ctype>);\
 static_assert(std::is_same_v<nick##dim1::Inner, ctype>);\
@@ -3384,8 +3453,7 @@ static_assert(nick##dim1::dim<0> == dim1);\
 static_assert(nick##dim1::numNestings == 1);\
 static_assert(nick##dim1::count<0> == dim1);
 
-#define TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, dim1, dim2)\
-using nick##dim1##x##dim2 = nick##MxN<dim1,dim2>;\
+#define TENSOR_ADD_MATRIX_STATIC_ASSERTS(nick, ctype, dim1, dim2)\
 static_assert(sizeof(nick##dim1##x##dim2) == sizeof(ctype) * dim1 * dim2);\
 static_assert(nick##dim1##x##dim2::rank == 2);\
 static_assert(nick##dim1##x##dim2::dim<0> == dim1);\
@@ -3394,8 +3462,7 @@ static_assert(nick##dim1##x##dim2::numNestings == 2);\
 static_assert(nick##dim1##x##dim2::count<0> == dim1);\
 static_assert(nick##dim1##x##dim2::count<1> == dim2);
 
-#define TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
-using nick##dim12##s##dim12 = nick##NsN<dim12>;\
+#define TENSOR_ADD_SYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)\
 static_assert(sizeof(nick##dim12##s##dim12) == sizeof(ctype) * triangleSize(dim12));\
 static_assert(std::is_same_v<typename nick##dim12##s##dim12::Scalar, ctype>);\
 static_assert(nick##dim12##s##dim12::rank == 2);\
@@ -3404,8 +3471,7 @@ static_assert(nick##dim12##s##dim12::dim<1> == dim12);\
 static_assert(nick##dim12##s##dim12::numNestings == 1);\
 static_assert(nick##dim12##s##dim12::count<0> == triangleSize(dim12));
 
-#define TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
-using nick##dim12##a##dim12 = nick##NaN<dim12>;\
+#define TENSOR_ADD_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)\
 static_assert(sizeof(nick##dim12##a##dim12) == sizeof(ctype) * triangleSize(dim12-1));\
 static_assert(std::is_same_v<typename nick##dim12##a##dim12::Scalar, ctype>);\
 static_assert(nick##dim12##a##dim12::rank == 2);\
@@ -3414,8 +3480,7 @@ static_assert(nick##dim12##a##dim12::dim<1> == dim12);\
 static_assert(nick##dim12##a##dim12::numNestings == 1);\
 static_assert(nick##dim12##a##dim12::count<0> == triangleSize(dim12-1));
 
-#define TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
-using nick##dim12##i##dim12 = nick##NiN<dim12>;\
+#define TENSOR_ADD_IDENTITY_STATIC_ASSERTS(nick, ctype, dim12)\
 static_assert(sizeof(nick##dim12##i##dim12) == sizeof(ctype));\
 static_assert(std::is_same_v<typename nick##dim12##i##dim12::Scalar, ctype>);\
 static_assert(nick##dim12##i##dim12::rank == 2);\
@@ -3424,8 +3489,7 @@ static_assert(nick##dim12##i##dim12::dim<1> == dim12);\
 static_assert(nick##dim12##i##dim12::numNestings == 1);\
 static_assert(nick##dim12##i##dim12::count<0> == 1);
 
-#define TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, localDim, localRank, suffix)\
-using nick##suffix = nick##NsR<localDim, localRank>;\
+#define TENSOR_ADD_TOTALLY_SYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)\
 static_assert(sizeof(nick##suffix) == sizeof(ctype) * symmetricSize(localDim, localRank));\
 static_assert(std::is_same_v<typename nick##suffix::Scalar, ctype>);\
 static_assert(nick##suffix::rank == localRank);\
@@ -3433,14 +3497,53 @@ static_assert(nick##suffix::dim<0> == localDim); /* TODO repeat depending on dim
 static_assert(nick##suffix::numNestings == 1);\
 static_assert(nick##suffix::count<0> == symmetricSize(localDim, localRank));
 
-#define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, localDim, localRank, suffix)\
-using nick##suffix = nick##NaR<localDim, localRank>;\
+#define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)\
 static_assert(sizeof(nick##suffix) == sizeof(ctype) * antisymmetricSize(localDim, localRank));\
 static_assert(std::is_same_v<typename nick##suffix::Scalar, ctype>);\
 static_assert(nick##suffix::rank == localRank);\
 static_assert(nick##suffix::dim<0> == localDim); /* TODO repeat depending on dimension */\
 static_assert(nick##suffix::numNestings == 1);\
 static_assert(nick##suffix::count<0> == antisymmetricSize(localDim, localRank));
+
+#else //TENSOR_USE_STATIC_ASSERTS
+
+#define TENSOR_ADD_VECTOR_STATIC_ASSERTS(nick,ctype,dim)
+#define TENSOR_ADD_MATRIX_STATIC_ASSERTS(nick, ctype, dim1, dim2)
+#define TENSOR_ADD_SYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
+#define TENSOR_ADD_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
+#define TENSOR_ADD_IDENTITY_STATIC_ASSERTS(nick, ctype, dim12)
+#define TENSOR_ADD_TOTALLY_SYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
+#define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
+
+#endif //TENSOR_USE_STATIC_ASSERTS
+
+#define TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, dim1)\
+using nick##dim1 = nick##N<dim1>;\
+TENSOR_ADD_VECTOR_STATIC_ASSERTS(nick, ctype,dim1);
+
+#define TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, dim1, dim2)\
+using nick##dim1##x##dim2 = nick##MxN<dim1,dim2>;\
+TENSOR_ADD_MATRIX_STATIC_ASSERTS(nick, ctype, dim1, dim2)
+
+#define TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+using nick##dim12##s##dim12 = nick##NsN<dim12>;\
+TENSOR_ADD_SYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
+
+#define TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+using nick##dim12##a##dim12 = nick##NaN<dim12>;\
+TENSOR_ADD_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
+
+#define TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+using nick##dim12##i##dim12 = nick##NiN<dim12>;\
+TENSOR_ADD_IDENTITY_STATIC_ASSERTS(nick, ctype, dim12)
+
+#define TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, localDim, localRank, suffix)\
+using nick##suffix = nick##NsR<localDim, localRank>;\
+TENSOR_ADD_TOTALLY_SYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
+
+#define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, localDim, localRank, suffix)\
+using nick##suffix = nick##NaR<localDim, localRank>;\
+TENSOR_ADD_TOTALLY_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
 
 #define TENSOR_ADD_NICKNAME_TYPE(nick, ctype)\
 /* typed vectors */\

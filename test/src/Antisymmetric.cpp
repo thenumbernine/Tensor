@@ -180,6 +180,11 @@ void test_Antisymmetric() {
 			{-26, -20, 38},
 		}));
 
+		static_assert(std::is_same_v<decltype(makeSym(ma)), Tensor::float3s3>);
+		TEST_EQ( .5f * (ma + transpose(ma)), (Tensor::float3x3)makeSym(ma));
+		static_assert(std::is_same_v<decltype(ma.makeAsym()), Tensor::float3a3>);
+		TEST_EQ( .5f * (ma - transpose(ma)), (Tensor::float3x3)ma.makeAsym());
+
 		// TODO outer of antisym and ident is failing ...
 		auto I = Tensor::_ident<float, 3>(1);
 		auto aOuterI = outer(a, I);
