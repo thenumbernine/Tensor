@@ -45,16 +45,13 @@ if I do column-major then C inline indexing is transposed
 
 #include "Tensor/AntiSymRef.h"
 #include "Common/String.h"
+#include "Common/Exception.h"
 #include <tuple>
 #include <functional>	//reference_wrapper, also function<> is by Partial
 #include <cmath>		//sqrt()
 
 #ifdef DEBUG
 #define TENSOR_USE_BOUNDS_CHECKING
-#endif
-
-#ifdef TENSOR_USE_BOUNDS_CHECKING //only for bounds checking ... but  maybe not if constexpr doens't like exceptions
-#include "Common/Exception.h"
 #endif
 
 #ifdef TENSOR_USE_BOUNDS_CHECKING
@@ -3379,10 +3376,8 @@ auto makeSym(T const & t) {
 		do {
 			// 'ij' is 'i' permuted by 'j'
 			intN ij = [&](int k) -> int { return i[j[k]]; };
-std::cout << "reading " << ij << " " << t(ij) << std::endl;			
 			result += t(ij);
 		} while (std::next_permutation(j.s.begin(), j.s.end()));
-std::cout << "writing " << i << " = " << result << " / " << factorial(T::rank) << std::endl;
 		return result / (S)factorial(T::rank);
 	});
 }
@@ -3411,14 +3406,12 @@ auto makeAsym(T const & t) {
 			}
 			// 'ij' is 'i' permuted by 'j'
 			intN ij = [&](int k) -> int { return i[j[k]]; };
-std::cout << "reading " << ij << " " << t(ij) << std::endl;			
 			if (flip) {
 				result -= t(ij);
 			} else {
 				result += t(ij);
 			}
 		} while (std::next_permutation(j.s.begin(), j.s.end()));
-std::cout << "writing " << i << " = " << result << " / " << factorial(T::rank) << std::endl;
 		return result / (S)factorial(T::rank);
 	});
 }
