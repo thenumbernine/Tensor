@@ -235,6 +235,5 @@ void test_Antisymmetric() {
 		auto az = a[2];
 		ECHO(az.lenSq());
 #endif
-exit(1);
 	}
 }

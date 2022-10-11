@@ -30,16 +30,16 @@ the * operator for tensor/tensor should be an outer+contract, ex:
 	rank-3 a * rank-3 b = a_ijk * b_klm = c_ijlm
 
 
-TODO TODO
-	if I do row-major then
-		- C bracket ctor is in the same layout as the matrix
-		- C notation matches matrix notation : A[i0][i1] = A_i0_i1
-		- memory layout is transposed from nested index order: A_i0_i1 = A[i1 + i0 * size0]
-	if I do column-major then C inline indexing is transposed
-		- C bracket ctor is transposed from the layout of the matrix
-		- matrix notation is transposed: A[j][i] == A_ij
-		- memory layout matches nested index order: A_i0_i1 = A[i0 + size0 * i1]
-		- OpenGL uses this too.
+if I do row-major then
+	- C bracket ctor is in the same layout as the matrix
+	- C notation matches matrix notation : A[i0][i1] = A_i0_i1
+	- memory layout is transposed from nested index order: A_i0_i1 = A[i1 + i0 * size0]
+if I do column-major then C inline indexing is transposed
+	- C bracket ctor is transposed from the layout of the matrix
+	- matrix notation is transposed: A[j][i] == A_ij
+	- memory layout matches nested index order: A_i0_i1 = A[i0 + size0 * i1]
+	- OpenGL uses this too.
+...Row Major it is.
 
 */
 
@@ -111,6 +111,15 @@ template<typename T> using _asym2 = _asym<T,2>;
 template<typename T> using _asym3 = _asym<T,3>;
 template<typename T> using _asym4 = _asym<T,4>;
 
+//index-access classes
+struct IndexBase {};
+
+template<char ident>
+struct Index : public IndexBase {};
+
+//forward-declare for index-access
+template<typename Tensor_, typename IndexVector>
+struct IndexAccess;
 
 
 //forward-declare, body is below all tensor classes.
@@ -293,6 +302,37 @@ inline T inverse(T const & a);
 #define TENSOR_EXPAND_TEMPLATE_TENSORR()\
 	template<int index>\
 	using ExpandTensorRankTemplate = _tensorr<Inner, localDim, localRank>;
+
+#if 0
+/* 
+ok I enjoyed the model of inner classes that look like:
+template<...> struct ... {
+	static constexpr auto value() {
+		if constexpr (cond1) {
+			return TypeWrapper<type1>();
+		} else if constexpr (cond2) {
+			return TypeWrapper<type2>();
+		} else ...
+	}
+	using type = typename decltype(value())::type;
+};
+... but the compile times are ridiculously slow, and I suspect this might be one reason why.
+Also with gdb it will actually list out all these inner classes, which makes debugging a pain (good thing lldb doesn't).
+*/
+namespace details {
+
+template<typename T>
+struct ScalarImpl {
+	using type = T;
+};
+template<typename T>
+requires is_tensor_v<T> // or TODO 'requires has_Scalar_v` ?
+struct ScalarImpl<T> {
+	using type = typename ScalarImpl<typename T::Inner>::type;
+};
+
+}
+#endif
 
 /*
 This contains definitions of types and values used in all tensors.
@@ -1344,6 +1384,12 @@ But I forwarded these same method defs into the inner-class Accessors
 		return Tensor::inverse((This)*this);\
 	}
 
+#define TENSOR_ADD_INDEX_NOTATION_CALL()\
+	template<typename IndexType, typename... IndexTypes>\
+	requires (std::is_base_of_v<IndexBase, IndexType>)\
+	decltype(auto) operator()(IndexType, IndexTypes...) {\
+		return IndexAccess<This, std::tuple<IndexType, IndexTypes...>>(*this);\
+	}
 
 //these are all per-element assignment operators,
 // so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
@@ -1362,7 +1408,7 @@ But I forwarded these same method defs into the inner-class Accessors
 	TENSOR_ADD_UNM()\
 	TENSOR_ADD_CMP_OP()\
 	TENSOR_ADD_MATH_MEMBER_FUNCS()
-
+	/*TENSOR_ADD_INDEX_NOTATION_CALL()*/
 
 // vector-specific macros:
 
@@ -3580,3 +3626,4 @@ template<std::size_t I, typename T, std::size_t N> constexpr T const && get(Tens
 // because at the top I have the forward-declaration to the functions in this include
 // so it had better come next
 #include "Tensor/Inverse.h"	
+#include "Tensor/Index.h"

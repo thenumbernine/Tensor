@@ -4,29 +4,29 @@
 
 void test_Index() {
 #if 0 // TODO	
-	using Real = double;
+	using real = double;
 	//index assignment
 	{
-		Tensor::Tensor<Real, Tensor::Upper<3>> a(1);
-		Tensor::Tensor<Real, Tensor::Lower<3>> b(2);
+		auto a = Tensor::_tensor<real, 3>(1);
+		auto b = Tensor::_tensor<real, 3>(2);
 
 		TEST_EQ(a.rank, 1);
 		TEST_EQ(b.rank, 1);
 
-		TEST_EQ(a, (Tensor::Tensor<Real, Tensor::Upper<3>>(1)));
-		TEST_EQ(b, (Tensor::Tensor<Real, Tensor::Lower<3>>(2)));
+		TEST_EQ(a, (Tensor::_tensor<real, 3>(1)));
+		TEST_EQ(b, (Tensor::_tensor<real, 3>(2)));
 
 		Tensor::Index<'i'> i;
 		a(i) = b(i);
 
-		TEST_EQ(a, (Tensor::Tensor<Real, Tensor::Upper<3>>(2)));
+		TEST_EQ(a, (Tensor::_tensor<real, 3>(2)));
 	}
 	
 	{
 		//make sure 2D swizzling works
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
-		Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Upper<3>> m;
+		Tensor::_tensor<real, 3, 3> m;
 		m(1,0) = 1;
 		ECHO(m);
 		m(i,j) = m(j,i);
@@ -40,7 +40,7 @@ void test_Index() {
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
 		Tensor::Index<'k'> k;
-		Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Upper<3>, Tensor::Upper<3>> s;
+		Tensor::_tensor<real, 3, 3, 3> s;
 		s(0,1,0) = 1;
 		ECHO(s);
 		s(i,j,k) = s(j,k,i);	//s(0,0,1) = s(0,1,0)
@@ -53,8 +53,8 @@ void test_Index() {
 		//arithemetic operations
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
-		Tensor::Tensor<Real, Tensor::Upper<3>> b, c;
-		Tensor::Tensor<Real, Tensor::Upper<3>, Tensor::Lower<3>> a;
+		Tensor::_tensor<real, 3> b, c;
+		Tensor::_tensor<real, 3, 3> a;
 
 		b(0) = 1;
 		b(1) = 2;
@@ -76,7 +76,7 @@ void test_Index() {
 		a(i,j) = b(i) * c(j) - b(j) * c(i);
 
 		//inner product?
-		Real dot = b(i) * c(i);
+		real dot = b(i) * c(i);
 
 		//matrix multiplication
 		c(i) = a(i,j) * b(j);

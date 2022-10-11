@@ -192,14 +192,41 @@ void test_Vector() {
 		Tensor::float3 f2;
 		std::copy(f2.begin(), f2.end(), f.begin()); // crashing ...
 		TEST_EQ(f, f2);
-	
+
+		//verify iterators look alright
+		// btw std::copy might work dif in release than debug?
+		{
+			std::array<float, 3> fa;
+			auto fai = fa.begin();
+			auto fi = f.begin();
+			TEST_EQ(fi.index, Tensor::intN<1>(0));
+			TEST_NE(fi, f.end());
+			TEST_EQ(&*fi, &f[0]);
+			TEST_EQ(&*fai, &fa[0]);
+			++fai; ++fi;
+			TEST_EQ(fi.index, Tensor::intN<1>(1));
+			TEST_NE(fi, f.end());
+			TEST_EQ(&*fi, &f[1]);
+			TEST_EQ(&*fai, &fa[1]);
+			++fai; ++fi;
+			TEST_EQ(fi.index, Tensor::intN<1>(2));
+			TEST_NE(fi, f.end());
+			TEST_EQ(&*fi, &f[2]);
+			TEST_EQ(&*fai, &fa[2]);
+			++fai; ++fi;
+			TEST_EQ(fi.index, Tensor::intN<1>(3));
+			TEST_EQ(fi, f.end());
+		}
+
 		// iterator copy from somewhere else
-		std::array<float, 3> fa;
-		std::copy(fa.begin(), fa.end(), f.begin());
-		TEST_EQ(fa[0], f[0]);
-		TEST_EQ(fa[1], f[1]);
-		TEST_EQ(fa[2], f[2]);
-	
+		{
+			std::array<float, 3> fa;
+			std::copy(f.begin(), f.end(), fa.begin());
+			TEST_EQ(fa[0], f[0]);
+			TEST_EQ(fa[1], f[1]);
+			TEST_EQ(fa[2], f[2]);
+		}
+
 		// operators
 		operatorScalarTest(f);
 	

@@ -1,7 +1,6 @@
 #include "Test/Test.h"
 
 int main() {
-	test_Index();
 	test_AntiSymRef();
 	test_Vector();
 	test_Quat();
@@ -13,4 +12,5 @@ int main() {
 	test_TensorRank4();
 	test_TotallySymmetric();
 	test_TotallyAntisymmetric();
+	test_Index();
 }
