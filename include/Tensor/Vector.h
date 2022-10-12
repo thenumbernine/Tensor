@@ -183,7 +183,7 @@ requires (is_tensor_v<T>
 auto contract(T const & t);
 
 template<int m=0, int n=1, typename T>
-auto trace(T&& o);
+auto trace(T const & o);
 
 template<int index=0, int count=1, typename A>
 requires (is_tensor_v<A>)
@@ -232,38 +232,6 @@ requires(
 template<typename T>
 requires is_tensor_v<T>
 inline typename T::Scalar determinant(T const & a);
-
-template<typename T>
-T determinant(_mat<T,1,1> const & a);
-
-template<typename T>
-T determinant(_mat2x2<T> const & a);
-
-template<typename T>
-T determinant(_mat3x3<T> const & a);
-
-template<typename T>
-T determinant(_mat4x4<T> const & a);
-
-template<typename T, int dim>
-requires (dim > 4)
-T determinant(_mat<T,dim,dim> const & a);
-
-template<typename T>
-T determinant(_sym<T,1> const & a);
-
-template<typename T>
-T determinant(_sym2<T> const & a);
-
-template<typename T>
-T determinant(_sym3<T> const & a);
-
-template<typename T>
-T determinant(_sym4<T> const & a);
-
-template<typename T, int dim>
-requires (dim > 4)
-T determinant(_sym<T,dim> const & a);
 
 template<typename T>
 requires is_tensor_v<T>
@@ -893,8 +861,8 @@ ReplaceScalar<typename>
 
 #define TENSOR_ADD_LIST_CTOR(classname)\
 	classname(std::initializer_list<Inner> l)\
-	 /* only do list constructor for non-specialized types */\
-	 /*(cuz they already accept lists via matching with their ctor args) */\
+	/* only do list constructor for non-specialized types */\
+	/*(cuz they already accept lists via matching with their ctor args) */\
 	/* a better requires would check for these ctors existence */\
 	requires (localDim > 4)\
 	{\
@@ -2377,64 +2345,66 @@ inline constexpr int symmetricSize(int d, int r) {
 	}
 
 // making operator()(int...) the primary, and operator()(intN<>) the secondary
-// TODO needs some templates for splitting a parameter-pack
-#if 0
+// TODO forwarding of args
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
 \
+	template<typename ThisConst, typename TupleSoFar, typename Arg, typename... Args>\
+	decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, Arg arg, Args... args) {\
+		return callGtLocalRankImpl<ThisConst>(\
+			t,\
+			std::tuple_cat(\
+				sofar,\
+				std::make_tuple(arg)\
+			),\
+			args...);\
+	}\
+	template<typename ThisConst, typename TupleSoFar, typename... Args>\
+	decltype(auto) callGtLocalRankImpl(ThisConst & t, TupleSoFar sofar, Args... args) {\
+		if constexpr (std::tuple_size_v<TupleSoFar> == localRank) {\
+			return t\
+				.s[getLocalWriteForReadIndex(std::make_from_tuple<intNLocal>(sofar))]\
+				(args...);\
+		} else {\
+			return callGtLocalRankImplFwd<ThisConst>(\
+				t,\
+				sofar,\
+				args...);\
+		}\
+	};\
+\
 	template<typename... Ints>\
+	requires (\
+		sizeof...(Ints) > 0\
+		&& std::is_same_v<std::tuple<Ints...>, Common::tuple_rep_t<int, sizeof...(Ints)>>\
+	)\
 	constexpr decltype(auto) operator()(Ints... is) {\
-		if constexpr (sizeof...(Ints) == localRank) {\
+		constexpr int N = sizeof...(Ints);\
+		if constexpr (N == localRank) {\
 			return s[getLocalWriteForReadIndex(intNLocal(is...))];\
-		} else if constexpr (sizeof...(Ints) > localRank) {\
-			
+		} else if constexpr (N < localRank) {\
+			return Accessor<This, N>(*this, intNLocal(is...));\
+		} else if constexpr (N > localRank) {\
+			return callGtLocalRankImpl<This, std::tuple<>, Ints...>(*this, std::make_tuple(), is...);\
 		}\
 	}\
 	template<typename... Ints>\
+	requires (\
+		sizeof...(Ints) > 0\
+		&& std::is_same_v<std::tuple<Ints...>, Common::tuple_rep_t<int, sizeof...(Ints)>>\
+	)\
 	constexpr decltype(auto) operator()(Ints... is) const {\
-		/*if constexpr (sizeof...(Ints) == localRank)*/ {\
-			static_assert(sizeof...(Ints) == localRank);\
+		constexpr int N = sizeof...(Ints);\
+		if constexpr (N == localRank) {\
 			return s[getLocalWriteForReadIndex(intNLocal(is...))];\
-		}\
-	}\
-\
-	TENSOR_ADD_INT_VEC_CALL_INDEX()
-#endif
-// making operator()(intN<>) the primary and operator()(int...) the secondary
-#if 1
-#define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
-\
-	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> const & i) {\
-		if constexpr (N < localRank) {\
-			return Accessor<This, N>(*this, i);\
-		} else if constexpr (N == localRank) {\
-			return s[getLocalWriteForReadIndex(i)];\
+		} else if constexpr (N < localRank) {\
+			return Accessor<This const, N>(*this, intNLocal(is...));\
 		} else if constexpr (N > localRank) {\
-			return (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
-		}\
-	}\
-	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> const & i) const {\
-		if constexpr (N < localRank) {\
-			return Accessor<This const, N>(*this, i);\
-		} else if constexpr (N == localRank) {\
-			return s[getLocalWriteForReadIndex(i)];\
-		} else if constexpr (N > localRank) {\
-			return (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
+			return callGtLocalRankImpl<This const, std::tuple<>, Ints...>(*this, std::make_tuple(), is...);\
 		}\
 	}\
 \
-	template<typename... Ints>\
-	constexpr decltype(auto) operator()(Ints... is) {\
-		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
-	}\
-	template<typename... Ints>\
-	constexpr decltype(auto) operator()(Ints... is) const {\
-		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
-	}\
-\
+	TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()
-#endif
 
 template<typename AccessorOwnerConstness, int subRank>
 struct RankNAccessor {
@@ -3316,8 +3286,8 @@ auto contract(T const & t) {
 
 // naming compat
 template<int m, int n, typename T>
-auto trace(T&& args) {
-	return contract<m,n,T>(std::forward<T>(args));
+auto trace(T const & t) {
+	return contract<m,n,T>(t);
 }
 
 //contracts the first index with the next count index and repeat count times

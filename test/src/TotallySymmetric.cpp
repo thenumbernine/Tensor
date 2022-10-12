@@ -56,4 +56,16 @@ void test_TotallySymmetric() {
 		auto m = v * t;
 		static_assert(std::is_same_v<decltype(m), Tensor::float3s3>);
 	}
+
+	// make sure call-through works
+	{
+		using namespace Tensor;
+		// t_ijklmn = t_(ij)(klm)n
+		auto f = [](int i, int j, int k, int l, int m, int n) -> float {
+			return (i+j) - (k+l+m) + n;
+		};
+		auto t = _tensori<float, index_symR<3,2>, index_symR<3,3>, index_vec<3>>(f);
+		ECHO(t);
+		ECHO(t(0,0,0,0,0,0));
+	}
 }

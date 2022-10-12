@@ -325,7 +325,8 @@ TODO:
 - might do some constexpr loop unrolling stuff maybe.
 - test case write tests should be writing different values and verifying
 
-- make `_symR` primary index be `operator(int...)` and secondary `operator(_vec<int,N>)`.  This requires splitting off param-packs at a specific index.
+- make `_symR::operator(int...)` use perfect-forwarding. 
+- make `_asymR::operator(int...)` be primary and `::operator(_vec<int,N>)` be secondary.
 
 - RemoveIthIndex of `_symR` or `_asymR` should preserve the (anti)symmetry of the remaining indexes.  Atm it just turns the whole thing into a expanded-tensor.  Tho I did handle this when ExpandIthIndex is called on the first or last of an (a)sym... 
 
