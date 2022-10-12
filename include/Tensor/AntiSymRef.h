@@ -32,8 +32,8 @@ inline std::ostream& operator<<(std::ostream & o, Sign const & s) {
 }
 
 inline Sign operator*(Sign a, Sign b) {
-	if ((a == Sign::POSITIVE || a == Sign::NEGATIVE)
-		&& (b == Sign::POSITIVE || b == Sign::NEGATIVE))
+	if ((a == Sign::POSITIVE || a == Sign::NEGATIVE) &&
+		(b == Sign::POSITIVE || b == Sign::NEGATIVE))
 	{
 		return (Sign::Value)((int)a.value ^ (int)b.value);
 	}

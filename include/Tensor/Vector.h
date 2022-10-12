@@ -3329,11 +3329,10 @@ auto hodgeDual(A const & a) {
 template<typename A, typename B>
 requires IsBinaryTensorOpWithMatchingNeighborDims<A,B>
 auto operator*(A const & a, B const & b) {
-#if 1	// lazy way.  inline the lambdas and don't waste the outer()'s operation expenses
+#if 0	// lazy way.  inline the lambdas and don't waste the outer()'s operation expenses
 	//return contract<A::rank-1, A::rank>(outer(a,b));
 	return interior<1>(a,b);
 #else	// some optimizations, no wasted storage
-// TODO FIXME has some bugs.
 	using S = typename A::Scalar;
 	if constexpr (A::rank == 1 && B::rank == 1) {
 		// rank-0 result case
@@ -3348,6 +3347,8 @@ auto operator*(A const & a, B const & b) {
 		using R = typename A
 			::template ReplaceScalar<B>
 			::template RemoveIndex<A::rank-1, A::rank>;
+		//static_assert(std::is_same_v<typename A::template ReplaceScalar<B>, decltype(outer(a,b))>);
+		//static_assert(std::is_same_v<R, decltype(interior<1>(a,b))>);
 		return R([&](typename R::intN i) -> S {
 			auto ai = typename A::intN([&](int j) -> int {
 				if (j == A::rank-1) return 0;
@@ -3355,7 +3356,7 @@ auto operator*(A const & a, B const & b) {
 			});
 			auto bi = typename B::intN([&](int j) -> int {
 				if (j == 0) return 0;
-				j -= A::rank-1;
+				j += A::rank-2;
 				return i[j];
 			});
 			S sum = a(ai) * b(bi);
