@@ -2349,7 +2349,7 @@ inline constexpr int symmetricSize(int d, int r) {
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
 \
 	template<typename ThisConst, typename TupleSoFar, typename Arg, typename... Args>\
-	decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, Arg arg, Args... args) {\
+	static constexpr decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, Arg arg, Args... args) {\
 		return callGtLocalRankImpl<ThisConst>(\
 			t,\
 			std::tuple_cat(\
@@ -2359,7 +2359,7 @@ inline constexpr int symmetricSize(int d, int r) {
 			args...);\
 	}\
 	template<typename ThisConst, typename TupleSoFar, typename... Args>\
-	decltype(auto) callGtLocalRankImpl(ThisConst & t, TupleSoFar sofar, Args... args) {\
+	static constexpr decltype(auto) callGtLocalRankImpl(ThisConst & t, TupleSoFar sofar, Args... args) {\
 		if constexpr (std::tuple_size_v<TupleSoFar> == localRank) {\
 			return t\
 				.s[getLocalWriteForReadIndex(std::make_from_tuple<intNLocal>(sofar))]\
