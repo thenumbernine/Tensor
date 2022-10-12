@@ -71,6 +71,16 @@ struct TypeWrapper {
 	using type = T;
 };
 
+//https://codereview.stackexchange.com/a/208195
+template<typename U>
+struct constness_of { 
+	template <typename T>
+	using apply_to_t = typename std::conditional_t<
+		std::is_const_v<U>,
+		typename std::add_const_t<T>,
+		typename std::remove_const_t<T>
+	>;
+};
 
 //forward-declare everything
 
@@ -2358,24 +2368,16 @@ concept PackIsAllInts =
 	static constexpr decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, int arg, Ints... is) {\
 		return callGtLocalRankImpl<ThisConst>(\
 			t,\
-			std::tuple_cat(\
-				sofar,\
-				std::make_tuple(arg)\
-			),\
+			std::tuple_cat( sofar, std::make_tuple(arg)),\
 			is...);\
 	}\
 	template<typename ThisConst, typename TupleSoFar, typename... Ints>\
 	requires PackIsAllInts<Ints...>\
 	static constexpr decltype(auto) callGtLocalRankImpl(ThisConst & t, TupleSoFar sofar, Ints... is) {\
 		if constexpr (std::tuple_size_v<TupleSoFar> == localRank) {\
-			return t\
-				.s[getLocalWriteForReadIndex(std::make_from_tuple<intNLocal>(sofar))]\
-				(is...);\
+			return t.s[getLocalWriteForReadIndex(std::make_from_tuple<intNLocal>(sofar))](is...);\
 		} else {\
-			return callGtLocalRankImplFwd<ThisConst>(\
-				t,\
-				sofar,\
-				is...);\
+			return callGtLocalRankImplFwd<ThisConst>(t, sofar, is...);\
 		}\
 	};\
 \
@@ -2690,45 +2692,37 @@ from my symmath/tensor/LeviCivita.lua
 	/* This way the Accessor doesn't need to remember the AntiSymRef::how state. */\
 	/* and that lets us reuse the Accessor for both sym and asym. */\
 	/* So equivalently, here we don't want to bubble-sort indexes until our index size is >= our localRank */\
-	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> i) {\
+	template<typename ThisConst, int N>\
+	static constexpr decltype(auto) callVecImpl(ThisConst & this_, _vec<int,N> i) {\
 		if constexpr (N < localRank) {\
-			return Accessor<This, N>(*this, i);\
+			return Accessor<ThisConst, N>(this_, i);\
 		} else if constexpr (N == localRank) {\
 			bool flip = false;\
-			if (antisymSortAndCountFlips(i, flip)) return AntiSymRef<Inner>();\
-			return AntiSymRef<Inner>(s[getLocalWriteForReadIndex(i)], flip ? AntiSymRefHow::NEGATIVE : AntiSymRefHow::POSITIVE);\
+			using InnerConst = typename constness_of<ThisConst>::template apply_to_t<Inner>;\
+			if (antisymSortAndCountFlips(i, flip)) return AntiSymRef<InnerConst>();\
+			return AntiSymRef<InnerConst>(\
+				this_.s[getLocalWriteForReadIndex(i)],\
+				flip ? AntiSymRefHow::NEGATIVE : AntiSymRefHow::POSITIVE\
+			);\
 		} else if constexpr (N > localRank) {\
 			bool flip = false;\
 			if (antisymSortAndCountFlips(i, flip)) {\
-				using R = decltype((*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
+				using R = decltype(this_(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
 				return R();\
 			}\
 			/* call-thru of AntiSymRef returns another AntiSymRef ... */\
-			auto result = (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
+			auto result = this_(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
 			if (flip) result.flip();\
 			return result;\
 		}\
 	}\
 	template<int N>\
+	constexpr decltype(auto) operator()(_vec<int,N> i) {\
+		return callVecImpl<This>(*this, i);\
+	}\
+	template<int N>\
 	constexpr decltype(auto) operator()(_vec<int,N> i) const {\
-		if constexpr (N < localRank) {\
-			return Accessor<This const, N>(*this, i);\
-		} else if constexpr (N == localRank) {\
-			bool flip = false;\
-			if (antisymSortAndCountFlips(i, flip)) return AntiSymRef<Inner const>();\
-			return AntiSymRef<Inner const>(s[getLocalWriteForReadIndex(i)], flip ? AntiSymRefHow::NEGATIVE : AntiSymRefHow::POSITIVE);\
-		} else if constexpr (N > localRank) {\
-			bool flip = false;\
-			if (antisymSortAndCountFlips(i, flip)) {\
-				using R = decltype((*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
-				return R();\
-			}\
-			/* call-thru of AntiSymRef returns another AntiSymRef ... */\
-			auto result = (*this)(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
-			if (flip) result.flip();\
-			return result;\
-		}\
+		return callVecImpl<This const>(*this, i);\
 	}\
 \
 	template<typename... Ints>\
