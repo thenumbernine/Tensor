@@ -340,3 +340,4 @@ TODO:
 
 - make RangeObj (rename to Range? or Domain?) use the WriteInc inner vs outer first that is already in vector's iterator.
 - make tensor read and write iterators use RangeObj.
+- k maybe 'dims' should always use a intN, even if it's 1D.

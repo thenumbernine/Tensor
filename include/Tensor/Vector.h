@@ -126,7 +126,11 @@ concept IsBinaryTensorDiffTypeButMatchingDims =
 	IsBinaryTensorOp<A,B>
 	&& !std::is_same_v<A,B>
 	&& A::dims == B::dims; // equal types means we use .operator== which is constexpr
-	
+
+template<int num, typename A, typename B>
+concept IsInteriorOp =
+	IsBinaryTensorOp<A,B> && num > 0 && num <= A::rank && num <= B::rank;
+// TODO also assert the last 'num' dims of A match the first 'num' dims of B 
 
 //forward-declare everything
 
@@ -230,7 +234,7 @@ requires (is_tensor_v<A>)
 auto contractN(A const & a);
 
 template<int num=1, typename A, typename B>
-requires IsBinaryTensorOp<A,B>
+requires IsInteriorOp<num, A, B>
 auto interior(A const & a, B const & b);
 
 template<int m=0, typename T>
@@ -3274,8 +3278,7 @@ auto contractN(A const & a) {
 // it is matrix-mul if num == 1
 // TODO this could stand to be optimized
 template<int num, typename A, typename B>
-requires (IsBinaryTensorOp<A,B> && num <= A::rank && num <= B::rank)
-// TODO also assert the last 'num' dims of A match the first 'num' dims of B 
+requires IsInteriorOp<num, A, B>
 auto interior(A const & a, B const & b) {
 #if 0
 	return contractN<A::rank-num,num>(outer(a,b));
@@ -3305,10 +3308,19 @@ auto interior(A const & a, B const & b) {
 			//TODO instead use A::dim<A::rank-num..A::rank>
 			using intSum = _vec<int, num>;
 			S sum = {};
-			for (auto k : RangeObj<num>(intSum(), B::dims.template subset<num, 0>())) {
-				std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
-				std::copy(k.s.begin(), k.s.end(), bi.s.begin());
-				sum += a(ai) * b(bi);
+			// TODO this is another argument for making dims always an intN<rank>
+			if constexpr (B::rank == 1) {
+				for (auto k : RangeObj<num>(intSum(), intSum(B::dims))) {
+					std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
+					std::copy(k.s.begin(), k.s.end(), bi.s.begin());
+					sum += a(ai) * b(bi);
+				}
+			} else {
+				for (auto k : RangeObj<num>(intSum(), B::dims.template subset<num, 0>())) {
+					std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
+					std::copy(k.s.begin(), k.s.end(), bi.s.begin());
+					sum += a(ai) * b(bi);
+				}
 			}
 			return sum;
 		});
