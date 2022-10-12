@@ -1,3 +1,5 @@
+#pragma once
+
 #include <algorithm>
 
 namespace Tensor {
@@ -5,7 +7,7 @@ namespace Tensor {
 template<int rank_>
 struct RangeObj {
 	static constexpr auto rank = rank_;
-	using intN = intN<rank>;
+	using intN = Tensor::intN<rank>;
 	intN min, max;
 
 	RangeObj(intN min_, intN max_) : min(min_), max(max_) {}

@@ -20,7 +20,7 @@ struct Grid {
 	using Type = Type_;
 	using value_type = Type;
 	static constexpr auto rank = rank_;
-	using intN = intN<rank>;
+	using intN = Tensor::intN<rank>;
 
 	intN size;
 	Type * v = {};
