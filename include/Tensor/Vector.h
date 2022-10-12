@@ -82,6 +82,53 @@ struct constness_of {
 	>;
 };
 
+//https://stackoverflow.com/a/48840842
+// begin static_for
+
+// std::size is supported from C++17
+template <typename T, size_t N>
+constexpr size_t static_size(const T (&)[N]) noexcept {
+	return N;
+}
+
+template <typename ...T>
+constexpr size_t static_size(const std::tuple<T...> &) {
+	return std::tuple_size<std::tuple<T...> >::value;
+}
+
+template<typename Functor>
+void runtime_for_lt(Functor && function, size_t from, size_t to) {
+	if (from < to) {
+		function(from);
+		runtime_for_lt(std::forward<Functor>(function), from + 1, to);
+	}
+}
+
+template <template <typename T_> class Functor, typename T>
+void runtime_foreach(T & container) {
+	runtime_for_lt(Functor<T>{ container }, 0, static_size(container));
+}
+
+template <typename Functor, typename T>
+void runtime_foreach(T & container, Functor && functor) {
+	runtime_for_lt(functor, 0, static_size(container));
+}
+
+template <typename T>
+void static_consume(std::initializer_list<T>) {}
+
+template<typename Functor, std::size_t... S>
+constexpr void static_foreach_seq(Functor && function, std::index_sequence<S...>) {
+	return static_consume({ (function(std::integral_constant<std::size_t, S>{}), 0)... });
+}
+
+template<std::size_t Size, typename Functor>
+constexpr void static_foreach(Functor && functor) {
+	return static_foreach_seq(std::forward<Functor>(functor), std::make_index_sequence<Size>());
+}
+
+// end static_for
+
 template<typename T, typename... Args>
 concept is_all_v =
 	sizeof...(Args) > 0
@@ -641,8 +688,11 @@ ReplaceScalar<typename>
 		} else {\
 			/* use an int[localDim] */\
 			intN dimv;\
-/* TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly. */\
-/* TODO can I change the template unroll metaprogram to use constexpr lambdas? */\
+			/* TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly. */\
+			/* TODO can I change the template unroll metaprogram to use constexpr lambdas? */\
+			/* static_foreach<localRank>([&dimv](int i) constexpr {\
+				dimv.s[i] = localDim;\
+			}); */\
 			for (int i = 0; i < localRank; ++i) {\
 				dimv.s[i] = localDim;\
 			}\
@@ -1396,8 +1446,7 @@ Bit of a hack: MOst these are written in terms of 'This'
 \
 	template<typename B>\
 	requires(\
-		is_tensor_v<B>\
-		&& This::template dim<rank-1> == B::template dim<0>\
+		IsBinaryTensorOpWithMatchingNeighborDims<This, B>\
 		&& B::rank == 2 /* ar - 1 + br - 1 == ar <=> br == 2 */\
 	) auto operator*=(B const & b) {\
 		*this = *this * b;\
@@ -1802,11 +1851,9 @@ constexpr int symIndex(int i, int j) {
 #define TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
-	template<typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	template<typename... Ints> requires is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(int i, int j, Ints... is) { return (*this)(i,j)(is...); }\
-	template<typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	template<typename... Ints> requires is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(int i, int j, Ints... is) const { return (*this)(i,j)(is...); }\
 \
 	/* a(i) := a_i */\
@@ -2127,17 +2174,19 @@ struct _ident {
 \
 	/* a(i,j) := a_ij = -a_ji */\
 	/* this is the direct acces */\
-	constexpr decltype(auto) operator()(int i, int j) {\
-		if (i == j) return AntiSymRef<Inner>();\
-		if (i > j) return (*this)(j, i).flip();\
+	template<typename ThisConst>\
+	static constexpr decltype(auto) callImpl(ThisConst & this_, int i, int j) {\
+		using InnerConst = typename constness_of<ThisConst>::template apply_to_t<Inner>;\
+		if (i == j) return AntiSymRef<InnerConst>();\
+		if (i > j) return callImpl<ThisConst>(this_, j, i).flip();\
 		TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
-		return AntiSymRef<Inner>(std::ref(s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
+		return AntiSymRef<InnerConst>(std::ref(this_.s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
+	}\
+	constexpr decltype(auto) operator()(int i, int j) {\
+		return callImpl<This>(*this, i, j);\
 	}\
 	constexpr decltype(auto) operator()(int i, int j) const {\
-		if (i == j) return AntiSymRef<Inner const>();\
-		if (i > j) return (*this)(j, i).flip();\
-		TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
-		return AntiSymRef<Inner const>(std::ref(s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
+		return callImpl<This const>(*this, i, j);\
 	}
 
 // TODO double-check this is upper-triangular
@@ -2360,16 +2409,14 @@ inline constexpr int symmetricSize(int d, int r) {
 // TODO forwarding of args
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
 \
-	template<typename ThisConst, typename TupleSoFar, typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	template<typename ThisConst, typename TupleSoFar, typename... Ints> requires is_all_v<int, Ints...>\
 	static constexpr decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, int arg, Ints... is) {\
 		return callGtLocalRankImpl<ThisConst>(\
 			t,\
 			std::tuple_cat( sofar, std::make_tuple(arg)),\
 			is...);\
 	}\
-	template<typename ThisConst, typename TupleSoFar, typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	template<typename ThisConst, typename TupleSoFar, typename... Ints> requires is_all_v<int, Ints...>\
 	static constexpr decltype(auto) callGtLocalRankImpl(ThisConst & t, TupleSoFar sofar, Ints... is) {\
 		if constexpr (std::tuple_size_v<TupleSoFar> == localRank) {\
 			return t.s[getLocalWriteForReadIndex(std::make_from_tuple<intNLocal>(sofar))](is...);\
@@ -2379,8 +2426,7 @@ inline constexpr int symmetricSize(int d, int r) {
 	};\
 \
 	/* TODO any better way to write two functions at once with differing const-ness? */\
-	template<typename ThisConst, typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	template<typename ThisConst, typename... Ints> requires is_all_v<int, Ints...>\
 	static constexpr decltype(auto) callImpl(ThisConst & this_, Ints... is) {\
 		constexpr int N = sizeof...(Ints);\
 		if constexpr (N == localRank) {\
@@ -2392,13 +2438,11 @@ inline constexpr int symmetricSize(int d, int r) {
 		}\
 	}\
 \
-	template<typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	template<typename... Ints> requires is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) {\
 		return callImpl<This>(*this, is...);\
 	}\
-	template<typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	template<typename... Ints> requires is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) const {\
 		return callImpl<This const>(*this, is...);\
 	}\
@@ -2444,8 +2488,8 @@ struct RankNAccessor {
 	/* if subRank + sizeof...(Ints) > ownerLocalRank then call-through into owner's inner */
 	/* if subRank + sizeof...(Ints) == ownerLocalRank then just call owner */
 	/* if subRank + sizeof...(Ints) < ownerLocalRank then produce another Accessor */
-	template<int N>
-	constexpr decltype(auto) operator()(_vec<int,N> const & i2) {
+	template<int N, typename ThisConst>
+	constexpr decltype(auto) callImpl(ThisConst & this_, _vec<int,N> const & i2) {
 		if constexpr (subRank + N < ownerLocalRank) {
 			/* returns Accessor */
 			_vec<int,subRank+N> fulli;
@@ -2457,38 +2501,24 @@ struct RankNAccessor {
 			ownerIntN fulli;
 			fulli.template subset<subRank,0>() = i;
 			fulli.template subset<N,subRank>() = i2;
-			return owner(fulli);
+			return this_.owner(fulli);
 		} else if constexpr (subRank + N > ownerLocalRank) {
 			/* returns something further than Inner */
 			ownerIntN firstI;
 			firstI.template subset<subRank,0>() = i;
 			firstI.template subset<ownerLocalRank-subRank,subRank>() = i2.template subset<ownerLocalRank-subRank, 0>();
 			_vec<int, N - (ownerLocalRank - subRank)> restI = i2.template subset<N - (ownerLocalRank-subRank), ownerLocalRank-subRank>();
-			return owner(firstI)(restI);
+			return this_.owner(firstI)(restI);
 		}
+	}
+	// TODO can't I just get rid of the non-const version?  no need to fwd?  nope.  need both.
+	template<int N>
+	constexpr decltype(auto) operator()(_vec<int,N> const & i2) {
+		return callImpl<N, This>(*this, i2);
 	}
 	template<int N>
 	constexpr decltype(auto) operator()(_vec<int,N> const & i2) const {
-		if constexpr (subRank + N < ownerLocalRank) {
-			/* returns Accessor */
-			_vec<int,subRank+N> fulli;
-			fulli.template subset<subRank,0>() = i;
-			fulli.template subset<N,subRank>() = i2;
-			return RankNAccessor<AccessorOwnerConstness, subRank+N>(owner, fulli);
-		} else if constexpr (subRank + N == ownerLocalRank) {
-			/* returns Inner, or for asym returns AntiSymRef<Inner> */
-			ownerIntN fulli;
-			fulli.template subset<subRank,0>() = i;
-			fulli.template subset<N,subRank>() = i2;
-			return owner(fulli);
-		} else if constexpr (subRank + N > ownerLocalRank) {
-			/* returns something further than Inner */
-			ownerIntN firstI;
-			firstI.template subset<subRank,0>() = i;
-			firstI.template subset<ownerLocalRank-subRank,subRank>() = i2.template subset<ownerLocalRank-subRank, 0>();
-			_vec<int, N - (ownerLocalRank - subRank)> restI = i2.template subset<N - (ownerLocalRank-subRank), ownerLocalRank-subRank>();
-			return owner(firstI)(restI);
-		}
+		return callImpl<N, This const>(*this, i2);
 	}
 
 	template<typename... Ints>
