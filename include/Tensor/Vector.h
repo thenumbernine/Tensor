@@ -1284,17 +1284,13 @@ Bit of a hack: MOst these are written in terms of 'This'
 	}\
 \
 	template<typename B>\
-	requires (\
-		is_tensor_v<std::decay_t<B>>\
-		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
-	) Scalar inner(B const & o) const {\
+	requires is_tensor_v<std::decay_t<B>>\
+	Scalar inner(B const & o) const {\
 		return Tensor::inner(*this, o);\
 	}\
 	template<typename B>\
-	requires (\
-		is_tensor_v<std::decay_t<B>>\
-		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
-	) Scalar inner(B && o) && {\
+	requires is_tensor_v<std::decay_t<B>>\
+	Scalar inner(B && o) && {\
 		return Tensor::inner(std::move(*this), std::forward<B>(o));\
 	}\
 \
@@ -1321,29 +1317,19 @@ Bit of a hack: MOst these are written in terms of 'This'
 	}\
 \
 	template<typename B>\
-	requires (\
-		is_tensor_v<std::decay_t<B>>\
-		&& dims == 3\
-		&& B::dims == 3\
-		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
-	) auto cross(B const & b) const {\
+	requires IsBinaryTensorR3xR3Op<This, B>\
+	auto cross(B const & b) const {\
 		return Tensor::cross(*this, b);\
 	}\
 	template<typename B>\
-	requires (\
-		is_tensor_v<std::decay_t<B>>\
-		&& dims == 3\
-		&& B::dims == 3\
-		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
-	) auto cross(B && b) && {\
+	requires IsBinaryTensorR3xR3Op<This, B>\
+	auto cross(B && b) && {\
 		return Tensor::cross(std::move(*this), std::forward<B>(b));\
 	}\
 \
 	template<typename B>\
-	requires (\
-		is_tensor_v<std::decay_t<B>>\
-		&& std::is_same_v<Scalar, typename B::Scalar>	/* TODO meh? */\
-	) auto outer(B const & b) const {\
+	requires is_tensor_v<std::decay_t<B>>\
+	auto outer(B const & b) const {\
 		return outer(*this, b);\
 	}\
 \
