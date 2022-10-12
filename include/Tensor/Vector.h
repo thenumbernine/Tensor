@@ -44,6 +44,7 @@ if I do column-major then C inline indexing is transposed
 */
 
 #include "Tensor/AntiSymRef.h"
+#include "Tensor/Meta.h"
 #include "Common/String.h"
 #include "Common/Exception.h"
 #include <tuple>
@@ -62,78 +63,6 @@ if I do column-major then C inline indexing is transposed
 #endif
 
 namespace Tensor {
-
-// I was using optional<> to capture types without instanciating them
-// but optional can't wrap references, so ...
-// TODO might move this somewhere like Common/Meta.h
-template<typename T>
-struct TypeWrapper {
-	using type = T;
-};
-
-//https://codereview.stackexchange.com/a/208195
-template<typename U>
-struct constness_of { 
-	template <typename T>
-	using apply_to_t = typename std::conditional_t<
-		std::is_const_v<U>,
-		typename std::add_const_t<T>,
-		typename std::remove_const_t<T>
-	>;
-};
-
-//https://stackoverflow.com/a/48840842
-// begin static_for
-
-// std::size is supported from C++17
-template <typename T, size_t N>
-constexpr size_t static_size(const T (&)[N]) noexcept {
-	return N;
-}
-
-template <typename ...T>
-constexpr size_t static_size(const std::tuple<T...> &) {
-	return std::tuple_size<std::tuple<T...> >::value;
-}
-
-template<typename Functor>
-void runtime_for_lt(Functor && function, size_t from, size_t to) {
-	if (from < to) {
-		function(from);
-		runtime_for_lt(std::forward<Functor>(function), from + 1, to);
-	}
-}
-
-template <template <typename T_> class Functor, typename T>
-void runtime_foreach(T & container) {
-	runtime_for_lt(Functor<T>{ container }, 0, static_size(container));
-}
-
-template <typename Functor, typename T>
-void runtime_foreach(T & container, Functor && functor) {
-	runtime_for_lt(functor, 0, static_size(container));
-}
-
-template <typename T>
-void static_consume(std::initializer_list<T>) {}
-
-template<typename Functor, std::size_t... S>
-constexpr void static_foreach_seq(Functor && function, std::index_sequence<S...>) {
-	return static_consume({ (function(std::integral_constant<std::size_t, S>{}), 0)... });
-}
-
-template<std::size_t Size, typename Functor>
-constexpr void static_foreach(Functor && functor) {
-	return static_foreach_seq(std::forward<Functor>(functor), std::make_index_sequence<Size>());
-}
-
-// end static_for
-
-template<typename T, typename... Args>
-concept is_all_v =
-	sizeof...(Args) > 0
-	&& std::is_same_v<std::tuple<Args...>, Common::tuple_rep_t<T, sizeof...(Args)>>;
-
 
 template<typename A, typename B>
 concept IsBinaryTensorOp =
@@ -2117,11 +2046,11 @@ struct _sym<Inner_,4> {
 #define TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
 	constexpr decltype(auto) operator()(int i, int j) {\
 		if (i != j) return AntiSymRef<Inner>();\
-		return AntiSymRef<Inner>(std::ref(s[0]), AntiSymRefHow::POSITIVE);\
+		return AntiSymRef<Inner>(std::ref(s[0]), Sign::POSITIVE);\
 	}\
 	constexpr decltype(auto) operator()(int i, int j) const {\
 		if (i != j) return AntiSymRef<Inner const>();\
-		return AntiSymRef<Inner const>(std::ref(s[0]), AntiSymRefHow::POSITIVE);\
+		return AntiSymRef<Inner const>(std::ref(s[0]), Sign::POSITIVE);\
 	}
 
 // shouldn't even need this, cuz nobody should be calling i
@@ -2180,7 +2109,7 @@ struct _ident {
 		if (i == j) return AntiSymRef<InnerConst>();\
 		if (i > j) return callImpl<ThisConst>(this_, j, i).flip();\
 		TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
-		return AntiSymRef<InnerConst>(std::ref(this_.s[symIndex(i,j-1)]), AntiSymRefHow::POSITIVE);\
+		return AntiSymRef<InnerConst>(std::ref(this_.s[symIndex(i,j-1)]), Sign::POSITIVE);\
 	}\
 	constexpr decltype(auto) operator()(int i, int j) {\
 		return callImpl<This>(*this, i, j);\
@@ -2576,15 +2505,15 @@ struct initIntVecWithSequence<std::integer_sequence<T, I...>> {
 // bubble-sorts 'i', sets 'sign' if an odd # of flips were required to sort it
 //  returns 'sign' or 'ZERO' if any duplicate indexes were found (and does not finish sorting)
 template<int N>
-AntiSymRefHow antisymSortAndCountFlips(_vec<int,N> & i) {
-	AntiSymRefHow sign = AntiSymRefHow::POSITIVE;
+Sign antisymSortAndCountFlips(_vec<int,N> & i) {
+	Sign sign = Sign::POSITIVE;
 	for (int k = 0; k < N-1; ++k) {
 		for (int j = 0; j < N-k-1; ++j) {
 			if (i[j] == i[j+1]) {
-				return AntiSymRefHow::ZERO;
+				return Sign::ZERO;
 			} else if (i[j] > i[j+1]) {
 				std::swap(i[j], i[j+1]);
-				sign = (AntiSymRefHow)!(int)sign;
+				sign = !sign;
 			}
 		}
 	}
@@ -2728,17 +2657,17 @@ from my symmath/tensor/LeviCivita.lua
 		} else if constexpr (N == localRank) {\
 			using InnerConst = typename constness_of<ThisConst>::template apply_to_t<Inner>;\
 			auto sign = antisymSortAndCountFlips(i);\
-			if (sign == AntiSymRefHow::ZERO) return AntiSymRef<InnerConst>();\
+			if (sign == Sign::ZERO) return AntiSymRef<InnerConst>();\
 			return AntiSymRef<InnerConst>(this_.s[getLocalWriteForReadIndex(i)], sign);\
 		} else if constexpr (N > localRank) {\
 			auto sign = antisymSortAndCountFlips(i);\
-			if (sign == AntiSymRefHow::ZERO) {\
+			if (sign == Sign::ZERO) {\
 				using R = decltype(this_(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
 				return R();\
 			}\
 			/* call-thru of AntiSymRef returns another AntiSymRef ... */\
 			auto result = this_(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
-			if (sign == AntiSymRefHow::NEGATIVE) result.flip();\
+			if (sign == Sign::NEGATIVE) result.flip();\
 			return result;\
 		}\
 	}\
@@ -3358,12 +3287,12 @@ auto makeAsym(T const & t) {
 			// TODO combine this with next_permutation so you don't have to keep recounting
 			intN sortedj = j;
 			auto sign = antisymSortAndCountFlips(sortedj);
-			if (sign == AntiSymRefHow::ZERO) {
+			if (sign == Sign::ZERO) {
 				throw Common::Exception() << "shouldn't get here";
 			}
 			// 'ij' is 'i' permuted by 'j'
 			intN ij = [&](int k) -> int { return i[j[k]]; };
-			if (sign == AntiSymRefHow::NEGATIVE) {
+			if (sign == Sign::NEGATIVE) {
 				result -= t(ij);
 			} else {
 				result += t(ij);

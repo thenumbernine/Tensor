@@ -112,7 +112,7 @@ void test_TensorRank4() {
 		TEST_EQ(r00, (Tensor::AntiSymRef<Tensor::_asym<Real, 2>>()));	// r(0,0) is this type
 		TEST_EQ(r00, (Tensor::_asym<Real, 2>{}));	// ... and r(0,0)'s operator== accepts its wrapped type
 		TEST_EQ(r00(0,0), (Tensor::AntiSymRef<Real>()));	// r(0,0)(0,0) is this
-		TEST_EQ(r00(0,0).how, Tensor::AntiSymRefHow::ZERO);
+		TEST_EQ(r00(0,0).how, Tensor::Sign::ZERO);
 		TEST_EQ(r00(0,0), 0.);
 		TEST_EQ(r00(0,1), 0.);
 		TEST_EQ(r00(1,0), 0.);

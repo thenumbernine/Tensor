@@ -58,7 +58,7 @@ void test_TotallyAntisymmetric() {
 			auto writeIndex = float3a3a3::getLocalWriteForReadIndex(sortedi);
 			ECHO(writeIndex);
 			TEST_BOOL(
-				sign == Tensor::AntiSymRefHow::ZERO ||
+				sign == Tensor::Sign::ZERO ||
 				writeIndex == 0	// requires input to be sorted
 			);
 			TEST_EQ(a(i.index), b(i.index));
@@ -76,7 +76,7 @@ void test_TotallyAntisymmetric() {
 			auto writeIndex = float3a3a3::getLocalWriteForReadIndex(sortedi);
 			ECHO(writeIndex);
 			TEST_BOOL(
-				sign == Tensor::AntiSymRefHow::ZERO ||
+				sign == Tensor::Sign::ZERO ||
 				writeIndex == 0	// requires input to be sorted
 			);
 			TEST_EQ(a(i.index), b(i.index));
