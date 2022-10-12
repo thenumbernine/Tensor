@@ -338,5 +338,5 @@ TODO:
 		
 - `operator+=` etc for AntiSymRef
 
-- move RangeObj from Tensor/Grid.h to its own thing, and make tensor read and write iterators use RangeObj.
-	Then chagne interior() to use RangeObj instead of a temp object's iterator.
+- make RangeObj (rename to Range? or Domain?) use the WriteInc inner vs outer first that is already in vector's iterator.
+- make tensor read and write iterators use RangeObj.

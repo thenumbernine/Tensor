@@ -17,7 +17,8 @@ struct RangeObj {
 		
 		iterator()  {}
 		iterator(intN min_, intN max_) : index(min_), min(min_), max(max_) {}
-		iterator(iterator const &iter) : index(iter.index), min(iter.min), max(iter.max) {}
+		iterator(iterator const & iter) : index(iter.index), min(iter.min), max(iter.max) {}
+		iterator(iterator && iter) : index(iter.index), min(iter.min), max(iter.max) {}
 		
 		bool operator==(iterator const &b) const { return index == b.index; }
 		bool operator!=(iterator const &b) const { return index != b.index; }
@@ -76,48 +77,20 @@ struct RangeObj {
 
 		intN &operator*() { return index; }
 		intN *operator->() { return &index; }
-	};
-
-	iterator begin() {
-		return iterator(min, max);
-	}
-	iterator end() {
-		iterator i(min, max);
-		i.index(rank-1) = i.max(rank-1);
-		return i;
-	}
 	
-	struct const_iterator {
-		intN index, min, max;
-		
-		const_iterator() {}
-		const_iterator(intN min_, intN max_) : min(min_), max(max_) {}
-		const_iterator(const_iterator const &iter) : index(iter.index), min(iter.min), max(iter.max) {}
-		
-		bool operator==(const_iterator const &b) const { return index == b.index; }
-		bool operator!=(const_iterator const &b) const { return index != b.index; }
-		
-		const_iterator &operator++() {
-			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
-				++index(i);
-				if (index(i) < max(i)) break;
-				if (i < rank-1) index(i) = min(i);
-			}
-			return *this;
+		static iterator end(intN min, intN max) {
+			iterator i(min, max);
+			i.index(rank-1) = i.max(rank-1);
+			return i;
 		}
-
-		intN const &operator*() const { return index; }
-		intN const *operator->() const { return &index; }
 	};
 
-	const_iterator begin() const {
-		return const_iterator(min, max);
-	}
-	const_iterator end() const {
-		const_iterator i(min, max);
-		i.index(rank-1) = i.max(rank-1);
-		return i;
-	}
+	iterator begin() { return iterator(min, max); }
+	iterator end() { return iterator::end(min, max); }
+
+	using const_iterator = iterator;
+	const_iterator begin() const { return const_iterator(min, max); }
+	const_iterator end() const { return iterator::end(min, max); }
 };
 
 }
