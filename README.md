@@ -337,3 +337,6 @@ TODO:
 - eventually merge `_sym` and `_asym` with `_symR` and `_asymR` ... but don't til enough sorts/loops are compile-time.
 		
 - `operator+=` etc for AntiSymRef
+
+- move RangeObj from Tensor/Grid.h to its own thing, and make tensor read and write iterators use RangeObj.
+	Then chagne interior() to use RangeObj instead of a temp object's iterator.

@@ -649,6 +649,24 @@ namespace StaticTest3 {
 	static_assert(d.dim<2> == 2);
 }
 
+namespace InteriorTest {
+	using namespace Tensor;
+	using namespace std;
+	using A = float3x3;
+	using B = float3x3;
+	using R = typename A::template ReplaceScalar<B>;
+	static_assert(is_same_v<_tensorr<float,3,4>, decltype(outer<A,B>(A(),B()))>);
+	using R1 = typename A
+		::template ReplaceScalar<B>
+		::template RemoveIndex<A::rank-1, A::rank>;
+	static_assert(is_same_v<R1, float3x3>);
+	static_assert(is_same_v<R1, decltype(contract<A::rank-1,A::rank>(outer(A(),B())))>);
+	using R2 = typename A
+			::template ReplaceScalar<B>
+			::template RemoveIndexSeq<make_integer_range<int, A::rank-1, A::rank+1>>;
+	static_assert(is_same_v<R1, R2>);
+}
+
 
 void test_TensorRank3() {
 

@@ -64,6 +64,40 @@ if I do column-major then C inline indexing is transposed
 
 namespace Tensor {
 
+
+// TODO move this to Common/Sequence.h (and take some from Common/Meta.h too)
+// begin https://codereview.stackexchange.com/a/64702/265778
+
+namespace details {
+	template<typename Int, typename, Int Begin, bool Increasing>
+	struct integer_range_impl;
+
+	template<typename Int, Int... N, Int Begin>
+	struct integer_range_impl<Int, std::integer_sequence<Int, N...>, Begin, true> {
+		using type = std::integer_sequence<Int, N+Begin...>;
+	};
+
+	template<typename Int, Int... N, Int Begin>
+	struct integer_range_impl<Int, std::integer_sequence<Int, N...>, Begin, false> {
+		using type = std::integer_sequence<Int, Begin-N...>;
+	};
+}
+
+template<typename Int, Int Begin, Int End>
+using make_integer_range = typename details::integer_range_impl<
+	Int,
+	std::make_integer_sequence<Int, (Begin<End) ? End-Begin : Begin-End>,
+	Begin,
+	(Begin < End)
+>::type;
+
+template<std::size_t Begin, std::size_t End>
+using make_index_range = make_integer_range<std::size_t, Begin, End>;
+
+// end https://codereview.stackexchange.com/a/64702/265778
+
+
+
 template<typename A, typename B>
 concept IsBinaryTensorOp =
 	is_tensor_v<A>
@@ -243,7 +277,10 @@ template<typename T>
 requires is_tensor_v<T>
 inline T inverse(T const & a);
 
+// this one is in Tensor/Range.h
 
+template<int rank_>
+struct RangeObj;
 
 
 // Template<> is used for rearranging internal structure when performing linear operations on tensors
@@ -3237,9 +3274,46 @@ auto contractN(A const & a) {
 // it is matrix-mul if num == 1
 // TODO this could stand to be optimized
 template<int num, typename A, typename B>
-requires IsBinaryTensorOp<A,B>
+requires (IsBinaryTensorOp<A,B> && num <= A::rank && num <= B::rank)
+// TODO also assert the last 'num' dims of A match the first 'num' dims of B 
 auto interior(A const & a, B const & b) {
+#if 0
 	return contractN<A::rank-num,num>(outer(a,b));
+#else
+	using S = typename A::Scalar;
+	if constexpr (A::rank == num && B::rank == num) {
+		// rank-0 i.e. scalar result case
+		static_assert(A::dims == B::dims);	//thanks to the 3rd requires condition
+		return dot(a,b);
+	} else {
+		using R = typename A
+			::template ReplaceScalar<B>
+			::template RemoveIndexSeq<make_integer_range<int, A::rank-num, A::rank+num>>;
+		static_assert(num != 1 || std::is_same_v<R, decltype(contract<A::rank-1,A::rank>(outer(a,b)))>);
+		static_assert(std::is_same_v<R, decltype(contractN<A::rank-num,num>(outer(a,b)))>);
+		return R([&](typename R::intN i) -> S {
+			auto ai = typename A::intN([&](int j) -> int {
+				if (j >= A::rank-num) return 0;
+				return i[j];
+			});
+			auto bi = typename B::intN([&](int j) -> int {
+				if (j < num) return 0;
+				j += A::rank-2*num;
+				return i[j];
+			});
+			
+			//TODO instead use A::dim<A::rank-num..A::rank>
+			using intSum = _vec<int, num>;
+			S sum = {};
+			for (auto k : RangeObj<num>(intSum(), B::dims.template subset<num, 0>())) {
+				std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
+				std::copy(k.s.begin(), k.s.end(), bi.s.begin());
+				sum += a(ai) * b(bi);
+			}
+			return sum;
+		});
+	}
+#endif
 }
 
 // symmetrize or antisymmetrize a tensor
@@ -3329,7 +3403,7 @@ auto hodgeDual(A const & a) {
 template<typename A, typename B>
 requires IsBinaryTensorOpWithMatchingNeighborDims<A,B>
 auto operator*(A const & a, B const & b) {
-#if 0	// lazy way.  inline the lambdas and don't waste the outer()'s operation expenses
+#if 1	// lazy way.  inline the lambdas and don't waste the outer()'s operation expenses
 	//return contract<A::rank-1, A::rank>(outer(a,b));
 	return interior<1>(a,b);
 #else	// some optimizations, no wasted storage
@@ -3705,3 +3779,4 @@ template<std::size_t I, typename T, std::size_t N> constexpr T const && get(Tens
 // so it had better come next
 #include "Tensor/Inverse.h"	
 #include "Tensor/Index.h"
+#include "Tensor/Range.h"
