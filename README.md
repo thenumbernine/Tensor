@@ -212,8 +212,10 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 - `contract<m=0,n=1>(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to `trace(t)`.
 	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes.). M >= 1
 	$$contract(a) = \delta^{i\_m i\_n} a\_I$$
-- `contractN<i=0,n=1>(a)` = Tensor contraction of indexes i ... i+n-1 with indexes i+n ... i+2n-1.
-- `interior<n=1>(a)` = Interior product of neighboring n indexes.  I know a proper interior product would default n to `A::rank`.  Maybe later.  For n=1 this defaults to matrix-multiply.
+- `contractN<j=0,n=1>(a)` = Tensor contraction of indexes j ... j+n-1 with indexes j+n ... j+2n-1.
+	$$contractN(a) = {a^{i\_1 ... i\_j ... i\_{j+n-1}}}\_{i\_j ... i\_{j+n-1} ... i\_p}$$
+- `interior<n=1>(a,b)` = Interior product of neighboring n indexes.  I know a proper interior product would default n to `A::rank`.  Maybe later.  For n=1 this behaves the same a matrix-multiply.
+	$$interior(a,b) = a^{I K} b\_{K J}, |K| = n$$
 - `makeSym(a)` = Create a symmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
 	$$makeSym(a)\_I = a\_{(i\_1 ... i\_ n)} $$
 - `makeAsym(a)` = Create an antisymmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
