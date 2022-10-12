@@ -2344,63 +2344,64 @@ inline constexpr int symmetricSize(int d, int r) {
 		return localCount;\
 	}
 
+template<typename... Ints>
+concept PackIsAllInts =
+	sizeof...(Ints) > 0
+	&& std::is_same_v<std::tuple<Ints...>, Common::tuple_rep_t<int, sizeof...(Ints)>>;
+
 // making operator()(int...) the primary, and operator()(intN<>) the secondary
 // TODO forwarding of args
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
 \
-	template<typename ThisConst, typename TupleSoFar, typename Arg, typename... Args>\
-	static constexpr decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, Arg arg, Args... args) {\
+	template<typename ThisConst, typename TupleSoFar, typename... Ints>\
+	requires PackIsAllInts<Ints...>\
+	static constexpr decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, int arg, Ints... is) {\
 		return callGtLocalRankImpl<ThisConst>(\
 			t,\
 			std::tuple_cat(\
 				sofar,\
 				std::make_tuple(arg)\
 			),\
-			args...);\
+			is...);\
 	}\
-	template<typename ThisConst, typename TupleSoFar, typename... Args>\
-	static constexpr decltype(auto) callGtLocalRankImpl(ThisConst & t, TupleSoFar sofar, Args... args) {\
+	template<typename ThisConst, typename TupleSoFar, typename... Ints>\
+	requires PackIsAllInts<Ints...>\
+	static constexpr decltype(auto) callGtLocalRankImpl(ThisConst & t, TupleSoFar sofar, Ints... is) {\
 		if constexpr (std::tuple_size_v<TupleSoFar> == localRank) {\
 			return t\
 				.s[getLocalWriteForReadIndex(std::make_from_tuple<intNLocal>(sofar))]\
-				(args...);\
+				(is...);\
 		} else {\
 			return callGtLocalRankImplFwd<ThisConst>(\
 				t,\
 				sofar,\
-				args...);\
+				is...);\
 		}\
 	};\
 \
-	template<typename... Ints>\
-	requires (\
-		sizeof...(Ints) > 0\
-		&& std::is_same_v<std::tuple<Ints...>, Common::tuple_rep_t<int, sizeof...(Ints)>>\
-	)\
-	constexpr decltype(auto) operator()(Ints... is) {\
+	/* TODO any better way to write two functions at once with differing const-ness? */\
+	template<typename ThisConst, typename... Ints>\
+	requires PackIsAllInts<Ints...>\
+	static constexpr decltype(auto) callImpl(ThisConst & this_, Ints... is) {\
 		constexpr int N = sizeof...(Ints);\
 		if constexpr (N == localRank) {\
-			return s[getLocalWriteForReadIndex(intNLocal(is...))];\
+			return this_.s[getLocalWriteForReadIndex(intNLocal(is...))];\
 		} else if constexpr (N < localRank) {\
-			return Accessor<This, N>(*this, intNLocal(is...));\
+			return Accessor<ThisConst, N>(this_, intNLocal(is...));\
 		} else if constexpr (N > localRank) {\
-			return callGtLocalRankImpl<This, std::tuple<>, Ints...>(*this, std::make_tuple(), is...);\
+			return callGtLocalRankImpl<ThisConst, std::tuple<>, Ints...>(this_, std::make_tuple(), is...);\
 		}\
 	}\
+\
 	template<typename... Ints>\
-	requires (\
-		sizeof...(Ints) > 0\
-		&& std::is_same_v<std::tuple<Ints...>, Common::tuple_rep_t<int, sizeof...(Ints)>>\
-	)\
+	requires PackIsAllInts<Ints...>\
+	constexpr decltype(auto) operator()(Ints... is) {\
+		return callImpl<This>(*this, is...);\
+	}\
+	template<typename... Ints>\
+	requires PackIsAllInts<Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) const {\
-		constexpr int N = sizeof...(Ints);\
-		if constexpr (N == localRank) {\
-			return s[getLocalWriteForReadIndex(intNLocal(is...))];\
-		} else if constexpr (N < localRank) {\
-			return Accessor<This const, N>(*this, intNLocal(is...));\
-		} else if constexpr (N > localRank) {\
-			return callGtLocalRankImpl<This const, std::tuple<>, Ints...>(*this, std::make_tuple(), is...);\
-		}\
+		return callImpl<This const>(*this, is...);\
 	}\
 \
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
