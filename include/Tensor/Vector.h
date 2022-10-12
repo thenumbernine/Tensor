@@ -82,8 +82,12 @@ struct constness_of {
 	>;
 };
 
-//forward-declare everything
+template<typename T, typename... Args>
+concept is_all_v =
+	sizeof...(Args) > 0
+	&& std::is_same_v<std::tuple<Args...>, Common::tuple_rep_t<T, sizeof...(Args)>>;
 
+//forward-declare everything
 
 template<typename Inner, int localDim> struct _vec;
 template<typename Inner, int localDim> struct _ident;
@@ -786,10 +790,12 @@ ReplaceScalar<typename>
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	/* operator(int, int...) calls through operator(int) */\
-	template<typename... Rest>\
-	constexpr decltype(auto) operator()(int i, Rest... rest) { return (*this)(i)(rest...); }\
-	template<typename... Rest>\
-	constexpr decltype(auto) operator()(int i, Rest... rest) const { return (*this)(i)(rest...); }
+	template<typename... Ints>\
+	requires is_all_v<int, Ints...>\
+	constexpr decltype(auto) operator()(int i, Ints... is) { return (*this)(i)(is...); }\
+	template<typename... Ints>\
+	requires is_all_v<int, Ints...>\
+	constexpr decltype(auto) operator()(int i, Ints... is) const { return (*this)(i)(is...); }
 
 // operator(_vec<int,...>) forwards to operator(int...)
 #define TENSOR_ADD_INT_VEC_CALL_INDEX()\
@@ -1800,10 +1806,12 @@ constexpr int symIndex(int i, int j) {
 #define TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
-	template<typename... Rest>\
-	constexpr decltype(auto) operator()(int i, int j, Rest... rest) { return (*this)(i,j)(rest...); }\
-	template<typename... Rest>\
-	constexpr decltype(auto) operator()(int i, int j, Rest... rest) const { return (*this)(i,j)(rest...); }\
+	template<typename... Ints>\
+	requires is_all_v<int, Ints...>\
+	constexpr decltype(auto) operator()(int i, int j, Ints... is) { return (*this)(i,j)(is...); }\
+	template<typename... Ints>\
+	requires is_all_v<int, Ints...>\
+	constexpr decltype(auto) operator()(int i, int j, Ints... is) const { return (*this)(i,j)(is...); }\
 \
 	constexpr decltype(auto) operator[](int i) { return Accessor<This>(*this, i); }\
 	constexpr decltype(auto) operator[](int i) const { return Accessor<This const>(*this, i); }\
@@ -2354,17 +2362,12 @@ inline constexpr int symmetricSize(int d, int r) {
 		return localCount;\
 	}
 
-template<typename... Ints>
-concept PackIsAllInts =
-	sizeof...(Ints) > 0
-	&& std::is_same_v<std::tuple<Ints...>, Common::tuple_rep_t<int, sizeof...(Ints)>>;
-
 // making operator()(int...) the primary, and operator()(intN<>) the secondary
 // TODO forwarding of args
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
 \
 	template<typename ThisConst, typename TupleSoFar, typename... Ints>\
-	requires PackIsAllInts<Ints...>\
+	requires is_all_v<int, Ints...>\
 	static constexpr decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, int arg, Ints... is) {\
 		return callGtLocalRankImpl<ThisConst>(\
 			t,\
@@ -2372,7 +2375,7 @@ concept PackIsAllInts =
 			is...);\
 	}\
 	template<typename ThisConst, typename TupleSoFar, typename... Ints>\
-	requires PackIsAllInts<Ints...>\
+	requires is_all_v<int, Ints...>\
 	static constexpr decltype(auto) callGtLocalRankImpl(ThisConst & t, TupleSoFar sofar, Ints... is) {\
 		if constexpr (std::tuple_size_v<TupleSoFar> == localRank) {\
 			return t.s[getLocalWriteForReadIndex(std::make_from_tuple<intNLocal>(sofar))](is...);\
@@ -2383,7 +2386,7 @@ concept PackIsAllInts =
 \
 	/* TODO any better way to write two functions at once with differing const-ness? */\
 	template<typename ThisConst, typename... Ints>\
-	requires PackIsAllInts<Ints...>\
+	requires is_all_v<int, Ints...>\
 	static constexpr decltype(auto) callImpl(ThisConst & this_, Ints... is) {\
 		constexpr int N = sizeof...(Ints);\
 		if constexpr (N == localRank) {\
@@ -2396,12 +2399,12 @@ concept PackIsAllInts =
 	}\
 \
 	template<typename... Ints>\
-	requires PackIsAllInts<Ints...>\
+	requires is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) {\
 		return callImpl<This>(*this, is...);\
 	}\
 	template<typename... Ints>\
-	requires PackIsAllInts<Ints...>\
+	requires is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) const {\
 		return callImpl<This const>(*this, is...);\
 	}\
@@ -2495,10 +2498,12 @@ struct RankNAccessor {
 	}
 
 	template<typename... Ints>
+	requires is_all_v<int, Ints...>
 	constexpr decltype(auto) operator()(Ints... is) {
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));
 	}
 	template<typename... Ints>
+	requires is_all_v<int, Ints...>
 	constexpr decltype(auto) operator()(Ints... is) const {
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));
 	}
@@ -2544,22 +2549,22 @@ struct initIntVecWithSequence<std::integer_sequence<T, I...>> {
 	}
 };
 
-// bubble-sorts 'i', sets 'flip' if an odd # of flips were required to sort it
-//  returns 'true' if any duplicate indexes were found (and does not finish sorting)
+// bubble-sorts 'i', sets 'sign' if an odd # of flips were required to sort it
+//  returns 'sign' or 'ZERO' if any duplicate indexes were found (and does not finish sorting)
 template<int N>
-bool antisymSortAndCountFlips(_vec<int,N> & i, bool & flip) {
-	flip = false;
+AntiSymRefHow antisymSortAndCountFlips(_vec<int,N> & i) {
+	AntiSymRefHow sign = AntiSymRefHow::POSITIVE;
 	for (int k = 0; k < N-1; ++k) {
 		for (int j = 0; j < N-k-1; ++j) {
 			if (i[j] == i[j+1]) {
-				return true;
+				return AntiSymRefHow::ZERO;
 			} else if (i[j] > i[j+1]) {
 				std::swap(i[j], i[j+1]);
-				flip = !flip;
+				sign = (AntiSymRefHow)!(int)sign;
 			}
 		}
 	}
-	return false;
+	return sign;
 }
 
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
@@ -2697,22 +2702,19 @@ from my symmath/tensor/LeviCivita.lua
 		if constexpr (N < localRank) {\
 			return Accessor<ThisConst, N>(this_, i);\
 		} else if constexpr (N == localRank) {\
-			bool flip = false;\
 			using InnerConst = typename constness_of<ThisConst>::template apply_to_t<Inner>;\
-			if (antisymSortAndCountFlips(i, flip)) return AntiSymRef<InnerConst>();\
-			return AntiSymRef<InnerConst>(\
-				this_.s[getLocalWriteForReadIndex(i)],\
-				flip ? AntiSymRefHow::NEGATIVE : AntiSymRefHow::POSITIVE\
-			);\
+			auto sign = antisymSortAndCountFlips(i);\
+			if (sign == AntiSymRefHow::ZERO) return AntiSymRef<InnerConst>();\
+			return AntiSymRef<InnerConst>(this_.s[getLocalWriteForReadIndex(i)], sign);\
 		} else if constexpr (N > localRank) {\
-			bool flip = false;\
-			if (antisymSortAndCountFlips(i, flip)) {\
+			auto sign = antisymSortAndCountFlips(i);\
+			if (sign == AntiSymRefHow::ZERO) {\
 				using R = decltype(this_(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
 				return R();\
 			}\
 			/* call-thru of AntiSymRef returns another AntiSymRef ... */\
 			auto result = this_(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
-			if (flip) result.flip();\
+			if (sign == AntiSymRefHow::NEGATIVE) result.flip();\
 			return result;\
 		}\
 	}\
@@ -2726,10 +2728,12 @@ from my symmath/tensor/LeviCivita.lua
 	}\
 \
 	template<typename... Ints>\
+	requires is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) {\
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
 	}\
 	template<typename... Ints>\
+	requires is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) const {\
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
 	}\
@@ -3357,13 +3361,13 @@ auto makeAsym(T const & t) {
 			//count # of flips
 			// TODO combine this with next_permutation so you don't have to keep recounting
 			intN sortedj = j;
-			bool flip = false;
-			if (antisymSortAndCountFlips(sortedj, flip)) {
+			auto sign = antisymSortAndCountFlips(sortedj);
+			if (sign == AntiSymRefHow::ZERO) {
 				throw Common::Exception() << "shouldn't get here";
 			}
 			// 'ij' is 'i' permuted by 'j'
 			intN ij = [&](int k) -> int { return i[j[k]]; };
-			if (flip) {
+			if (sign == AntiSymRefHow::NEGATIVE) {
 				result -= t(ij);
 			} else {
 				result += t(ij);

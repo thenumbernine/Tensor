@@ -52,14 +52,13 @@ void test_TotallyAntisymmetric() {
 		for (auto i = a.begin(); i != a.end(); ++i) {
 			ECHO(i.index);
 			Tensor::int3 sortedi = i.index;
-			bool flip;
-			bool zero = antisymSortAndCountFlips(sortedi, flip);
+			auto sign = antisymSortAndCountFlips(sortedi);
 			ECHO(sortedi);
-			ECHO(flip);
+			ECHO(sign);
 			auto writeIndex = float3a3a3::getLocalWriteForReadIndex(sortedi);
 			ECHO(writeIndex);
 			TEST_BOOL(
-				zero ||
+				sign == Tensor::AntiSymRefHow::ZERO ||
 				writeIndex == 0	// requires input to be sorted
 			);
 			TEST_EQ(a(i.index), b(i.index));
@@ -71,14 +70,13 @@ void test_TotallyAntisymmetric() {
 		for (auto i = a.begin(); i != a.end(); ++i) {
 			ECHO(i.index);
 			Tensor::int3 sortedi = i.index;
-			bool flip;
-			bool zero = antisymSortAndCountFlips(sortedi, flip);
+			auto sign = antisymSortAndCountFlips(sortedi);
 			ECHO(sortedi);
-			ECHO(flip);
+			ECHO(sign);
 			auto writeIndex = float3a3a3::getLocalWriteForReadIndex(sortedi);
 			ECHO(writeIndex);
 			TEST_BOOL(
-				zero ||
+				sign == Tensor::AntiSymRefHow::ZERO ||
 				writeIndex == 0	// requires input to be sorted
 			);
 			TEST_EQ(a(i.index), b(i.index));
