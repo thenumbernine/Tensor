@@ -100,6 +100,24 @@ concept IsSquareTensor =
 	is_tensor_v<T>
 	&& T::isSquare;
 
+template<typename A, typename B>
+concept IsBinaryTensorOpWithMatchingNeighborDims =
+	IsBinaryTensorOp<A,B>
+	&& A::template dim<A::rank-1> == B::template dim<0>;
+
+template<typename A, typename B>
+concept IsBinaryTensorR3xR3Op =
+	IsBinaryTensorOp<A,B>
+	&& A::dims == 3
+	&& B::dims == 3;
+
+template<typename A, typename B>
+concept IsBinaryTensorDiffTypeButMatchingDims =
+	IsBinaryTensorOp<A,B>
+	&& !std::is_same_v<A,B>
+	&& A::dims == B::dims; // equal types means we use .operator== which is constexpr
+	
+
 //forward-declare everything
 
 template<typename Inner, int localDim> struct _vec;
@@ -169,11 +187,8 @@ requires (is_tensor_v<T>)
 T normalize(T const & v);
 
 template<typename A, typename B>
-requires (
-	IsBinaryTensorOp<A, B>
-	&& A::dims == 3
-	&& B::dims == 3
-) auto cross(A const & a, B const & b);
+requires IsBinaryTensorR3xR3Op<A,B>
+auto cross(A const & a, B const & b);
 
 template<typename A, typename B>
 requires IsBinaryTensorOp<A, B>
@@ -229,10 +244,8 @@ requires IsSquareTensor<T>
 auto hodgeDual(T const & a);
 
 template<typename A, typename B>
-requires(
-	IsBinaryTensorOp<A,B>
-	&& A::template dim<A::rank-1> == B::template dim<0>
-) auto operator*(A const & a, B const & b);
+requires IsBinaryTensorOpWithMatchingNeighborDims<A,B>
+auto operator*(A const & a, B const & b);
 
 // these are in Inverse.h:
 // they are giving me link errors.
@@ -1477,6 +1490,7 @@ Bit of a hack: MOst these are written in terms of 'This'
 #define TENSOR_ADD_SUBSET_ACCESS()\
 \
 	/* assumes packed tensor */\
+		/* compile-time offset */\
 	template<int subdim, int offset>\
 	_vec<Inner,subdim> & subset() {\
 		static_assert(subdim >= 0);\
@@ -1491,6 +1505,7 @@ Bit of a hack: MOst these are written in terms of 'This'
 		static_assert(offset + subdim <= localCount);\
 		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}\
+		/* runtime offset */\
 	template<int subdim>\
 	_vec<Inner,subdim> & subset(int offset) {\
 		static_assert(subdim >= 0);\
@@ -1503,7 +1518,6 @@ Bit of a hack: MOst these are written in terms of 'This'
 		static_assert(subdim <= localCount);\
 		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}
-
 
 // vector.volume() == the volume of a size reprensted by the vector
 // assumes Inner operator* exists
@@ -2872,11 +2886,7 @@ using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
 // tensor operations
 
 template<typename A, typename B>
-requires (
-	IsBinaryTensorOp<A,B>
-	&& !std::is_same_v<A,B>
-	&& A::dims == B::dims // equal types means we use .operator== which is constexpr
-)
+requires IsBinaryTensorDiffTypeButMatchingDims<A,B>
 bool operator==(A const & a, B const & b) {
 	for (auto i = a.begin(); i != a.end(); ++i) {
 		if (a(i.index) != b(i.index)) return false;
@@ -2885,11 +2895,7 @@ bool operator==(A const & a, B const & b) {
 }
 
 template<typename A, typename B>
-requires (
-	IsBinaryTensorOp<A,B>
-	&& !std::is_same_v<A,B>
-	&& A::dims == B::dims // equal types means we use .operator== which is constexpr
-)
+requires IsBinaryTensorDiffTypeButMatchingDims<A,B>
 bool operator!=(A const & a, A const & b) {
 	return !operator==(a,b);
 }
@@ -2977,6 +2983,7 @@ decltype(auto) operator /(typename T::Scalar const & a, T const & b) {
 /* works with arbitrary storage.  so sym+asym = mat */\
 /* TODO PRESERVE MATCHING STORAGE OPTIMIZATIONS */\
 template<typename A, typename B>\
+/*requires IsBinaryTensorDiffTypeButMatchingDims<A,B>*/\
 requires (\
 	IsBinaryTensorOp<A,B>\
 	&& A::dims == B::dims\
@@ -3076,11 +3083,7 @@ T normalize(T const & v) {
 
 // c_i := ε_ijk * b_j * c_k
 template<typename A, typename B>
-requires (
-	IsBinaryTensorOp<A,B>
-	&& A::dims == 3
-	&& B::dims == 3
-)
+requires IsBinaryTensorR3xR3Op<A,B>
 auto cross(A const & a, B const & b) {
 	return A(
 		a[1] * b[2] - a[2] * b[1],
@@ -3381,10 +3384,7 @@ auto hodgeDual(A const & a) {
 // c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}
 
 template<typename A, typename B>
-requires(
-	IsBinaryTensorOp<A,B>
-	&& A::template dim<A::rank-1> == B::template dim<0>
-)
+requires IsBinaryTensorOpWithMatchingNeighborDims<A,B>
 auto operator*(A const & a, B const & b) {
 #if 1	// lazy way.  inline the lambdas and don't waste the outer()'s operation expenses
 	//return contract<A::rank-1, A::rank>(outer(a,b));
