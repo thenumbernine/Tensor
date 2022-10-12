@@ -1063,12 +1063,12 @@ ReadIterator vs WriteIterator
 	/* read iterator */\
 	/* - sized to the tensor rank (includes multiple-rank nestings) */\
 	/* - range is 0's to the tensor dims() */\
-	template<typename IteratorOwnerConstness>\
+	template<typename IteratorOwnerConst>\
 	struct ReadIterator {\
-		using intN = typename IteratorOwnerConstness::intN;\
-		IteratorOwnerConstness & owner;\
+		using intN = typename IteratorOwnerConst::intN;\
+		IteratorOwnerConst & owner;\
 		intN index;\
-		ReadIterator(IteratorOwnerConstness & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
+		ReadIterator(IteratorOwnerConst & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
 		ReadIterator(ReadIterator const & o) : owner(o.owner), index(o.index) {}\
 		ReadIterator(ReadIterator && o) : owner(o.owner), index(o.index) {}\
 		ReadIterator & operator=(ReadIterator const & o) {\
@@ -1104,10 +1104,10 @@ ReadIterator vs WriteIterator
 			return o << "ReadIterator(owner=" << &owner << ", index=" << index << ")";\
 		}\
 \
-		static ReadIterator begin(IteratorOwnerConstness & v) {\
+		static ReadIterator begin(IteratorOwnerConst & v) {\
 			return ReadIterator(v);\
 		}\
-		static ReadIterator end(IteratorOwnerConstness & v) {\
+		static ReadIterator end(IteratorOwnerConst & v) {\
 			return ReadIterator(v, ReadInc<0>::end());\
 		}\
 	};\
@@ -1132,9 +1132,9 @@ ReadIterator vs WriteIterator
 		return res;\
 	}\
 \
-	template<typename ThisConstness, int numNestings_>\
+	template<typename ThisConst, int numNestings_>\
 	struct GetByWriteIndexImpl {\
-		static constexpr decltype(auto) value(ThisConstness & t, intW const & index) {\
+		static constexpr decltype(auto) value(ThisConst & t, intW const & index) {\
 			TENSOR_INSERT_BOUNDS_CHECK(index.s[0]);\
 			return Inner::getByWriteIndex(\
 				t.s[index.s[0]],\
@@ -1142,26 +1142,26 @@ ReadIterator vs WriteIterator
 			);\
 		}\
 	};\
-	template<typename ThisConstness>\
-	struct GetByWriteIndexImpl<ThisConstness, 1> {\
-		static constexpr decltype(auto) value(ThisConstness & t, intW const & index) {\
+	template<typename ThisConst>\
+	struct GetByWriteIndexImpl<ThisConst, 1> {\
+		static constexpr decltype(auto) value(ThisConst & t, intW const & index) {\
 			TENSOR_INSERT_BOUNDS_CHECK(index.s[0]);\
 			return t.s[index.s[0]];\
 		}\
 	};\
-	template<typename ThisConstness>\
-	static constexpr decltype(auto) getByWriteIndex(ThisConstness & t, intW const & index) {\
-		return GetByWriteIndexImpl<ThisConstness, numNestings>::value(t, index);\
+	template<typename ThisConst>\
+	static constexpr decltype(auto) getByWriteIndex(ThisConst & t, intW const & index) {\
+		return GetByWriteIndexImpl<ThisConst, numNestings>::value(t, index);\
 	}\
 \
-	template<typename WriteOwnerConstness>\
+	template<typename WriteOwnerConst>\
 	struct Write {\
 		using intW = _vec<int, numNestings>;\
 		using intR = intN;\
 \
-		WriteOwnerConstness & owner;\
+		WriteOwnerConst & owner;\
 \
-		Write(WriteOwnerConstness & owner_) : owner(owner_) {}\
+		Write(WriteOwnerConst & owner_) : owner(owner_) {}\
 		Write(Write const & o) : owner(o.owner) {}\
 		Write(Write && o) : owner(o.owner) {}\
 		Write & operator=(Write const & o) { owner = o.owner; return *this; }\
@@ -1208,12 +1208,12 @@ ReadIterator vs WriteIterator
 		/* write iterator */\
 		/* - sized to the # of nestings */\
 		/* - range is 0's to each nesting's .localCount */\
-		template<typename IteratorOwnerConstness>\
+		template<typename IteratorOwnerConst>\
 		struct WriteIterator {\
-			IteratorOwnerConstness & owner;\
+			IteratorOwnerConst & owner;\
 			intW writeIndex;\
 			intR readIndex;\
-			WriteIterator(IteratorOwnerConstness & owner_, intW writeIndex_ = {})\
+			WriteIterator(IteratorOwnerConst & owner_, intW writeIndex_ = {})\
 			: owner(owner_),\
 				writeIndex(writeIndex_),\
 				readIndex(getReadForWriteIndex(writeIndex)) {}\
@@ -1245,7 +1245,7 @@ ReadIterator vs WriteIterator
 			}\
 			decltype(auto) operator*() const {\
 				/* cuz it takes less operations than by-read-writeIndex */\
-				return getByWriteIndex<IteratorOwnerConstness>(owner, writeIndex);\
+				return getByWriteIndex<IteratorOwnerConst>(owner, writeIndex);\
 			}\
 \
 			WriteIterator & operator++() {\
@@ -1259,15 +1259,15 @@ ReadIterator vs WriteIterator
 				return *this;\
 			}\
 \
-			static WriteIterator begin(IteratorOwnerConstness & v) {\
+			static WriteIterator begin(IteratorOwnerConst & v) {\
 				return WriteIterator(v);\
 			}\
-			static WriteIterator end(IteratorOwnerConstness & v) {\
+			static WriteIterator end(IteratorOwnerConst & v) {\
 				return WriteIterator(v, WriteInc<0>::end());\
 			}\
 		};\
 \
-		/* TODO if .write() was called by a const object, so WriteOwnerConstness is 'This const' */\
+		/* TODO if .write() was called by a const object, so WriteOwnerConst is 'This const' */\
 		/* then should .begin() .end() be allowed?  or should they be forced to be 'This const' as well? */\
 		using iterator = WriteIterator<This>;\
 		iterator begin() { return iterator::begin(owner); }\
@@ -1847,7 +1847,7 @@ constexpr int symIndex(int i, int j) {
 	return i + triangleSize(j);
 }
 
-// this assumes the class has a member template<ThisConstness> Accessor for its [] and (int) access
+// this assumes the class has a member template<ThisConst> Accessor for its [] and (int) access
 #define TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
@@ -1924,33 +1924,33 @@ This is used by _sym , while _asym uses something different since it uses the An
 		return symIndex(i,j);\
 	}
 
-template<typename AccessorOwnerConstness>
+template<typename AccessorOwnerConst>
 struct Rank2Accessor {
 	//properties for Accessor as a tensor:
 #if 1	// NOTICE all of this is only for the Accessor-as-tensor interoperability.  You can disable it and just don't use Accessors as tensors.	
 	TENSOR_THIS(Rank2Accessor)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(
-		typename AccessorOwnerConstness::Inner,
-		AccessorOwnerConstness::localDim,
+		typename AccessorOwnerConst::Inner,
+		AccessorOwnerConst::localDim,
 		1); // localRank==1 always cuz we hand off to the next Accessor or Owner's Inner
 	//begin TENSOR_TEMPLATE_*
 	template<typename T> using Template = Rank2Accessor<T>;
-	template<typename NewInner> using ReplaceInner = Rank2Accessor<typename AccessorOwnerConstness::template ReplaceInner<NewInner>>;
-	template<int newLocalDim> using ReplaceLocalDim = Rank2Accessor<typename AccessorOwnerConstness::template ReplaceLocalDim<newLocalDim>>;
+	template<typename NewInner> using ReplaceInner = Rank2Accessor<typename AccessorOwnerConst::template ReplaceInner<NewInner>>;
+	template<int newLocalDim> using ReplaceLocalDim = Rank2Accessor<typename AccessorOwnerConst::template ReplaceLocalDim<newLocalDim>>;
 	//end TENSOR_TEMPLATE_*
 	//begin TENSOR_HEADER_*_SPECIFIC
-	static constexpr int localCount = AccessorOwnerConstness::localDim;
-	template<typename T> using LocalSumWithScalarResult = typename AccessorOwnerConstness::template LocalSumWithScalarResult<T>;
+	static constexpr int localCount = AccessorOwnerConst::localDim;
+	template<typename T> using LocalSumWithScalarResult = typename AccessorOwnerConst::template LocalSumWithScalarResult<T>;
 	//end TENSOR_HEADER_*_SPECIFIC
 	TENSOR_EXPAND_TEMPLATE_TENSORR()
 	TENSOR_HEADER()
 #endif
 
 	static constexpr bool isAccessorFlag = {};
-	AccessorOwnerConstness & owner;
+	AccessorOwnerConst & owner;
 	int i;
 
-	Rank2Accessor(AccessorOwnerConstness & owner_, int i_) : owner(owner_), i(i_) {}
+	Rank2Accessor(AccessorOwnerConst & owner_, int i_) : owner(owner_), i(i_) {}
 
 	/* these should call into _sym(int,int) which is always Inner (const) & */
 	constexpr decltype(auto) operator()(int j) { return owner(i,j); }
@@ -1968,8 +1968,8 @@ struct Rank2Accessor {
 
 // Accessor is used to return between-rank indexes, so if sym is rank-2 this lets you get s[i] even if the storage only represents s[i,j]
 #define TENSOR_ADD_RANK2_ACCESSOR()\
-	template<typename AccessorOwnerConstness>\
-	using Accessor = Rank2Accessor<AccessorOwnerConstness>;
+	template<typename AccessorOwnerConst>\
+	using Accessor = Rank2Accessor<AccessorOwnerConst>;
 
 /*
 for the call index operator
@@ -2450,27 +2450,27 @@ inline constexpr int symmetricSize(int d, int r) {
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	TENSOR_ADD_BRACKET_FWD_TO_CALL()
 
-template<typename AccessorOwnerConstness, int subRank>
+template<typename AccessorOwnerConst, int subRank>
 struct RankNAccessor {
 	//properties of owner, mapped here so names dont' collide with Accessor's tensor properties:
-	static constexpr int ownerLocalRank = AccessorOwnerConstness::localRank;
-	using ownerIntN = typename AccessorOwnerConstness::intN;
+	static constexpr int ownerLocalRank = AccessorOwnerConst::localRank;
+	using ownerIntN = typename AccessorOwnerConst::intN;
 
 	//properties for Accessor as a tensor:
 #if 1	// NOTICE all of this is only for the Accessor-as-tensor interoperability.  You can disable it and just don't use Accessors as tensors.	
 	TENSOR_THIS(RankNAccessor)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(
-		typename AccessorOwnerConstness::Inner,
-		AccessorOwnerConstness::localDim,
+		typename AccessorOwnerConst::Inner,
+		AccessorOwnerConst::localDim,
 		1); // localRank==1 always cuz we hand off to the next Accessor or Owner's Inner
 	//begin TENSOR_TEMPLATE_*
 	template<typename T, int s> using Template = RankNAccessor<T, s>;
-	template<typename NewInner> using ReplaceInner = RankNAccessor<typename AccessorOwnerConstness::template ReplaceInner<NewInner>, subRank>;
-	template<int newLocalDim> using ReplaceLocalDim = RankNAccessor<typename AccessorOwnerConstness::template ReplaceLocalDim<newLocalDim>, subRank>;
+	template<typename NewInner> using ReplaceInner = RankNAccessor<typename AccessorOwnerConst::template ReplaceInner<NewInner>, subRank>;
+	template<int newLocalDim> using ReplaceLocalDim = RankNAccessor<typename AccessorOwnerConst::template ReplaceLocalDim<newLocalDim>, subRank>;
 	//end TENSOR_TEMPLATE_*
 	//begin TENSOR_HEADER_*_SPECIFIC
-	static constexpr int localCount = AccessorOwnerConstness::localDim;
-	template<typename T> using LocalSumWithScalarResult = typename AccessorOwnerConstness::template LocalSumWithScalarResult<T>;
+	static constexpr int localCount = AccessorOwnerConst::localDim;
+	template<typename T> using LocalSumWithScalarResult = typename AccessorOwnerConst::template LocalSumWithScalarResult<T>;
 	//end TENSOR_HEADER_*_SPECIFIC
 	TENSOR_EXPAND_TEMPLATE_TENSORR()
 	TENSOR_HEADER()
@@ -2478,10 +2478,10 @@ struct RankNAccessor {
 
 	static_assert(subRank > 0 && subRank < ownerLocalRank);
 	static constexpr bool isAccessorFlag = {};
-	AccessorOwnerConstness & owner;
+	AccessorOwnerConst & owner;
 	_vec<int,subRank> i;
 
-	RankNAccessor(AccessorOwnerConstness & owner_, _vec<int,subRank> i_)
+	RankNAccessor(AccessorOwnerConst & owner_, _vec<int,subRank> i_)
 	: owner(owner_), i(i_) {}
 
 	/* until I can think of how to split off parameter-packs at a specific length, I'll just do this in _vec<int> first like below */
@@ -2495,7 +2495,7 @@ struct RankNAccessor {
 			_vec<int,subRank+N> fulli;
 			fulli.template subset<subRank,0>() = i;
 			fulli.template subset<N,subRank>() = i2;
-			return RankNAccessor<AccessorOwnerConstness, subRank+N>(owner, fulli);
+			return RankNAccessor<AccessorOwnerConst, subRank+N>(owner, fulli);
 		} else if constexpr (subRank + N == ownerLocalRank) {
 			/* returns Inner, or for asym returns AntiSymRef<Inner> */
 			ownerIntN fulli;
@@ -2541,8 +2541,8 @@ struct RankNAccessor {
 };
 
 #define TENSOR_ADD_RANK_N_ACCESSOR()\
-	template<typename AccessorOwnerConstness, int subRank>\
-	using Accessor = RankNAccessor<AccessorOwnerConstness, subRank>;
+	template<typename AccessorOwnerConst, int subRank>\
+	using Accessor = RankNAccessor<AccessorOwnerConst, subRank>;
 
 #define TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_RANK_N_ACCESSOR()\
