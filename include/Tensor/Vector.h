@@ -87,6 +87,19 @@ concept is_all_v =
 	sizeof...(Args) > 0
 	&& std::is_same_v<std::tuple<Args...>, Common::tuple_rep_t<T, sizeof...(Args)>>;
 
+
+template<typename A, typename B>
+concept IsBinaryTensorOp =
+	is_tensor_v<A>
+	&& is_tensor_v<B>
+//	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
+;
+
+template<typename T>
+concept IsSquareTensor =
+	is_tensor_v<T>
+	&& T::isSquare;
+
 //forward-declare everything
 
 template<typename Inner, int localDim> struct _vec;
@@ -132,18 +145,14 @@ struct Index : public IndexBase {};
 template<typename Tensor_, typename IndexVector>
 struct IndexAccess;
 
-
 //forward-declare, body is below all tensor classes.
 template<typename T>
 requires is_tensor_v<T>
 T elemMul(T const & a, T const & b);
 
 template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-) typename A::Scalar inner(A const & a, B const & b);
+requires IsBinaryTensorOp<A, B>
+typename A::Scalar inner(A const & a, B const & b);
 
 template<typename T> requires is_tensor_v<T>
 typename T::Scalar lenSq(T const & v);
@@ -152,11 +161,8 @@ template<typename T> requires (is_tensor_v<T>)
 typename T::Scalar length(T const & v);
 
 template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-) typename A::Scalar distance(A const & a, B const & b);
+requires IsBinaryTensorOp<A, B>
+typename A::Scalar distance(A const & a, B const & b);
 
 template<typename T>
 requires (is_tensor_v<T>)
@@ -164,19 +170,14 @@ T normalize(T const & v);
 
 template<typename A, typename B>
 requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
+	IsBinaryTensorOp<A, B>
 	&& A::dims == 3
 	&& B::dims == 3
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 ) auto cross(A const & a, B const & b);
 
 template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-) auto outer(A const & a, B const & b);
+requires IsBinaryTensorOp<A, B>
+auto outer(A const & a, B const & b);
 
 template<typename... T>
 auto outerProduct(T&&... args);
@@ -204,7 +205,7 @@ requires (is_tensor_v<A>)
 auto contractN(A const & a);
 
 template<int num=1, typename A, typename B>
-requires (is_tensor_v<A> && is_tensor_v<B>)
+requires IsBinaryTensorOp<A,B>
 auto interior(A const & a, B const & b);
 
 template<int m=0, typename T>
@@ -212,29 +213,24 @@ requires (is_tensor_v<T>)
 auto diagonal(T const & t);
 
 template<typename T>
-requires (is_tensor_v<T> && T::isSquare)
+requires IsSquareTensor<T>
 auto makeSym(T const & t);
 
 template<typename T>
-requires (is_tensor_v<T> && T::isSquare)
+requires IsSquareTensor<T>
 auto makeAsym(T const & t);
 
 template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-) auto wedge(A const & a, B const & b);
+requires IsBinaryTensorOp<A,B>
+auto wedge(A const & a, B const & b);
 
-template<typename A>
-requires (
-	is_tensor_v<A>
-	&& A::isSquare
-) auto hodgeDual(A const & a);
+template<typename T>
+requires IsSquareTensor<T>
+auto hodgeDual(T const & a);
 
 template<typename A, typename B>
 requires(
-	is_tensor_v<A>
-	&& is_tensor_v<B>
+	IsBinaryTensorOp<A,B>
 	&& A::template dim<A::rank-1> == B::template dim<0>
 ) auto operator*(A const & a, B const & b);
 
@@ -2877,8 +2873,7 @@ using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
 
 template<typename A, typename B>
 requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
+	IsBinaryTensorOp<A,B>
 	&& !std::is_same_v<A,B>
 	&& A::dims == B::dims // equal types means we use .operator== which is constexpr
 )
@@ -2891,8 +2886,7 @@ bool operator==(A const & a, B const & b) {
 
 template<typename A, typename B>
 requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
+	IsBinaryTensorOp<A,B>
 	&& !std::is_same_v<A,B>
 	&& A::dims == B::dims // equal types means we use .operator== which is constexpr
 )
@@ -2984,9 +2978,7 @@ decltype(auto) operator /(typename T::Scalar const & a, T const & b) {
 /* TODO PRESERVE MATCHING STORAGE OPTIMIZATIONS */\
 template<typename A, typename B>\
 requires (\
-	is_tensor_v<A>\
-	&& is_tensor_v<B>\
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	/* TODO meh? */\
+	IsBinaryTensorOp<A,B>\
 	&& A::dims == B::dims\
 	&& !std::is_same_v<A, B> /* because that is caught next, until I get this to preserve storage opts...*/\
 )\
@@ -3041,11 +3033,8 @@ auto hadamard(T&&... args) {
 // .... or have the member functions call into these.
 // 	c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
 template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-) typename A::Scalar inner(A const & a, B const & b) {
+requires IsBinaryTensorOp<A,B>
+typename A::Scalar inner(A const & a, B const & b) {
 	auto i = a.begin();
 	auto sum = a(i.index) * b(i.index);
 	for (++i; i != a.end(); ++i) {
@@ -3074,11 +3063,7 @@ typename T::Scalar length(T const & v) {
 }
 
 template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-)
+requires IsBinaryTensorOp<A,B>
 typename A::Scalar distance(A const & a, B const & b) {
 	return length(b - a);
 }
@@ -3092,11 +3077,9 @@ T normalize(T const & v) {
 // c_i := ε_ijk * b_j * c_k
 template<typename A, typename B>
 requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
+	IsBinaryTensorOp<A,B>
 	&& A::dims == 3
 	&& B::dims == 3
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
 )
 auto cross(A const & a, B const & b) {
 	return A(
@@ -3108,11 +3091,7 @@ auto cross(A const & a, B const & b) {
 // outer product of tensors c_i1_..ip_j1_..jq = a_i1..ip * b_j1..jq
 // for vectors: c_ij := a_i * b_j
 template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-)
+requires IsBinaryTensorOp<A,B>
 auto outer(A const & a, B const & b) {
 	using AB = typename A::template ReplaceScalar<B>;
 	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
@@ -3312,7 +3291,7 @@ auto contractN(A const & a) {
 // it is matrix-mul if num == 1
 // TODO this could stand to be optimized
 template<int num, typename A, typename B>
-requires (is_tensor_v<A> && is_tensor_v<B>)
+requires IsBinaryTensorOp<A,B>
 auto interior(A const & a, B const & b) {
 	return contractN<A::rank-num,num>(outer(a,b));
 }
@@ -3322,7 +3301,7 @@ auto interior(A const & a, B const & b) {
 // but it should def be made available
 
 template<typename T>
-requires (is_tensor_v<T> && T::isSquare)
+requires IsSquareTensor<T>
 auto makeSym(T const & t) {
 	using S = typename T::Scalar;
 	using intN = typename T::intN;
@@ -3345,7 +3324,7 @@ auto makeSym(T const & t) {
 
 //that's right, same function, just different return type
 template<typename T>
-requires (is_tensor_v<T> && T::isSquare)
+requires IsSquareTensor<T>
 auto makeAsym(T const & t) {
 	using S = typename T::Scalar;
 	using intN = typename T::intN;
@@ -3380,20 +3359,16 @@ auto makeAsym(T const & t) {
 // wedge product
 
 template<typename A, typename B>
-requires (
-	is_tensor_v<A>
-	&& is_tensor_v<B>
-) auto wedge(A const & a, B const & b) {
+requires IsBinaryTensorOp<A,B>
+auto wedge(A const & a, B const & b) {
 	return makeAsym(outer(a,b));
 }
 
 // Hodge dual
 
 template<typename A>
-requires (
-	is_tensor_v<A>
-	&& A::isSquare
-) auto hodgeDual(A const & a) {
+requires IsSquareTensor<A>
+auto hodgeDual(A const & a) {
 	static constexpr int rank = A::rank;
 	static constexpr int dim = A::template dim<0>;
 	static_assert(rank <= dim);
@@ -3407,8 +3382,7 @@ requires (
 
 template<typename A, typename B>
 requires(
-	is_tensor_v<A>
-	&& is_tensor_v<B>
+	IsBinaryTensorOp<A,B>
 	&& A::template dim<A::rank-1> == B::template dim<0>
 )
 auto operator*(A const & a, B const & b) {
