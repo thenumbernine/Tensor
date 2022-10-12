@@ -785,7 +785,7 @@ ReplaceScalar<typename>
 		return s[i];\
 	}
 
-#define TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()\
+#define TENSOR_ADD_BRACKET_FWD_TO_CALL()\
 	/* a[i] := a_i */\
 	/* operator[int] calls through operator(int) */\
 	constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
@@ -795,7 +795,7 @@ ReplaceScalar<typename>
 //operator(int...) forwards to operator(int)(int...)
 #define TENSOR_ADD_RANK1_CALL_INDEX_AUX()\
 \
-	TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()\
+	TENSOR_ADD_BRACKET_FWD_TO_CALL()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	/* operator(int, int...) calls through operator(int) */\
@@ -1809,14 +1809,12 @@ constexpr int symIndex(int i, int j) {
 	requires is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(int i, int j, Ints... is) const { return (*this)(i,j)(is...); }\
 \
-	constexpr decltype(auto) operator[](int i) { return Accessor<This>(*this, i); }\
-	constexpr decltype(auto) operator[](int i) const { return Accessor<This const>(*this, i); }\
-\
 	/* a(i) := a_i */\
-	/* this is incomplete so it returns the operator[] which returns the Accessor */\
-	constexpr decltype(auto) operator()(int i) { return (*this)[i]; }\
-	constexpr decltype(auto) operator()(int i) const { return (*this)[i]; }\
+	/* this is incomplete so it returns the Accessor */\
+	constexpr decltype(auto) operator()(int i) { return Accessor<This>(*this, i); }\
+	constexpr decltype(auto) operator()(int i) const { return Accessor<This const>(*this, i); }\
 \
+	TENSOR_ADD_BRACKET_FWD_TO_CALL()\
 	TENSOR_ADD_INT_VEC_CALL_INDEX()
 
 // symmetric matrices
@@ -2406,7 +2404,7 @@ inline constexpr int symmetricSize(int d, int r) {
 	}\
 \
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
-	TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()
+	TENSOR_ADD_BRACKET_FWD_TO_CALL()
 
 template<typename AccessorOwnerConstness, int subRank>
 struct RankNAccessor {
@@ -2504,7 +2502,7 @@ struct RankNAccessor {
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));
 	}
 
-	TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()
+	TENSOR_ADD_BRACKET_FWD_TO_CALL()
 
 	TENSOR_ADD_VALID_INDEX()	// this is needed for other tensors to generic-tensor-ctor using this tensor
 	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX() // needed by TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS
@@ -2734,7 +2732,7 @@ from my symmath/tensor/LeviCivita.lua
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
 	}\
 \
-	TENSOR_ADD_RANK1_BRACKET_FWD_TO_CALL()
+	TENSOR_ADD_BRACKET_FWD_TO_CALL()
 
 #define TENSOR_TOTALLY_ANTISYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_RANK_N_ACCESSOR()\
