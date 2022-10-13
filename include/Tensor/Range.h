@@ -34,10 +34,9 @@ struct RangeIterator {
 	template<int i>
 	struct Inc {
 		static constexpr bool exec(RangeIterator & it) {
-			constexpr int j = rankFirst + i * rankStep;
-			++it.index[j];
-			if (it.index[j] < getMax(it.owner, j)) return true;
-			if (j != rankLast) it.index[j] = getMin(it.owner, j);
+			++it.index[i];
+			if (it.index[i] < getMax(it.owner, i)) return true;
+			if (i != rankLast) it.index[i] = getMin(it.owner, i);
 			return false;
 		}
 	};
@@ -70,7 +69,7 @@ struct RangeIterator {
 	RangeIterator operator+(int offset) const { return RangeIterator(*this) += offset; }
 	RangeIterator operator-(int offset) const { return RangeIterator(*this) -= offset; }
 	int operator-(RangeIterator const &i) const { return flatten() - i.flatten(); }
-	RangeIterator & operator++() { Common::ForLoop<0, rank, Inc>::exec(*this); return *this; }
+	RangeIterator & operator++() { Common::ForLoop<rankFirst, rankLast+rankStep, Inc, rankStep>::exec(*this); return *this; }
 	intN &operator*() { return index; }
 	intN *operator->() { return &index; }
 
