@@ -51,9 +51,7 @@ struct FindDstForSrcOuter {
 		
 		static bool exec(intN & dstForSrcIndex) {
 			bool found = Common::ForLoop<0, rank, FindDstForSrcIndex<IndexVector, ReadIndexVector, j>::template Find>::exec(dstForSrcIndex);
-			
 			if (!found) throw Common::Exception() << "failed to find index";
-			
 			return false;
 		}
 	};
