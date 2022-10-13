@@ -15,12 +15,12 @@ struct RangeIterator;
 template<
 	int rank, 
 	typename Owner
-> using RangeInteriorInner = RangeIterator<0, rank-1, 1,  rank, Owner>;
+> using RangeIteratorInner = RangeIterator<0, rank-1, 1,  rank, Owner>;
 
 template<
 	int rank, 
 	typename Owner
-> using RangeInteriorOuter = RangeIterator<rank-1, 0, -1, rank, Owner>;
+> using RangeIteratorOuter = RangeIterator<rank-1, 0, -1, rank, Owner>;
 
 template<
 	int rank, 
@@ -28,8 +28,8 @@ template<
 	typename Owner
 > using RangeIteratorInnerVsOuter = std::conditional_t<
 	innerFirst,
-	RangeInteriorInner<rank, Owner>,
-	RangeInteriorOuter<rank, Owner>
+	RangeIteratorInner<rank, Owner>,
+	RangeIteratorOuter<rank, Owner>
 >;
 
 template<int rank_, bool innerFirst = true>

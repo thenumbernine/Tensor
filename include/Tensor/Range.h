@@ -118,6 +118,9 @@ struct RangeIterator {
 	}
 };
 
+// TODO intermediate class with templated getMin and getMax or something
+// so I can use RangeObj iteration functionality but without having to store the min and max?
+
 // iterate over an arbitrary range
 template<int rank_, bool innerFirst>
 struct RangeObj {
@@ -130,8 +133,8 @@ struct RangeObj {
 
 	template<int i> constexpr int getRangeMin() const { return min[i]; }
 	template<int i> constexpr int getRangeMax() const { return max[i]; }
-	using InnerOrderIterator = RangeIteratorInnerVsOuter<rank, true,  RangeObj>;	// inc 0 first
-	using OuterOrderIterator = RangeIteratorInnerVsOuter<rank, false, RangeObj>;	// inc n-1 first
+	using InnerOrderIterator = RangeIteratorInner<rank, RangeObj>;	// inc 0 first
+	using OuterOrderIterator = RangeIteratorOuter<rank, RangeObj>;	// inc n-1 first
 
 	using iterator = std::conditional_t<innerFirst, InnerOrderIterator, OuterOrderIterator>;
 	constexpr iterator begin() { return iterator(*this); }

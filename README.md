@@ -259,10 +259,25 @@ Sorry GLSL, Cg wins this round:
 - `_asym2<T>, _asym3<T>, _asym4<T>` = templated fixed-size antisymmetric matrices.
 
 ## Quaternions:
-`_quat` is the odd one out, where it does have a few of the tensor operations, but it is stuck at 4D.  Maybe I will implement Cayley-Dickson constructs later for higher dimension.
-`_quat<type>` = Quaternion.  Subclass of `_vec4<type>`.
-`operator *` = Quaternion multiplication.
+`_quat` is the odd class out, where it does have a few of the tensor operations, but it is stuck at 4D.  Maybe I will implement Cayley-Dickson constructs later for higher dimension.
+- `_quat<type>` = Quaternion.  Subclass of `_vec4<type>`.  This means they have the familiar fields `.x .y .z` for imaginary components and `.w` for real component.
 - `quati, quatf, quatd` = integer, float, and double precision quaternions.
+
+Quaternion Members and Methods:
+- `::vec3` = the equivalent vec3 type which this quaternion is capable of rotating.
+- `_quat operator*(_quat, _quat)` = multiplication between quaternions is defined as quaternion multiplication.
+- `_quat static _quat::mul(_quat, _quat)` = helper function for quaternion multiplication.
+- `_quat operator*=(_quat)` = in-place quaternion multiplication.
+- `_quat .conjugate()` = returns the conjugate.  For unit quaternions this is the same as the inverse.
+- `_quat .inverse()` = returns the inverse, i.e. the conjugate divided by the length-squared.
+- `_quat .fromAngleAxis()` = Same as an quaternion exponential.  Takes a quaternion with the real/w component equal to the number of radians to rotate and x y z set to the axis to rotate along. Returns a quaternion which would produce that rotation.
+- `_quat .toAngleAxis()` = Same as a quaternion logarithm.  Converts a quaternion from rotation space to angle-axis space.
+- `static Scalar _quat::angleAxisEpsilon` = set this epsilon for when the from-angle-axis function should consider a rotation too small (would-be axis of zero) and avoid performing a normalization on the axis that would otherwise produce NaNs.
+- `vec3 .rotate(vec3)` = rotate the vector by `this` quaternion.
+- `vec3 .xAxis()` = return the x-axis of `this` quaternion's orientation.
+- `vec3 .yAxis()` = return the y-axis of `this` quaternion's orientation.
+- `vec3 .zAxis()` = return the z-axis of `this` quaternion's orientation.
+- `_quat normalize(_quat)` = returns a normalized version of this quaternion.
 
 ## Dependencies:
 This project depends on the "Common" project, for Exception, template metaprograms, etc.
