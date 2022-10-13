@@ -1,6 +1,9 @@
 #include "Tensor/AntiSymRef.h"
 #include "Common/Test.h"
 
+static_assert(Common::is_instance_v<Tensor::AntiSymRef<double>, Tensor::AntiSymRef>);
+static_assert(Common::is_instance_v<Tensor::AntiSymRef<Tensor::AntiSymRef<double>>, Tensor::AntiSymRef>);
+
 void test_AntiSymRef() {
 	float f;
 

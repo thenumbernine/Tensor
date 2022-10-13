@@ -2,14 +2,7 @@
 
 #include "Common/Meta.h"
 
-
 namespace Tensor {
-
-// TODO put in Common/Meta.h
-template<typename T, typename... Args>
-concept is_all_v =
-	sizeof...(Args) > 0
-	&& std::is_same_v<std::tuple<Args...>, Common::tuple_rep_t<T, sizeof...(Args)>>;
 
 /*
 Detects if a class is a "tensor".
@@ -21,44 +14,13 @@ TODO should this decay_t T or should I rely on the invoker to is_tensor_v<decay_
 template<typename T>
 constexpr bool is_tensor_v = requires(T const & t) { &T::isTensorFlag; };
 
-//https://stackoverflow.com/a/61040973
-// TODO this doesn't seem to work as often as I'd like, so an easier method is just give whatever template a base class and then test is_base_v
-namespace {
-    template <typename, template <typename...> typename>
-    struct is_instance_impl : public std::false_type {};
-
-    template <template <typename...> typename U, typename...Ts>
-    struct is_instance_impl<U<Ts...>, U> : public std::true_type {};
-}
-template <typename T, template <typename ...> typename U>
-using is_instance = is_instance_impl<std::decay_t<T>, U>;
-template <typename T, template <typename ...> typename U>
-constexpr bool is_instance_v = is_instance<T, U>::value;
-
-
-// I was using optional<> to capture types without instanciating them
-// but optional can't wrap references, so ...
-// TODO might move this somewhere like Common/Meta.h
-template<typename T>
-struct TypeWrapper {
-	using type = T;
-};
-
-//https://codereview.stackexchange.com/a/208195
-template<typename U>
-struct constness_of { 
-	template <typename T>
-	using apply_to_t = typename std::conditional_t<
-		std::is_const_v<U>,
-		typename std::add_const_t<T>,
-		typename std::remove_const_t<T>
-	>;
-};
-
 //https://stackoverflow.com/a/48840842
 // begin static_for
 
 // std::size is supported from C++17
+// TODO compare this with the variadic and sequence loops already in Common
+// and TODO see if any of them can resolve template args ... 
+
 template <typename T, size_t N>
 constexpr size_t static_size(const T (&)[N]) noexcept {
 	return N;
@@ -101,38 +63,6 @@ constexpr void static_foreach(Functor && functor) {
 }
 
 // end static_for
-
-// TODO move this to Common/Sequence.h (and take some from Common/Meta.h too)
-// begin https://codereview.stackexchange.com/a/64702/265778
-
-namespace details {
-	template<typename Int, typename, Int Begin, bool Increasing>
-	struct integer_range_impl;
-
-	template<typename Int, Int... N, Int Begin>
-	struct integer_range_impl<Int, std::integer_sequence<Int, N...>, Begin, true> {
-		using type = std::integer_sequence<Int, N+Begin...>;
-	};
-
-	template<typename Int, Int... N, Int Begin>
-	struct integer_range_impl<Int, std::integer_sequence<Int, N...>, Begin, false> {
-		using type = std::integer_sequence<Int, Begin-N...>;
-	};
-}
-
-template<typename Int, Int Begin, Int End>
-using make_integer_range = typename details::integer_range_impl<
-	Int,
-	std::make_integer_sequence<Int, (Begin<End) ? End-Begin : Begin-End>,
-	Begin,
-	(Begin < End)
->::type;
-
-template<std::size_t Begin, std::size_t End>
-using make_index_range = make_integer_range<std::size_t, Begin, End>;
-
-// end https://codereview.stackexchange.com/a/64702/265778
-
 
 
 // TODO begin the implementation of wrappers ... i think i was starting to make index-operations by wrapping operations and building expression trees ...

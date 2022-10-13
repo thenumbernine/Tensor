@@ -3,6 +3,7 @@
 // wrapper of a ref of a type that reads and writes the negative of the value its wrapping
 
 #include "Tensor/Meta.h"	//is_tensor_v, is_instance_v
+#include "Common/Meta.h"	//is_instance_v
 #include <functional>	//std::reference_wrapper
 #include <optional>
 #include <ostream>		//std::ostream
@@ -49,7 +50,7 @@ struct AntiSymRef {
 	using This = AntiSymRef;
 	using Type = T;
 	
-	static_assert(!is_instance_v<T, AntiSymRef>);	//never wrap AntiSymRef<AntiSymRef<T>>, instead just use 1 wrapper, flip 'how' if necessary.
+	static_assert(!Common::is_instance_v<T, AntiSymRef>);	//never wrap AntiSymRef<AntiSymRef<T>>, instead just use 1 wrapper, flip 'how' if necessary.
 
 	std::optional<std::reference_wrapper<T>> x;
 
@@ -98,7 +99,7 @@ struct AntiSymRef {
 	requires (is_tensor_v<T>)
 	{
 		using R = std::decay_t<decltype((*x).get()(std::forward<Args>(args)...))>;
-		if constexpr (is_instance_v<R, AntiSymRef>) {
+		if constexpr (Common::is_instance_v<R, AntiSymRef>) {
 			using RT = typename R::Type;	// TODO nested-most?  verified for two-nestings deep, what about 3?
 			using RRT = std::conditional_t<std::is_const_v<T>, const RT, RT>;
 			if (how != Sign::POSITIVE && how != Sign::NEGATIVE) {
@@ -131,9 +132,6 @@ struct AntiSymRef {
 		return *this;
 	}
 };
-
-static_assert(is_instance_v<AntiSymRef<double>, AntiSymRef>);
-static_assert(is_instance_v<AntiSymRef<AntiSymRef<double>>, AntiSymRef>);
 
 template<typename T>
 bool operator==(AntiSymRef<T> const & a, T const & b) {

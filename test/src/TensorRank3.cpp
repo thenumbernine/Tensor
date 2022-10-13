@@ -663,7 +663,7 @@ namespace InteriorTest {
 	static_assert(is_same_v<R1, decltype(contract<A::rank-1,A::rank>(outer(A(),B())))>);
 	using R2 = typename A
 			::template ReplaceScalar<B>
-			::template RemoveIndexSeq<make_integer_range<int, A::rank-1, A::rank+1>>;
+			::template RemoveIndexSeq<Common::make_integer_range<int, A::rank-1, A::rank+1>>;
 	static_assert(is_same_v<R1, R2>);
 }
 

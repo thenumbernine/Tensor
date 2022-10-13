@@ -50,6 +50,9 @@ if I do column-major then C inline indexing is transposed
 #include "Tensor/AntiSymRef.h"
 #include "Tensor/Meta.h"
 #include "Common/String.h"
+#include "Common/ForLoop.h"		//ForLoop
+#include "Common/Function.h"	//FunctionFromLambda
+#include "Common/Sequence.h"	//seq_reverse_t, make_integer_range
 #include "Common/Exception.h"
 #include <tuple>
 #include <functional>	//reference_wrapper, also function<> is by Partial
@@ -122,9 +125,9 @@ ok I enjoyed the model of inner classes that look like:
 template<...> struct ... {
 	static constexpr auto value() {
 		if constexpr (cond1) {
-			return TypeWrapper<type1>();
+			return Common::TypeWrapper<type1>();
 		} else if constexpr (cond2) {
-			return TypeWrapper<type2>();
+			return Common::TypeWrapper<type2>();
 		} else ...
 	}
 	using type = typename decltype(value())::type;
@@ -184,7 +187,7 @@ ReplaceScalar<typename>
 			if constexpr (is_tensor_v<Inner>) {\
 				return Inner::ScalarImpl::value();\
 			} else {\
-				return TypeWrapper<Inner>();\
+				return Common::TypeWrapper<Inner>();\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -366,7 +369,7 @@ ReplaceScalar<typename>
 	struct ReplaceDimImpl {\
 		static constexpr auto value() {\
 			if constexpr (This::template dim<index> == newDim) {\
-				return TypeWrapper<This>();\
+				return Common::TypeWrapper<This>();\
 			} else {\
 				using expanded = typename This\
 					::template ExpandIndex<index>;\
@@ -377,7 +380,7 @@ ReplaceScalar<typename>
 							::template InnerForIndex<index>\
 							::template ReplaceLocalDim<newDim>\
 					>;\
-				return TypeWrapper<type>();\
+				return Common::TypeWrapper<type>();\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -390,9 +393,9 @@ ReplaceScalar<typename>
 		static constexpr auto value() {\
 			static_assert(index >= 0);\
 			if constexpr (index >= numNestings) {\
-				return TypeWrapper<Scalar>();\
+				return Common::TypeWrapper<Scalar>();\
 			} else if constexpr (index == 0) {\
-				return TypeWrapper<This>();\
+				return Common::TypeWrapper<This>();\
 			} else {\
 				return Inner::template NestedImpl<index-1>::value();\
 			}\
@@ -486,13 +489,13 @@ ReplaceScalar<typename>
 	struct SumWithScalarResultImpl {\
 		static constexpr auto value() {\
 			if constexpr (std::is_same_v<Inner, Scalar>) {\
-				return TypeWrapper<\
+				return Common::TypeWrapper<\
 					typename This::template LocalSumWithScalarResult<\
 						Scalar\
 					>\
 				>();\
 			} else {\
-				return TypeWrapper<\
+				return Common::TypeWrapper<\
 					typename This::template LocalSumWithScalarResult<\
 						typename Inner::SumWithScalarResult\
 					>\
@@ -594,10 +597,10 @@ ReplaceScalar<typename>
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	/* operator(int, int...) calls through operator(int) */\
 	template<typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(int i, Ints... is) { return (*this)(i)(is...); }\
 	template<typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(int i, Ints... is) const { return (*this)(i)(is...); }
 
 // operator(_vec<int,...>) forwards to operator(int...)
@@ -1594,9 +1597,9 @@ constexpr int symIndex(int i, int j) {
 #define TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
-	template<typename... Ints> requires is_all_v<int, Ints...>\
+	template<typename... Ints> requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(int i, int j, Ints... is) { return (*this)(i,j)(is...); }\
-	template<typename... Ints> requires is_all_v<int, Ints...>\
+	template<typename... Ints> requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(int i, int j, Ints... is) const { return (*this)(i,j)(is...); }\
 \
 	/* a(i) := a_i */\
@@ -1919,7 +1922,7 @@ struct _ident {
 	/* this is the direct acces */\
 	template<typename ThisConst>\
 	static constexpr decltype(auto) callImpl(ThisConst & this_, int i, int j) {\
-		using InnerConst = typename constness_of<ThisConst>::template apply_to_t<Inner>;\
+		using InnerConst = typename Common::constness_of<ThisConst>::template apply_to_t<Inner>;\
 		if (i == j) return AntiSymRef<InnerConst>();\
 		if (i > j) return callImpl<ThisConst>(this_, j, i).flip();\
 		TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
@@ -2075,22 +2078,22 @@ inline constexpr int symmetricSize(int d, int r) {
 		static constexpr auto value() {\
 			if constexpr (index == 0) {\
 				if constexpr (localRank == 2) {\
-					return TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
+					return Common::TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
 				} else if constexpr (localRank == 3) {\
-					return TypeWrapper<_vec<_sym<Inner, localDim>, localDim>>();\
+					return Common::TypeWrapper<_vec<_sym<Inner, localDim>, localDim>>();\
 				} else {\
-					return TypeWrapper<_vec<_symR<Inner, localDim, localRank-1>, localDim>>();\
+					return Common::TypeWrapper<_vec<_symR<Inner, localDim, localRank-1>, localDim>>();\
 				}\
 			} else if constexpr (index == localRank-1) {\
 				if constexpr (localRank == 2) {\
-					return TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
+					return Common::TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
 				} else if constexpr (localRank == 3) {\
-					return TypeWrapper<_sym<_vec<Inner, localDim>, localDim>>();\
+					return Common::TypeWrapper<_sym<_vec<Inner, localDim>, localDim>>();\
 				} else {\
-					return TypeWrapper<_symR<_vec<Inner, localDim>, localDim, localRank-1>>();\
+					return Common::TypeWrapper<_symR<_vec<Inner, localDim>, localDim, localRank-1>>();\
 				}\
 			} else {\
-				return TypeWrapper<_tensorr<Inner, localDim, localRank>>();\
+				return Common::TypeWrapper<_tensorr<Inner, localDim, localRank>>();\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -2152,14 +2155,14 @@ inline constexpr int symmetricSize(int d, int r) {
 // TODO forwarding of args
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
 \
-	template<typename ThisConst, typename TupleSoFar, typename... Ints> requires is_all_v<int, Ints...>\
+	template<typename ThisConst, typename TupleSoFar, typename... Ints> requires Common::is_all_v<int, Ints...>\
 	static constexpr decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, int arg, Ints... is) {\
 		return callGtLocalRankImpl<ThisConst>(\
 			t,\
 			std::tuple_cat( sofar, std::make_tuple(arg)),\
 			is...);\
 	}\
-	template<typename ThisConst, typename TupleSoFar, typename... Ints> requires is_all_v<int, Ints...>\
+	template<typename ThisConst, typename TupleSoFar, typename... Ints> requires Common::is_all_v<int, Ints...>\
 	static constexpr decltype(auto) callGtLocalRankImpl(ThisConst & t, TupleSoFar sofar, Ints... is) {\
 		if constexpr (std::tuple_size_v<TupleSoFar> == localRank) {\
 			return t.s[getLocalWriteForReadIndex(std::make_from_tuple<intNLocal>(sofar))](is...);\
@@ -2169,7 +2172,7 @@ inline constexpr int symmetricSize(int d, int r) {
 	};\
 \
 	/* TODO any better way to write two functions at once with differing const-ness? */\
-	template<typename ThisConst, typename... Ints> requires is_all_v<int, Ints...>\
+	template<typename ThisConst, typename... Ints> requires Common::is_all_v<int, Ints...>\
 	static constexpr decltype(auto) callImpl(ThisConst & this_, Ints... is) {\
 		constexpr int N = sizeof...(Ints);\
 		if constexpr (N == localRank) {\
@@ -2181,11 +2184,11 @@ inline constexpr int symmetricSize(int d, int r) {
 		}\
 	}\
 \
-	template<typename... Ints> requires is_all_v<int, Ints...>\
+	template<typename... Ints> requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) {\
 		return callImpl<This>(*this, is...);\
 	}\
-	template<typename... Ints> requires is_all_v<int, Ints...>\
+	template<typename... Ints> requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) const {\
 		return callImpl<This const>(*this, is...);\
 	}\
@@ -2265,12 +2268,12 @@ struct RankNAccessor {
 	}
 
 	template<typename... Ints>
-	requires is_all_v<int, Ints...>
+	requires Common::is_all_v<int, Ints...>
 	constexpr decltype(auto) operator()(Ints... is) {
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));
 	}
 	template<typename... Ints>
-	requires is_all_v<int, Ints...>
+	requires Common::is_all_v<int, Ints...>
 	constexpr decltype(auto) operator()(Ints... is) const {
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));
 	}
@@ -2351,22 +2354,22 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 		static constexpr auto value() {\
 			if constexpr (index == 0) {\
 				if constexpr (localRank == 2) {\
-					return TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
+					return Common::TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
 				} else if constexpr (localRank == 3) {\
-					return TypeWrapper<_vec<_asym<Inner, localDim>, localDim>>();\
+					return Common::TypeWrapper<_vec<_asym<Inner, localDim>, localDim>>();\
 				} else {\
-					return TypeWrapper<_vec<_asymR<Inner, localDim, localRank-1>, localDim>>();\
+					return Common::TypeWrapper<_vec<_asymR<Inner, localDim, localRank-1>, localDim>>();\
 				}\
 			} else if constexpr (index == localRank-1) {\
 				if constexpr (localRank == 2) {\
-					return TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
+					return Common::TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
 				} else if constexpr (localRank == 3) {\
-					return TypeWrapper<_asym<_vec<Inner, localDim>, localDim>>();\
+					return Common::TypeWrapper<_asym<_vec<Inner, localDim>, localDim>>();\
 				} else {\
-					return TypeWrapper<_asymR<_vec<Inner, localDim>, localDim, localRank-1>>();\
+					return Common::TypeWrapper<_asymR<_vec<Inner, localDim>, localDim, localRank-1>>();\
 				}\
 			} else {\
-				return TypeWrapper<_tensorr<Inner, localDim, localRank>>();\
+				return Common::TypeWrapper<_tensorr<Inner, localDim, localRank>>();\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -2469,7 +2472,7 @@ from my symmath/tensor/LeviCivita.lua
 		if constexpr (N < localRank) {\
 			return Accessor<ThisConst, N>(this_, i);\
 		} else if constexpr (N == localRank) {\
-			using InnerConst = typename constness_of<ThisConst>::template apply_to_t<Inner>;\
+			using InnerConst = typename Common::constness_of<ThisConst>::template apply_to_t<Inner>;\
 			auto sign = antisymSortAndCountFlips(i);\
 			if (sign == Sign::ZERO) return AntiSymRef<InnerConst>();\
 			return AntiSymRef<InnerConst>(this_.s[getLocalWriteForReadIndex(i)], sign);\
@@ -2495,12 +2498,12 @@ from my symmath/tensor/LeviCivita.lua
 	}\
 \
 	template<typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) {\
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
 	}\
 	template<typename... Ints>\
-	requires is_all_v<int, Ints...>\
+	requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) const {\
 		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
 	}\
@@ -3064,7 +3067,7 @@ auto interior(A const & a, B const & b) {
 	} else {
 		using R = typename A
 			::template ReplaceScalar<B>
-			::template RemoveIndexSeq<make_integer_range<int, A::rank-num, A::rank+num>>;
+			::template RemoveIndexSeq<Common::make_integer_range<int, A::rank-num, A::rank+num>>;
 		static_assert(num != 1 || std::is_same_v<R, decltype(contract<A::rank-1,A::rank>(outer(a,b)))>);
 		static_assert(std::is_same_v<R, decltype(contractN<A::rank-num,num>(outer(a,b)))>);
 		return R([&](typename R::intN i) -> S {
