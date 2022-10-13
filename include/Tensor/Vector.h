@@ -283,7 +283,7 @@ inline T inverse(T const & a);
 
 // this one is in Tensor/Range.h
 
-template<int rank_>
+template<int rank_, bool innerFirst = true>
 struct RangeObj;
 
 
@@ -3310,13 +3310,13 @@ auto interior(A const & a, B const & b) {
 			S sum = {};
 			// TODO this is another argument for making dims always an intN<rank>
 			if constexpr (B::rank == 1) {
-				for (auto k : RangeObj<num>(intSum(), intSum(B::dims))) {
+				for (auto k : RangeObj<num, false>(intSum(), intSum(B::dims))) {
 					std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
 					std::copy(k.s.begin(), k.s.end(), bi.s.begin());
 					sum += a(ai) * b(bi);
 				}
 			} else {
-				for (auto k : RangeObj<num>(intSum(), B::dims.template subset<num, 0>())) {
+				for (auto k : RangeObj<num, false>(intSum(), B::dims.template subset<num, 0>())) {
 					std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
 					std::copy(k.s.begin(), k.s.end(), bi.s.begin());
 					sum += a(ai) * b(bi);
