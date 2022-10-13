@@ -209,7 +209,7 @@ void test_Antisymmetric() {
 		ECHO(axt);
 		// but I thought .rank and .dims needed to match?
 		//ECHO(ax.rank);
-		//ECHO(ax.dims);
+		//ECHO(ax.dims());
 		/* yeah, ax.rank doesn't exist,
 		so what kind of ctor is being used for the conversion?
 		oh wait, the Accessor might be usings its containing class' rank and dims for iterator as well

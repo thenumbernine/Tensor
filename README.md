@@ -6,19 +6,18 @@ this is the latest result.
 
 I know I've put the word "Tensor" in the title.
 Ever since the deep learning revolution in AI that computer scientists have come to believe that a "tensor" is an arbitrary dimensioned array of numbers, preferrably larger dimensioned and smaller-indexed.
-But this library is moreso centered around "tensor" in the original definition, as "geometric object that lives in the tangent space at some point on a manifold and is invariant to coordinate transform."
+But this library is moreso centered around "tensor" in the original differential geometry definition, as "geometric object that lives in the tangent space at some point on a manifold and is invariant to coordinate transform."
 That means I am designing this library is centered around compile-time sized small arrays and larger ranks/degrees (whatever the term is for the number of indexes).
 
 The old and pre-C++11 and ugly version had extra math indicators like Upper<> and Lower<> for tracking variance, but I've done away with that now.
 This version got rid of that and has added a lot of C++20 tricks.
 So I guess overall this library is midway between a mathematician's and a programmer's and a physicist's implementation.
 
-- Familiar vector and math support, 2D 3D 4D.
-- Arbitrary-dimension, arbitrary-rank.
-- Compressed storage for identity, symmetric, and antisymmetric tensor indexes.
+- Familiar vector and types and functions for 2D 3D 4D, with support for arbitrary-dimension, arbitrary-rank.
 - Lots of compile time and template driven stuff.
 - C++20
 - Some sort of GLSL half-compatability, though creative freedom where I want it.
+- Compressed storage for identity, symmetric, and antisymmetric tensor indexes.  For example, a 3x3 symmetric matrix takes 6 floats.  A 3x3 antisymmetric matrix takes 3 floats.  The 2x2, 3x3x3, 4x4x4x4 etc rank-N dim-N Levi-Civita permutation tensors take up 1 float.
 
 ## Reference:
 
