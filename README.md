@@ -10,7 +10,11 @@ But this library is moreso centered around "tensor" in the original differential
 That means I am designing this library is centered around compile-time sized small arrays and larger ranks/degrees (whatever the term is for the number of indexes).
 
 The old and pre-C++11 and ugly version had extra math indicators like Upper<> and Lower<> for tracking variance, but I've done away with that now.
-This version got rid of that and has added a lot of C++20 tricks.
+There was no programmatically functional reason to track it (unless I wanted to verify Einstein-index summation correctness, which I never got to), so I've just done away with it.
+What that means is you'll have to keep track of upper/lower/tensor basis variance all by yourself, and do your own metric multiplying all by yourself.
+Luckily the default tensor `*` operator is a outer+contraction, aka matrix-multiply in the rank-2 case, which means any contraction of tensor `a`'s last index with tensor `b`s first index under metric `g` can just be written as `a * g * b`.
+
+This version has added a lot of C++20 tricks.
 So I guess overall this library is midway between a mathematician's and a programmer's and a physicist's implementation.
 
 - Familiar vector and types and functions for 2D 3D 4D, with support for arbitrary-dimension, arbitrary-rank.
