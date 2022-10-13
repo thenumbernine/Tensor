@@ -20,7 +20,7 @@ void test_Vector() {
 		
 		//.dims
 		static_assert(f.rank == 1);
-		static_assert(f.dims == 3);
+		static_assert(f.dims() == 3);
 		static_assert(f.dim<0> == 3);
 		static_assert(f.numNestings == 1);
 		static_assert(f.count<0> == 3);

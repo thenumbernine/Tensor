@@ -226,7 +226,7 @@ void test_Antisymmetric() {
 		ok now they're added
 		*/
 		ECHO(ax.rank);
-		ECHO(ax.dims);
+		ECHO(ax.dims());
 		ECHO(Tensor::lenSq(ax));
 #endif
 	}

@@ -14,7 +14,7 @@ void test_Matrix() {
 	static_assert(m.rank == 2);
 	static_assert(m.dim<0> == 3);
 	static_assert(m.dim<1> == 3);
-	TEST_EQ(m.dims, Tensor::int2(3,3));
+	TEST_EQ(m.dims(), Tensor::int2(3,3));
 	static_assert(m.numNestings == 2);
 	static_assert(m.count<0> == 3);
 	static_assert(m.count<1> == 3);

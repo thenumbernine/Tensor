@@ -111,7 +111,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `::Template<T, N>` = The template of this class, useful for nesting operations.
 - `::rank` = For determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
 - `::dim<i>` = Get the i'th dimension size , where i is from 0 to rank-1.
-- `::dims` = Get a int-vector with all the dimensions.  For rank-1 this is just an int.  Maybe I'll change it to be intN for all ranks, not sure.
+- `::dims` = Get a int-vector with all the dimensions.
 - `::isSquare` = true if all dimensions match, false otherwise.  Yes that means vectors are square.  Maybe I'll change the name.
 - `::localDim` = Get the dimension size of the current class, equal to `dim<0>`.
 - `::numNestings` = Get the number of template-argument-nested classes.  Equivalent to the number of Inner's in `tensor::Inner::...::Inner`.
@@ -340,4 +340,4 @@ TODO:
 
 - make RangeObj (rename to Range? or Domain?) use the WriteInc inner vs outer first that is already in vector's iterator.
 - make tensor read and write iterators use RangeObj.
-- k maybe 'dims' should always use a intN, even if it's 1D.
+- ok maybe 'dims' should always use a intN, even if it's 1D ... but this might give "`error using _vec<int,1> before it is defined `" errors...

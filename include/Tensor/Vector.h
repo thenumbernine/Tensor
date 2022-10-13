@@ -96,7 +96,7 @@ using make_index_range = make_integer_range<std::size_t, Begin, End>;
 
 // end https://codereview.stackexchange.com/a/64702/265778
 
-
+// concepts
 
 template<typename A, typename B>
 concept IsBinaryTensorOp =
@@ -118,19 +118,22 @@ concept IsBinaryTensorOpWithMatchingNeighborDims =
 template<typename A, typename B>
 concept IsBinaryTensorR3xR3Op =
 	IsBinaryTensorOp<A,B>
-	&& A::dims == 3
-	&& B::dims == 3;
+	// can't use _vec<int,1> because it hasn't been declared yet
+	//&& A::dims == _vec<int,1>(3)
+	//&& B::dims == _vec<int,1>(3);
+	&& A::rank == 1 && A::template dim<0> == 3
+	&& B::rank == 1 && B::template dim<0> == 3;
 
 template<typename A, typename B>
 concept IsBinaryTensorDiffTypeButMatchingDims =
 	IsBinaryTensorOp<A,B>
 	&& !std::is_same_v<A,B>
-	&& A::dims == B::dims; // equal types means we use .operator== which is constexpr
+	&& A::dims() == B::dims(); // equal types means we use .operator== which is constexpr
 
 template<int num, typename A, typename B>
 concept IsInteriorOp =
 	IsBinaryTensorOp<A,B> && num > 0 && num <= A::rank && num <= B::rank;
-// TODO also assert the last 'num' dims of A match the first 'num' dims of B 
+// TODO also assert the last 'num' dims of A match the first 'num' dims of B
 
 //forward-declare everything
 
@@ -264,7 +267,7 @@ auto operator*(A const & a, B const & b);
 // these are in Inverse.h:
 // they are giving me link errors.
 // do I have to forward-declare all template partial specializations to fix it?
-// idk, never fixed it, just avoid using .determinant() instead 
+// idk, never fixed it, just avoid using .determinant() instead
 
 template<typename T>
 requires is_tensor_v<T>
@@ -300,7 +303,7 @@ struct RangeObj;
 \
 	/* this is this particular dimension of our vector */\
 	/* M = matrix<T,i,j> == vec<vec<T,j>,i> so M::localDim == i and M::Inner::localDim == j  */\
-	/*  i.e. M::dims = int2(i,j) and M::dim<0> == i and M::dim<1> == j */\
+	/*  i.e. M::dims() = int2(i,j) and M::dim<0> == i and M::dim<1> == j */\
 	static constexpr int localDim = localDim_;\
 \
 	/*how much does this structure contribute to the overall rank. */\
@@ -336,7 +339,7 @@ struct RangeObj;
 	using ExpandTensorRankTemplate = _tensorr<Inner, localDim, localRank>;
 
 #if 0
-/* 
+/*
 ok I enjoyed the model of inner classes that look like:
 template<...> struct ... {
 	static constexpr auto value() {
@@ -652,36 +655,29 @@ ReplaceScalar<typename>
 \
 	/* .. then for loop iterator in dims() function and just a single exceptional case in the dims() function is needed */\
 	static constexpr auto DimsImpl() {\
-		/* if this is a vector-of-scalars, such that the dims would be an int1, just use int */\
-		if constexpr (rank == 1) {\
-			return localDim;\
-		} else {\
-			/* use an int[localDim] */\
-			intN dimv;\
-			/* TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly. */\
-			/* TODO can I change the template unroll metaprogram to use constexpr lambdas? */\
-			/* static_foreach<localRank>([&dimv](int i) constexpr {\
-				dimv.s[i] = localDim;\
-			}); */\
-			for (int i = 0; i < localRank; ++i) {\
-				dimv.s[i] = localDim;\
-			}\
-			if constexpr (localRank < rank) {\
-				/* special case reading from int */\
-				if constexpr (Inner::rank == 1) {\
-					dimv.s[localRank] = Inner::DimsImpl();\
-				} else {\
-					/* assigning sub-vector */\
-					auto innerDim = Inner::DimsImpl();\
-					for (int i = 0; i < rank-localRank; ++i) {\
-						dimv.s[i+localRank] = innerDim.s[i];\
-					}\
-				}\
-			}\
-			return dimv;\
+		/* use an int[localDim] */\
+		intN dimv;\
+		/* TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly. */\
+		/* TODO can I change the template unroll metaprogram to use constexpr lambdas? */\
+		/* static_foreach<localRank>([&dimv](int i) constexpr {\
+			dimv.s[i] = localDim;\
+		}); */\
+		for (int i = 0; i < localRank; ++i) {\
+			dimv.s[i] = localDim;\
 		}\
+		if constexpr (localRank < rank) {\
+			/* assigning sub-vector */\
+			auto innerDim = Inner::DimsImpl();\
+			for (int i = 0; i < rank-localRank; ++i) {\
+				dimv.s[i+localRank] = innerDim.s[i];\
+			}\
+		}\
+		return dimv;\
 	}\
-	static constexpr auto dims = DimsImpl();\
+	/* This needs to be a function because if it was a constexpr value then the compiler would complain that DimsImpl is using _vec<int,1> before it is defined.*/\
+	/* I can circumvent that error by having rank-1 _vec's have a dims == int instead of _vec<int> ... and then i get dims as a value instead of function, and all is well */\
+	/*  except that makes me need to write conditional code everywhere for rank-1 and rank>1 dims */\
+	static constexpr auto dims() { return DimsImpl(); }\
 	/* TODO index_sequence of dims? */\
 \
 	struct IsSquareImpl {\
@@ -853,8 +849,7 @@ ReplaceScalar<typename>
 // explicit 'this->s' so subclasses can use this macro (like _quat)
 #define TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname)\
 	template<typename U>\
-	/* TODO find a way to compare 'dims' instead of 'rank', then bounds would be guaranteed */\
-	/* or do I want to force matching bounds? */\
+	/* do I want to force matching bounds or bounds-check each read? */\
 	requires (is_tensor_v<U> && rank == U::rank)\
 	constexpr classname(U const & t) {\
 		auto w = write();\
@@ -1897,7 +1892,7 @@ This is used by _sym , while _asym uses something different since it uses the An
 template<typename AccessorOwnerConst>
 struct Rank2Accessor {
 	//properties for Accessor as a tensor:
-#if 1	// NOTICE all of this is only for the Accessor-as-tensor interoperability.  You can disable it and just don't use Accessors as tensors.	
+#if 1	// NOTICE all of this is only for the Accessor-as-tensor interoperability.  You can disable it and just don't use Accessors as tensors.
 	TENSOR_THIS(Rank2Accessor)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(
 		typename AccessorOwnerConst::Inner,
@@ -2427,7 +2422,7 @@ struct RankNAccessor {
 	using ownerIntN = typename AccessorOwnerConst::intN;
 
 	//properties for Accessor as a tensor:
-#if 1	// NOTICE all of this is only for the Accessor-as-tensor interoperability.  You can disable it and just don't use Accessors as tensors.	
+#if 1	// NOTICE all of this is only for the Accessor-as-tensor interoperability.  You can disable it and just don't use Accessors as tensors.
 	TENSOR_THIS(RankNAccessor)
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(
 		typename AccessorOwnerConst::Inner,
@@ -2936,7 +2931,7 @@ TENSOR_SCALAR_SUM_OP(+)
 TENSOR_SCALAR_SUM_OP(-)
 TENSOR_SCALAR_MUL_OP(*)
 
-//TENSOR_SCALAR_MUL_OP(/) 
+//TENSOR_SCALAR_MUL_OP(/)
 // would be using the same type if not for divide-by-zeros
 //TENSOR_SCALAR_SUM_OP(/)
 // but tensor / scalar should still preserve structure
@@ -2970,7 +2965,7 @@ template<typename A, typename B>\
 /*requires IsBinaryTensorDiffTypeButMatchingDims<A,B>*/\
 requires (\
 	IsBinaryTensorOp<A,B>\
-	&& A::dims == B::dims\
+	&& A::dims() == B::dims()\
 	&& !std::is_same_v<A, B> /* because that is caught next, until I get this to preserve storage opts...*/\
 )\
 typename A::template ExpandAllIndexes<> operator op(A const & a, B const & b) {\
@@ -3286,7 +3281,7 @@ auto interior(A const & a, B const & b) {
 	using S = typename A::Scalar;
 	if constexpr (A::rank == num && B::rank == num) {
 		// rank-0 i.e. scalar result case
-		static_assert(A::dims == B::dims);	//thanks to the 3rd requires condition
+		static_assert(A::dims() == B::dims());	//thanks to the 3rd requires condition
 		return dot(a,b);
 	} else {
 		using R = typename A
@@ -3308,19 +3303,10 @@ auto interior(A const & a, B const & b) {
 			//TODO instead use A::dim<A::rank-num..A::rank>
 			using intSum = _vec<int, num>;
 			S sum = {};
-			// TODO this is another argument for making dims always an intN<rank>
-			if constexpr (B::rank == 1) {
-				for (auto k : RangeObj<num, false>(intSum(), intSum(B::dims))) {
-					std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
-					std::copy(k.s.begin(), k.s.end(), bi.s.begin());
-					sum += a(ai) * b(bi);
-				}
-			} else {
-				for (auto k : RangeObj<num, false>(intSum(), B::dims.template subset<num, 0>())) {
-					std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
-					std::copy(k.s.begin(), k.s.end(), bi.s.begin());
-					sum += a(ai) * b(bi);
-				}
+			for (auto k : RangeObj<num, false>(intSum(), B::dims().template subset<num, 0>())) {
+				std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
+				std::copy(k.s.begin(), k.s.end(), bi.s.begin());
+				sum += a(ai) * b(bi);
 			}
 			return sum;
 		});
@@ -3422,7 +3408,7 @@ auto operator*(A const & a, B const & b) {
 	using S = typename A::Scalar;
 	if constexpr (A::rank == 1 && B::rank == 1) {
 		// rank-0 result case
-		static_assert(A::dims == B::dims);	//thanks to the 3rd requires condition
+		static_assert(A::dims() == B::dims());	//thanks to the 3rd requires condition
 		//scalar return case
 		S sum = a(0) * b(0);
 		for (int k = 1; k < A::template dim<0>; ++k) {
@@ -3789,6 +3775,6 @@ template<std::size_t I, typename T, std::size_t N> constexpr T const && get(Tens
 // why do I have an #include at the bottom of this file?
 // because at the top I have the forward-declaration to the functions in this include
 // so it had better come next
-#include "Tensor/Inverse.h"	
+#include "Tensor/Inverse.h"
 #include "Tensor/Index.h"
 #include "Tensor/Range.h"
