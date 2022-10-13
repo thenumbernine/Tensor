@@ -3,7 +3,14 @@
 #include <algorithm>
 
 namespace Tensor {
-
+	
+/*
+inc index 0 first (and flattening adding order 0 last) is memory-in-order for row-major images (since the 1st coordinate is the column)
+but inc index rank-1 first (and flattening adding it last) is not memory-in-order for row-major matrices (since the 1st coordinate is the row)
+so for memory-in-order matrix iteration, use OuterOrderIterator
+but for memory-in-order image iteration, use InnerOrderIterator
+or ofc you can switch matrixes to be col-major, like GLSL, and then InnerOrderIterator works for both, but then A_ij in math = A.j.i in code
+*/
 template<int rank_, bool innerFirst>
 struct RangeObj {
 	static constexpr auto rank = rank_;
@@ -14,22 +21,21 @@ struct RangeObj {
 
 	template<int rankFirst, int rankLast, int rankStep>
 	struct IteratorOrder {
+		RangeObj const & owner;
+		intN index;
 		
-		intN index, min, max;
-		
-		IteratorOrder()  {}
-		IteratorOrder(intN min_, intN max_) : index(min_), min(min_), max(max_) {}
-		IteratorOrder(intN min_, intN max_, intN index_) : index(index_), min(min_), max(max_) {}
-		IteratorOrder(IteratorOrder const & iter) : index(iter.index), min(iter.min), max(iter.max) {}
-		IteratorOrder(IteratorOrder && iter) : index(iter.index), min(iter.min), max(iter.max) {}
+		IteratorOrder(RangeObj const & owner_) : owner(owner_), index(owner_.min) {}
+		IteratorOrder(RangeObj const & owner_, intN index_) : owner(owner_), index(index_) {}
+		IteratorOrder(IteratorOrder const & iter) : owner(iter.owner), index(iter.index) {}
+		IteratorOrder(IteratorOrder && iter) : owner(iter.owner), index(iter.index) {}
 		
 		template<int i>
 		struct Inc {
 			static constexpr bool exec(IteratorOrder & it) {
 				constexpr int j = rankFirst + i * rankStep;
 				++it.index[j];
-				if (it.index[j] < it.max[j]) return true;
-				if (j != rankLast) it.index[j] = it.min[j];
+				if (it.index[j] < it.owner.max[j]) return true;
+				if (j != rankLast) it.index[j] = it.owner.min[j];
 				return false;
 			}
 		};
@@ -38,8 +44,8 @@ struct RangeObj {
 		constexpr int flatten() const {
 			int flatIndex = 0;
 			for (int i = rankLast; i != rankFirst-rankStep; i -= rankStep) {
-				flatIndex *= max[i] - min[i];
-				flatIndex += index[i] - min[i];
+				flatIndex *= owner.max[i] - owner.min[i];
+				flatIndex += index[i] - owner.min[i];
 			}
 			return flatIndex;
 		}
@@ -47,10 +53,10 @@ struct RangeObj {
 		//converts int to index
 		constexpr void unflatten(int flatIndex) {
 			for (int i = rankFirst; i != rankLast+rankStep; i += rankStep) {
-				int s = max[i] - min[i];
+				int s = owner.max[i] - owner.min[i];
 				int n = flatIndex;
 				if (i != rankLast) n %= s;
-				index[i] = n + min[i];
+				index[i] = n + owner.min[i];
 				flatIndex = (flatIndex - n) / s;
 			}
 		}
@@ -66,9 +72,9 @@ struct RangeObj {
 		intN &operator*() { return index; }
 		intN *operator->() { return &index; }
 	
-		static constexpr IteratorOrder end(intN min, intN max) {
-			auto i = IteratorOrder(min, max);
-			i.index[rankLast] = max[rankLast];
+		static constexpr IteratorOrder end(RangeObj const & owner) {
+			auto i = IteratorOrder(owner);
+			i.index[rankLast] = owner.max[rankLast];
 			return i;
 		}
 	};
@@ -78,21 +84,15 @@ struct RangeObj {
 
 	// iterators
 
-	/*
-	inc index 0 first (and flattening adding order 0 last) is memory-in-order for row-major images (since the 1st coordinate is the column)
-	but inc index rank-1 first (and flattening adding it last) is not memory-in-order for row-major matrices (since the 1st coordinate is the row)
-	so for memory-in-order matrix iteration, use OuterOrderIterator
-	but for memory-in-order image iteration, use InnerOrderIterator
-	or ofc you can switch matrixes to be col-major, like GLSL, and then InnerOrderIterator works for both, but then A_ij in math = A.j.i in code
-	*/
 	using iterator = std::conditional_t<innerFirst, InnerOrderIterator, OuterOrderIterator>;
-		
-	iterator begin() { return iterator(min, max); }
-	iterator end() { return iterator::end(min, max); }
-
+	iterator begin() { return iterator(*this); }
+	iterator end() { return iterator::end(*this); }
+	
 	using const_iterator = iterator;
-	const_iterator begin() const { return const_iterator(min, max); }
-	const_iterator end() const { return iterator::end(min, max); }
+	const_iterator begin() const { return const_iterator(*this); }
+	const_iterator end() const { return iterator::end(*this); }
+	const_iterator cbegin() const { return const_iterator(*this); }
+	const_iterator cend() const { return iterator::end(*this); }
 };
 
 }
