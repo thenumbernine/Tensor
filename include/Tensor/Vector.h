@@ -3081,7 +3081,17 @@ auto interior(A const & a, B const & b) {
 			//TODO instead use A::dim<A::rank-num..A::rank>
 			using intSum = _vec<int, num>;
 			S sum = {};
+#if 0
+			//OwnerRef is not really needed ... how about I just pass lambdas?
+			// but will lambdas constexpr?
+			struct CanIDoThis {
+			static int getMin(S const &, int i) { return 0; }
+			static int getMax(S const &, int i) { return B::dims().template dim<i>; }
+			};
+			for (auto k : RangeInteriorInner<num, S, CanIDoThis::getMin, CanIDoThis::getMax>(sum)) {		
+#else
 			for (auto k : RangeObj<num, false>(intSum(), B::dims().template subset<num, 0>())) {
+#endif
 				std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
 				std::copy(k.s.begin(), k.s.end(), bi.s.begin());
 				sum += a(ai) * b(bi);

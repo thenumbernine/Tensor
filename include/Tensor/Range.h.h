@@ -16,14 +16,28 @@ struct RangeIterator;
 
 template<
 	int rank, 
+	typename Owner,
+	int getMin(Owner const &, int),
+	int getMax(Owner const &, int)
+> using RangeInteriorInner = RangeIterator<0, rank-1, 1,  rank, Owner, getMin, getMax>;
+
+template<
+	int rank, 
+	typename Owner,
+	int getMin(Owner const &, int),
+	int getMax(Owner const &, int)
+> using RangeInteriorOuter = RangeIterator<rank-1, 0, -1, rank, Owner, getMin, getMax>;
+
+template<
+	int rank, 
 	bool innerFirst,
 	typename Owner,
 	int getMin(Owner const &, int),
 	int getMax(Owner const &, int)
 > using RangeIteratorInnerVsOuter = std::conditional_t<
 	innerFirst,
-	RangeIterator<0, rank-1, 1,  rank, Owner, getMin, getMax>,
-	RangeIterator<rank-1, 0, -1, rank, Owner, getMin, getMax>
+	RangeInteriorInner<rank, Owner, getMin, getMax>,
+	RangeInteriorOuter<rank, Owner, getMin, getMax>
 >;
 
 template<int rank_, bool innerFirst = true>
