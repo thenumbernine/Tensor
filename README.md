@@ -23,7 +23,7 @@ So I guess overall this library is midway between a mathematician's and a progra
 - Some sort of GLSL half-compatability, though creative freedom where I want it.
 - Compressed storage for identity, symmetric, and antisymmetric tensor indexes.  For example, a 3x3 symmetric matrix takes 6 floats.  A 3x3 antisymmetric matrix takes 3 floats.  The 2x2, 3x3x3, 4x4x4x4 etc rank-N dim-N Levi-Civita permutation tensors take up 1 float.
 
-## Reference:
+## API Reference:
 
 ### Tensors:
 `tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_ident`, `_sym`, `_asym`, `_symR`, `_asymR`.
@@ -285,6 +285,14 @@ Quaternion Members and Methods:
 
 ## Dependencies:
 This project depends on the "Common" project, for Exception, template metaprograms, etc.
+
+## Literature Reference
+
+Any code lifted from a stackexchange or anywhere else will have an accompanying comment of where it came from.
+
+Equally poorly referenced are the differential geometry notes of mine that I am basing this library on, found here: [https://thenumbernine.github.io/](https://thenumbernine.github.io/) 
+
+Likewise these notes' math references can be found here: [https://thenumbernine.github.io/math/Differential%20Geometry/sources.html](https://thenumbernine.github.io/math/Differential%20Geometry/sources.html).
 
 TODO:
 - make a permuteIndexes() function, have this "ExpandIndex<>" on all its passed indexes, then have it run across the permute indexes.
