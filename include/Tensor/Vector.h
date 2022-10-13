@@ -1127,11 +1127,17 @@ Bit of a hack: MOst these are written in terms of 'This'
 	template<typename B>\
 	requires is_tensor_v<std::decay_t<B>>\
 	auto outer(B const & b) const {\
-		return outer(*this, b);\
+		return outer<This,B>(*this, b);\
 	}\
 \
 	template<typename B>\
+	requires is_tensor_v<std::decay_t<B>>\
 	auto outerProduct(B const & o) const {\
+		return outerProduct(*this, o);\
+	}\
+	template<typename B>\
+	requires is_tensor_v<std::decay_t<B>>\
+	auto outerProduct(B && o) && {\
 		return outerProduct(*this, o);\
 	}\
 \
