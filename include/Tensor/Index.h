@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Tensor/Index.h.h"
 #include "Common/Exception.h"
 #include "Common/Meta.h"
 #include <tuple>

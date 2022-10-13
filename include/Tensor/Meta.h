@@ -102,6 +102,39 @@ constexpr void static_foreach(Functor && functor) {
 
 // end static_for
 
+// TODO move this to Common/Sequence.h (and take some from Common/Meta.h too)
+// begin https://codereview.stackexchange.com/a/64702/265778
+
+namespace details {
+	template<typename Int, typename, Int Begin, bool Increasing>
+	struct integer_range_impl;
+
+	template<typename Int, Int... N, Int Begin>
+	struct integer_range_impl<Int, std::integer_sequence<Int, N...>, Begin, true> {
+		using type = std::integer_sequence<Int, N+Begin...>;
+	};
+
+	template<typename Int, Int... N, Int Begin>
+	struct integer_range_impl<Int, std::integer_sequence<Int, N...>, Begin, false> {
+		using type = std::integer_sequence<Int, Begin-N...>;
+	};
+}
+
+template<typename Int, Int Begin, Int End>
+using make_integer_range = typename details::integer_range_impl<
+	Int,
+	std::make_integer_sequence<Int, (Begin<End) ? End-Begin : Begin-End>,
+	Begin,
+	(Begin < End)
+>::type;
+
+template<std::size_t Begin, std::size_t End>
+using make_index_range = make_integer_range<std::size_t, Begin, End>;
+
+// end https://codereview.stackexchange.com/a/64702/265778
+
+
+
 // TODO begin the implementation of wrappers ... i think i was starting to make index-operations by wrapping operations and building expression trees ...
 
 //assignment binary operations

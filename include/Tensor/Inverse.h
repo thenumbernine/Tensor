@@ -1,7 +1,7 @@
 #pragma once
 
 //atm Vector.h includes Inverse.h so this is moot:
-#include "Tensor/Vector.h"
+#include "Tensor/Vector.h.h"
 
 namespace Tensor {
 
