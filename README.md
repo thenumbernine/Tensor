@@ -239,6 +239,21 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	- rank-2 -> rank-2:
 	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
 
+### Index Notation
+- `Index<char>` = create an index iterator object.  Yeah I did see FTensor/LTensor doing this and thought it was a good idea. 
+	I haven't read enough of the paper on FTensor / copied enough that I am sure my implementation's performance is suffering compared to it. 
+```c++
+Index<'i'> i; 
+auto a = float3x3({{1,2,3},{4,5,6},{7,8,9}});
+a(i,j) = .5 * (a(i,j) + a(j,i));
+```
+- Self-referencing is fine
+- Index permtuations are fine
+- Scalar operations are fine
+- Tensor/Tensor add sub and per-element divide is fine.
+- Still working on tensor-tensor multiplication.
+
+
 ### Familiar Types
 
 Sorry GLSL, Cg wins this round:
@@ -293,6 +308,8 @@ Any code lifted from a stackexchange or anywhere else will have an accompanying 
 Equally poorly referenced are the differential geometry notes of mine that I am basing this library on, found here: [https://thenumbernine.github.io/](https://thenumbernine.github.io/) 
 
 Likewise these notes' math references can be found here: [https://thenumbernine.github.io/math/Differential%20Geometry/sources.html](https://thenumbernine.github.io/math/Differential%20Geometry/sources.html).
+
+Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.net/Presentations/FTensor.pdf](https://wlandry.net/Presentations/FTensor.pdf).
 
 TODO:
 - make a permuteIndexes() function, have this "ExpandIndex<>" on all its passed indexes, then have it run across the permute indexes.
@@ -371,3 +388,8 @@ TODO:
 - does a sym + ident make a sym as well? no... should it? yes
 	but this opens a can of worms of tensor+tensor optimized storage.
 	this is TensorSumResultImpl WIP.
+
+- index notation  ...
+	- dimension check at compile-time
+	- dimension-matching at compile-time
+	- and from that, index-multiply

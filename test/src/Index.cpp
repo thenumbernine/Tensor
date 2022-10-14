@@ -67,14 +67,45 @@ void test_Index() {
 		a(i,j) = a(j,i);
 		TEST_EQ(a, (Tensor::double3x3{{1,4,7},{2,5,8},{3,6,9}}));
 
-		// symmetrize
+		// add to transpose and self-assign
 		a(i,j) = a(i,j) + a(j,i);
 		TEST_EQ(a, (Tensor::double3x3{{2,6,10},{6,10,14},{10,14,18}}));
 	}
 	{
-		
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		Tensor::double3x3 a = {{1,2,3},{4,5,6},{7,8,9}};
+
+		// symmetrize using index notation
+		Tensor::double3x3 b;
+		b(i,j) = .5 * (a(i,j) + a(j,i));
+		// TODO:
+		//auto b = (.5 * (a(i,j) + a(j,i))).assignTo<i,j>();
+		TEST_EQ(b, makeSym(a));
 	}
+// TODO DO enforce dimension constraints between expression operations
+// and then require Index to specify subrank, or just grab the subset<> of the tensor.
+// TODO sub-tensor casting, not just sub-vector.  return tensor-of-refs. 	
 #if 0 // TODO
+	{
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		
+		Tensor::double3 a = {1,2,3};
+		Tensor::double3 b = {5,7,11};
+
+		Tensor::double3x3 c;
+		c(i,j) = a(i) * b(j);
+	
+	}
+	{
+		Tensor::Index<'i'> i;
+		
+		Tensor::double3 a = {1,2,3};
+		Tensor::double3 b = {5,7,11};
+
+		double c = a(i) * b(i);
+	}
 	{
 		Tensor::double3x3 a;
 

@@ -1212,30 +1212,14 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return Tensor::inverse(*this);\
 	}\
 
-// TODO how about just a template<typename,typename> apply_all ?
-// then is_all_base_of_v<T,Ts...> = apply_all<std::is_base_of, T, Ts...>;
-template<typename T, typename... Us>
-struct is_all_base_of;
-template<typename T, typename U, typename... Us>
-struct is_all_base_of<T,U,Us...> {
-	static constexpr bool value = std::is_base_of_v<T,U>
-		&& is_all_base_of<T, Us...>::value;
-};
-template<typename T>
-struct is_all_base_of<T> {
-	static constexpr bool value = true;
-};
-template<typename T, typename... Us>
-concept is_all_base_of_v = is_all_base_of<T, Us...>::value;
-
 #define TENSOR_ADD_INDEX_NOTATION_CALL()\
 	template<typename IndexType, typename... IndexTypes>\
-	requires (is_all_base_of_v<IndexBase, IndexType>)\
+	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
 	decltype(auto) operator()(IndexType, IndexTypes...) {\
 		return IndexAccess<This, std::tuple<IndexType, IndexTypes...>>(*this);\
 	}\
 	template<typename IndexType, typename... IndexTypes>\
-	requires (is_all_base_of_v<IndexBase, IndexType>)\
+	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
 	decltype(auto) operator()(IndexType, IndexTypes...) const {\
 		return IndexAccess<This const, std::tuple<IndexType, IndexTypes...>>(*this);\
 	}
