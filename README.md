@@ -66,6 +66,37 @@ which is `d choose r`.
 This means the Levi-Civita permutation tensor takes up exactly 1 float.  
 Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
 
+Example of using a totally-antisymmetric tensor for implementing the cross-product:
+```c++
+float3 cross(float3 a, float3 b) {
+	constexpr auto LC = floatNaR<3,3>(1);	//1 constexpr float ... create a Levi-Civita totally-antisymmetric permutation tensor for dim 3 rank 3
+	return (LC * b) * a;					//cross(a,b)_i = epsilon_ijk * a^j * b^k
+}
+```
+
+Same thing but using exterior algebra:
+```c++
+float3 cross(float3 a, float3 b) {
+	auto c = wedge(a,b);	// returns a 3x3 antisymmetric, storing only 3 floats
+	return hodgeDual(c);	// maps those 3 antisymmetric rank-2 floats onto 3 rank-1 floats
+}
+```
+
+Example of using a totally-antisymmetric tensor to construct a basis perpendicular to a vector:
+```c++
+float2x3 basis(float3 n) {
+	auto d = hodgeDual(n);	// return a 3x3 antisymmetric, only storing 3 values, equivalent of initializing a matrix with the cross products of 'n' and each basis vector
+	// done.  the 3 rows/cols are all perpendicular to n.  but maybe n is closer to one of them, in which case the cross tends to zero, so best to pick the largest two.
+	auto sq = float3([&d](int i) -> float { return d(i).lenSq(); }); 
+	auto n2 = (
+			(sq.x > sq.y)
+			? ((sq.x > sq.z) ? d.x : d.z)
+			: ((sq.y > sq.z) ? d.y : d.z)
+		).normalize();
+	return float2x3({n2, n.cross(n2)});
+}
+```
+
 ### Accessors:
 An accessor is an object used for intermediate access to a tensor when it is not fully indexed.  For example, if you construct an object `auto a = float3s3()` to be a rank-2 symmetric 3x3 matrix,
 and you decided to read only a single index: `a[i]`, the result will be an Accessor object which merely wraps the owner.  From here the Accessor can be indexed a second time: `a[i][j]` to return a reference to the `_sym`'s variable.
