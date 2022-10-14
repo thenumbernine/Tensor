@@ -19,6 +19,12 @@
 		static_assert(std::is_same_v<decltype(c), resultType>);\
 		TEST_EQ(c, resultType resultArgs);\
 	}(inputAType inputAArgs);\
+	/* this should be rvalue too right? */\
+	{\
+		auto c = (inputAType inputAArgs).funcName();\
+		static_assert(std::is_same_v<decltype(c), resultType>);\
+		TEST_EQ(c, resultType resultArgs);\
+	}\
 	/* global */\
 	/*  lvalues */\
 	[](inputAType const & a){\
@@ -31,7 +37,13 @@
 		auto c = funcName(a);\
 		static_assert(std::is_same_v<decltype(c), resultType>);\
 		TEST_EQ(c, resultType resultArgs);\
-	}(inputAType inputAArgs);
+	}(inputAType inputAArgs);\
+	/* same? */\
+	{\
+		auto c = funcName(inputAType inputAArgs);\
+		static_assert(std::is_same_v<decltype(c), resultType>);\
+		TEST_EQ(c, resultType resultArgs);\
+	}
 
 #define TENSOR_TEST_2(\
 	funcName,\
@@ -52,6 +64,12 @@
 		static_assert(std::is_same_v<decltype(c), resultType>);\
 		TEST_EQ(c, resultType resultArgs);\
 	}(inputAType inputAArgs, inputBType inputBArgs);\
+	/*  same? */\
+	{\
+		auto c = (inputAType inputAArgs).funcName(inputBType inputBArgs);\
+		static_assert(std::is_same_v<decltype(c), resultType>);\
+		TEST_EQ(c, resultType resultArgs);\
+	}\
 	/* global */\
 	/*  lvalues */\
 	[](inputAType const & a, inputBType const & b){\
@@ -64,7 +82,13 @@
 		auto c = funcName(a,b);\
 		static_assert(std::is_same_v<decltype(c), resultType>);\
 		TEST_EQ(c, resultType resultArgs);\
-	}(inputAType inputAArgs, inputBType inputBArgs);
+	}(inputAType inputAArgs, inputBType inputBArgs);\
+	/*  same? */\
+	{\
+		auto c = funcName(inputAType inputAArgs, inputBType inputBArgs);\
+		static_assert(std::is_same_v<decltype(c), resultType>);\
+		TEST_EQ(c, resultType resultArgs);\
+	}
 
 // testing the tensor math functions, hopefully as lvalues and rvalues, as globals and members ...
 void test_Math() {
@@ -100,4 +124,7 @@ void test_Math() {
 	//wedge
 	//hodgeDual
 	//operator*
+	TENSOR_TEST_1(determinant,		float,		(1.f),			float3x3,	({{1,0,0},{0,1,0},{0,0,1}}));
+	TENSOR_TEST_1(inverse,			float3x3,	({{1,0,0},{0,1,0},{0,0,1}}),	float3x3,	({{1,0,0},{0,1,0},{0,0,1}}));
+	TENSOR_TEST_2(inverse,			float3x3,	({{1,0,0},{0,1,0},{0,0,1}}),	float3x3,	({{1,0,0},{0,1,0},{0,0,1}}), float, (1.f));
 }

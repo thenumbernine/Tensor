@@ -2,6 +2,7 @@
 
 //atm Vector.h includes Inverse.h so this is moot:
 #include "Tensor/Vector.h.h"
+#include "Tensor/Inverse.h.h"
 
 namespace Tensor {
 
@@ -71,30 +72,7 @@ typename M::Scalar determinant44(M const & a) {
 		- a(0,3) * a(1,2) * tmp11;
 }
 
-template<typename T>
-requires is_tensor_v<T>
-inline typename T::Scalar determinant(T const & a);
-
-template<typename M>
-typename M::Scalar determinantNN(M const & a) {
-	using T = typename M::Scalar;
-	static_assert(M::rank == 2);
-	static_assert(M::template dim<0> == M::template dim<1>);
-	constexpr int dim = M::template dim<0>;
-	T sign = 1;
-	T sum = {};
-	for (int k = 0; k < dim; ++k) {
-		_mat<T,dim-1,dim-1> sub;
-		for (int i = 0; i < dim-1; ++i) {
-			for (int j = 0; j < dim-1; ++j) {
-				sub(i,j) = a(i+1, j + (j>=k));
-			}
-		}
-		sum += sign * a(0,k) * Tensor::determinant<M>(sub);
-		sign = -sign;
-	}
-	return sum;
-}
+//matrix specializations
 
 template<typename T>
 T determinant(_mat<T,1,1> const & a) {
@@ -114,12 +92,6 @@ T determinant(_mat3x3<T> const & a) {
 template<typename T>
 T determinant(_mat4x4<T> const & a) {
 	return determinant44(a);
-}
-
-template<typename T, int dim>
-requires (dim > 4)
-T determinant(_mat<T,dim,dim> const & a) {
-	return determinantNN(a);
 }
 
 // determinant for symmetric
@@ -144,29 +116,64 @@ T determinant(_sym4<T> const & a) {
 	return determinant44(a);
 }
 
+template<typename M>
+typename M::Scalar determinantNN(M const & a) {
+	using T = typename M::Scalar;
+	static_assert(M::rank == 2);
+	static_assert(M::template dim<0> == M::template dim<1>);
+	constexpr int dim = M::template dim<0>;
+	T sign = 1;
+	T sum = {};
+	for (int k = 0; k < dim; ++k) {
+		// TODO ReplaceLocalDim / ReplaceDim to preserve symmetry?
+		using subM = _mat<T,dim-1,dim-1>;
+		subM sub;
+		for (int i = 0; i < dim-1; ++i) {
+			for (int j = 0; j < dim-1; ++j) {
+				sub(i,j) = a(i+1, j + (j>=k));
+			}
+		}
+		sum += sign * a(0,k) * Tensor::determinant(sub);
+		sign = -sign;
+	}
+	return sum;
+}
+
+//general case
+
+template<typename T, int dim>
+requires(dim>4)
+T determinant(_mat<T,dim,dim> const & a) {
+	return determinantNN(a);
+}
+
 template<typename T, int dim>
 requires (dim > 4)
 T determinant(_sym<T,dim> const & a) {
 	return determinantNN(a);
 }
 
-
-// inverse for matrix
-
 template<typename T>
 requires is_tensor_v<T>
-inline typename T::Scalar inverse(
-	T const & a,
-	typename T::Scalar const & det
-);
+typename T::Scalar determinant(T const & a) {
+	return determinantNN(a);
+}
+
+
+
+// inverse for matrix
+//  I could write out all specialized functions
+//  but then i'd have to fwd-declare them also ...
+// So I will just write out the specializations as a 2nd function
+
 
 template<typename T>
-_mat<T,1,1> inverse(_mat<T,1,1> const & a, T const & det) {
+_mat<T,1,1> inverseImpl(_mat<T,1,1> const & a, T const & det) {
 	return (T)1 / det;	// == 1 / a.x.x;
 }
 
 template<typename T>
-_mat2x2<T> inverse(_mat2x2<T> const & a, T const & det) {
+_mat2x2<T> inverseImpl(_mat2x2<T> const & a, T const & det) {
 	return {
 		{
 			 a.s1.s1 / det,
@@ -180,7 +187,7 @@ _mat2x2<T> inverse(_mat2x2<T> const & a, T const & det) {
 }
 
 template<typename T>
-_mat3x3<T> inverse(_mat3x3<T> const & a, T const & det) {
+_mat3x3<T> inverseImpl(_mat3x3<T> const & a, T const & det) {
 	return {
 		{
 			(-a.s1.s2 * a.s2.s1 +  a.s1.s1 * a.s2.s2) / det,
@@ -200,7 +207,7 @@ _mat3x3<T> inverse(_mat3x3<T> const & a, T const & det) {
 
 //from : https://stackoverflow.com/questions/1148309/inverting-a-4x4-matrix
 template<typename T>
-_mat4x4<T> inverse(_mat4x4<T> const & a, T const & det) {
+_mat4x4<T> inverseImpl(_mat4x4<T> const & a, T const & det) {
 	T const a2323 = a.s2.s2 * a.s3.s3 - a.s2.s3 * a.s3.s2;
 	T const a1323 = a.s2.s1 * a.s3.s3 - a.s2.s3 * a.s3.s1;
 	T const a1223 = a.s2.s1 * a.s3.s2 - a.s2.s2 * a.s3.s1;
@@ -244,20 +251,17 @@ _mat4x4<T> inverse(_mat4x4<T> const & a, T const & det) {
 	};
 }
 
-// inverse for symmetric
+// inverseImpl for symmetric
 // has a different # of written fields so might as well optimize for it
 
-template<typename T, int dim>
-_sym<T,dim> inverse(_sym<T,dim> const & a, T const & det);
-
 template<typename T>
-_sym<T,1> inverse(_sym<T,1> const & a, T const & det) {
+_sym<T,1> inverseImpl(_sym<T,1> const & a, T const & det) {
 	return (T)1 / det;	// == 1 / a.xx;	 ... which to use?
 }
 
 // TODO sym2 from mat2 
 template<typename T>
-_sym2<T> inverse(_sym2<T> const & a, T const & det) {
+_sym2<T> inverseImpl(_sym2<T> const & a, T const & det) {
 	return {
 		 a(1,1) / det, // AInv(0,0)
 		-a(0,1) / det, // AInv(1,0)
@@ -266,7 +270,7 @@ _sym2<T> inverse(_sym2<T> const & a, T const & det) {
 }
 
 template<typename T>
-_sym3<T> inverse(_sym3<T> const & a, T const & det) {
+_sym3<T> inverseImpl(_sym3<T> const & a, T const & det) {
 	return {
 		det22elem(a(1,1), a(1,2), a(2,1), a(2,2)) / det,	// AInv(0,0)
 		det22elem(a(1,2), a(1,0), a(2,2), a(2,0)) / det,	// AInv(1,0)
@@ -277,12 +281,17 @@ _sym3<T> inverse(_sym3<T> const & a, T const & det) {
 	};
 }
 
+template<typename T>
+requires is_tensor_v<T>
+T inverse(T const & a, typename T::Scalar const & det) {
+	return inverseImpl(a, det);
+}
 
 // inverse without determinant
 
 template<typename T>
 requires is_tensor_v<T>
-inline T inverse(T const & a) {
+T inverse(T const & a) {
 	return inverse(a, determinant(a));
 }
 

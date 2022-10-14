@@ -1064,20 +1064,20 @@ Bit of a hack: MOst these are written in terms of 'This'
 \
 	template<typename T>\
 	auto matrixCompMult(T const & o) const {\
-		return Tensor::elemMul(*this, o);\
+		return Tensor::matrixCompMult(*this, o);\
 	}\
 	template<typename... T>\
 	auto matrixCompMult(T && ... o) && {\
-		return Tensor::elemMul(std::move(*this), std::forward<T>(o)...);\
+		return Tensor::matrixCompMult(std::move(*this), std::forward<T>(o)...);\
 	}\
 \
 	template<typename T>\
 	auto hadamard(T const & o) const {\
-		return Tensor::elemMul(*this, o);\
+		return Tensor::hadamard(*this, o);\
 	}\
 	template<typename... T>\
 	auto hadamard(T && ... o) && {\
-		return Tensor::elemMul(std::move(*this), std::forward<T>(o)...);\
+		return Tensor::hadamard(std::move(*this), std::forward<T>(o)...);\
 	}\
 \
 	template<typename B>\
@@ -1092,10 +1092,10 @@ Bit of a hack: MOst these are written in terms of 'This'
 	}\
 \
 	auto dot(This const & o) const {\
-		return Tensor::inner(*this, o);\
+		return Tensor::dot(*this, o);\
 	}\
 	auto dot(This && o) && {\
-		return Tensor::inner(std::move(*this), std::forward<This>(o));\
+		return Tensor::dot(std::move(*this), std::forward<This>(o));\
 	}\
 \
 	Scalar lenSq() const { return Tensor::lenSq(*this); }\
@@ -1161,6 +1161,11 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return Tensor::contract<m, n>(*this);\
 	}\
 \
+	template<int m=0, int n=1>\
+	auto trace() const {\
+		return Tensor::trace<m,n,This>(*this);\
+	}\
+\
 	template<int index=0, int count=1>\
 	auto contractN() const {\
 		return Tensor::contractN<index, count>(*this);\
@@ -1170,10 +1175,9 @@ Bit of a hack: MOst these are written in terms of 'This'
 	auto interior(T const & o) const {\
 		return Tensor::interior<num,This,T>(*this, o);\
 	}\
-\
-	template<int m=0, int n=1>\
-	auto trace() const {\
-		return Tensor::trace<m,n,This>(*this);\
+	template<int num=1, typename T>\
+	auto interior(T && o) && {\
+		return Tensor::interior<num,This,T>(std::move(*this), std::forward<T>(o));\
 	}\
 \
 	template<int m=0>\
@@ -1196,6 +1200,11 @@ Bit of a hack: MOst these are written in terms of 'This'
 	auto wedge(B const & b) const {\
 		return Tensor::wedge(*this, b);\
 	}\
+	template<typename B>\
+	requires (is_tensor_v<B>)\
+	auto wedge(B && b) && {\
+		return Tensor::wedge(std::move(*this), std::forward<B>(b));\
+	}\
 \
 	auto hodgeDual() const\
 	requires (isSquare) {\
@@ -1208,12 +1217,12 @@ Bit of a hack: MOst these are written in terms of 'This'
 		&& B::rank == 2 /* ar - 1 + br - 1 == ar <=> br == 2 */\
 	) auto operator*=(B const & b) {\
 		*this = *this * b;\
+		return *this;\
 	}\
 \
-	/* TODO can't get this to work */\
-	/*Scalar determinant() const {*/\
-		/*return (Scalar)Tensor::determinant<This>((This const &)(*this));*/\
-	/*}*/\
+	Scalar determinant() const {\
+		return (Scalar)Tensor::determinant<This>((This const &)(*this));\
+	}\
 \
 	This inverse(Scalar const & det) const {\
 		return Tensor::inverse(*this, det);\
@@ -1221,7 +1230,7 @@ Bit of a hack: MOst these are written in terms of 'This'
 \
 	This inverse() const {\
 		return Tensor::inverse(*this);\
-	}
+	}\
 
 #define TENSOR_ADD_INDEX_NOTATION_CALL()\
 	template<typename IndexType, typename... IndexTypes>\
