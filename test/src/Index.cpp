@@ -3,29 +3,28 @@
 #include <algorithm>
 
 void test_Index() {
-	using real = double;
 	//index assignment
 	{
-		auto a = Tensor::_tensor<real, 3>(1);
-		auto b = Tensor::_tensor<real, 3>(2);
+		auto a = Tensor::double3(1);
+		auto b = Tensor::double3(2);
 
 		TEST_EQ(a.rank, 1);
 		TEST_EQ(b.rank, 1);
 
-		TEST_EQ(a, (Tensor::_tensor<real, 3>(1)));
-		TEST_EQ(b, (Tensor::_tensor<real, 3>(2)));
+		TEST_EQ(a, (Tensor::double3(1)));
+		TEST_EQ(b, (Tensor::double3(2)));
 
 		Tensor::Index<'i'> i;
 		a(i) = b(i);
 
-		TEST_EQ(a, (Tensor::_tensor<real, 3>(2)));
+		TEST_EQ(a, (Tensor::double3(2)));
 	}
 	
 	{
 		//make sure 2D swizzling works
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
-		Tensor::_tensor<real, 3, 3> m;
+		Tensor::double3x3 m;
 		m(1,0) = 1;
 		ECHO(m);
 		m(i,j) = m(j,i);
@@ -39,7 +38,7 @@ void test_Index() {
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
 		Tensor::Index<'k'> k;
-		Tensor::_tensor<real, 3, 3, 3> s;
+		Tensor::_tensor<double, 3, 3, 3> s;
 		s(0,1,0) = 1;
 		ECHO(s);
 		s(i,j,k) = s(j,k,i);	//s(0,0,1) = s(0,1,0)
@@ -47,20 +46,37 @@ void test_Index() {
 		ECHO(s);
 	}
 
-#if 0 // TODO
 	{
 		//arithemetic operations
 		Tensor::Index<'i'> i;
-		Tensor::Index<'j'> j;
-		Tensor::_tensor<real, 3> b, c;
-		Tensor::_tensor<real, 3, 3> a;
+		
+		Tensor::double3 a = {1,2,3};
+		Tensor::double3 b = {5,7,11};
 
-		b(0) = 1;
-		b(1) = 2;
-		b(2) = 3;
-		c(0) = 5;
-		c(1) = 7;
-		c(2) = 11;
+		Tensor::double3 c;
+		c(i) = a(i) + b(i);
+		TEST_EQ(c, (Tensor::double3(6,9,14)));
+	}
+
+	{
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		Tensor::double3x3 a = {{1,2,3},{4,5,6},{7,8,9}};
+
+		// transpose
+		a(i,j) = a(j,i);
+		TEST_EQ(a, (Tensor::double3x3{{1,4,7},{2,5,8},{3,6,9}}));
+
+		// symmetrize
+		a(i,j) = a(i,j) + a(j,i);
+		TEST_EQ(a, (Tensor::double3x3{{2,6,10},{6,10,14},{10,14,18}}));
+	}
+	{
+		
+	}
+#if 0 // TODO
+	{
+		Tensor::double3x3 a;
 
 		//outer product
 		a(i,j) = b(i) * c(j);
