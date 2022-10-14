@@ -220,9 +220,9 @@ void test_TensorRank4() {
 		for (int i = 0; i < 3; ++i) {
 			for (int j = 0; j < 3; ++j) {
 				for (int k = 0; k < 3; ++k) {
-					if constexpr (std::is_same_v<Tensor::int2::ReadInc<0>, Tensor::int2::ReadIncOuter<0>>) {
+					if constexpr (Tensor::int2::useReadIteratorOuter) {
 						TEST_EQ(ta(i,j,k), k + 3 * (j + 3 * i));
-					} else if constexpr (std::is_same_v<Tensor::int2::ReadInc<0>, Tensor::int2::ReadIncInner<0>>) {
+					} else {
 						TEST_EQ(ta(i,j,k), i + 3 * (j + 3 * k));
 					}
 				}

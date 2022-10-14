@@ -436,30 +436,40 @@ ReplaceScalar<typename>
 	static constexpr int dim = InnerForIndex<index>::localDim;\
 \
 	/* .. then for loop iterator in dims() function and just a single exceptional case in the dims() function is needed */\
-	static constexpr auto DimsImpl() {\
-		/* use an int[localDim] */\
-		intN dimv;\
-		/* TODO constexpr for loop.  I could use my template-based one, but that means one more inline'd class, which is ugly. */\
-		/* TODO can I change the template unroll metaprogram to use constexpr lambdas? */\
-		/* static_foreach<localRank>([&dimv](int i) constexpr {\
-			dimv.s[i] = localDim;\
-		}); */\
-		for (int i = 0; i < localRank; ++i) {\
-			dimv.s[i] = localDim;\
-		}\
-		if constexpr (localRank < rank) {\
-			/* assigning sub-vector */\
-			auto innerDim = Inner::DimsImpl();\
-			for (int i = 0; i < rank-localRank; ++i) {\
-				dimv.s[i+localRank] = innerDim.s[i];\
+	struct DimsImpl {\
+		template<int i>\
+		struct AssignLocalDim {\
+			static constexpr bool exec(int * dims) {\
+				dims[i] = localDim;\
+				return false;\
 			}\
+		};\
+		static constexpr intN value() {\
+			/* use an int[localDim] cuz can't use non-literal type */\
+			intN dimv;\
+			/* template-metaprogram constexpr for-loop. */\
+			Common::ForLoop<0, localRank, AssignLocalDim>::exec(dimv.s.data());\
+			/* TODO can I change the template unroll metaprogram to use constexpr lambdas? */\
+			/*static_foreach<localRank>([&dimv](int i) constexpr {\
+				dimv.s[i] = localDim;\
+			});*/\
+			/*for (int i = 0; i < localRank; ++i) {\
+				dimv.s[i] = localDim;\
+			}*/\
+			if constexpr (localRank < rank) {\
+				/* assigning sub-vector */\
+				auto innerDim = Inner::DimsImpl::value();\
+				for (int i = 0; i < rank-localRank; ++i) {\
+					dimv.s[i+localRank] = innerDim.s[i];\
+				}\
+			}\
+			return dimv;\
 		}\
-		return dimv;\
-	}\
+	};\
 	/* This needs to be a function because if it was a constexpr value then the compiler would complain that DimsImpl is using _vec<int,1> before it is defined.*/\
 	/* I can circumvent that error by having rank-1 _vec's have a dims == int instead of _vec<int> ... and then i get dims as a value instead of function, and all is well */\
 	/*  except that makes me need to write conditional code everywhere for rank-1 and rank>1 dims */\
-	static constexpr auto dims() { return DimsImpl(); }\
+	static constexpr intN dims() { return DimsImpl::value(); }\
 	/* TODO index_sequence of dims? */\
 \
 	struct IsSquareImpl {\
@@ -749,95 +759,20 @@ ReadIterator vs WriteIterator
 */
 #define TENSOR_ADD_ITERATOR()\
 \
-	/* inc 0 first */\
-	template<int i>\
-	struct ReadIncInner {\
-		static constexpr bool exec(intN & index) {\
-			++index[i];\
-			if (index[i] < This::template dim<i>) return true;\
-			if (i < rank-1) index[i] = 0;\
-			return false;\
-		}\
-		static constexpr intN end() {\
-			intN index;\
-			index[rank-1] = This::template dim<rank-1>;\
-			return index;\
-		}\
-	};\
-\
-	/* inc n-1 first */\
-	template<int i>\
-	struct ReadIncOuter {\
-		static constexpr bool exec(intN & index) {\
-			constexpr int j = rank-1-i;\
-			++index[j];\
-			if (index[j] < This::template dim<j>) return true;\
-			if (j > 0) index[j] = 0;\
-			return false;\
-		}\
-		static constexpr intN end() {\
-			intN index;\
-			index[0] = This::template dim<0>;\
-			return index;\
-		}\
-	};\
-\
-	/* not in memory order, but ... meh idk why */\
-	/*template<int i> using ReadInc = ReadIncInner<i>;*/\
-	/* in memory order */\
-	template<int i> using ReadInc = ReadIncOuter<i>;\
-\
+	/* inner is not in memory order, but ... meh idk why */\
+	/* outer is in memory order */\
+	static constexpr bool useReadIteratorOuter = true;\
 	/* read iterator */\
 	/* - sized to the tensor rank (includes multiple-rank nestings) */\
 	/* - range is 0's to the tensor dims() */\
-	template<typename IteratorOwnerConst>\
-	struct ReadIterator {\
-		using intN = typename IteratorOwnerConst::intN;\
-		IteratorOwnerConst & owner;\
-		intN index;\
-		ReadIterator(IteratorOwnerConst & owner_, intN index_ = {}) : owner(owner_), index(index_) {}\
-		ReadIterator(ReadIterator const & o) : owner(o.owner), index(o.index) {}\
-		ReadIterator(ReadIterator && o) : owner(o.owner), index(o.index) {}\
-		ReadIterator & operator=(ReadIterator const & o) {\
-			owner = o.owner;\
-			index = o.index;\
-			return *this;\
-		}\
-		ReadIterator & operator=(ReadIterator && o) {\
-			owner = o.owner;\
-			index = o.index;\
-			return *this;\
-		}\
-		constexpr bool operator==(ReadIterator const & o) const {\
-			return &owner == &o.owner && index == o.index;\
-		}\
-		constexpr bool operator!=(ReadIterator const & o) const {\
-			return !operator==(o);\
-		}\
-		decltype(auto) operator*() const {\
-			return owner(index);\
-		}\
-\
-		ReadIterator & operator++() {\
-			Common::ForLoop<0,rank,ReadInc>::exec(index);\
-			return *this;\
-		}\
-		ReadIterator & operator++(int) {\
-			Common::ForLoop<0,rank,ReadInc>::exec(index);\
-			return *this;\
-		}\
-\
-		std::ostream & to_ostream(std::ostream & o) const {\
-			return o << "ReadIterator(owner=" << &owner << ", index=" << index << ")";\
-		}\
-\
-		static ReadIterator begin(IteratorOwnerConst & v) {\
-			return ReadIterator(v);\
-		}\
-		static ReadIterator end(IteratorOwnerConst & v) {\
-			return ReadIterator(v, ReadInc<0>::end());\
-		}\
-	};\
+	/* begin implementation for RangeIterator's Owner: */\
+	template<int i> constexpr int getRangeMin() const { return 0; }\
+	template<int i> constexpr int getRangeMax() const { return dim<i>; }\
+	decltype(auto) getIterValue(intN const & i) { return (*this)(i); }\
+	decltype(auto) getIterValue(intN const & i) const { return (*this)(i); }\
+	/* end implementation for RangeIterator's Owner: */\
+	template<typename ThisConst>\
+	using ReadIterator = RangeIteratorInnerVsOuter<rank, !useReadIteratorOuter, ThisConst>;\
 \
 	using iterator = ReadIterator<This>;\
 	iterator begin() { return iterator::begin(*this); }\

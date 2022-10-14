@@ -2,6 +2,7 @@
 
 #include "Tensor/Range.h.h"
 #include <algorithm>
+#include <iostream>
 
 namespace Tensor {
 
@@ -19,10 +20,10 @@ template<
 	int rankLast,
 	int rankStep,
 	int rank,
-	typename Owner
+	typename Owner // should include the constness
 >
 struct RangeIterator {
-	Owner const & owner;
+	Owner & owner;
 	using intN = Tensor::intN<rank>;
 	intN index;
 
@@ -33,13 +34,24 @@ struct RangeIterator {
 			return false;
 		}
 	};
-	constexpr RangeIterator(Owner const & owner_) : owner(owner_) {
+	constexpr RangeIterator(Owner & owner_) : owner(owner_) {
 		Common::ForLoop<0, rank-1, FillIndexWithMin>::exec(*this);
 	}
 
-	constexpr RangeIterator(Owner const & owner_, intN index_) : owner(owner_), index(index_) {}
+	constexpr RangeIterator(Owner & owner_, intN index_) : owner(owner_), index(index_) {}
 	constexpr RangeIterator(RangeIterator const & iter) : owner(iter.owner), index(iter.index) {}
 	constexpr RangeIterator(RangeIterator && iter) : owner(iter.owner), index(iter.index) {}
+
+	RangeIterator & operator=(RangeIterator const & o) {
+		owner = o.owner;
+		index = o.index;
+		return *this;
+	}
+	RangeIterator & operator=(RangeIterator && o) {
+		owner = o.owner;
+		index = o.index;
+		return *this;
+	}
 
 	template<int i>
 	struct FlattenLoop {
@@ -89,7 +101,7 @@ struct RangeIterator {
 			return false;
 		}
 	};
-	constexpr RangeIterator & operator++() {
+	constexpr void inc() {
 #if 1	// works but risks runaway template compiling
 		Common::ForLoop<rankFirst, rankLast+rankStep, Inc>::exec(*this);
 #elif 0	// works but still requires a helper class in global namespace ... still haven't got that constexpr lambda for template arg like I want ...
@@ -105,16 +117,26 @@ struct RangeIterator {
 			Common::make_integer_range<int, rankFirst, rankLast+rankStep>()
 		);
 #endif
-		return *this;
 	}
+	constexpr RangeIterator & operator++() { inc(); return *this; }
+	constexpr RangeIterator & operator++(int) { inc(); return *this; }
 	
-	constexpr intN &operator*() { return index; }
-	constexpr intN *operator->() { return &index; }
+	constexpr decltype(auto) operator*() const { return owner.getIterValue(index); }
+	constexpr decltype(auto) operator->() const { return &owner.getIterValue(index); }
 
-	static constexpr RangeIterator end(Owner const & owner) {
+	static constexpr RangeIterator begin(Owner & owner) {
+		return RangeIterator(owner);
+	}
+
+	static constexpr RangeIterator end(Owner & owner) {
 		auto i = RangeIterator(owner);
 		i.index[rankLast] = owner.template getRangeMax<rankLast>();
 		return i;
+	}
+
+	// weird that this works with Common::has_to_ostream_v operator<< ... since nothing else does
+	std::ostream & to_ostream(std::ostream & o) const {
+		return o << "Iterator(owner=" << &owner << ", index=" << index << ")";
 	}
 };
 
@@ -131,20 +153,24 @@ struct RangeObj {
 
 	constexpr RangeObj(intN min_, intN max_) : min(min_), max(max_) {}
 
+	// implementation for RangeIterator's Owner: 
 	template<int i> constexpr int getRangeMin() const { return min[i]; }
 	template<int i> constexpr int getRangeMax() const { return max[i]; }
-	using InnerOrderIterator = RangeIteratorInner<rank, RangeObj>;	// inc 0 first
-	using OuterOrderIterator = RangeIteratorOuter<rank, RangeObj>;	// inc n-1 first
+	intN const & getIterValue(intN const & i) const { return i; }
+	//
+
+	using InnerOrderIterator = RangeIteratorInner<rank, RangeObj const>;	// inc 0 first
+	using OuterOrderIterator = RangeIteratorOuter<rank, RangeObj const>;	// inc n-1 first
 
 	using iterator = std::conditional_t<innerFirst, InnerOrderIterator, OuterOrderIterator>;
-	constexpr iterator begin() { return iterator(*this); }
+	constexpr iterator begin() { return iterator::begin(*this); }
 	constexpr iterator end() { return iterator::end(*this); }
 	
 	using const_iterator = iterator;
-	constexpr const_iterator begin() const { return const_iterator(*this); }
-	constexpr const_iterator end() const { return iterator::end(*this); }
-	constexpr const_iterator cbegin() const { return const_iterator(*this); }
-	constexpr const_iterator cend() const { return iterator::end(*this); }
+	constexpr const_iterator begin() const { return const_iterator::begin(*this); }
+	constexpr const_iterator end() const { return const_iterator::end(*this); }
+	constexpr const_iterator cbegin() const { return const_iterator::begin(*this); }
+	constexpr const_iterator cend() const { return const_iterator::end(*this); }
 };
 
 }

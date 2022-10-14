@@ -80,7 +80,7 @@ void test_Matrix() {
 	// read iterator
 	{
 		auto i = m.begin();
-		if constexpr (std::is_same_v<Tensor::int2::ReadInc<0>, Tensor::int2::ReadIncOuter<0>>) {
+		if constexpr (Tensor::int2::useReadIteratorOuter) {
 			// iterating in memory order for row-major
 			// also in left-right top-bottom order when read
 			// but you have to increment the last index first and first index last
@@ -96,7 +96,7 @@ void test_Matrix() {
 			TEST_EQ(*i, 8); ++i;
 			TEST_EQ(*i, 9); ++i;
 			TEST_EQ(i, m.end());
-		} else if constexpr (std::is_same_v<Tensor::int2::ReadInc<0>, Tensor::int2::ReadIncInner<0>>) {
+		} else {
 			//iterating transpose to memory order for row-major
 			// - inc first index first, last index last
 			// but lambda init is now m(i,j) == 1 + i(0) + 3 * i(1)  ... typical memory indexing
