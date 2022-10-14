@@ -71,9 +71,9 @@ struct RangeIterator {
 	template<int i>
 	struct UnFlattenLoop {
 		static constexpr bool exec(RangeIterator & it, int & flatIndex) {
-			int s = it.owner.template getRangeMax<i>() - it.owner.template getRangeMin<i>();
+			constexpr int s = it.owner.template getRangeMax<i>() - it.owner.template getRangeMin<i>();
 			int n = flatIndex;
-			if (i != rankLast) n %= s;
+			if constexpr (i != rankLast) n %= s;
 			it.index[i] = n + it.owner.template getRangeMin<i>();
 			flatIndex = (flatIndex - n) / s;
 			return false;
@@ -97,7 +97,7 @@ struct RangeIterator {
 		static constexpr bool exec(RangeIterator & it) {
 			++it.index[i];
 			if (it.index[i] < it.owner.template getRangeMax<i>()) return true;
-			if (i != rankLast) it.index[i] = it.owner.template getRangeMin<i>();
+			if constexpr (i != rankLast) it.index[i] = it.owner.template getRangeMin<i>();
 			return false;
 		}
 	};

@@ -870,6 +870,7 @@ ReadIterator vs WriteIterator
 		/* write iterator */\
 		/* - sized to the # of nestings */\
 		/* - range is 0's to each nesting's .localCount */\
+		/* TODO can't convert this to RangeIterator without losing the readIndex property ... or how to optionally insert it into RangeIterator? */\
 		template<typename IteratorOwnerConst>\
 		struct WriteIterator {\
 			IteratorOwnerConst & owner;\
