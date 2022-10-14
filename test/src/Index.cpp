@@ -3,7 +3,6 @@
 #include <algorithm>
 
 void test_Index() {
-#if 0 // TODO	
 	using real = double;
 	//index assignment
 	{
@@ -48,8 +47,8 @@ void test_Index() {
 		ECHO(s);
 	}
 
+#if 0 // TODO
 	{
-#if 0
 		//arithemetic operations
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
@@ -83,7 +82,10 @@ void test_Index() {
 	
 		//discrete differentiation?
 		c(i) = (a(i+1) - a(i-1)) / (2 * dx)
-#endif
 	}
 #endif
+}
+
+int main() {
+	test_Index();
 }
