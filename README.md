@@ -367,3 +367,5 @@ TODO:
 - make RangeObj (rename to Range? or Domain?) use the WriteInc inner vs outer first that is already in vector's iterator.
 - make tensor read and write iterators use RangeObj.
 - ok maybe 'dims' should always use a intN, even if it's 1D ... but this might give "`error using _vec<int,1> before it is defined `" errors...
+
+- does a sym + ident make a sym as well?

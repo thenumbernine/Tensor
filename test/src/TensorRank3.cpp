@@ -30,12 +30,12 @@ operators: == != += -= *= /= + - * /
 string/stream operators: to_string and operator<<
 
 math functions:
+elemMul, hadamard, matrixCompMult
 dot, inner
 lenSq
 length
 distance
 normalize
-elemMul, hadamard, matrixCompMult
 cross
 outer, outerProduct
 transpose

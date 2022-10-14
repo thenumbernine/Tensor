@@ -13,4 +13,5 @@ int main() {
 	test_TotallySymmetric();
 	test_TotallyAntisymmetric();
 	test_Index();
+	test_Math();
 }
