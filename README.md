@@ -315,12 +315,13 @@ TODO:
 - make a permuteIndexes() function, have this "ExpandIndex<>" on all its passed indexes, then have it run across the permute indexes.
 	- mind you that for transposes then you can respect symmetry and you don't need to expand those indexes.
 	- make transpose a specialization of permuteIndexes()
+	- this is already done in index notation assignments.  TODO make them compile-time.
 - index notation summation?  mind you that it shoud preserve non-summed index memory-optimization structures.
 - shorthand those longwinded names like "inverse"=>"inv", "determinant"=>"det", "trace"=>"tr", "transpose"=>...? T? tr?  what? "normalize"=>"unit"
 
-- more flexible exterior product (cross, wedge, determinant).  Generalize to something with Levi-Civita permutation tensor.
-	- use `_asymR` for an implementation of LeviCivita as constexpr
-	- then use that for cross, determinant, inverse, wedge
+- use `_asymR` for an implementation of LeviCivita as constexpr
+- then use that for cross, determinant, inverse, wedge
+- once index notation is finished that might be most optimal for implementations
 
 - better function matching for derivatives?
 - move secondderivative from Relativity to Tensor
@@ -344,9 +345,11 @@ TODO:
 	like `InsertIndexes<index, index_vec<3>, index_sym<3> >` etc,
 		which would insert the listed structure into the nest of tensors.  make sure 'index' was expanded, expand it otherwise.
 
-- makeAsym when applied to syms return a zero-tensor.
-	Same with makeSym applied to asyms.
-	A zero tensor is just the `_ident` with its scalar initialized to zero.  so to make `_ident` true to name, maybe make `_ident` default initialize its value to 1?
+- shorthand, if you symmetrize an asym tensor then return a zero-tensor
+	same if you antisymmetrize a symmetric tensor.
+	`_ident` init to zero wouldn't work cuz it only works for rank-2 ... I'd need a new tensor for rank-N, and why not just return Sign::ZERO's for all instead of just off-diagonals.
+
+- To make `_ident` true to name, maybe make `_ident` default initialize its value to 1?
 
 - shorter names for `index_*` for easier building tensors.
 
@@ -354,18 +357,7 @@ TODO:
 
 - any way to optimize symmetries between non-neighboring dimensions?
 	- like $t\_{ijkl} = a\_{ij} b\_{kl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
-
-- range-iterator as a function of the tensor, like `for (auto i : a.range) {`
-	- then maybe see how it can be merged with read and write iterator? maybe?  btw write iterator is just a range iterator over the sequence `count<0>...count<numNestings-1>` with a different lookup
-	- so make a generic multi-dim iterator that acts on `index_sequence`. then use it with read and write iters.
  
-- TODO in C++23 operator[] can be variadic.
-	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().
-	in fact, why don't I just do that now?
-	that would spare me the need for `_sym`'s operator[int]
-	but don't forget `_asym` still needs to return an AntiSymRef , whether we allow off-storage indexing or not.
-	so meh i might as well keep it around?
-
 - somehow for differing-typed tensors get operator== constexpr
 - might do some constexpr loop unrolling stuff maybe.
 - test case write tests should be writing different values and verifying
@@ -375,15 +367,9 @@ TODO:
 
 - RemoveIthIndex of `_symR` or `_asymR` should preserve the (anti)symmetry of the remaining indexes.  Atm it just turns the whole thing into a expanded-tensor.  Tho I did handle this when ExpandIthIndex is called on the first or last of an (a)sym... 
 
-- Note to self (and anyone else listening), while GitHub MarkDown handles `_`'s correctly within `` ` ``'s , it fails within MathJax `$`'s and `$$`'s which means you have to escape all your `_`'s within your MathJax as `\_`.
-
 - eventually merge `_sym` and `_asym` with `_symR` and `_asymR` ... but don't til enough sorts/loops are compile-time.
 		
 - `operator+=` etc for AntiSymRef
-
-- make RangeObj (rename to Range? or Domain?) use the WriteInc inner vs outer first that is already in vector's iterator.
-- make tensor read and write iterators use RangeObj.
-- ok maybe 'dims' should always use a intN, even if it's 1D ... but this might give "`error using _vec<int,1> before it is defined `" errors...
 
 - does a sym + ident make a sym as well? no... should it? yes
 	but this opens a can of worms of tensor+tensor optimized storage.
@@ -393,3 +379,14 @@ TODO:
 	- dimension check at compile-time
 	- dimension-matching at compile-time
 	- and from that, index-multiply
+
+- C++23 operator[] can be variadic.
+	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().
+	in fact, why don't I just do that now?
+	that would spare me the need for `_sym`'s operator[int]
+	but don't forget `_asym` still needs to return an AntiSymRef , whether we allow off-storage indexing or not.
+	so meh i might as well keep it around?
+
+- C++23 has derived-this return-types, so no more need to crtp everything (RangeIterator and its classes in RangeObj, ReadIterator, WriteIterator)
+
+- Note to self (and anyone else listening), while GitHub MarkDown handles `_`'s correctly within `` ` ``'s , it fails within MathJax `$`'s and `$$`'s which means you have to escape all your `_`'s within your MathJax as `\_`.
