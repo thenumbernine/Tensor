@@ -27,7 +27,7 @@ void operatorScalarTest(T const & t) {
 	using S = typename T::Scalar;
 	constexpr bool sumTypeMatches = std::is_same_v<
 		T,
-		typename T::SumWithScalarResult
+		typename T::ScalarSumResult
 	>;
 	TEST_EQ(t + (S)0, t);
 	// if the sum types don't match then constructoring a T from the scalar 1 might not give us the same as t + 1

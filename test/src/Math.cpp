@@ -1,5 +1,13 @@
 #include "Test/Test.h"
 
+namespace MathTest {
+	using namespace Tensor;
+	using namespace std;
+	static_assert(is_same_v<decltype(makeSym(_tensorr<float,3,1>())), _vec<float,3>>);
+	static_assert(is_same_v<decltype(makeSym(_tensorr<float,3,2>())), _sym<float,3>>);
+	static_assert(is_same_v<decltype(makeSym(_tensorr<float,3,3>())), _symR<float,3,3>>);
+	static_assert(is_same_v<decltype(makeSym(_tensorr<float,3,4>())), _symR<float,3,4>>);
+}
 
 #define TENSOR_TEST_1(\
 	funcName,\

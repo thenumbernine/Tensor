@@ -485,27 +485,7 @@ ReplaceScalar<typename>
 		using type = decltype(value());\
 	};\
 	template<typename NewScalar>\
-	using ReplaceScalar = ReplaceInner<typename ReplaceScalarImpl<NewScalar>::type>;\
-\
-	struct SumWithScalarResultImpl {\
-		static constexpr auto value() {\
-			if constexpr (std::is_same_v<Inner, Scalar>) {\
-				return Common::TypeWrapper<\
-					typename This::template LocalSumWithScalarResult<\
-						Scalar\
-					>\
-				>();\
-			} else {\
-				return Common::TypeWrapper<\
-					typename This::template LocalSumWithScalarResult<\
-						typename Inner::SumWithScalarResult\
-					>\
-				>();\
-			}\
-		}\
-		using type = typename decltype(value())::type;\
-	};\
-	using SumWithScalarResult = typename SumWithScalarResultImpl::type;
+	using ReplaceScalar = ReplaceInner<typename ReplaceScalarImpl<NewScalar>::type>;
 
 //for giving operators to tensor classes
 //how can you add correctly-typed ops via crtp to a union?
@@ -1292,8 +1272,11 @@ concept is_all_base_of_v = is_all_base_of<T, Us...>::value;
 	static constexpr int localCount = localDim;\
 \
 	/* tensor/scalar +- ops will sometimes have a different result tensor type */\
-	template<typename T>\
-	using LocalSumWithScalarResult = _vec<T, localDim>;
+	using ScalarSumResult = This;\
+\
+	/* tensor/tensor +- ops will sometimes have a dif result too */\
+	template<typename O>\
+	using TensorSumResult = This;
 
 #define TENSOR_HEADER_VECTOR(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1385,6 +1368,7 @@ using _tensorr = typename _tensorr_impl<Src, dim, rank>::type;
 
 // this is this class.  useful for templates.  you'd be surprised.
 template<typename Inner_, int localDim_>
+requires (localDim_ > 0)
 struct _vec {
 	TENSOR_HEADER_VECTOR(_vec, Inner_, localDim_)
 	std::array<Inner, localCount> s = {};
@@ -1658,8 +1642,33 @@ constexpr int symIndex(int i, int j) {
 \
 	static constexpr int localCount = triangleSize(localDim);\
 \
-	template<typename T>\
-	using LocalSumWithScalarResult = _sym<T, localDim>;
+	using ScalarSumResult = This;
+
+#if 0
+	template<typename O>\
+	struct TensorSumResultImpl {\
+		static constexpr auto value() {\
+			if constexpr (is_ident_v<O> || is_sym_v<O>) {\
+				return TypeWrapper<This>();\
+			} else if constexpr (is_symR_v<O>) {\
+				return TypeWrapper<O>();\
+			} else if constexpr (is_asymR_v<O>) {\
+				if constexpr (O::localRank == 3) {\
+					return TypeWrapper<_tensorr<O::Inner, O::localDim, 3>>();\
+				} else if constexpr (O::localRank == 4) {\
+					return TypeWrapper<_tensorr<_asym<O::Inner, O::localDim>, O::localDim, 2>>();\
+				} else {\
+					return TypeWrapper<_tensorr<_asymR<O::Inner, O::localDim, O::localRank-2>, O::localDim, 2>>();\
+				}\
+			} else {\
+				return TypeWrapper<_tensorr<Inner, localDim, 2>>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<typename O>\
+	using TensorSumResult = typename TensorSumResultImpl<O>::type;
+#endif
 
 #define TENSOR_HEADER_SYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1728,7 +1737,8 @@ struct Rank2Accessor {
 	//end TENSOR_TEMPLATE_*
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
-	template<typename T> using LocalSumWithScalarResult = typename AccessorOwnerConst::template LocalSumWithScalarResult<T>;
+	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
+	template<typename O> using TensorSumResult = _vec<Inner, localDim>;
 	//end TENSOR_HEADER_*_SPECIFIC
 	TENSOR_EXPAND_TEMPLATE_TENSORR()
 	TENSOR_HEADER()
@@ -1775,6 +1785,7 @@ so the accessors need nested call indexing too
 	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
 
 template<typename Inner_, int localDim_>
+requires (localDim_ > 0)
 struct _sym {
 	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, localDim_)
 	std::array<Inner,localCount> s = {};
@@ -1841,7 +1852,7 @@ struct _sym<Inner_,3> {
 };
 
 template<typename Inner_>
-struct _sym<Inner_,4> {
+struct _sym<Inner_, 4> {
 	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, 4)
 
 	union {
@@ -1890,9 +1901,14 @@ struct _sym<Inner_,4> {
 \
 	static constexpr int localCount = 1;\
 \
-	/* _ident + or - a scalar is no longer ident, but still is symmetric */\
-	template<typename T>\
-	using LocalSumWithScalarResult = _sym<T, localDim>;
+	using ScalarSumResult = _sym<Inner, localDim>;\
+\
+	template<typename O>\
+	using TensorSumResult = std::conditional_t<\
+		is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>,\
+		_tensorr<Inner, localDim, 2>,\
+		This>;
+
 
 #define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1928,7 +1944,9 @@ struct _sym<Inner_,4> {
 	TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
 	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
 
+//technically dim doesn't matter for storage, but it does for tensor operations
 template<typename Inner_, int localDim_>
+requires (localDim_ > 0)
 struct _ident {
 	TENSOR_HEADER_IDENTITY_MATRIX(_ident, Inner_, localDim_)
 	std::array<Inner_, 1> s = {};
@@ -1946,8 +1964,7 @@ struct _ident {
 	static constexpr int localCount = triangleSize(localDim - 1);\
 \
 	/* _asym + or - a scalar is no longer _asym */\
-	template<typename T>\
-	using LocalSumWithScalarResult = _tensorr<T, localDim, 2>;
+	using ScalarSumResult = _tensorr<Inner, localDim, 2>;
 
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -2010,6 +2027,7 @@ but then if I'm not using any fields then I don't need any specializations
 so no specialized sizes for _asym
 */
 template<typename Inner_, int localDim_>
+requires (localDim_ > 0)
 struct _asym {
 	TENSOR_HEADER_ANTISYMMETRIC_MATRIX(_asym, Inner_, localDim_)
 
@@ -2108,8 +2126,7 @@ inline constexpr int symmetricSize(int d, int r) {
 \
 	static constexpr int localCount = symmetricSize(localDim, localRank);\
 \
-	template<typename T>\
-	using LocalSumWithScalarResult = _symR<T, localDim, localRank>;
+	using ScalarSumResult = _symR<Inner, localDim, localRank>;
 
 // Expand index 0 of asym^N => vec ⊗ asym^(N-1)
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
@@ -2258,7 +2275,7 @@ struct RankNAccessor {
 	//end TENSOR_TEMPLATE_*
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
-	template<typename T> using LocalSumWithScalarResult = typename AccessorOwnerConst::template LocalSumWithScalarResult<T>;
+	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
 	//end TENSOR_HEADER_*_SPECIFIC
 	TENSOR_EXPAND_TEMPLATE_TENSORR()
 	TENSOR_HEADER()
@@ -2338,7 +2355,11 @@ struct RankNAccessor {
 	TENSOR_ADD_OPS(_symR)\
 	TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()
 
+// TODO rank restrictions ...
+// should I allow rank-2 symR's? this overlaps with _sym
+// should I allow rank-1 symR's? this overlaps with _vec
 template<typename Inner_, int localDim_, int localRank_>
+requires (localDim_ > 0 && localRank_ > 2)
 struct _symR {
 	TENSOR_HEADER_TOTALLY_SYMMETRIC(_symR, Inner_, localDim_, localRank_)
 	std::array<Inner, localCount> s = {};
@@ -2384,8 +2405,7 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 	static constexpr int localCount = antisymmetricSize(localDim, localRank);\
 \
 	/* _asymR + or - a scalar is no longer _asymR */\
-	template<typename T>\
-	using LocalSumWithScalarResult = _tensorr<T, localDim, localRank>;
+	using ScalarSumResult = _tensorr<Inner, localDim, localRank>;
 
 // Expand index 0 of asym^N => vec ⊗ asym^(N-1)
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
@@ -2559,6 +2579,7 @@ from my symmath/tensor/LeviCivita.lua
 	TENSOR_ADD_TOTALLY_ANTISYMMETRIC_CALL_INDEX()
 
 template<typename Inner_, int localDim_, int localRank_>
+requires (localDim_ > 0 && localRank_ > 2)
 struct _asymR {
 	TENSOR_HEADER_TOTALLY_ANTISYMMETRIC(_asymR, Inner_, localDim_, localRank_)
 	std::array<Inner, localCount> s = {};
@@ -2614,31 +2635,6 @@ struct index_asymR {
 	using type = _asymR<T,dim,rank>;
 };
 
-
-// hmm, I'm trying to use these index_*'s in combination with is_instance_v<T, index_*<dim>::template type> but it's failing, so here they are specialized
-template<typename T> struct is_vec : public std::false_type {};
-template<typename T, int d> struct is_vec<_vec<T,d>> : public std::true_type {};
-template<typename T> constexpr bool is_vec_v = is_vec<T>::value;
-
-template<typename T> struct is_ident : public std::false_type {};
-template<typename T, int d> struct is_ident<_ident<T,d>> : public std::true_type {};
-template<typename T> constexpr bool is_ident_v = is_ident<T>::value;
-
-template<typename T> struct is_sym : public std::false_type {};
-template<typename T, int d> struct is_sym<_sym<T,d>> : public std::true_type {};
-template<typename T> constexpr bool is_sym_v = is_sym<T>::value;
-
-template<typename T> struct is_asym : public std::false_type {};
-template<typename T, int d> struct is_asym<_asym<T,d>> : public std::true_type {};
-template<typename T> constexpr bool is_asym_v = is_asym<T>::value;
-
-template<typename T> struct is_symR : public std::false_type {};
-template<typename T, int d, int r> struct is_symR<_symR<T,d,r>> : public std::true_type {};
-template<typename T> constexpr bool is_symR_v = is_symR<T>::value;
-
-template<typename T> struct is_asymR : public std::false_type {};
-template<typename T, int d, int r> struct is_asymR<_asymR<T,d,r>> : public std::true_type {};
-template<typename T> constexpr bool is_asymR_v = is_asymR<T>::value;
 
 // can I shorthand this? what is the syntax?
 // this has a template and not a type on the lhs so I think no?
@@ -2734,7 +2730,7 @@ decltype(auto) operator op(typename T::Scalar const & a, T const & b) {\
 template<typename T>\
 requires (is_tensor_v<T>)\
 decltype(auto) operator op(T const & a, typename T::Scalar const & b) {\
-	using R = typename T::SumWithScalarResult;\
+	using R = typename T::ScalarSumResult;\
 	return R([&](auto... is) -> typename T::Scalar {\
 		return a(is...) op b;\
 	});\
@@ -2743,7 +2739,7 @@ decltype(auto) operator op(T const & a, typename T::Scalar const & b) {\
 template<typename T>\
 requires (is_tensor_v<T>)\
 decltype(auto) operator op(typename T::Scalar const & a, T const & b) {\
-	using R = typename T::SumWithScalarResult;\
+	using R = typename T::ScalarSumResult;\
 	return R([&](auto... is) -> typename T::Scalar {\
 		return a op b(is...);\
 	});\
@@ -2771,7 +2767,7 @@ decltype(auto) operator /(T const & a, typename T::Scalar const & b) {
 template<typename T>
 requires (is_tensor_v<T>)
 decltype(auto) operator /(typename T::Scalar const & a, T const & b) {
-	using R = typename T::SumWithScalarResult;
+	using R = typename T::ScalarSumResult;
 	return R([&](auto... is) -> typename T::Scalar {
 		return a / b(is...);
 	});

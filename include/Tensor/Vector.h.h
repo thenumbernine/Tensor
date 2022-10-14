@@ -46,12 +46,56 @@ concept IsInteriorOp =
 
 //forward-declare everything
 
-template<typename Inner, int localDim> struct _vec;
-template<typename Inner, int localDim> struct _ident;
-template<typename Inner, int localDim> struct _sym;
-template<typename Inner, int localDim> struct _asym;
-template<typename Inner, int localDim, int localRank> struct _symR;
-template<typename Inner, int localDim, int localRank> struct _asymR;
+template<typename Inner, int localDim>
+requires (localDim > 0)
+struct _vec;
+
+template<typename Inner, int localDim>
+requires (localDim > 0)
+struct _ident;
+
+template<typename Inner, int localDim>
+requires (localDim > 0)
+struct _sym;
+
+template<typename Inner, int localDim>
+requires (localDim > 0)
+struct _asym;
+
+template<typename Inner, int localDim, int localRank>
+requires(localDim > 0 && localRank > 2)
+struct _symR;
+
+template<typename Inner, int localDim, int localRank>
+requires(localDim > 0 && localRank > 2)
+struct _asymR;
+
+
+// hmm, I'm trying to use these index_*'s in combination with is_instance_v<T, index_*<dim>::template type> but it's failing, so here they are specialized
+template<typename T> struct is_vec : public std::false_type {};
+template<typename T, int d> struct is_vec<_vec<T,d>> : public std::true_type {};
+template<typename T> constexpr bool is_vec_v = is_vec<T>::value;
+
+template<typename T> struct is_ident : public std::false_type {};
+template<typename T, int d> struct is_ident<_ident<T,d>> : public std::true_type {};
+template<typename T> constexpr bool is_ident_v = is_ident<T>::value;
+
+template<typename T> struct is_sym : public std::false_type {};
+template<typename T, int d> struct is_sym<_sym<T,d>> : public std::true_type {};
+template<typename T> constexpr bool is_sym_v = is_sym<T>::value;
+
+template<typename T> struct is_asym : public std::false_type {};
+template<typename T, int d> struct is_asym<_asym<T,d>> : public std::true_type {};
+template<typename T> constexpr bool is_asym_v = is_asym<T>::value;
+
+template<typename T> struct is_symR : public std::false_type {};
+template<typename T, int d, int r> struct is_symR<_symR<T,d,r>> : public std::true_type {};
+template<typename T> constexpr bool is_symR_v = is_symR<T>::value;
+
+template<typename T> struct is_asymR : public std::false_type {};
+template<typename T, int d, int r> struct is_asymR<_asymR<T,d,r>> : public std::true_type {};
+template<typename T> constexpr bool is_asymR_v = is_asymR<T>::value;
+
 
 //convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
 // ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed

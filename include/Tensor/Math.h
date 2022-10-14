@@ -7,6 +7,7 @@
 #include "Tensor/Math.h.h"	// forward-declarations better match
 #include "Tensor/Vector.h"	// class bodies must come first so I can use them
 #include "Tensor/Range.h"	// class bodies must come first so I can use them
+#include "Common/Meta.h"	// TypeWrapper
 
 namespace Tensor {
 
@@ -349,15 +350,27 @@ auto interior(A const & a, B const & b) {
 // symmetrize or antisymmetrize a tensor
 //  I am not convinced this should be the default casting operation from non-(a)sym to (a)sym since it incurs a few more operations
 // but it should def be made available
-
+template<typename T>
+struct MakeSymResult {
+	static constexpr auto value() {
+		static_assert(T::rank > 0);
+		using S = typename T::Scalar;
+		if constexpr (T::rank == 1) {
+			return Common::TypeWrapper<_vec<S, T::localDim>>();
+		} else if constexpr (T::rank == 2) {
+			return Common::TypeWrapper<_sym<S, T::localDim>>();
+		} else {
+			return Common::TypeWrapper<_symR<S, T::localDim, T::rank>>();
+		}
+	}
+	using type = typename decltype(value())::type;
+};
 template<typename T>
 requires IsSquareTensor<T>
 auto makeSym(T const & t) {
 	using S = typename T::Scalar;
 	using intN = typename T::intN;
-	using R = std::conditional_t<T::rank == 2,
-		_sym<S, T::template dim<0>>,
-		_symR<S, T::template dim<0>, T::rank>>;
+	using R = typename MakeSymResult<T>::type;
 	// iterate over write index, then iterate over all permutations of the read index and sum
 	return R([&](intN i) -> S {
 		S result = {};
@@ -374,13 +387,26 @@ auto makeSym(T const & t) {
 
 //that's right, same function, just different return type
 template<typename T>
+struct MakeAntiSymResult {
+	static constexpr auto value() {
+		static_assert(T::rank > 0);
+		using S = typename T::Scalar;
+		if constexpr (T::rank == 1) {
+			return Common::TypeWrapper<_vec<S, T::localDim>>();
+		} else if constexpr (T::rank == 2) {
+			return Common::TypeWrapper<_asym<S, T::localDim>>();
+		} else {
+			return Common::TypeWrapper<_asymR<S, T::localDim, T::rank>>();
+		}
+	}
+	using type = typename decltype(value())::type;
+};
+template<typename T>
 requires IsSquareTensor<T>
 auto makeAsym(T const & t) {
 	using S = typename T::Scalar;
 	using intN = typename T::intN;
-	using R = std::conditional_t<T::rank == 2,
-		_asym<S, T::template dim<0>>,
-		_asymR<S, T::template dim<0>, T::rank>>;
+	using R = typename MakeAntiSymResult<T>::type;
 	// iterate over write index, then iterate over all permutations of the read index and sum
 	return R([&](intN i) -> S {
 		S result = {};

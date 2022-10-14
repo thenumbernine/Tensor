@@ -24,13 +24,13 @@ void test_Identity() {
 		TEST_NE(I, floatI3(2));
 		// ident != matrix works
 			// off-diagonal
-		TEST_EQ(I, (Tensor::float3x3{
+		TEST_NE(I, (Tensor::float3x3{
 			{1,2,3},
 			{0,1,0},
 			{0,0,1},
 		}));
 			// on-diagonal
-		TEST_EQ(I, (Tensor::float3x3{
+		TEST_NE(I, (Tensor::float3x3{
 			{1,0,0},
 			{0,2,0},
 			{0,0,3},

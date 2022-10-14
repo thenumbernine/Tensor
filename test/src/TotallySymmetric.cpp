@@ -1,10 +1,39 @@
 #include "Test/Test.h"
 
-static_assert(std::is_same_v<Tensor::float3a3::RemoveIndex<0>, Tensor::float3>);
-static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<0>, Tensor::float3a3>);
-// TODO get this to work
-static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<1>, Tensor::float3x3>);
-static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<2>, Tensor::float3a3>);
+namespace TestTotallySymmetric {
+	
+	static_assert(std::is_same_v<Tensor::float3a3::RemoveIndex<0>, Tensor::float3>);
+	static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<0>, Tensor::float3a3>);
+	// TODO get this to work
+	static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<1>, Tensor::float3x3>);
+	static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<2>, Tensor::float3a3>);
+
+
+	using namespace Tensor;
+	static_assert(factorial(0) == 1);
+	static_assert(factorial(1) == 1);
+	static_assert(factorial(2) == 2);
+	static_assert(factorial(3) == 6);
+	static_assert(factorial(4) == 24);
+
+	static_assert(nChooseR(0,0) == 1);
+	static_assert(nChooseR(1,0) == 1);
+	static_assert(nChooseR(1,1) == 1);
+	static_assert(nChooseR(2,0) == 1);
+	static_assert(nChooseR(2,1) == 2);
+	static_assert(nChooseR(2,2) == 1);
+	static_assert(nChooseR(3,0) == 1);
+	static_assert(nChooseR(3,1) == 3);
+	static_assert(nChooseR(3,2) == 3);
+	static_assert(nChooseR(3,3) == 1);
+	static_assert(nChooseR(4,0) == 1);
+	static_assert(nChooseR(4,1) == 4);
+	static_assert(nChooseR(4,2) == 6);
+	static_assert(nChooseR(4,3) == 4);
+	static_assert(nChooseR(4,4) == 1);
+}
+
+
 
 void test_TotallySymmetric() {
 	/*
@@ -64,7 +93,7 @@ void test_TotallySymmetric() {
 		auto f = [](int i, int j, int k, int l, int m, int n) -> float {
 			return (i+j) - (k+l+m) + n;
 		};
-		auto t = _tensori<float, index_symR<3,2>, index_symR<3,3>, index_vec<3>>(f);
+		auto t = _tensori<float, index_sym<3>, index_symR<3,3>, index_vec<3>>(f);
 		ECHO(t);
 		ECHO(t(0,0,0,0,0,0));
 	}
