@@ -368,4 +368,6 @@ TODO:
 - make tensor read and write iterators use RangeObj.
 - ok maybe 'dims' should always use a intN, even if it's 1D ... but this might give "`error using _vec<int,1> before it is defined `" errors...
 
-- does a sym + ident make a sym as well?
+- does a sym + ident make a sym as well? no... should it? yes
+	but this opens a can of worms of tensor+tensor optimized storage.
+	this is TensorSumResultImpl WIP.

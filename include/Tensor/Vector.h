@@ -1644,24 +1644,70 @@ constexpr int symIndex(int i, int j) {
 \
 	using ScalarSumResult = This;
 
-#if 0
+#if 0 // TODO this gets complicated
 	template<typename O>\
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
-			if constexpr (is_ident_v<O> || is_sym_v<O>) {\
-				return TypeWrapper<This>();\
+			if constexpr (is_vec_v<O> || is_asym_v<O>) {\
+				return TypeWrapper<_mat<Inner, localDim>>();\
+			} else if constexpr (is_ident_v<O> || is_sym_v<O>) {\
+				return TypeWrapper<This>(); /* keep _sym */\
 			} else if constexpr (is_symR_v<O>) {\
-				return TypeWrapper<O>();\
+				/* a_(ij)k + b_(ijk) = c_(ij)k */\
+				if constexpr (O::localRank == 3) {\
+					return TypeWrapper<\
+						_sym<\
+							_vec<typename O::Inner, O::localDim>,\
+							O::localDim\
+						>::template ReplaceScalar<Scalar>\
+					>();\
+				/* a_(ij)kl + b_(ijkl) = c_(ij)kl */\
+				} else if constexpr (O::localRank == 4) {\
+					return TypeWrapper<\
+						_tensorr<\
+							_asym<typename O::Inner, O::localDim>,\
+							O::localDim,\
+							2\
+						>::template ReplaceScalar<Scalar>\
+					>();\
+				/* a_(ij)klm + b_(ijklm) = c_(ij)(klm) */\
+				} else {\
+					return TypeWrapper<\
+						_tensorr<\
+							_asymR<typename O::Inner, O::localDim, O::localRank-2>,\
+							O::localDim,\
+							2\
+						>::template ReplaceScalar<Scalar>\
+					>();\
+				}\
 			} else if constexpr (is_asymR_v<O>) {\
 				if constexpr (O::localRank == 3) {\
-					return TypeWrapper<_tensorr<O::Inner, O::localDim, 3>>();\
+					return TypeWrapper<\
+						_tensorr<\
+							typename O::Inner,\
+							O::localDim,\
+							3\
+						>::template ReplaceScalar<Scalar>\
+					>();\
 				} else if constexpr (O::localRank == 4) {\
-					return TypeWrapper<_tensorr<_asym<O::Inner, O::localDim>, O::localDim, 2>>();\
+					return TypeWrapper<\
+						_tensorr<\
+							_asym<typename O::Inner, O::localDim>,\
+							O::localDim,\
+							2\
+						>::template ReplaceScalar<Scalar>\
+					>();\
 				} else {\
-					return TypeWrapper<_tensorr<_asymR<O::Inner, O::localDim, O::localRank-2>, O::localDim, 2>>();\
+					return TypeWrapper<\
+						_tensorr<\
+							_asymR<typename O::Inner, O::localDim, O::localRank-2>,\
+							O::localDim,\
+							2\
+						>::template ReplaceScalar<Scalar>\
+					>();\
 				}\
 			} else {\
-				return TypeWrapper<_tensorr<Inner, localDim, 2>>();\
+				throw Common::Exception() << "don't know how to add this type";\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -1901,14 +1947,58 @@ struct _sym<Inner_, 4> {
 \
 	static constexpr int localCount = 1;\
 \
-	using ScalarSumResult = _sym<Inner, localDim>;\
-\
+	using ScalarSumResult = _sym<Inner, localDim>;
+
+#if 0
+	template<typename O>\
+	struct TensorSumResultImpl {\
+		static constexpr auto value() {\
+			if constexpr (is_ident_v<O>) {\
+				return TypeWrapper<This>();\
+			} else if constexpr (is_sym_v<O>) {\
+				return TypeWrapper<O::template ReplaceScalar<Scalar>>();\
+			} else if constexpr (is_symR_v<O>) {\
+				return TypeWrapper<O::template ReplaceScalar<Scalar>>();\
+			} else if constexpr (is_asymR_v<O>) {\
+				if constexpr (O::localRank == 3) {\
+					return TypeWrapper<\
+						_tensorr<\
+							typename O::Inner,\
+							O::localDim,\
+							3\
+						>::template ReplaceScalar<Scalar>\
+					>();\
+				} else if constexpr (O::localRank == 4) {\
+					return TypeWrapper<\
+						_tensorr<\
+							_asym<typename O::Inner, O::localDim>,\
+							O::localDim,\
+							2\
+						>::template ReplaceScalar<Scalar>\
+					>();\
+				} else {\
+					return TypeWrapper<\
+						_tensorr<\
+							_asymR<typename O::Inner, O::localDim, O::localRank-2>,\
+							O::localDim,\
+							2\
+						>::template ReplaceScalar<Scalar>\
+					>();\
+				}\
+			} else {\
+				return TypeWrapper<_tensorr<Inner, localDim, 2>>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<typename O>\
+	using TensorSumResult = typename TensorSumResultImpl<O>::type;
 	template<typename O>\
 	using TensorSumResult = std::conditional_t<\
 		is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>,\
 		_tensorr<Inner, localDim, 2>,\
 		This>;
-
+#endif
 
 #define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -2586,99 +2676,6 @@ struct _asymR {
 	constexpr _asymR() {}
 	TENSOR_TOTALLY_ANTISYMMETRIC_CLASS_OPS()
 };
-
-// dense vec-of-vec
-
-// some template metaprogram helpers
-//  needed for the math function
-//  including operators, esp *
-
-// _tensori helpers:
-// _tensor<T, index_vec<dim>, index_vec<dim2>, ..., index_vec<dimN>>
-//  use index_sym<> index_asym<> for injecting storage optimization
-// _tensor<T, index_sym<dim1>, ..., dimN>
-
-template<int dim>
-struct index_vec {
-	template<typename T>
-	using type = _vec<T,dim>;
-	// so (hopefully) index_vec<dim><T> == _vec<dim,T>
-};
-
-template<int dim>
-struct index_sym {
-	template<typename T>
-	using type = _sym<T,dim>;
-};
-
-template<int dim>
-struct index_asym {
-	template<typename T>
-	using type = _asym<T,dim>;
-};
-
-template<int dim>
-struct index_ident {
-	template<typename T>
-	using type = _ident<T,dim>;
-};
-
-template<int dim, int rank>
-struct index_symR {
-	template<typename T>
-	using type = _symR<T,dim,rank>;
-};
-
-template<int dim, int rank>
-struct index_asymR {
-	template<typename T>
-	using type = _asymR<T,dim,rank>;
-};
-
-
-// can I shorthand this? what is the syntax?
-// this has a template and not a type on the lhs so I think no?
-//template<int dim> using _vecR = index_vec<dim>::type;
-//template<int dim> using _symR = index_sym<dim>::type;
-//template<int dim> using _asymR = index_asym<dim>::type;
-
-// useful helper macros, same as above but with transposed order
-
-// _tensori:
-// tensor which allows custom nested storage, such as symmetric indexes
-
-template<typename T, typename Storage, typename... MoreStorage>
-struct _tensori_impl {
-	using tensor = typename Storage::template type<typename _tensori_impl<T, MoreStorage...>::tensor>;
-};
-
-template<typename T, typename Storage>
-struct _tensori_impl<T, Storage> {
-	using tensor = typename Storage::template type<T>;
-};
-
-template<typename T, typename Storage, typename... MoreStorage>
-using _tensori = typename _tensori_impl<T, Storage, MoreStorage...>::tensor;
-
-
-// make a tensor from a list of dimensions
-// ex: _tensor<T, dim1, ..., dimN>
-// fully expanded storage - no spatial optimizations
-// TODO can I accept template args as int or Index?
-// maybe vararg function return type and decltype()?
-
-template<typename T, int dim, int... dims>
-struct _tensor_impl {
-	using tensor = _vec<typename _tensor_impl<T, dims...>::tensor, dim>;
-};
-
-template<typename T, int dim>
-struct _tensor_impl<T, dim> {
-	using tensor = _vec<T,dim>;
-};
-
-template<typename T, int dim, int... dims>
-using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
 
 // tensor operations
 

@@ -123,4 +123,98 @@ template<typename T> using _asym2 = _asym<T,2>;
 template<typename T> using _asym3 = _asym<T,3>;
 template<typename T> using _asym4 = _asym<T,4>;
 
+
+// dense vec-of-vec
+
+// some template metaprogram helpers
+//  needed for the math function
+//  including operators, esp *
+
+// _tensori helpers:
+// _tensor<T, index_vec<dim>, index_vec<dim2>, ..., index_vec<dimN>>
+//  use index_sym<> index_asym<> for injecting storage optimization
+// _tensor<T, index_sym<dim1>, ..., dimN>
+
+template<int dim>
+struct index_vec {
+	template<typename T>
+	using type = _vec<T,dim>;
+	// so (hopefully) index_vec<dim><T> == _vec<dim,T>
+};
+
+template<int dim>
+struct index_sym {
+	template<typename T>
+	using type = _sym<T,dim>;
+};
+
+template<int dim>
+struct index_asym {
+	template<typename T>
+	using type = _asym<T,dim>;
+};
+
+template<int dim>
+struct index_ident {
+	template<typename T>
+	using type = _ident<T,dim>;
+};
+
+template<int dim, int rank>
+struct index_symR {
+	template<typename T>
+	using type = _symR<T,dim,rank>;
+};
+
+template<int dim, int rank>
+struct index_asymR {
+	template<typename T>
+	using type = _asymR<T,dim,rank>;
+};
+
+
+// can I shorthand this? what is the syntax?
+// this has a template and not a type on the lhs so I think no?
+//template<int dim> using _vecR = index_vec<dim>::type;
+//template<int dim> using _symR = index_sym<dim>::type;
+//template<int dim> using _asymR = index_asym<dim>::type;
+
+// useful helper macros, same as above but with transposed order
+
+// _tensori:
+// tensor which allows custom nested storage, such as symmetric indexes
+
+template<typename T, typename Storage, typename... MoreStorage>
+struct _tensori_impl {
+	using tensor = typename Storage::template type<typename _tensori_impl<T, MoreStorage...>::tensor>;
+};
+
+template<typename T, typename Storage>
+struct _tensori_impl<T, Storage> {
+	using tensor = typename Storage::template type<T>;
+};
+
+template<typename T, typename Storage, typename... MoreStorage>
+using _tensori = typename _tensori_impl<T, Storage, MoreStorage...>::tensor;
+
+
+// make a tensor from a list of dimensions
+// ex: _tensor<T, dim1, ..., dimN>
+// fully expanded storage - no spatial optimizations
+// TODO can I accept template args as int or Index?
+// maybe vararg function return type and decltype()?
+
+template<typename T, int dim, int... dims>
+struct _tensor_impl {
+	using tensor = _vec<typename _tensor_impl<T, dims...>::tensor, dim>;
+};
+
+template<typename T, int dim>
+struct _tensor_impl<T, dim> {
+	using tensor = _vec<T,dim>;
+};
+
+template<typename T, int dim, int... dims>
+using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
+
 }
