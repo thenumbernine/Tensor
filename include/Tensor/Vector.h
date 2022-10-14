@@ -1232,11 +1232,32 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return Tensor::inverse(*this);\
 	}\
 
+// TODO how about just a template<typename,typename> apply_all ?
+// then is_all_base_of_v<T,Ts...> = apply_all<std::is_base_of, T, Ts...>;
+template<typename T, typename... Us>
+struct is_all_base_of;
+template<typename T, typename U, typename... Us>
+struct is_all_base_of<T,U,Us...> {
+	static constexpr bool value = std::is_base_of_v<T,U>
+		&& is_all_base_of<T, Us...>::value;
+};
+template<typename T>
+struct is_all_base_of<T> {
+	static constexpr bool value = true;
+};
+template<typename T, typename... Us>
+concept is_all_base_of_v = is_all_base_of<T, Us...>::value;
+
 #define TENSOR_ADD_INDEX_NOTATION_CALL()\
 	template<typename IndexType, typename... IndexTypes>\
-	requires (std::is_base_of_v<IndexBase, IndexType>)\
+	requires (is_all_base_of_v<IndexBase, IndexType>)\
 	decltype(auto) operator()(IndexType, IndexTypes...) {\
 		return IndexAccess<This, std::tuple<IndexType, IndexTypes...>>(*this);\
+	}\
+	template<typename IndexType, typename... IndexTypes>\
+	requires (is_all_base_of_v<IndexBase, IndexType>)\
+	decltype(auto) operator()(IndexType, IndexTypes...) const {\
+		return IndexAccess<This const, std::tuple<IndexType, IndexTypes...>>(*this);\
 	}
 
 //these are all per-element assignment operators,
@@ -1255,8 +1276,8 @@ Bit of a hack: MOst these are written in terms of 'This'
 	TENSOR_ADD_SCALAR_OP_EQ(/=)\
 	TENSOR_ADD_UNM()\
 	TENSOR_ADD_CMP_OP()\
-	TENSOR_ADD_MATH_MEMBER_FUNCS()
-	/*TENSOR_ADD_INDEX_NOTATION_CALL()*/
+	TENSOR_ADD_MATH_MEMBER_FUNCS()\
+	TENSOR_ADD_INDEX_NOTATION_CALL()
 
 // vector-specific macros:
 
@@ -2630,19 +2651,18 @@ template<typename T> constexpr bool is_asymR_v = is_asymR<T>::value;
 // _tensori:
 // tensor which allows custom nested storage, such as symmetric indexes
 
-// TODO I could switch this to a list of templates-of-<type,int> for nestings ... hmm ... how ugly would that look?
-template<typename T, typename Index, typename... Indexes>
+template<typename T, typename Storage, typename... MoreStorage>
 struct _tensori_impl {
-	using tensor = typename Index::template type<typename _tensori_impl<T, Indexes...>::tensor>;
+	using tensor = typename Storage::template type<typename _tensori_impl<T, MoreStorage...>::tensor>;
 };
 
-template<typename T, typename Index>
-struct _tensori_impl<T, Index> {
-	using tensor = typename Index::template type<T>;
+template<typename T, typename Storage>
+struct _tensori_impl<T, Storage> {
+	using tensor = typename Storage::template type<T>;
 };
 
-template<typename T, typename Index, typename... Indexes>
-using _tensori = typename _tensori_impl<T, Index, Indexes...>::tensor;
+template<typename T, typename Storage, typename... MoreStorage>
+using _tensori = typename _tensori_impl<T, Storage, MoreStorage...>::tensor;
 
 
 // make a tensor from a list of dimensions

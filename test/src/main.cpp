@@ -12,6 +12,6 @@ int main() {
 	test_TensorRank4();
 	test_TotallySymmetric();
 	test_TotallyAntisymmetric();
-	test_Index();
 	test_Math();
+	test_Index();
 }

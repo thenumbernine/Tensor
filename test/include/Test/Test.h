@@ -3,7 +3,6 @@
 #include "Tensor/Tensor.h"
 #include "Common/Test.h"
 
-void test_Index();
 void test_AntiSymRef();
 void test_Vector();
 void test_Quat();
@@ -16,6 +15,7 @@ void test_TensorRank4();
 void test_TotallySymmetric();
 void test_TotallyAntisymmetric();
 void test_Math();
+void test_Index();
 
 template<typename T>
 T sign (T x) {

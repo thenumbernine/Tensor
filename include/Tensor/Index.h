@@ -2,6 +2,7 @@
 
 #include "Tensor/Index.h.h"
 #include "Common/Exception.h"
+#include "Common/Tuple.h"	//TupleForEach
 #include "Common/Meta.h"
 #include <tuple>
 #include <functional>
@@ -9,6 +10,12 @@
 // needs to be included *after* Vector.h
 
 namespace Tensor {
+
+
+template<char ch>
+std::ostream & operator<<(std::ostream & o, Index<ch> const & i) {
+	return o << ch;
+}
 
 template<typename IndexVector, typename ReadIndexVector, int j>
 struct FindDstForSrcIndex {
@@ -167,5 +174,16 @@ IndexAccess<
 operator*(const IndexAccess<Tensor<Type, IndexesA...>, IndexVectorA>& indexAccessA, const IndexAccess<Tensor<Type, IndexesB...>, IndexVector2>& indexAccessB) {
 }
 */
+
+template<typename T, typename Is>
+std::ostream & operator<<(std::ostream & o, IndexAccess<T,Is> const & ti) {
+	o << "[" << ti.tensor << "_";
+	Common::TupleForEach(Is(), [&o](auto x, size_t i) constexpr -> bool {
+		o << x;
+		return false;
+	});
+	o << "]";
+	return o;
+}
 
 }
