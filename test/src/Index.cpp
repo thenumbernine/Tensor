@@ -86,6 +86,8 @@ void test_Index() {
 #endif
 }
 
+#if 0
 int main() {
 	test_Index();
 }
+#endif

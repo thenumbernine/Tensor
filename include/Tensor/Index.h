@@ -75,20 +75,29 @@ struct IndexAccess {
 	using intN = typename TensorType::intN;
 	TensorType & tensor;
 
-	IndexAccess(TensorType & tensor_) 
+	IndexAccess(TensorType & tensor_)
 	: tensor(tensor_)
 	{}
 
 	template<typename Tensor2Type, typename IndexVector2>
 	IndexAccess(IndexAccess<Tensor2Type, IndexVector2> const & read) {
-		operator=(read);
+		assign<Tensor2Type, IndexVector2>(read);
+	}
+	template<typename Tensor2Type, typename IndexVector2>
+	IndexAccess(IndexAccess<Tensor2Type, IndexVector2> && read) {
+		assign<Tensor2Type, IndexVector2>(read);
 	}
 
 	template<typename Tensor2Type, typename IndexVector2>
-	IndexAccess(IndexAccess<Tensor2Type, IndexVector2> && read) {
-		operator=(read);
+	IndexAccess & operator=(IndexAccess<Tensor2Type, IndexVector2> const & read) {
+		assign<Tensor2Type, IndexVector2>(read);
+		return *this;
 	}
-
+	template<typename Tensor2Type, typename IndexVector2>
+	IndexAccess & operator=(IndexAccess<Tensor2Type, IndexVector2> && read) {
+		assign<Tensor2Type, IndexVector2>(std::forward<IndexAccess<Tensor2Type, IndexVector2>>(read));
+		return *this;
+	}
 
 	/*
 	uses operations of Tensor template parameter:
@@ -103,12 +112,12 @@ struct IndexAccess {
 	If read and write are the same then we want 'read' to be copied before swizzling, to prevent overwrites of transpose operations.
 	If read has higher rank then a contration is required before the copy.
 	
-	- compare write indexes to read indexes.  
+	- compare write indexes to read indexes.
 		Find all read indexes that are not in write indexes.
 		Make sure they are in pairs -- complain otherwise.
 	*/
 	template<typename Tensor2Type, typename IndexVector2>
-	IndexAccess & operator=(IndexAccess<Tensor2Type, IndexVector2> const & read) {
+	void assign(IndexAccess<Tensor2Type, IndexVector2> const & read) {
 		static_assert(Tensor2Type::rank == rank, "tensor assignment of differing ranks");
 
 		//TODO this in compile time
@@ -120,42 +129,20 @@ struct IndexAccess {
 	
 		//assign using write iterator so the result will be pushed on stack before overwriting the write tensor
 		// this way we get a copy to buffer changes between read and write, in case the same tensor is used for both
-		tensor = TensorType([&](intN i) {
+		// same as TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS
+		auto w = tensor.write();
+		for (auto i = w.begin(); i != w.end(); ++i) {
 			//for the j'th index of i ...
 			// ... find indexes(j) coinciding with read.indexes(k)
 			// ... and put that there
 			intN destI;
 			for (int j = 0; j < rank; ++j) {
-				destI(j) = i(dstForSrcIndex(j));
+				destI(j) = i.readIndex(dstForSrcIndex(j));
 			}
-			return read.tensor(destI);
-		});
-		return *this;
-	}
-	template<typename Tensor2Type, typename IndexVector2>
-	IndexAccess & operator=(IndexAccess<Tensor2Type, IndexVector2> && read) {
-		static_assert(Tensor2Type::rank == rank, "tensor assignment of differing ranks");
-
-		//TODO this in compile time
-		// that would mean compile-time dereferences
-		// which would mean no longer dereferencing by int vectors but instead by compile-time parameter packs
-
-		_vec<int,rank> dstForSrcIndex;
-		Common::ForLoop<0, rank, FindDstForSrcOuter<IndexVector, IndexVector2>::template Find>::exec(dstForSrcIndex);
-	
-		//assign using write iterator so the result will be pushed on stack before overwriting the write tensor
-		// this way we get a copy to buffer changes between read and write, in case the same tensor is used for both
-		tensor = TensorType([&](intN i) {
-			//for the j'th index of i ...
-			// ... find indexes(j) coinciding with read.indexes(k)
-			// ... and put that there
-			intN destI;
-			for (int j = 0; j < rank; ++j) {
-				destI(j) = i(dstForSrcIndex(j));
+			if (Tensor2Type::validIndex(destI)) {
+				*i = read.tensor(destI);
 			}
-			return read.tensor(destI);
-		});
-		return *this;
+		};
 	}
 };
 
@@ -163,7 +150,7 @@ struct IndexAccess {
 
 /*
 template<typename Type, typename... IndexesA, typename IndexVectorA, typename... IndexesB, typename IndexVector2>
-IndexAccess< 
+IndexAccess<
 	result tensor type:
 		of type of the greatest precision of tensor a & b's types
 		or maybe just take tensor a's type
