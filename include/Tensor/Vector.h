@@ -44,7 +44,7 @@ if I do column-major then C inline indexing is transposed
 */
 
 #include "Tensor/Vector.h.h"	//forward-declarations better match
-#include "Tensor/Math.h.h"		//tensor math functions that I've got implemented as members  as well 
+#include "Tensor/Math.h.h"		//tensor math functions that I've got implemented as members  as well
 #include "Tensor/Inverse.h.h"
 #include "Tensor/Index.h.h"
 #include "Tensor/Range.h.h"
@@ -1125,25 +1125,25 @@ Bit of a hack: MOst these are written in terms of 'This'
 	}\
 \
 	template<typename B>\
-	requires is_tensor_v<B>\
-	auto outer(B const & b) const && {\
-		return outer<This,B>(std::move(*this), b);\
+	requires IsBinaryTensorOp<This, B>\
+	auto outer(B const & b) const {\
+		return Tensor::outer(*this, b);\
 	}\
 	template<typename B>\
-	requires is_tensor_v<B>\
-	auto outer(B && b) const && {\
-		return outer<This,B>(std::move(*this), std::forward<B>(b));\
+	requires IsBinaryTensorOp<This, B>\
+	auto outer(B && b) && {\
+		return Tensor::outer(std::move(*this), std::forward<B>(b));\
 	}\
 \
 	template<typename B>\
 	requires is_tensor_v<std::decay_t<B>>\
 	auto outerProduct(B const & o) const {\
-		return outerProduct(*this, o);\
+		return Tensor::outerProduct(*this, o);\
 	}\
 	template<typename B>\
 	requires is_tensor_v<std::decay_t<B>>\
 	auto outerProduct(B && o) && {\
-		return outerProduct(*this, o);\
+		return Tensor::outerProduct(*this, o);\
 	}\
 \
 	template<int m=0, int n=1>\

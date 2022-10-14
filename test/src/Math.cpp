@@ -82,9 +82,8 @@ void test_Math() {
 	TENSOR_TEST_2(distance,			float,		(43),			float3,	(2,27,33),	float3,	(-7,9,-5));
 	TENSOR_TEST_1(normalize,		float3,		(0, .6f, .8f),	float3,	(0,3,4));
 	TENSOR_TEST_2(cross,			float3,		(0,0,1),		float3,	(1,0,0),	float3,	(0,1,0));
-// member not working...
-//	TENSOR_TEST_2(outer,			float3x3,	({{0,1,0},{0,0,0},{0,0,0}}),	float3, (1,0,0), float3, (0,1,0));
-//	TENSOR_TEST_2(outerProduct,		float3x3,	({{0,1,0},{0,0,0},{0,0,0}}),	float3, (1,0,0), float3, (0,1,0));
+	TENSOR_TEST_2(outer,			float3x3,	({{0,1,0},{0,0,0},{0,0,0}}),	float3, (1,0,0), float3, (0,1,0));
+	TENSOR_TEST_2(outerProduct,		float3x3,	({{0,1,0},{0,0,0},{0,0,0}}),	float3, (1,0,0), float3, (0,1,0));
 	//<m,n> which indexes to transpose
 	// verify sym tr = sym, asym tr = -asym, symR and asymR too, ident tr = ident
 	TENSOR_TEST_1(transpose,		float3x3,	({{1,4,7},{2,5,8},{3,6,9}}),	float3x3,	({{1,2,3},{4,5,6},{7,8,9}}));

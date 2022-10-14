@@ -36,7 +36,7 @@ requires (is_tensor_v<T>)
 T normalize(T const & v);
 
 template<typename A, typename B>
-requires IsBinaryTensorR3xR3Op<A,B>
+requires IsBinaryTensorR3xR3Op<A, B>
 auto cross(A const & a, B const & b);
 
 template<typename A, typename B>
@@ -85,7 +85,7 @@ requires IsSquareTensor<T>
 auto makeAsym(T const & t);
 
 template<typename A, typename B>
-requires IsBinaryTensorOp<A,B>
+requires IsBinaryTensorOp<A, B>
 auto wedge(A const & a, B const & b);
 
 template<typename T>
@@ -93,7 +93,7 @@ requires IsSquareTensor<T>
 auto hodgeDual(T const & a);
 
 template<typename A, typename B>
-requires IsBinaryTensorOpWithMatchingNeighborDims<A,B>
+requires IsBinaryTensorOpWithMatchingNeighborDims<A, B>
 auto operator*(A const & a, B const & b);
 
 }
