@@ -829,117 +829,85 @@ ReadIterator vs WriteIterator
 		Write & operator=(Write const & o) { owner = o.owner; return *this; }\
 		Write & operator=(Write && o) { owner = o.owner; return *this; }\
 \
-		/* inc 0 first */\
-		template<int i>\
-		struct WriteIncInner {\
-			static constexpr bool exec(intW & writeIndex) {\
-				++writeIndex[i];\
-				if (writeIndex[i] < This::template count<i>) return true;\
-				if (i < numNestings-1) writeIndex[i] = 0;\
-				return false;\
-			}\
-			static constexpr intW end() {\
-				intR writeIndex;\
-				writeIndex[numNestings-1] = This::template count<numNestings-1>;\
-				return writeIndex;\
-			}\
-		};\
+		/* false = not in memory order, but ... meh idk why */\
+		/* true = in memory order */\
+		static constexpr bool useWriteIteratorOuter = true;\
 \
-		/* inc n-1 first */\
-		template<int i>\
-		struct WriteIncOuter {\
-			static constexpr bool exec(intW & writeIndex) {\
-				constexpr int j = numNestings-1-i;\
-				++writeIndex[j];\
-				if (writeIndex[j] < This::template count<j>) return true;\
-				if (j > 0) writeIndex[j] = 0;\
-				return false;\
-			}\
-			static constexpr intW end() {\
-				intW writeIndex;\
-				writeIndex[0] = This::template count<0>;\
-				return writeIndex;\
-			}\
-		};\
-\
-		/* not in memory order, but ... meh idk why */\
-		/*template<int i> using WriteInc = WriteIncInner<i>;*/\
-		/* in memory order */\
-		template<int i> using WriteInc = WriteIncOuter<i>;\
+		/* begin implementation for RangeIterator's Owner: */\
+		template<int i> constexpr int getRangeMin() const { return 0; }\
+		template<int i> constexpr int getRangeMax() const { return This::template count<i>; }\
+		decltype(auto) getIterValue(intW const & i) { return getByWriteIndex<WriteOwnerConst>(owner, i); }\
+		decltype(auto) getIterValue(intW const & i) const { return getByWriteIndex<WriteOwnerConst>(owner, i); }\
+		/* end implementation for RangeIterator's Owner: */\
 \
 		/* write iterator */\
 		/* - sized to the # of nestings */\
 		/* - range is 0's to each nesting's .localCount */\
 		/* TODO can't convert this to RangeIterator without losing the readIndex property ... or how to optionally insert it into RangeIterator? */\
-		template<typename IteratorOwnerConst>\
-		struct WriteIterator {\
-			IteratorOwnerConst & owner;\
-			intW writeIndex;\
+		template<typename WriteConst>\
+		struct WriteIterator : public RangeIteratorInnerVsOuter<numNestings, !useReadIteratorOuter, WriteConst> {\
+			using Super = RangeIteratorInnerVsOuter<numNestings, !useReadIteratorOuter, WriteConst>;\
 			intR readIndex;\
-			WriteIterator(IteratorOwnerConst & owner_, intW writeIndex_ = {})\
-			: owner(owner_),\
-				writeIndex(writeIndex_),\
-				readIndex(getReadForWriteIndex(writeIndex)) {}\
-			WriteIterator(WriteIterator const & o)\
-				: owner(o.owner),\
-				writeIndex(o.writeIndex),\
-				readIndex(o.readIndex) {}\
-			WriteIterator(WriteIterator && o)\
-				: owner(o.owner),\
-				writeIndex(o.writeIndex),\
-				readIndex(o.readIndex) {}\
+			WriteIterator(WriteConst & owner_, intW index_ = {})\
+			: Super(owner_, index_) {\
+				readIndex = This::getReadForWriteIndex(Super::index);\
+			}\
+			WriteIterator(WriteIterator const & o) : Super(o), readIndex(o.readIndex) {}\
+			WriteIterator(WriteIterator && o) : Super(o), readIndex(o.readIndex) {}\
+			WriteIterator(Super const & o) : Super(o) {\
+				readIndex = This::getReadForWriteIndex(Super::index);\
+			}\
+			WriteIterator(Super && o) : Super(o) {\
+				readIndex = This::getReadForWriteIndex(Super::index);\
+			}\
 			WriteIterator & operator=(WriteIterator const & o) {\
-				owner = o.owner;\
-				writeIndex = o.writeIndex;\
+				Super::operator=(o);\
 				readIndex = o.readIndex;\
 				return *this;\
 			}\
 			WriteIterator & operator=(WriteIterator && o) {\
-				owner = o.owner;\
-				writeIndex = o.writeIndex;\
+				Super::operator=(o);\
 				readIndex = o.readIndex;\
 				return *this;\
 			}\
 			constexpr bool operator==(WriteIterator const & o) const {\
-				return &owner == &o.owner && writeIndex == o.writeIndex;\
+				return &this->owner == &o.owner && Super::index == o.index;\
 			}\
 			constexpr bool operator!=(WriteIterator const & o) const {\
 				return !operator==(o);\
 			}\
-			decltype(auto) operator*() const {\
-				/* cuz it takes less operations than by-read-writeIndex */\
-				return getByWriteIndex<IteratorOwnerConst>(owner, writeIndex);\
-			}\
 \
 			WriteIterator & operator++() {\
-				Common::ForLoop<0,numNestings,WriteInc>::exec(writeIndex);\
-				readIndex = getReadForWriteIndex(writeIndex);\
+				Super::operator++();\
+				readIndex = This::getReadForWriteIndex(Super::index);\
 				return *this;\
 			}\
 			WriteIterator & operator++(int) {\
-				Common::ForLoop<0,numNestings,WriteInc>::exec(writeIndex);\
-				readIndex = getReadForWriteIndex(writeIndex);\
+				Super::operator++();\
+				readIndex = This::getReadForWriteIndex(Super::index);\
 				return *this;\
 			}\
 \
-			static WriteIterator begin(IteratorOwnerConst & v) {\
-				return WriteIterator(v);\
+			static WriteIterator begin(WriteConst & owner) {\
+				WriteIterator i = Super::begin(owner);\
+				i.readIndex = This::getReadForWriteIndex(i.index);\
+				return i;\
 			}\
-			static WriteIterator end(IteratorOwnerConst & v) {\
-				return WriteIterator(v, WriteInc<0>::end());\
+			static WriteIterator end(WriteConst & owner) {\
+				return WriteIterator(Super::end(owner));\
 			}\
 		};\
 \
 		/* TODO if .write() was called by a const object, so WriteOwnerConst is 'This const' */\
 		/* then should .begin() .end() be allowed?  or should they be forced to be 'This const' as well? */\
-		using iterator = WriteIterator<This>;\
-		iterator begin() { return iterator::begin(owner); }\
-		iterator end() { return iterator::end(owner); }\
-		using const_iterator = WriteIterator<This const>;\
-		const_iterator begin() const { return const_iterator::begin(owner); }\
-		const_iterator end() const { return const_iterator::end(owner); }\
-		const_iterator cbegin() const { return const_iterator::begin(owner); }\
-		const_iterator cend() const { return const_iterator::end(owner); }\
+		using iterator = WriteIterator<Write>;\
+		iterator begin() { return iterator::begin(*this); }\
+		iterator end() { return iterator::end(*this); }\
+		using const_iterator = WriteIterator<Write const>;\
+		const_iterator begin() const { return const_iterator::begin(*this); }\
+		const_iterator end() const { return const_iterator::end(*this); }\
+		const_iterator cbegin() const { return const_iterator::begin(*this); }\
+		const_iterator cend() const { return const_iterator::end(*this); }\
 	};\
 \
 	Write<This> write() { return Write<This>(*this); }\
