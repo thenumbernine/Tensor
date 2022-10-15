@@ -12,6 +12,11 @@
 
 namespace Tensor {
 
+struct IndexBase {};
+
+template<char ident>
+struct Index : public IndexBase {};
+
 template<typename T>
 constexpr bool is_IndexExpr_v = requires(T const & t) { &T::isIndexExprFlag; };
 

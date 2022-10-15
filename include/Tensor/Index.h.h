@@ -3,10 +3,10 @@
 namespace Tensor {
 
 //index-access classes
-struct IndexBase {};
+struct IndexBase;
 
 template<char ident>
-struct Index : public IndexBase {};
+struct Index;
 
 //forward-declare for index-access
 template<typename Tensor_, typename IndexVector>
