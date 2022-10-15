@@ -3034,9 +3034,10 @@ namespace std {
 
 // tostring
 
-template<typename T, int n>
-std::string to_string(Tensor::_vec<T, n> const & x) {
-	return Common::objectStringFromOStream(x);
+template<typename T>
+requires (Tensor::is_tensor_v<T>)
+std::string to_string(T const & t) {
+	return Common::objectStringFromOStream(t);
 }
 
 #if 0
