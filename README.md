@@ -227,7 +227,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `(function<Scalar(intN i)>)` = initialize with a lambda, same as above except the index is stored as an int-vector in `i`.
 - `(tensor t)` = initialize from another tensor.  Truncate dimensions.  Uninitialized elements are set to {}.
 
-### Overloaded Indexing
+### Overloaded Subscript / Array Access
 - `(int i1, ...)` = dereference based on a list of ints.  In the case of `_tensori` or `_tensorr`, i.e. `_vec<_vec<_vec<...>>>` storage, this means $a\_{ij}$ in math = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
@@ -315,6 +315,16 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 - Scalar operations are fine
 - Tensor/Tensor add sub and per-element divide is fine.
 - Still working on tensor-tensor multiplication.
+- LHS typed assignment:
+```c++
+float3x3 a = ...;
+float3a3 b; b(i,j) = (a(i,j) - a(j,i)) / 2.f;
+```
+- RHS typed assignment:
+```c++
+float3x3 a = ...;
+auto b = ((a(i,j) - a(j,i)) / 2.f).assignToType<float3a3, i, j>();
+```
 
 
 ### Familiar Types

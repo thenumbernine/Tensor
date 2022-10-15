@@ -79,9 +79,10 @@ void test_Index() {
 		// symmetrize using index notation
 		Tensor::double3x3 b;
 		b(i,j) = .5 * (a(i,j) + a(j,i));
-		// TODO:
-		//auto b = (.5 * (a(i,j) + a(j,i))).assignTo<i,j>();
 		TEST_EQ(b, makeSym(a));
+		auto c = (.5 * (a(i,j) - a(j,i))).assignR<Tensor::double3a3>(i,j);
+		static_assert(std::is_same_v<Tensor::double3a3, decltype(c)>);
+		TEST_EQ(c, makeAsym(a));
 	}
 // TODO DO enforce dimension constraints between expression operations
 // and then require Index to specify subrank, or just grab the subset<> of the tensor.

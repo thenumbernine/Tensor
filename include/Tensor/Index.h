@@ -80,16 +80,34 @@ struct FindDstForSrcOuter {
 
 //shorthand if you don't want to declare your lhs first and dereference it first ...
 // TODO get all dims of the IndexExpr
+#define TENSOR_EXPR_ADD_ASSIGNR()\
+	template<typename R, typename IndexType, typename... IndexTypes>\
+	struct AssignImpl {\
+		static decltype(auto) exec(This const & this_) {\
+			R r;\
+			auto ri = IndexAccess<R, std::tuple<IndexType, IndexTypes...>>(r);\
+			ri = this_;\
+			return r;\
+		}\
+	};\
+	template<typename R, typename IndexType, typename... IndexTypes>\
+	requires (\
+		is_tensor_v<R>\
+		/*&& R::dims() == dims()*/\
+		&& R::rank == rank\
+		&& is_all_base_of_v<IndexBase, IndexType, IndexTypes...>\
+	)\
+	decltype(auto) assignR(IndexType, IndexTypes...) const {\
+		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
+	}
+
 #define TENSOR_EXPR_ADD_ASSIGN()\
 	template<typename IndexType, typename... IndexTypes>\
 	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
-	decltype(auto) assign() const {\
-		using R = _tensori<Scalar, dims...>;\
-		R r;\
-		IndexAccess<R, IndexType, IndexTypes...>(r) = *this;\
-		return r;\
+	decltype(auto) assign(IndexType, IndexTypes...) const {\
+		using R = typename TensorType::template ExpandAllIndexes<>;\
+		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
 	}
-
 
 /*
 rather than this matching a Tensor for index dereferencing,
@@ -97,14 +115,17 @@ this needs its index access abstracted so that binary operations can provide the
 */
 template<typename TensorType_, typename IndexTuple_>
 struct IndexAccess {
+	static constexpr bool isIndexExprFlag = {};
 	using This = IndexAccess;
 	using TensorType = TensorType_;
 	using IndexTuple = IndexTuple_;	// std::tuple<Index<char>... >
-	static constexpr bool isIndexExprFlag = {};
 	static constexpr auto rank = TensorType::rank;
 	using intN = _vec<int, rank>;
 	using Scalar = typename TensorType::Scalar;
 	static constexpr auto dims() { return TensorType::dims(); }
+	TENSOR_EXPR_ADD_ASSIGNR()
+	TENSOR_EXPR_ADD_ASSIGN()
+
 	TensorType & t;
 
 	IndexAccess(TensorType & t_) : t(t_) {}
@@ -248,9 +269,12 @@ template<typename A, typename B, template<typename> typename op>
 requires IsMatchingRankExpr<A, B>
 struct TensorTensorExpr {
 	static constexpr bool isIndexExprFlag = {};
+	using This = TensorTensorExpr;
 	static constexpr auto rank = A::rank;
 	using intN = _vec<int,rank>;
 	using Scalar = decltype(op()(typename A::Scalar(), typename B::Scalar()));
+	TENSOR_EXPR_ADD_ASSIGNR()
+	
 	A const & a;
 	B const & b;
 	
@@ -288,6 +312,9 @@ template<typename A, typename B, template<typename> typename op>
 requires IsBinaryTensorOp<A, B>
 struct TensorMulExpr {
 	static constexpr bool isIndexExprFlag = {};
+	using This = TensorMulExpr;
+	
+	TENSOR_EXPR_ADD_ASSIGNR()
 	
 	// result-rank = A rank + B rank - duplicate indexes
 	struct RankImpl {
@@ -367,9 +394,12 @@ template<typename T, template<typename> typename op>
 requires is_IndexExpr_v<T>
 struct TensorScalarExpr {
 	static constexpr bool isIndexExprFlag = {};
+	using This = TensorScalarExpr;
 	static constexpr auto rank = T::rank;
 	using intN = _vec<int,rank>;
 	using Scalar = typename T::Scalar; // TODO which Scalar to use?
+	TENSOR_EXPR_ADD_ASSIGNR()
+	
 	T const & a;
 	Scalar const & b;
 	
@@ -387,9 +417,12 @@ template<typename T, template<typename> typename op>
 requires is_IndexExpr_v<T>
 struct ScalarTensorExpr {
 	static constexpr bool isIndexExprFlag = {};
+	using This = ScalarTensorExpr;
 	static constexpr auto rank = T::rank;
 	using intN = _vec<int, rank>;
 	using Scalar = typename T::Scalar; // TODO which Scalar to use?
+	TENSOR_EXPR_ADD_ASSIGNR()
+	
 	Scalar const & a;
 	T const & b;
 	
@@ -424,9 +457,12 @@ template<typename T, template<typename> typename op>
 requires is_IndexExpr_v<T>
 struct UnaryTensorExpr {
 	static constexpr bool isIndexExprFlag = {};
+	using This = UnaryTensorExpr;
 	static constexpr auto rank = T::rank;
 	using intN = _vec<int, rank>;
 	using Scalar = typename T::Scalar;
+	TENSOR_EXPR_ADD_ASSIGNR()
+	
 	T const & t;
 
 	UnaryTensorExpr(T const & t_) : t(t_) {}
