@@ -51,6 +51,10 @@ requires (localDim > 0)
 struct _vec;
 
 template<typename Inner, int localDim>
+requires(localDim > 0)
+struct _zero;
+
+template<typename Inner, int localDim>
 requires (localDim > 0)
 struct _ident;
 
@@ -76,6 +80,10 @@ template<typename T> struct is_vec : public std::false_type {};
 template<typename T, int d> struct is_vec<_vec<T,d>> : public std::true_type {};
 template<typename T> constexpr bool is_vec_v = is_vec<T>::value;
 
+template<typename T> struct is_zero : public std::false_type {};
+template<typename T, int d> struct is_zero<_zero<T,d>> : public std::true_type {};
+template<typename T> constexpr bool is_zero_v = is_zero<T>::value;
+
 template<typename T> struct is_ident : public std::false_type {};
 template<typename T, int d> struct is_ident<_ident<T,d>> : public std::true_type {};
 template<typename T> constexpr bool is_ident_v = is_ident<T>::value;
@@ -95,7 +103,6 @@ template<typename T> constexpr bool is_symR_v = is_symR<T>::value;
 template<typename T> struct is_asymR : public std::false_type {};
 template<typename T, int d, int r> struct is_asymR<_asymR<T,d,r>> : public std::true_type {};
 template<typename T> constexpr bool is_asymR_v = is_asymR<T>::value;
-
 
 //convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
 // ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed
@@ -143,6 +150,12 @@ struct index_vec {
 };
 
 template<int dim>
+struct index_zero {
+	template<typename T>
+	using type = _zero<T,dim>;
+};
+
+template<int dim>
 struct index_sym {
 	template<typename T>
 	using type = _sym<T,dim>;
@@ -175,9 +188,9 @@ struct index_asymR {
 
 // can I shorthand this? what is the syntax?
 // this has a template and not a type on the lhs so I think no?
-//template<int dim> using _vecR = index_vec<dim>::type;
-//template<int dim> using _symR = index_sym<dim>::type;
-//template<int dim> using _asymR = index_asym<dim>::type;
+//template<int dim> using _vecI = index_vec<dim>::type;
+//template<int dim> using _symI = index_sym<dim>::type;
+//template<int dim> using _asymI = index_asym<dim>::type;
 
 // useful helper macros, same as above but with transposed order
 

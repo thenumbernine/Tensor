@@ -350,6 +350,7 @@ auto interior(A const & a, B const & b) {
 // symmetrize or antisymmetrize a tensor
 //  I am not convinced this should be the default casting operation from non-(a)sym to (a)sym since it incurs a few more operations
 // but it should def be made available
+// TODO if any of T's storages are _asym or _asymR then the whole thing becomes zero.
 template<typename T>
 struct MakeSymResult {
 	static constexpr auto value() {

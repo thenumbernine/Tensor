@@ -67,7 +67,7 @@ a(i,j) = .5 * (a(i,j) + a(j,i));
 ## API Reference:
 
 ### Tensors:
-`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_ident`, `_sym`, `_asym`, `_symR`, `_asymR`.
+`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_zero`, `_ident`, `_sym`, `_asym`, `_symR`, `_asymR`.
 
 ### Vectors:
 `_vec<type, dim>` = vectors:
@@ -79,6 +79,10 @@ a(i,j) = .5 * (a(i,j) + a(j,i));
 `_mat<type, dim1, dim2>` = `_vec<_vec<type,dim2>,dim1>` = matrices:
 - Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A\_{ij}$.
 	This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
+
+### Zero Vector:
+`_zero<type, dim>` = vectors of zeroes.  Requires only the inner type worth of storage.  Use nesting for arbitrary-rank, arbitrary-dimension zero tensors all for no extra storage.
+Always returns zero.  This is a shorthand for simpliciations like symmetrizing antisymmetric indexes or antisymmetrizing symmetric indexes.
 
 ### Identity Matrix:
 `_ident<type, dim>` = identity matrix.
@@ -424,11 +428,7 @@ TODO:
 
 - eventually merge `_sym` and `_asym` with `_symR` and `_asymR` ... but don't til enough sorts/loops are compile-time.
 		
-- `operator+=` etc for AntiSymRef
-
-- does a sym + ident make a sym as well? no... should it? yes
-	but this opens a can of worms of tensor+tensor optimized storage.
-	this is TensorSumResultImpl WIP.
+- `operator+=` and other in-place operators for AntiSymRef
 
 - index notation  ...
 	- dimension check at compile-time

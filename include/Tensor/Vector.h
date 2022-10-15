@@ -1259,8 +1259,12 @@ Bit of a hack: MOst these are written in terms of 'This'
 	requires (is_tensor_v<O> /* && dims() == O::dims()*/)\
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
-			using I1 = ExpandMatchingLocalRank<O>;\
-			return Common::TypeWrapper<_vec<I1, localDim>>();\
+			if constexpr (is_zero_v<O>) {\
+				return Common::TypeWrapper<This>();\
+			} else {\
+				using I1 = ExpandMatchingLocalRank<O>;\
+				return Common::TypeWrapper<_vec<I1, localDim>>();\
+			}\
 		}\
 		using type = typename decltype(value())::type;\
 	};\
@@ -1274,7 +1278,7 @@ Bit of a hack: MOst these are written in terms of 'This'
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_VECTOR_CALL_INDEX_PRIMARY() /* operator(int) to access .s and operator[] */\
 	TENSOR_ADD_RANK1_CALL_INDEX_AUX() /* operator(int, int...), operator[] */\
-	TENSOR_ADD_INT_VEC_CALL_INDEX()\
+	TENSOR_ADD_INT_VEC_CALL_INDEX() /* operator(intN) */\
 	TENSOR_ADD_SUBSET_ACCESS()\
 	TENSOR_ADD_VOLUME()\
 	TENSOR_VECTOR_ADD_SUM_RESULT()
@@ -1538,6 +1542,64 @@ struct _vec<Inner_,4> {
 	TENSOR3_VEC4_ADD_SWIZZLE4()
 };
 
+
+// zero tensor of arbitrary-dim arbitrary-rank
+// has no storage (tho C++ so ... just 1 byte or whatever)
+
+#define TENSOR_HEADER_ZERO_SPECIFIC()\
+\
+	static constexpr int localCount = 1; /* will this work? */
+
+#define TENSOR_HEADER_ZERO(classname, Inner_, localDim_)\
+	TENSOR_THIS(classname)\
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 1)\
+	TENSOR_TEMPLATE_T_I(classname)\
+	TENSOR_HEADER_ZERO_SPECIFIC()\
+	TENSOR_EXPAND_TEMPLATE_TENSORR()\
+	TENSOR_HEADER()
+
+// rank-1 single-element
+#define TENSOR_ZERO_LOCAL_READ_FOR_WRITE_INDEX()\
+	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
+		return intNLocal();\
+	}\
+	static constexpr int getLocalWriteForReadIndex(int i) {\
+		return 0;\
+	}
+
+#define TENSOR_ADD_ZERO_CALL_INDEX_PRIMARY()\
+	constexpr decltype(auto) operator()(int i) {\
+		return AntiSymRef<Inner>();\
+	}\
+	constexpr decltype(auto) operator()(int i) const {\
+		return AntiSymRef<Inner>();\
+	}
+
+#define TENSOR_ZERO_ADD_SUM_RESULT()\
+\
+	using ScalarSumResult = _vec<Inner, localDim>;\
+\
+	template<typename O>\
+	using TensorSumResult = O;
+
+#define TENSOR_ZERO_CLASS_OPS(classname)\
+	TENSOR_ZERO_LOCAL_READ_FOR_WRITE_INDEX()\
+	TENSOR_ADD_OPS(classname)\
+	TENSOR_ADD_ZERO_CALL_INDEX_PRIMARY() /* operator(int) */\
+	TENSOR_ADD_RANK1_CALL_INDEX_AUX() /* operator(int, int...), operator[] */\
+	TENSOR_ADD_INT_VEC_CALL_INDEX() /* operator(intN) */\
+	TENSOR_ZERO_ADD_SUM_RESULT()
+
+template<typename Inner_, int localDim_>
+requires (localDim_ > 0)
+struct _zero {
+	TENSOR_HEADER_ZERO(_zero, Inner_, localDim_);
+	std::array<Inner, localCount> s = {};
+	constexpr _zero() {}
+	TENSOR_ZERO_CLASS_OPS(_zero)
+};
+
+
 // rank-2 optimized storage
 
 inline constexpr int triangleSize(int n) {
@@ -1689,14 +1751,18 @@ struct Rank2Accessor {
 	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
-			using I2 = ExpandMatchingLocalRank<O>;\
-			if constexpr (is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
-				return Common::TypeWrapper<_sym<I2, localDim>>();\
-			} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
-				return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+			if constexpr (is_zero_v<O>) {\
+				return Common::TypeWrapper<This>();\
 			} else {\
-				/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
-				return Common::TypeWrapper<void>();\
+				using I2 = ExpandMatchingLocalRank<O>;\
+				if constexpr (is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
+					return Common::TypeWrapper<_sym<I2, localDim>>();\
+				} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
+					return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+				} else {\
+					/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
+					return Common::TypeWrapper<void>();\
+				}\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -1873,16 +1939,20 @@ struct _sym<Inner_, 4> {
 	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
-			using I2 = ExpandMatchingLocalRank<O>;\
-			if constexpr (is_ident_v<O>) {\
-				return Common::TypeWrapper<_ident<I2, localDim>>();\
-			} else if constexpr (is_sym_v<O> || is_symR_v<O>) {\
-				return Common::TypeWrapper<_sym<I2, localDim>>();\
-			} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
-				return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+			if constexpr (is_zero_v<O>) {\
+				return Common::TypeWrapper<This>();\
 			} else {\
-				/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
-				return Common::TypeWrapper<void>();\
+				using I2 = ExpandMatchingLocalRank<O>;\
+				if constexpr (is_ident_v<O>) {\
+					return Common::TypeWrapper<_ident<I2, localDim>>();\
+				} else if constexpr (is_sym_v<O> || is_symR_v<O>) {\
+					return Common::TypeWrapper<_sym<I2, localDim>>();\
+				} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
+					return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+				} else {\
+					/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
+					return Common::TypeWrapper<void>();\
+				}\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -1972,14 +2042,18 @@ struct _ident {
 	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
-			using I2 = ExpandMatchingLocalRank<O>;\
-			if constexpr (is_asym_v<O> || is_asymR_v<O>) {\
-				return Common::TypeWrapper<_asym<I2, localDim>>();\
-			} else if constexpr (is_vec_v<O> || is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
-				return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+			if constexpr (is_zero_v<O>) {\
+				return Common::TypeWrapper<This>();\
 			} else {\
-				/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
-				return Common::TypeWrapper<void>();\
+				using I2 = ExpandMatchingLocalRank<O>;\
+				if constexpr (is_asym_v<O> || is_asymR_v<O>) {\
+					return Common::TypeWrapper<_asym<I2, localDim>>();\
+				} else if constexpr (is_vec_v<O> || is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
+					return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+				} else {\
+					/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
+					return Common::TypeWrapper<void>();\
+				}\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -2335,11 +2409,15 @@ struct RankNAccessor {
 	requires (is_tensor_v<O>)\
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
-			using I2 = ExpandMatchingLocalRank<O>;\
-			if constexpr (is_symR_v<O> && O::localRank >= localRank) {\
-				return Common::TypeWrapper<_symR<I2, localDim, localRank>>();\
+			if constexpr (is_zero_v<O>) {\
+				return Common::TypeWrapper<This>();\
 			} else {\
-				return Common::TypeWrapper<_tensorr<I2, localDim, localRank>>();\
+				using I2 = ExpandMatchingLocalRank<O>;\
+				if constexpr (is_symR_v<O> && O::localRank >= localRank) {\
+					return Common::TypeWrapper<_symR<I2, localDim, localRank>>();\
+				} else {\
+					return Common::TypeWrapper<_tensorr<I2, localDim, localRank>>();\
+				}\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -2578,11 +2656,15 @@ from my symmath/tensor/LeviCivita.lua
 	requires (is_tensor_v<O>)\
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
-			using I2 = ExpandMatchingLocalRank<O>;\
-			if constexpr (is_asymR_v<O> && O::localRank >= localRank) {\
-				return Common::TypeWrapper<_asymR<I2, localDim, localRank>>();\
+			if constexpr (is_zero_v<O>) {\
+				return Common::TypeWrapper<This>();\
 			} else {\
-				return Common::TypeWrapper<_tensorr<I2, localDim, localRank>>();\
+				using I2 = ExpandMatchingLocalRank<O>;\
+				if constexpr (is_asymR_v<O> && O::localRank >= localRank) {\
+					return Common::TypeWrapper<_asymR<I2, localDim, localRank>>();\
+				} else {\
+					return Common::TypeWrapper<_tensorr<I2, localDim, localRank>>();\
+				}\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -2961,15 +3043,19 @@ std::ostream & operator<<(std::ostream & o, _vec<T,N> const & t) {
 	return o << t.s;
 }
 template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, _zero<T,N> const & t) {
+	return o << t.s;
+}
+template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
+	return o << t.s;
+}
+template<typename T, int N>
 std::ostream & operator<<(std::ostream & o, _sym<T,N> const & t) {
 	return o << t.s;
 }
 template<typename T, int N>
 std::ostream & operator<<(std::ostream & o, _asym<T,N> const & t) {
-	return o << t.s;
-}
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
 	return o << t.s;
 }
 template<typename T, int N, int R>
@@ -2987,15 +3073,19 @@ std::ostream & operator<<(std::ostream & o, _vec<T,N> const & t) {
 	return Common::iteratorToOStream(o, t);
 }
 template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, _zero<T,N> const & t) {
+	return Common::iteratorToOStream(o, t);
+}
+template<typename T, int N>
+std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
+	return Common::iteratorToOStream(o, t);
+}
+template<typename T, int N>
 std::ostream & operator<<(std::ostream & o, _sym<T,N> const & t) {
 	return Common::iteratorToOStream(o, t);
 }
 template<typename T, int N>
 std::ostream & operator<<(std::ostream & o, _asym<T,N> const & t) {
-	return Common::iteratorToOStream(o, t);
-}
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
 	return Common::iteratorToOStream(o, t);
 }
 template<typename T, int N, int R>
