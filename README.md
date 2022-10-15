@@ -175,7 +175,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 		Mind you, wrt the tensor library, 'Scalar' refers to the nested-most Inner class that is not a tensor.
 		You could always use a vector-of-functions and I won't try to stop you, so long as you implement the necessary functions to perform whatever operations you are doing with it.
 - `::Inner` = The next most nested vector/matrix/symmetric.
-- `::Template<T, N>` = The template of this class, useful for nesting operations.
+- `::Template<T, N[, R]>` = The template of this class, useful for nesting operations.
 - `::rank` = For determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
 - `::dim<i>` = Get the i'th dimension size , where i is from 0 to rank-1.
 - `::dims` = Get a int-vector with all the dimensions.
@@ -209,7 +209,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `ReplaceWithZero<T>` = Returns a type with matching rank and dimensions, but all nestings are zeroes.  The result is fully-expanded so the nesting count matches the rank.
 
 ### Template Helpers (subject to change)
-- `is_tensor_v<T>` = is it a tensor storage type?
+- `is_tensor_v<T>` = is it any tensor storage type?
 - `is_vec_v<T>` = is it a `_vec<T,N>`?
 - `is_zero_v<T>` = is it a `_zero<T,N>`?
 - `is_ident_v<T>` = is it a `_ident<T,N>`?
@@ -217,6 +217,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `is_asym_v<T>` = is it a `_asym<T,N>`?
 - `is_symR_v<T>` = is it a `_symR<T,N>`?
 - `is_asymR_v<T>` = is it a `_asymR<T,N>`?
+- `is_quat_v<T>` = is it a `_quat<T>`?
 
 ### Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.

@@ -9,9 +9,6 @@ NEW VERSION
 - maybe extensions into matlab syntax (nested tensor implicit * contraction mul)
 - math indexing.  A.i.j := a_ij, which means row-major storage (sorry OpenGL)
 
-TODO:
-	index notation still
-
 
 alright conventions, esp with my _sym being in the mix ...
 operator[i] will denote a single index.  this means for two-rank structs they will have to return an accessor object
@@ -76,7 +73,8 @@ namespace Tensor {
 // Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
 #define TENSOR_THIS(classname)\
 	using This = classname;\
-	static constexpr bool isTensorFlag = {};
+	static constexpr bool isTensorFlag = {};\
+	static constexpr bool dontUseFieldsOStream = {};
 
 #define TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)\
 \
@@ -3020,83 +3018,15 @@ TENSOR_ADD_NICKNAME_TYPE(ldouble, long double)
 
 // ostream
 // _vec does have .fields
-// and I do have my default .fields ostream
-// but here's a manual override anyways
+// and I do have my default .fields ostream in Common
+//  so I added an extra flag to disable it.  (cuz TODO can I make the Common ostream fields also disable itself if a specific already exists?)
 // so that the .fields vec2 vec3 vec4 and the non-.fields other vecs all look the same
-#if 0 // use array.  fails cuz quat (wsubclass of _vec) can't deduce whether _vec or _quat which both are used here:
+// ostream uses array's ostream.
 template<typename T>
 requires (is_tensor_v<T>)
 std::ostream & operator<<(std::ostream & o, T const & t) {
 	return o << t.s;
 }
-#endif
-#if 0 // just use iterator
-template<typename T>
-requires (is_tensor_v<T>)
-std::ostream & operator<<(std::ostream & o, T const & t) {
-	return Common::iteratorToOStream(o, t);
-}
-#endif
-#if 1 // use array fields
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _vec<T,N> const & t) {
-	return o << t.s;
-}
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _zero<T,N> const & t) {
-	return o << t.s;
-}
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
-	return o << t.s;
-}
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _sym<T,N> const & t) {
-	return o << t.s;
-}
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _asym<T,N> const & t) {
-	return o << t.s;
-}
-template<typename T, int N, int R>
-std::ostream & operator<<(std::ostream & o, _symR<T,N,R> const & t) {
-	return o << t.s;
-}
-template<typename T, int N, int R>
-std::ostream & operator<<(std::ostream & o, _asymR<T,N,R> const & t) {
-	return o << t.s;
-}
-#endif
-#if 0 // just use iterator.  but i guess AntiSymRef doesn't?
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _vec<T,N> const & t) {
-	return Common::iteratorToOStream(o, t);
-}
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _zero<T,N> const & t) {
-	return Common::iteratorToOStream(o, t);
-}
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _ident<T,N> const & t) {
-	return Common::iteratorToOStream(o, t);
-}
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _sym<T,N> const & t) {
-	return Common::iteratorToOStream(o, t);
-}
-template<typename T, int N>
-std::ostream & operator<<(std::ostream & o, _asym<T,N> const & t) {
-	return Common::iteratorToOStream(o, t);
-}
-template<typename T, int N, int R>
-std::ostream & operator<<(std::ostream & o, _symR<T,N,R> const & t) {
-	return Common::iteratorToOStream(o, t);
-}
-template<typename T, int N, int R>
-std::ostream & operator<<(std::ostream & o, _asymR<T,N,R> const & t) {
-	return Common::iteratorToOStream(o, t);
-}
-#endif
 
 } // namespace Tensor
 

@@ -19,6 +19,10 @@ namespace Tensor {
 template<typename Inner_>
 struct _quat;
 
+template<typename T> struct is_quat : public std::false_type {};
+template<typename T> struct is_quat<_quat<T>> : public std::true_type {};
+template<typename T> constexpr bool is_quat_v = is_quat<T>::value;
+
 template<typename T>
 _quat<T> operator*(_quat<T> a, _quat<T> b);
 
