@@ -495,7 +495,33 @@ ReplaceScalar<typename>
 		using type = decltype(value());\
 	};\
 	template<typename NewScalar>\
-	using ReplaceScalar = ReplaceInner<typename ReplaceScalarImpl<NewScalar>::type>;
+	using ReplaceScalar = ReplaceInner<typename ReplaceScalarImpl<NewScalar>::type>;\
+\
+	/* not sure about this one ... */\
+	/* I'm suign it with TensorSumResult to expand only the rank that matches this storage */\
+	/*  but to do so expanding in sequential order for the sake of the ExpandIthIndex optimizations of _symR and _asymR */\
+	/* TODO ... 'unpack-and-apply'  template that goes down the Nestings?*/ \
+	template<typename O>\
+	struct ExpandMatchingLocalRankImpl {\
+		static constexpr auto value() {\
+			/* do I need this condition? */\
+			if constexpr (rank == localRank) {\
+				return Common::TypeWrapper<Inner>();\
+			} else {\
+				/* expand the matching 0 and 1 indexes in the 'other' type */\
+				/* TODO right now I have symR Expand optimized to symR if expanding the end indexes */\
+				/*  so this means make sure to expand the 1st index 1st or you might risk turning symR into tensorr */\
+				using O2 = typename O::template ExpandIndexSeq<std::make_integer_sequence<int, localRank>>;\
+				/* then get its inner past the expanded index (and apply it to the recursive case) */\
+				return Common::TypeWrapper<\
+					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<localRank>>\
+				>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<typename O>\
+	using ExpandMatchingLocalRank = typename ExpandMatchingLocalRankImpl<O>::type;
 
 //for giving operators to tensor classes
 //how can you add correctly-typed ops via crtp to a union?
@@ -1232,18 +1258,8 @@ Bit of a hack: MOst these are written in terms of 'This'
 	/* so just assume the math operators have the dims() == condition cuz they do */\
 	requires (is_tensor_v<O> /* && dims() == O::dims()*/)\
 	struct TensorSumResultImpl {\
-		/* TODO put this in its own template class ... or just use ReplaceNested to not need this condition */\
-		static constexpr auto inner() {\
-			if constexpr (rank == 1) {\
-				return Common::TypeWrapper<Inner>();\
-			} else {\
-				return Common::TypeWrapper<\
-					typename Inner::template TensorSumResult<typename O::Inner>\
-				>();\
-			}\
-		}\
 		static constexpr auto value() {\
-			using I1 = typename decltype(inner())::type;\
+			using I1 = ExpandMatchingLocalRank<O>;\
 			return Common::TypeWrapper<_vec<I1, localDim>>();\
 		}\
 		using type = typename decltype(value())::type;\
@@ -1672,23 +1688,8 @@ struct Rank2Accessor {
 	template<typename O>\
 	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
 	struct TensorSumResultImpl {\
-		static constexpr auto inner() {\
-			/* do I need this condition? */\
-			if constexpr (rank == 2) {\
-				return Common::TypeWrapper<Inner>();\
-			} else {\
-				/* expand the matching 0 and 1 indexes in the 'other' type */\
-				/* TODO right now I have symR Expand optimized to symR if expanding the end indexes */\
-				/*  so this means make sure to expand the 1st index 1st or you might risk turning symR into tensorr */\
-				using O2 = typename O::template ExpandIndex<0,1>;\
-				/* then get its inner past the expanded index (and apply it to the recursive case) */\
-				return Common::TypeWrapper<\
-					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<2>>\
-				>();\
-			}\
-		}\
 		static constexpr auto value() {\
-			using I2 = typename decltype(inner())::type;\
+			using I2 = ExpandMatchingLocalRank<O>;\
 			if constexpr (is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
 				return Common::TypeWrapper<_sym<I2, localDim>>();\
 			} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
@@ -1837,57 +1838,6 @@ struct _sym<Inner_, 4> {
 \
 	static constexpr int localCount = 1;
 
-#if 0
-	template<typename O>\
-	struct TensorSumResultImpl {\
-		static constexpr auto value() {\
-			if constexpr (is_ident_v<O>) {\
-				return Common::TypeWrapper<This>();\
-			} else if constexpr (is_sym_v<O>) {\
-				return Common::TypeWrapper<O::template ReplaceScalar<Scalar>>();\
-			} else if constexpr (is_symR_v<O>) {\
-				return Common::TypeWrapper<O::template ReplaceScalar<Scalar>>();\
-			} else if constexpr (is_asymR_v<O>) {\
-				if constexpr (O::localRank == 3) {\
-					return Common::TypeWrapper<\
-						_tensorr<\
-							typename O::Inner,\
-							O::localDim,\
-							3\
-						>::template ReplaceScalar<Scalar>\
-					>();\
-				} else if constexpr (O::localRank == 4) {\
-					return Common::TypeWrapper<\
-						_tensorr<\
-							_asym<typename O::Inner, O::localDim>,\
-							O::localDim,\
-							2\
-						>::template ReplaceScalar<Scalar>\
-					>();\
-				} else {\
-					return Common::TypeWrapper<\
-						_tensorr<\
-							_asymR<typename O::Inner, O::localDim, O::localRank-2>,\
-							O::localDim,\
-							2\
-						>::template ReplaceScalar<Scalar>\
-					>();\
-				}\
-			} else {\
-				return Common::TypeWrapper<_tensorr<Inner, localDim, 2>>();\
-			}\
-		}\
-		using type = typename decltype(value())::type;\
-	};\
-	template<typename O>\
-	using TensorSumResult = typename TensorSumResultImpl<O>::type;
-	template<typename O>\
-	using TensorSumResult = std::conditional_t<\
-		is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>,\
-		_tensorr<Inner, localDim, 2>,\
-		This>;
-#endif
-
 #define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, 2)\
@@ -1922,19 +1872,8 @@ struct _sym<Inner_, 4> {
 	template<typename O>\
 	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
 	struct TensorSumResultImpl {\
-		static constexpr auto inner() {\
-			/* do I need this condition? */\
-			if constexpr (rank == 2) {\
-				return Common::TypeWrapper<Inner>();\
-			} else {\
-				using O2 = typename O::template ExpandIndex<0,1>;\
-				return Common::TypeWrapper<\
-					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<2>>\
-				>();\
-			}\
-		}\
 		static constexpr auto value() {\
-			using I2 = typename decltype(inner())::type;\
+			using I2 = ExpandMatchingLocalRank<O>;\
 			if constexpr (is_ident_v<O>) {\
 				return Common::TypeWrapper<_ident<I2, localDim>>();\
 			} else if constexpr (is_sym_v<O> || is_symR_v<O>) {\
@@ -2032,21 +1971,8 @@ struct _ident {
 	template<typename O>\
 	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
 	struct TensorSumResultImpl {\
-		/* TODO ... 'unpack-and-apply'  template that goes down the Nestings?*/ \
-		static constexpr auto inner() {\
-			/* do I need this condition? */\
-			if constexpr (rank == localRank /* == 2*/) {\
-				return Common::TypeWrapper<Inner>();\
-			} else {\
-				/* expand in order to work with symR/asymR storage optimizations */\
-				using O2 = typename O::template ExpandIndex<0,1>;\
-				return Common::TypeWrapper<\
-					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<2>>\
-				>();\
-			}\
-		}\
 		static constexpr auto value() {\
-			using I2 = typename decltype(inner())::type;\
+			using I2 = ExpandMatchingLocalRank<O>;\
 			if constexpr (is_asym_v<O> || is_asymR_v<O>) {\
 				return Common::TypeWrapper<_asym<I2, localDim>>();\
 			} else if constexpr (is_vec_v<O> || is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
@@ -2408,19 +2334,8 @@ struct RankNAccessor {
 	template<typename O>\
 	requires (is_tensor_v<O>)\
 	struct TensorSumResultImpl {\
-		static constexpr auto inner() {\
-			/* do I need this condition? */\
-			if constexpr (rank == localRank) {\
-				return Common::TypeWrapper<Inner>();\
-			} else {\
-				using O2 = typename O::template ExpandIndexSeq<std::make_integer_sequence<int, localRank>>;\
-				return Common::TypeWrapper<\
-					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<localRank>>\
-				>();\
-			}\
-		}\
 		static constexpr auto value() {\
-			using I2 = typename decltype(inner())::type;\
+			using I2 = ExpandMatchingLocalRank<O>;\
 			if constexpr (is_symR_v<O> && O::localRank >= localRank) {\
 				return Common::TypeWrapper<_symR<I2, localDim, localRank>>();\
 			} else {\
@@ -2662,19 +2577,8 @@ from my symmath/tensor/LeviCivita.lua
 	template<typename O>\
 	requires (is_tensor_v<O>)\
 	struct TensorSumResultImpl {\
-		static constexpr auto inner() {\
-			/* do I need this condition? */\
-			if constexpr (rank == localRank) {\
-				return Common::TypeWrapper<Inner>();\
-			} else {\
-				using O2 = typename O::template ExpandIndexSeq<std::make_integer_sequence<int, localRank>>;\
-				return Common::TypeWrapper<\
-					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<localRank>>\
-				>();\
-			}\
-		}\
 		static constexpr auto value() {\
-			using I2 = typename decltype(inner())::type;\
+			using I2 = ExpandMatchingLocalRank<O>;\
 			if constexpr (is_asymR_v<O> && O::localRank >= localRank) {\
 				return Common::TypeWrapper<_asymR<I2, localDim, localRank>>();\
 			} else {\
