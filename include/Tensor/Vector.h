@@ -2665,19 +2665,24 @@ TENSOR_SCALAR_MUL_OP(*)
 // just not scalar / tensor
 // sooo .... here it is manually:
 
-template<typename T>
-requires (is_tensor_v<T>)
-decltype(auto) operator /(T const & a, typename T::Scalar const & b) {
-	return T([&](auto... is) -> typename T::Scalar {
+template<typename A, typename B>
+requires (is_tensor_v<A> && !is_tensor_v<B>)
+decltype(auto) operator /(A const & a, B const & b) {
+	using AS = typename A::Scalar;
+	using RS = decltype(AS() + B());
+	using R = typename A::template ReplaceScalar<RS>;
+	return R([&](auto... is) -> RS {
 		return a(is...) / b;
 	});
 }
 
-template<typename T>
-requires (is_tensor_v<T>)
-decltype(auto) operator /(typename T::Scalar const & a, T const & b) {
-	using R = typename T::ScalarSumResult;
-	return R([&](auto... is) -> typename T::Scalar {
+template<typename A, typename B>
+requires (!is_tensor_v<A> && is_tensor_v<B>)
+decltype(auto) operator /(A const & a, B const & b) {
+	using BS = typename B::Scalar;
+	using RS = decltype(A() + BS());
+	using R = typename B::ScalarSumResult::template ReplaceScalar<RS>;
+	return R([&](auto... is) -> RS {
 		return a / b(is...);
 	});
 }
