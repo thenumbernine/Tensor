@@ -208,7 +208,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `::RemoveIndex<i1, i2, ...>` = Removes all the indexes, `i1` ..., from the tensor.
 - `ReplaceWithZero<T>` = Returns a type with matching rank and dimensions, but all nestings are zeroes.  The result is fully-expanded so the nesting count matches the rank.
 
-### Template Helpers (subject to change)
+### Template Helpers
 - `is_tensor_v<T>` = is it any tensor storage type?
 - `is_vec_v<T>` = is it a `_vec<T,N>`?
 - `is_zero_v<T>` = is it a `_zero<T,N>`?

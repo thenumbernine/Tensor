@@ -521,6 +521,22 @@ ReplaceScalar<typename>
 	template<typename O>\
 	using ExpandMatchingLocalRank = typename ExpandMatchingLocalRankImpl<O>::type;
 
+#if 0 // hmm
+	template<int deferRank = rank>\
+	struct ReplaceWithZeroImpl {\
+		static constexpr auto value() {\
+			if constexpr (deferRank== 1) {\
+				return Common::TypeWrapper<_zero<Inner, localDim>>();\
+			} else {\
+				return Common::TypeWrapper<_zero<typename Inner::template ReplaceWithZeroImpl<>, localDim>>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<int deferRank = rank>\
+	using ReplaceWithZero = typename ExpandAllIndexes<deferRank>::template ReplaceWithZeroImpl<deferRank>::type;
+#endif
+
 //for giving operators to tensor classes
 //how can you add correctly-typed ops via crtp to a union?
 //unions can't inherit.
