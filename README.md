@@ -146,6 +146,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
 	`I1 I2` etc are one of the following:
 - - `index_vec<dim>` for a single index of dimension `dim`,
+- - `index_zero<dim>` for rank-one zero valued indexes of dimension `dim`.  (If any are `index_zero` then all should be `index_zero`, but I left it to be specified per-index so that it could have varying dimensions per-index.),
 - - `index_ident<dim>` for rank-two identity indexes of dimension `dim`,
 - - `index_sym<dim>` for two symmetric indexes of dimension `dim`,
 - - `index_asym<dim>` for two antisymmetric indexes of dimension `dim`,
@@ -205,10 +206,12 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 	Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `_tensori<Scalar, dim1, ..., dimN>`.
 - `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into `_vec`s.  Then removes it.
 - `::RemoveIndex<i1, i2, ...>` = Removes all the indexes, `i1` ..., from the tensor.
+- `ReplaceWithZero<T>` = Returns a type with matching rank and dimensions, but all nestings are zeroes.  The result is fully-expanded so the nesting count matches the rank.
 
 ### Template Helpers (subject to change)
 - `is_tensor_v<T>` = is it a tensor storage type?
 - `is_vec_v<T>` = is it a `_vec<T,N>`?
+- `is_zero_v<T>` = is it a `_zero<T,N>`?
 - `is_ident_v<T>` = is it a `_ident<T,N>`?
 - `is_sym_v<T>` = is it a `_sym<T,N>`?
 - `is_asym_v<T>` = is it a `_asym<T,N>`?
@@ -282,9 +285,9 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	$${contractN(a)^I}\_J = {a^{I K}}\_{K J}, |I| = j, |K| = n$$
 - `interior<n=1>(a,b)` = Interior product of neighboring n indexes.  I know a proper interior product would default n to `A::rank`.  Maybe later.  For n=1 this behaves the same a matrix-multiply.
 	$${interior(a,b)^I}\_J = a^{I K} b\_{K J}, |K| = n$$
-- `makeSym(a)` = Create a symmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
+- `makeSym(a)` = Create a symmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.  If the input is a tensor with any antisymmetric indexes then the result will be a zero-tensor.
 	$$makeSym(a)\_I = a\_{(i\_1 ... i\_ n)} $$
-- `makeAsym(a)` = Create an antisymmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.
+- `makeAsym(a)` = Create an antisymmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.  If the input is a tensor with any symmetric indexes then the result will be a zero-tensor.
 	$$makeAsym(a)\_I = a\_{[i\_1 ... i\_ n]} $$
 - `wedge(a,b)` = The wedge product of tensors 'a' and 'b'.
 	$$wedge(a,b)\_I = (a \wedge b)\_I = Alt (a \otimes b)\_I = a\_{[i\_1 ... i\_p} b\_{i\_{p+1} ... i\_{p+q}]}$$

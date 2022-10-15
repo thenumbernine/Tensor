@@ -1,7 +1,7 @@
 #include "Test/Test.h"
 
 void test_Identity() {
-	using float3i3 = Tensor::_ident<float, 3>;
+	using float3i3 = Tensor::float3i3;
 	
 	{
 		auto I = float3i3(1);

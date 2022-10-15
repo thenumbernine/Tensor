@@ -2909,11 +2909,11 @@ static_assert(nick##suffix::count<0> == antisymmetricSize(localDim, localRank));
 
 #else //TENSOR_USE_STATIC_ASSERTS
 
-#define TENSOR_ADD_VECTOR_STATIC_ASSERTS(nick,ctype,dim)
+#define TENSOR_ADD_VECTOR_STATIC_ASSERTS(nick, ctype, dim)
 #define TENSOR_ADD_MATRIX_STATIC_ASSERTS(nick, ctype, dim1, dim2)
+#define TENSOR_ADD_IDENTITY_STATIC_ASSERTS(nick, ctype, dim12)
 #define TENSOR_ADD_SYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
 #define TENSOR_ADD_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
-#define TENSOR_ADD_IDENTITY_STATIC_ASSERTS(nick, ctype, dim12)
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
 #define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
 

@@ -347,16 +347,45 @@ auto interior(A const & a, B const & b) {
 #endif
 }
 
+template<typename T>
+struct ReplaceWithZeroImpl {
+	static constexpr auto value() {
+		if constexpr (T::rank == 1) {
+			return Common::TypeWrapper<_zero<
+				typename T::Inner,
+				T::localDim
+			>>();
+		} else {
+			return Common::TypeWrapper<_zero<
+				typename ReplaceWithZeroImpl<typename T::Inner>::type,
+				T::localDim
+			>>();
+		}
+	}
+	using type = typename decltype(value())::type;
+};
+template<typename T>
+using ReplaceWithZero = typename ReplaceWithZeroImpl<typename T::template ExpandAllIndexes<>>::type;
+
 // symmetrize or antisymmetrize a tensor
 //  I am not convinced this should be the default casting operation from non-(a)sym to (a)sym since it incurs a few more operations
 // but it should def be made available
 // TODO if any of T's storages are _asym or _asymR then the whole thing becomes zero.
 template<typename T>
 struct MakeSymResult {
+	template<int i>
+	struct AnyAreAsym {
+		static constexpr bool exec() {
+			using IthNest = typename T::template Nested<i>;
+			return is_asym_v<IthNest> || is_asymR_v<IthNest>;
+		}
+	};
 	static constexpr auto value() {
 		static_assert(T::rank > 0);
 		using S = typename T::Scalar;
-		if constexpr (T::rank == 1) {
+		if constexpr (Common::ForLoop<0, T::numNestings, AnyAreAsym>::exec()) {
+			return Common::TypeWrapper<ReplaceWithZero<T>>();
+		} else if constexpr (T::rank == 1) {
 			return Common::TypeWrapper<_vec<S, T::localDim>>();
 		} else if constexpr (T::rank == 2) {
 			return Common::TypeWrapper<_sym<S, T::localDim>>();
@@ -389,10 +418,19 @@ auto makeSym(T const & t) {
 //that's right, same function, just different return type
 template<typename T>
 struct MakeAntiSymResult {
+	template<int i>
+	struct AnyAreSym {
+		static constexpr bool exec() {
+			using IthNest = typename T::template Nested<i>;
+			return is_ident_v<IthNest> || is_sym_v<IthNest> || is_symR_v<IthNest>;
+		}
+	};
 	static constexpr auto value() {
 		static_assert(T::rank > 0);
 		using S = typename T::Scalar;
-		if constexpr (T::rank == 1) {
+		if constexpr (Common::ForLoop<0, T::numNestings, AnyAreSym>::exec()) {
+			return Common::TypeWrapper<ReplaceWithZero<T>>();
+		} else if constexpr (T::rank == 1) {
 			return Common::TypeWrapper<_vec<S, T::localDim>>();
 		} else if constexpr (T::rank == 2) {
 			return Common::TypeWrapper<_asym<S, T::localDim>>();
