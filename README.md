@@ -323,7 +323,12 @@ float3a3 b; b(i,j) = (a(i,j) - a(j,i)) / 2.f;
 - RHS typed assignment:
 ```c++
 float3x3 a = ...;
-auto b = ((a(i,j) - a(j,i)) / 2.f).assignToType<float3a3>(i,j);
+auto b = ((a(i,j) - a(j,i)) / 2.f).assignR<float3a3>(i,j);
+```
+- Automatic type assignment right now will use an expanded tensor, so storage optimizations get lost:
+```c++
+float3x3 a = ...;
+auto b = ((a(i,j) - a(j,i)) / 2.f).assign(i,j);
 ```
 
 
