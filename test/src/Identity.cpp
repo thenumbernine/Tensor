@@ -88,4 +88,13 @@ void test_Identity() {
 		auto R = S + I;
 		static_assert(std::is_same_v<decltype(R), Tensor::float3s3>);
 	}
+	
+	// ident + ident = ident
+	{
+		auto I1 = floatI3(1);
+		auto I2 = floatI3(2);
+		auto R = I1 + I2;
+		static_assert(std::is_same_v<decltype(R), floatI3>);
+		TEST_EQ(R, (Tensor::float3x3{{3,0,0},{0,3,0},{0,0,3}}));
+	}
 }

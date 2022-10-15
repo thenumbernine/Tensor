@@ -44,13 +44,31 @@ So I guess overall this library is midway between a mathematician's and a progra
 This will only take up a single value of storage.  Specifying the internal storage type is still required, which enables `_ident` to be used in conjunction with outer products to produce optimized-storage tensors,
 i.e. $a\_{ij} \otimes \delta\_{kl}$ = `outer( _mat<float,3,3>(...), _ident<float,3>(1) )` will produce a rank-4 tensor $c\_{ijkl} = a\_{ij} \cdot \delta\_{kl}$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
 
+Tensor/tensor operator result storage optimizations:
+- `ident` + `ident` = `ident`
+- `ident` + `sym` = `sym`
+- `ident` + `asym` = `matrix`
+- `ident` + `matrix` = `matrix`
+
 ### Symmetric Matrices:
 `_sym<type, dim>` = symmetric matrices:
 - `.x_x .x_y .x_z .y_y .y_z .z_z .x_w .y_w .z_w .w_w` storage, `.y_x .z_x, .z_y` union'd access.
 
+Tensor/tensor operator result storage optimizations:
+- `sym` + `ident` = `sym`
+- `sym` + `sym` = `sym`
+- `sym` + `asym` = `matrix`
+- `sym` + `matrix` = `matrix`
+
 ### Antisymmetric Matrices:
 `_asym<type, dim>` = antisymmetric matrices:
 - `.x_x() .w_w()` access methods
+
+Tensor/tensor operator result storage optimizations:
+- `asym` + `ident` = `matrix`
+- `asym` + `sym` = `matrix`
+- `asym` + `asym` = `asym`
+- `asym` + `matrix` = `matrix`
 
 ### Totally-symmetric tensors:
 `_symR<type, dim, rank>` = totally-symmetric tensor.

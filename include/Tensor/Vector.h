@@ -1232,6 +1232,7 @@ Bit of a hack: MOst these are written in terms of 'This'
 	/* so just assume the math operators have the dims() == condition cuz they do */\
 	requires (is_tensor_v<O> /* && dims() == O::dims()*/)\
 	struct TensorSumResultImpl {\
+		/* TODO put this in its own template class ... or just use ReplaceNested to not need this condition */\
 		static constexpr auto inner() {\
 			if constexpr (rank == 1) {\
 				return Common::TypeWrapper<Inner>();\
@@ -1632,7 +1633,7 @@ struct Rank2Accessor {
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
-	// treat this like a vector, so use vector's TensorSumResult
+	// treat this like (rank-1) vector storage, so use vector's TensorSumResult
 	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
 	//end TENSOR_HEADER_*_SPECIFIC
 	TENSOR_EXPAND_TEMPLATE_TENSORR()
@@ -2031,11 +2032,13 @@ struct _ident {
 	template<typename O>\
 	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
 	struct TensorSumResultImpl {\
+		/* TODO ... 'unpack-and-apply'  template that goes down the Nestings?*/ \
 		static constexpr auto inner() {\
 			/* do I need this condition? */\
-			if constexpr (rank == 2) {\
+			if constexpr (rank == localRank /* == 2*/) {\
 				return Common::TypeWrapper<Inner>();\
 			} else {\
+				/* expand in order to work with symR/asymR storage optimizations */\
 				using O2 = typename O::template ExpandIndex<0,1>;\
 				return Common::TypeWrapper<\
 					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<2>>\
@@ -2173,9 +2176,7 @@ inline constexpr int symmetricSize(int d, int r) {
 
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
 \
-	static constexpr int localCount = symmetricSize(localDim, localRank);\
-\
-	using ScalarSumResult = _symR<Inner, localDim, localRank>;
+	static constexpr int localCount = symmetricSize(localDim, localRank);
 
 // Expand index 0 of asym^N => vec ⊗ asym^(N-1)
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
@@ -2325,6 +2326,8 @@ struct RankNAccessor {
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
+	// treat this like (rank-1) vector storage, so use vector's TensorSumResult
+	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
 	//end TENSOR_HEADER_*_SPECIFIC
 	TENSOR_EXPAND_TEMPLATE_TENSORR()
 	TENSOR_HEADER()
@@ -2398,11 +2401,44 @@ struct RankNAccessor {
 	template<typename AccessorOwnerConst, int subRank>\
 	using Accessor = RankNAccessor<AccessorOwnerConst, subRank>;
 
+#define TENSOR_TOTALLY_SYMMETRIC_ADD_SUM_RESULT()\
+\
+	using ScalarSumResult = _symR<Inner, localDim, localRank>;\
+\
+	template<typename O>\
+	requires (is_tensor_v<O>)\
+	struct TensorSumResultImpl {\
+		static constexpr auto inner() {\
+			/* do I need this condition? */\
+			if constexpr (rank == localRank) {\
+				return Common::TypeWrapper<Inner>();\
+			} else {\
+				using O2 = typename O::template ExpandIndexSeq<std::make_integer_sequence<int, localRank>>;\
+				return Common::TypeWrapper<\
+					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<localRank>>\
+				>();\
+			}\
+		}\
+		static constexpr auto value() {\
+			using I2 = typename decltype(inner())::type;\
+			if constexpr (is_symR_v<O> && O::localRank >= localRank) {\
+				return Common::TypeWrapper<_symR<I2, localDim, localRank>>();\
+			} else {\
+				return Common::TypeWrapper<_tensorr<I2, localDim, localRank>>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<typename O>\
+	requires (is_tensor_v<O> && dims() == O::dims())\
+	using TensorSumResult = typename TensorSumResultImpl<O>::type;
+
 #define TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_RANK_N_ACCESSOR()\
 	TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() /* needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS */\
 	TENSOR_ADD_OPS(_symR)\
-	TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()
+	TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
+	TENSOR_TOTALLY_SYMMETRIC_ADD_SUM_RESULT()
 
 // TODO rank restrictions ...
 // should I allow rank-2 symR's? this overlaps with _sym
@@ -2451,10 +2487,7 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
 \
-	static constexpr int localCount = antisymmetricSize(localDim, localRank);\
-\
-	/* _asymR + or - a scalar is no longer _asymR */\
-	using ScalarSumResult = _tensorr<Inner, localDim, localRank>;
+	static constexpr int localCount = antisymmetricSize(localDim, localRank);
 
 // Expand index 0 of asym^N => vec ⊗ asym^(N-1)
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
@@ -2621,11 +2654,45 @@ from my symmath/tensor/LeviCivita.lua
 \
 	TENSOR_ADD_BRACKET_FWD_TO_CALL()
 
+#define TENSOR_TOTALLY_ANTISYMMETRIC_ADD_SUM_RESULT()\
+\
+	/* _asymR + or - a scalar is no longer _asymR */\
+	using ScalarSumResult = _tensorr<Inner, localDim, localRank>;\
+\
+	template<typename O>\
+	requires (is_tensor_v<O>)\
+	struct TensorSumResultImpl {\
+		static constexpr auto inner() {\
+			/* do I need this condition? */\
+			if constexpr (rank == localRank) {\
+				return Common::TypeWrapper<Inner>();\
+			} else {\
+				using O2 = typename O::template ExpandIndexSeq<std::make_integer_sequence<int, localRank>>;\
+				return Common::TypeWrapper<\
+					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<localRank>>\
+				>();\
+			}\
+		}\
+		static constexpr auto value() {\
+			using I2 = typename decltype(inner())::type;\
+			if constexpr (is_asymR_v<O> && O::localRank >= localRank) {\
+				return Common::TypeWrapper<_asymR<I2, localDim, localRank>>();\
+			} else {\
+				return Common::TypeWrapper<_tensorr<I2, localDim, localRank>>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<typename O>\
+	requires (is_tensor_v<O> && dims() == O::dims())\
+	using TensorSumResult = typename TensorSumResultImpl<O>::type;
+
 #define TENSOR_TOTALLY_ANTISYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_RANK_N_ACCESSOR()\
 	TENSOR_TOTALLY_ANTISYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() /* needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS */\
 	TENSOR_ADD_OPS(_asymR)\
-	TENSOR_ADD_TOTALLY_ANTISYMMETRIC_CALL_INDEX()
+	TENSOR_ADD_TOTALLY_ANTISYMMETRIC_CALL_INDEX()\
+	TENSOR_TOTALLY_ANTISYMMETRIC_ADD_SUM_RESULT()
 
 template<typename Inner_, int localDim_, int localRank_>
 requires (localDim_ > 0 && localRank_ > 2)
