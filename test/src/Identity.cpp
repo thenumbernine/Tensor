@@ -97,4 +97,27 @@ void test_Identity() {
 		static_assert(std::is_same_v<decltype(R), floatI3>);
 		TEST_EQ(R, (Tensor::float3x3{{3,0,0},{0,3,0},{0,0,3}}));
 	}
+
+	// TODO should this be ident? or maybe TensorRank4?  or maybe a separate test for correct operator results?
+	{
+		using namespace Tensor;
+		auto a = _tensori<float, index_ident<3>, index_ident<3>>();
+		auto b = _tensori<float, index_ident<3>, index_ident<3>>();
+		auto c = a + b;
+		static_assert(std::is_same_v<decltype(c), _tensori<float, index_ident<3>, index_ident<3>>>);
+	}
+	{
+		using namespace Tensor;
+		auto a = _tensori<float, index_ident<3>, index_ident<3>>();
+		auto b = _tensori<float, index_ident<3>, index_sym<3>>();
+		auto c = a + b;
+		static_assert(std::is_same_v<decltype(c), _tensori<float, index_ident<3>, index_sym<3>>>);
+	}
+	{
+		using namespace Tensor;
+		auto a = _tensori<float, index_ident<3>, index_ident<3>>();
+		auto b = _tensori<float, index_ident<3>, index_asym<3>>();
+		auto c = a + b;
+		static_assert(std::is_same_v<decltype(c), _tensori<float, index_ident<3>, index_vec<3>, index_vec<3>>>);
+	}
 }
