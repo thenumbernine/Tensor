@@ -250,7 +250,7 @@ struct TensorTensorExpr {
 	static constexpr bool isIndexExprFlag = {};
 	static constexpr auto rank = A::rank;
 	using intN = _vec<int,rank>;
-	using Scalar = typename A::Scalar; // TODO which Scalar to use?
+	using Scalar = decltype(op()(typename A::Scalar(), typename B::Scalar()));
 	A const & a;
 	B const & b;
 	
@@ -282,6 +282,7 @@ TENSOR_TENSOR_EXPR_OP(/, std::divides)
 
 // tensor * tensor
 
+// TODO 
 #if 0
 template<typename A, typename B, template<typename> typename op>
 requires IsBinaryTensorOp<A, B>
@@ -312,7 +313,7 @@ struct TensorMulExpr {
 	static constexpr auto rank = RankImpl::value();
 	
 	using intN = _vec<int,rank>;
-	using Scalar = typename A::Scalar; // TODO which Scalar to use?
+	using Scalar = decltype(op()(typename A::Scalar(), typename B::Scalar()));
 	A const & a;
 	B const & b;
 	

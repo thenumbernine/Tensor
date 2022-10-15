@@ -1527,15 +1527,13 @@ constexpr int symIndex(int i, int j) {
 // symmetric matrices
 
 /*
-in all cases, use the ... lhs? of the sum.  TODO use the decltype of A::Scalar + B::Scalar
-
 when sym a_(ij) sums with ...
 vec: (of something) b_ij => mat c_ij: expand the next index
 ident b_(ij) => sym c_ij
 sym_ij => sym_ij
 asym_ij => mat_ij
-symR_ijk... =>
-asymR_ijk...
+symR_ijk... => sum_ij-of- ...
+asymR_ijk... => mat_ij-of-...
 */
 #define TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
 \
@@ -2612,7 +2610,7 @@ template<typename A, typename B>\
 requires (is_tensor_v<A> && !is_tensor_v<B>)\
 decltype(auto) operator op(A const & a, B const & b) {\
 	using AS = typename A::Scalar;\
-	using RS = decltype(AS() + B());\
+	using RS = decltype(AS() op B());\
 	using R = typename A::template ReplaceScalar<RS>;\
 	return R([&](auto... is) -> RS {\
 		return a(is...) op b;\
@@ -2623,7 +2621,7 @@ template<typename A, typename B>\
 requires (!is_tensor_v<A> && is_tensor_v<B>)\
 decltype(auto) operator op(A const & a, B const & b) {\
 	using BS = typename B::Scalar;\
-	using RS = decltype(A() + BS());\
+	using RS = decltype(A() op BS());\
 	using R = typename B::template ReplaceScalar<RS>;\
 	return R([&](auto... is) -> RS {\
 		return a op b(is...);\
@@ -2636,7 +2634,7 @@ template<typename A, typename B>\
 requires (is_tensor_v<A> && !is_tensor_v<B>)\
 decltype(auto) operator op(A const & a, B const & b) {\
 	using AS = typename A::Scalar;\
-	using RS = decltype(AS() + B());\
+	using RS = decltype(AS() op B());\
 	using R = typename A::ScalarSumResult::template ReplaceScalar<RS>;\
 	return R([&](auto... is) -> RS {\
 		return a(is...) op b;\
@@ -2647,7 +2645,7 @@ template<typename A, typename B>\
 requires (!is_tensor_v<A>, is_tensor_v<B>)\
 decltype(auto) operator op(A const & a, B const & b) {\
 	using BS = typename B::Scalar;\
-	using RS = decltype(A() + BS());\
+	using RS = decltype(A() op BS());\
 	using R = typename B::ScalarSumResult::template ReplaceScalar<RS>;\
 	return R([&](auto... is) -> RS {\
 		return a op b(is...);\
@@ -2669,7 +2667,7 @@ template<typename A, typename B>
 requires (is_tensor_v<A> && !is_tensor_v<B>)
 decltype(auto) operator /(A const & a, B const & b) {
 	using AS = typename A::Scalar;
-	using RS = decltype(AS() + B());
+	using RS = decltype(AS() / B());
 	using R = typename A::template ReplaceScalar<RS>;
 	return R([&](auto... is) -> RS {
 		return a(is...) / b;
@@ -2680,7 +2678,7 @@ template<typename A, typename B>
 requires (!is_tensor_v<A> && is_tensor_v<B>)
 decltype(auto) operator /(A const & a, B const & b) {
 	using BS = typename B::Scalar;
-	using RS = decltype(A() + BS());
+	using RS = decltype(A() / BS());
 	using R = typename B::ScalarSumResult::template ReplaceScalar<RS>;
 	return R([&](auto... is) -> RS {
 		return a / b(is...);
@@ -2701,8 +2699,10 @@ requires (\
 	&& !std::is_same_v<A, B> /* because that is caught next, until I get this to preserve storage opts...*/\
 )\
 typename A::template ExpandAllIndexes<> operator op(A const & a, B const & b) {\
-	return typename A::template ExpandAllIndexes<>(\
-		[&](auto... is) -> typename A::Scalar {\
+	using RS = decltype(typename A::Scalar() op typename B::Scalar());\
+	using R = typename A::template ExpandAllIndexes<>::template ReplaceScalar<RS>;\
+	return R(\
+		[&](auto... is) -> RS {\
 			return a(is...) op b(is...);\
 		});\
 }\
