@@ -75,7 +75,6 @@ void test_Identity() {
 		}));
 	}
 
-#if 0 //TODO
 	// sym + ident => ident
 	{
 		auto I = floatI3(1);
@@ -89,5 +88,4 @@ void test_Identity() {
 		auto R = S + I;
 		static_assert(std::is_same_v<decltype(R), Tensor::float3s3>);
 	}
-#endif
 }

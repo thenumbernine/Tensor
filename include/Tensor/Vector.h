@@ -1157,14 +1157,7 @@ Bit of a hack: MOst these are written in terms of 'This'
 	/* for vectors etc it is 's' */\
 	/* for (anti?)symmetric it is N*(N+1)/2 */\
 	/* TODO make a 'count<int nesting>', same as dim? */\
-	static constexpr int localCount = localDim;\
-\
-	/* tensor/scalar +- ops will sometimes have a different result tensor type */\
-	using ScalarSumResult = This;\
-\
-	/* tensor/tensor +- ops will sometimes have a dif result too */\
-	template<typename O>\
-	using TensorSumResult = This;
+	static constexpr int localCount = localDim;
 
 #define TENSOR_HEADER_VECTOR(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1225,6 +1218,37 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return res;\
 	}
 
+#define TENSOR_VECTOR_ADD_SUM_RESULT()\
+\
+	/* Tensor/scalar +- ops will sometimes have a different result tensor type */\
+	/* This type will contain the *structure* of the desired sum with a scalar */\
+	/* however its scalar type will still need to be replaced */\
+	using ScalarSumResult = This;\
+\
+	/* tensor/tensor +- ops will sometimes have a dif result too */\
+	/* their result is more conditional, so there's a template arg for the other type */\
+	template<typename O>\
+	/* can't use dims() cuz class not finished yet ... */\
+	/* so just assume the math operators have the dims() == condition cuz they do */\
+	requires (is_tensor_v<O> /* && dims() == O::dims()*/)\
+	struct TensorSumResultImpl {\
+		static constexpr auto inner() {\
+			if constexpr (rank == 1) {\
+				return Common::TypeWrapper<Inner>();\
+			} else {\
+				return Common::TypeWrapper<\
+					typename Inner::template TensorSumResult<typename O::Inner>\
+				>();\
+			}\
+		}\
+		static constexpr auto value() {\
+			using I1 = typename decltype(inner())::type;\
+			return Common::TypeWrapper<_vec<I1, localDim>>();\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<typename O>\
+	using TensorSumResult = typename TensorSumResultImpl<O>::type;
 
 // only add these to _vec and specializations
 // ... so ... 'classname' is always '_vec' for this set of macros
@@ -1235,7 +1259,8 @@ Bit of a hack: MOst these are written in terms of 'This'
 	TENSOR_ADD_RANK1_CALL_INDEX_AUX() /* operator(int, int...), operator[] */\
 	TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	TENSOR_ADD_SUBSET_ACCESS()\
-	TENSOR_ADD_VOLUME()
+	TENSOR_ADD_VOLUME()\
+	TENSOR_VECTOR_ADD_SUM_RESULT()
 
 
 // type of a tensor with specific rank and dimension (for all indexes)
@@ -1532,86 +1557,12 @@ vec: (of something) b_ij => mat c_ij: expand the next index
 ident b_(ij) => sym c_ij
 sym_ij => sym_ij
 asym_ij => mat_ij
-symR_ijk... => sum_ij-of- ...
-asymR_ijk... => mat_ij-of-...
+symR_ijk... => sum_ij-of-{vec,sym,symR} (based on # remaining indexes)}
+asymR_ijk... => mat_ij-of-{vec,asym,asymR} "
 */
 #define TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
 \
-	static constexpr int localCount = triangleSize(localDim);\
-\
-	using ScalarSumResult = This;
-
-#if 0 // TODO this gets complicated
-	template<typename O>\
-	struct TensorSumResultImpl {\
-		static constexpr auto value() {\
-			if constexpr (is_vec_v<O> || is_asym_v<O>) {\
-				return TypeWrapper<_mat<Inner, localDim>>();\
-			} else if constexpr (is_ident_v<O> || is_sym_v<O>) {\
-				return TypeWrapper<This>(); /* keep _sym */\
-			} else if constexpr (is_symR_v<O>) {\
-				/* a_(ij)k + b_(ijk) = c_(ij)k */\
-				if constexpr (O::localRank == 3) {\
-					return TypeWrapper<\
-						_sym<\
-							_vec<typename O::Inner, O::localDim>,\
-							O::localDim\
-						>::template ReplaceScalar<Scalar>\
-					>();\
-				/* a_(ij)kl + b_(ijkl) = c_(ij)kl */\
-				} else if constexpr (O::localRank == 4) {\
-					return TypeWrapper<\
-						_tensorr<\
-							_asym<typename O::Inner, O::localDim>,\
-							O::localDim,\
-							2\
-						>::template ReplaceScalar<Scalar>\
-					>();\
-				/* a_(ij)klm + b_(ijklm) = c_(ij)(klm) */\
-				} else {\
-					return TypeWrapper<\
-						_tensorr<\
-							_asymR<typename O::Inner, O::localDim, O::localRank-2>,\
-							O::localDim,\
-							2\
-						>::template ReplaceScalar<Scalar>\
-					>();\
-				}\
-			} else if constexpr (is_asymR_v<O>) {\
-				if constexpr (O::localRank == 3) {\
-					return TypeWrapper<\
-						_tensorr<\
-							typename O::Inner,\
-							O::localDim,\
-							3\
-						>::template ReplaceScalar<Scalar>\
-					>();\
-				} else if constexpr (O::localRank == 4) {\
-					return TypeWrapper<\
-						_tensorr<\
-							_asym<typename O::Inner, O::localDim>,\
-							O::localDim,\
-							2\
-						>::template ReplaceScalar<Scalar>\
-					>();\
-				} else {\
-					return TypeWrapper<\
-						_tensorr<\
-							_asymR<typename O::Inner, O::localDim, O::localRank-2>,\
-							O::localDim,\
-							2\
-						>::template ReplaceScalar<Scalar>\
-					>();\
-				}\
-			} else {\
-				throw Common::Exception() << "don't know how to add this type";\
-			}\
-		}\
-		using type = typename decltype(value())::type;\
-	};\
-	template<typename O>\
-	using TensorSumResult = typename TensorSumResultImpl<O>::type;
-#endif
+	static constexpr int localCount = triangleSize(localDim);
 
 #define TENSOR_HEADER_SYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1681,7 +1632,8 @@ struct Rank2Accessor {
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
-	template<typename O> using TensorSumResult = _vec<Inner, localDim>;
+	// treat this like a vector, so use vector's TensorSumResult
+	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
 	//end TENSOR_HEADER_*_SPECIFIC
 	TENSOR_EXPAND_TEMPLATE_TENSORR()
 	TENSOR_HEADER()
@@ -1712,6 +1664,45 @@ struct Rank2Accessor {
 	template<typename AccessorOwnerConst>\
 	using Accessor = Rank2Accessor<AccessorOwnerConst>;
 
+#define TENSOR_SYMMETRIC_MATRIX_ADD_SUM_RESULT()\
+\
+	using ScalarSumResult = This;\
+\
+	template<typename O>\
+	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
+	struct TensorSumResultImpl {\
+		static constexpr auto inner() {\
+			/* do I need this condition? */\
+			if constexpr (rank == 2) {\
+				return Common::TypeWrapper<Inner>();\
+			} else {\
+				/* expand the matching 0 and 1 indexes in the 'other' type */\
+				/* TODO right now I have symR Expand optimized to symR if expanding the end indexes */\
+				/*  so this means make sure to expand the 1st index 1st or you might risk turning symR into tensorr */\
+				using O2 = typename O::template ExpandIndex<0,1>;\
+				/* then get its inner past the expanded index (and apply it to the recursive case) */\
+				return Common::TypeWrapper<\
+					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<2>>\
+				>();\
+			}\
+		}\
+		static constexpr auto value() {\
+			using I2 = typename decltype(inner())::type;\
+			if constexpr (is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
+				return Common::TypeWrapper<_sym<I2, localDim>>();\
+			} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
+				return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+			} else {\
+				/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
+				return Common::TypeWrapper<void>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<typename O>\
+	requires (is_tensor_v<O> && dims() == O::dims())\
+	using TensorSumResult = typename TensorSumResultImpl<O>::type;
+
 /*
 for the call index operator
 a 1-param is incomplete, so it should return an accessor (same as operator[])
@@ -1725,7 +1716,8 @@ so the accessors need nested call indexing too
 	TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
-	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
+	TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
+	TENSOR_SYMMETRIC_MATRIX_ADD_SUM_RESULT()
 
 template<typename Inner_, int localDim_>
 requires (localDim_ > 0)
@@ -1842,23 +1834,21 @@ struct _sym<Inner_, 4> {
 
 #define TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
 \
-	static constexpr int localCount = 1;\
-\
-	using ScalarSumResult = _sym<Inner, localDim>;
+	static constexpr int localCount = 1;
 
 #if 0
 	template<typename O>\
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
 			if constexpr (is_ident_v<O>) {\
-				return TypeWrapper<This>();\
+				return Common::TypeWrapper<This>();\
 			} else if constexpr (is_sym_v<O>) {\
-				return TypeWrapper<O::template ReplaceScalar<Scalar>>();\
+				return Common::TypeWrapper<O::template ReplaceScalar<Scalar>>();\
 			} else if constexpr (is_symR_v<O>) {\
-				return TypeWrapper<O::template ReplaceScalar<Scalar>>();\
+				return Common::TypeWrapper<O::template ReplaceScalar<Scalar>>();\
 			} else if constexpr (is_asymR_v<O>) {\
 				if constexpr (O::localRank == 3) {\
-					return TypeWrapper<\
+					return Common::TypeWrapper<\
 						_tensorr<\
 							typename O::Inner,\
 							O::localDim,\
@@ -1866,7 +1856,7 @@ struct _sym<Inner_, 4> {
 						>::template ReplaceScalar<Scalar>\
 					>();\
 				} else if constexpr (O::localRank == 4) {\
-					return TypeWrapper<\
+					return Common::TypeWrapper<\
 						_tensorr<\
 							_asym<typename O::Inner, O::localDim>,\
 							O::localDim,\
@@ -1874,7 +1864,7 @@ struct _sym<Inner_, 4> {
 						>::template ReplaceScalar<Scalar>\
 					>();\
 				} else {\
-					return TypeWrapper<\
+					return Common::TypeWrapper<\
 						_tensorr<\
 							_asymR<typename O::Inner, O::localDim, O::localRank-2>,\
 							O::localDim,\
@@ -1883,7 +1873,7 @@ struct _sym<Inner_, 4> {
 					>();\
 				}\
 			} else {\
-				return TypeWrapper<_tensorr<Inner, localDim, 2>>();\
+				return Common::TypeWrapper<_tensorr<Inner, localDim, 2>>();\
 			}\
 		}\
 		using type = typename decltype(value())::type;\
@@ -1924,12 +1914,50 @@ struct _sym<Inner_, 4> {
 		return 0;\
 	}
 
+#define TENSOR_IDENTITY_MATRIX_ADD_SUM_RESULT()\
+\
+	using ScalarSumResult = _sym<Inner, localDim>;\
+\
+	template<typename O>\
+	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
+	struct TensorSumResultImpl {\
+		static constexpr auto inner() {\
+			/* do I need this condition? */\
+			if constexpr (rank == 2) {\
+				return Common::TypeWrapper<Inner>();\
+			} else {\
+				using O2 = typename O::template ExpandIndex<0,1>;\
+				return Common::TypeWrapper<\
+					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<2>>\
+				>();\
+			}\
+		}\
+		static constexpr auto value() {\
+			using I2 = typename decltype(inner())::type;\
+			if constexpr (is_ident_v<O>) {\
+				return Common::TypeWrapper<_ident<I2, localDim>>();\
+			} else if constexpr (is_sym_v<O> || is_symR_v<O>) {\
+				return Common::TypeWrapper<_sym<I2, localDim>>();\
+			} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
+				return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+			} else {\
+				/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
+				return Common::TypeWrapper<void>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<typename O>\
+	requires (is_tensor_v<O> && dims() == O::dims())\
+	using TensorSumResult = typename TensorSumResultImpl<O>::type;
+
 #define TENSOR_IDENTITY_MATRIX_CLASS_OPS(classname)\
 	TENSOR_ADD_RANK2_ACCESSOR()\
 	TENSOR_IDENTITY_MATRIX_LOCAL_READ_FOR_WRITE_INDEX() /* also works for Identity ... also any rank-2? */\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
-	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
+	TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
+	TENSOR_IDENTITY_MATRIX_ADD_SUM_RESULT()
 
 //technically dim doesn't matter for storage, but it does for tensor operations
 template<typename Inner_, int localDim_>
@@ -1948,10 +1976,7 @@ struct _ident {
 
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
 \
-	static constexpr int localCount = triangleSize(localDim - 1);\
-\
-	/* _asym + or - a scalar is no longer _asym */\
-	using ScalarSumResult = _tensorr<Inner, localDim, 2>;
+	static constexpr int localCount = triangleSize(localDim - 1);
 
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1998,12 +2023,49 @@ struct _ident {
 		return iread;\
 	}
 
+#define TENSOR_ANTISYMMETRIC_MATRIX_ADD_SUM_RESULT()\
+\
+	/* _asym + or - a scalar is no longer _asym */\
+	using ScalarSumResult = _tensorr<Inner, localDim, 2>;\
+\
+	template<typename O>\
+	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
+	struct TensorSumResultImpl {\
+		static constexpr auto inner() {\
+			/* do I need this condition? */\
+			if constexpr (rank == 2) {\
+				return Common::TypeWrapper<Inner>();\
+			} else {\
+				using O2 = typename O::template ExpandIndex<0,1>;\
+				return Common::TypeWrapper<\
+					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<2>>\
+				>();\
+			}\
+		}\
+		static constexpr auto value() {\
+			using I2 = typename decltype(inner())::type;\
+			if constexpr (is_asym_v<O> || is_asymR_v<O>) {\
+				return Common::TypeWrapper<_asym<I2, localDim>>();\
+			} else if constexpr (is_vec_v<O> || is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
+				return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+			} else {\
+				/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
+				return Common::TypeWrapper<void>();\
+			}\
+		}\
+		using type = typename decltype(value())::type;\
+	};\
+	template<typename O>\
+	requires (is_tensor_v<O> && dims() == O::dims())\
+	using TensorSumResult = typename TensorSumResultImpl<O>::type;
+
 #define TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(classname)\
 	TENSOR_ADD_RANK2_ACCESSOR()\
 	TENSOR_ANTISYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
-	TENSOR_ADD_RANK2_CALL_INDEX_AUX()
+	TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
+	TENSOR_ANTISYMMETRIC_MATRIX_ADD_SUM_RESULT()
 
 /*
 for asym because I need to return reference-wrappers to support the + vs - depending on the index
@@ -2642,7 +2704,7 @@ decltype(auto) operator op(A const & a, B const & b) {\
 }\
 \
 template<typename A, typename B>\
-requires (!is_tensor_v<A>, is_tensor_v<B>)\
+requires (!is_tensor_v<A> && is_tensor_v<B>)\
 decltype(auto) operator op(A const & a, B const & b) {\
 	using BS = typename B::Scalar;\
 	using RS = decltype(A() op BS());\
@@ -2698,9 +2760,9 @@ requires (\
 	&& A::dims() == B::dims()\
 	&& !std::is_same_v<A, B> /* because that is caught next, until I get this to preserve storage opts...*/\
 )\
-typename A::template ExpandAllIndexes<> operator op(A const & a, B const & b) {\
+decltype(auto) operator op(A const & a, B const & b) {\
 	using RS = decltype(typename A::Scalar() op typename B::Scalar());\
-	using R = typename A::template ExpandAllIndexes<>::template ReplaceScalar<RS>;\
+	using R = typename A::template TensorSumResult<B>::template ReplaceScalar<RS>;\
 	return R(\
 		[&](auto... is) -> RS {\
 			return a(is...) op b(is...);\
