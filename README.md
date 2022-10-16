@@ -37,7 +37,7 @@ float3 cross(float3 a, float3 b) {
 Same thing but using exterior algebra:
 ```c++
 float3 cross(float3 a, float3 b) {
-	auto c = wedge(a,b);	// returns a 3x3 antisymmetric, storing only 3 floats
+	auto c = a.wedge(b);	// returns a 3x3 antisymmetric, storing only 3 floats
 	return hodgeDual(c);	// maps those 3 antisymmetric rank-2 floats onto 3 rank-1 floats
 }
 ```
@@ -54,6 +54,18 @@ float2x3 basis(float3 n) {
 			: ((sq.y > sq.z) ? d.y : d.z)
 		).normalize();
 	return float2x3({n2, n.cross(n2)});
+}
+```
+
+Example of using the Hodge dual to compute the inner product:
+```c++
+auto inner(auto const & a, auto const & b) 
+//here 'isSquare' means all dimension sizes match
+requires (a.dims() == b.dims() && a.isSquare && b.isSquare)
+{
+	auto bstar = b.hodgeDual();	//totally-antisymmetric tensors are space-optimized, so the storage of bstar will always be < the storage of b
+	auto c = a.wedge(bstar);	//at this point c should be a n-form for dimension n, which will take up a single numeric value (while representing n distinct tensor indexes)
+	return c.hodgeDual();		//return c's dual, which is a scalar
 }
 ```
 
@@ -453,6 +465,11 @@ TODO:
 	- dimension check at compile-time
 	- dimension-matching at compile-time
 	- and from that, index-multiply
+
+- make innerForIndexSeq which is a sequence mapping index to nesting #
+- make 'dimseq' which is a sequence of nested index dimensions.
+  - then construct dims() from it
+- maybe make a lot of other helper templates into just save all possible as a tuple/sequence, and getter for single elements.
 
 - C++23 operator[] can be variadic.
 	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().

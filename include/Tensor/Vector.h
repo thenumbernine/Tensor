@@ -118,36 +118,129 @@ namespace Tensor {
 	template<int index>\
 	using ExpandTensorRankTemplate = _tensorr<Inner, localDim, localRank>;
 
-#if 0
-/*
-ok I enjoyed the model of inner classes that look like:
-template<...> struct ... {
-	static constexpr auto value() {
-		if constexpr (cond1) {
-			return Common::TypeWrapper<type1>();
-		} else if constexpr (cond2) {
-			return Common::TypeWrapper<type2>();
-		} else ...
-	}
-	using type = typename decltype(value())::type;
+// not sure if I need these yet ...
+
+template<typename... T>
+using tuple_cat_t = decltype(std::tuple_cat(T()...));
+
+// https://stackoverflow.com/a/14852674
+template<size_t I, typename T>
+struct tuple_remove {};
+template<typename T, typename... Ts>
+struct tuple_remove<0, std::tuple<T, Ts...>> {
+	typedef std::tuple<Ts...> type;
 };
-... but the compile times are ridiculously slow, and I suspect this might be one reason why.
-Also with gdb it will actually list out all these inner classes, which makes debugging a pain (good thing lldb doesn't).
-*/
-namespace details {
+template<size_t I, typename T, typename... Ts>
+struct tuple_remove<I, std::tuple<T, Ts...>> {
+	using type = decltype(tuple_cat(
+		std::declval<std::tuple<T>>(),
+		std::declval<typename tuple_remove<I - 1, std::tuple<Ts...>>::type>()
+	));
+};
+template<size_t I, typename T>
+using tuple_remove_t = typename tuple_remove<I, T>::type;
 
 template<typename T>
-struct ScalarImpl {
+using tuple_remove_last_t = tuple_remove_t<std::tuple_size_v<T>-1, T>;
+
+
+template<typename T, template<typename> typename F>
+struct TupleTypeMapImpl;
+template<typename T, typename... Ts, template<typename> typename F>
+struct TupleTypeMapImpl<std::tuple<T, Ts...>, F> {
+	using type = tuple_cat_t<
+		std::tuple<F<T>>,
+		typename TupleTypeMapImpl<std::tuple<Ts...>, F>::type
+	>;
+};
+template<template<typename> typename F>
+struct TupleTypeMapImpl<std::tuple<>, F> {
+	using type = std::tuple<>;
+};
+template<typename T, template<typename> typename F>
+using TupleTypeMap = typename TupleTypeMapImpl<T, F>::type;
+
+//apply successive types
+template<typename T, template<typename> typename... Fs>
+struct TupleTypeMapsImpl;
+template<typename T, template<typename> typename F, template<typename> typename... Fs>
+struct TupleTypeMapsImpl<T, F, Fs...> {
+	using type = typename TupleTypeMapsImpl<TupleTypeMap<T, F>, Fs...>::type;
+};
+template<typename T>
+struct TupleTypeMapsImpl<T> {
 	using type = T;
 };
+template<typename T, template<typename> typename... Fs>
+using TupleTypeMaps = typename TupleTypeMapsImpl<T, Fs...>::type;
+
 template<typename T>
-requires is_tensor_v<T> // or TODO 'requires has_Scalar_v` ?
-struct ScalarImpl<T> {
-	using type = typename ScalarImpl<typename T::Inner>::type;
+using RepPtrByLocalRank = Common::tuple_rep_t<T, std::remove_pointer_t<T>::localRank>;
+
+// tuple to sequence map
+// can't seem to pass "template<typename> int F", so F must be a class with a ::value whose type matches integer_sequence type I
+template<typename I, typename Tuple, template<typename> typename F>
+struct TupleToSeqMapImpl;
+template<typename I, typename T, typename... Ts, template<typename> typename F>
+struct TupleToSeqMapImpl<I, std::tuple<T, Ts...>, F> {
+	using type = Common::seq_cat_t<
+		std::integer_sequence<I, F<T>::value>,
+		typename TupleToSeqMapImpl<I, std::tuple<Ts...>, F>::type
+	>;
+};
+template<typename I, template<typename> typename F>
+struct TupleToSeqMapImpl<I, std::tuple<>, F> {
+	using type = std::integer_sequence<I>;
+};
+template<typename I, typename T, template<typename> typename F>
+using TupleToSeqMap = typename TupleToSeqMapImpl<I, T, F>::type;
+
+
+// apply tuple arguments to a templated type
+template<template<typename...> typename F, typename TupleOfArgs>
+struct tuple_apply_impl;
+template<template<typename...> typename F, typename... Args>
+struct tuple_apply_impl<F, std::tuple<Args...>> {
+	using type = F<Args...>;
+};
+template<template<typename...> typename F, typename TupleOfArgs>
+using tuple_apply_t = typename tuple_apply_impl<F, TupleOfArgs>::type;
+
+template<typename T>
+struct GetPtrLocalDim {
+	static constexpr int value = std::remove_pointer_t<T>::localDim;
 };
 
+template<typename T>
+struct GetPtrLocalCount {
+	static constexpr int value = std::remove_pointer_t<T>::localCount;
+};
+
+// TODO Common/Sequence.h
+//https://stackoverflow.com/a/55247213
+template<typename T, T... Args>
+constexpr T seq_sum(std::integer_sequence<T, Args...> = {}) {
+	return (Args + ... + (0));
 }
-#endif
+template<typename T, T... Args>
+constexpr T seq_product(std::integer_sequence<T, Args...> = {}) {
+	return (Args * ... * (1));
+}
+
+// for the templated ForLoop ctor
+struct ForLoopBodyBase {};
+
+template<typename Src, typename Dst>
+requires (Src::rank == Dst::totalCount)
+struct BuildFromDim : public ForLoopBodyBase {
+	template<int i>
+	struct Loop {
+		static constexpr bool exec(Dst & t) {
+			t.s[i] = Src::template dim<i>;
+			return false;
+		}
+	};
+};
 
 /*
 This contains definitions of types and values used in all tensors.
@@ -174,39 +267,108 @@ InnerForIndex<int>
 dim<int>
 dims
 ReplaceScalar<typename>
+
+new idea
+NestedPtrTuple = tuple of all nested classes, as ptrs so I can use This while defining it within the class.
+Nested<i> = i'th getter of NestedPtrTuple
+numNestings = tuple_size_v<NestedPtrTuple> - 1 for scalar
+dimseq = each NestedPtrTuple's localDim => seq_rep x localRank => apply to seq_cat_t
+rank = tuple_size_v of dimseq
+dim<i> = 'th getter of dimseq
+Scalar = NestedPtrTuple's last
 */
 #define TENSOR_HEADER()\
 \
 	/* TENSOR_HEADER goes right after the struct-specific header which defines localCount...*/\
 	static_assert(localCount > 0);\
 \
-	/*  this is the child-most nested class that isn't in our math library. */\
-	struct ScalarImpl {\
+	/* The types have to be ptrs so I can use 'This' class */\
+	/* Would be nice to just collect all inner-based templates in a tuple, and have something for succively applying them to produce this tuple. */\
+	/* It would have to excludes Scalar cuz thats the arg -- pass Scalar separately into the tuple-application mechanism */\
+	/* Sadly a template can't go in a tuple ... so intead you gotta just map the NestedPtrTuple's types's ReplaceInner<> templates when you want them */\
+	struct NestedPtrTupleImpl {\
 		static constexpr auto value() {\
 			if constexpr (is_tensor_v<Inner>) {\
-				return Inner::ScalarImpl::value();\
+				return std::tuple_cat(\
+					std::tuple<This*>(),\
+					Inner::NestedPtrTupleImpl::value()\
+				);\
 			} else {\
-				return Common::TypeWrapper<Inner>();\
+				/* while I am at the base of the chain, grab Scalar*/\
+				return std::tuple<This*, Inner*>();\
 			}\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = decltype(value());\
 	};\
-	using Scalar = typename ScalarImpl::type;\
+	using NestedPtrTuple = typename NestedPtrTupleImpl::type;\
+\
+	/* for when you just want to work with the nested tensors, and not the final scalar */\
+	using NestedPtrTensorTuple = tuple_remove_last_t<NestedPtrTuple>;\
+\
+	using Scalar = typename std::remove_pointer_t<std::tuple_element_t<std::tuple_size_v<NestedPtrTuple>-1, NestedPtrTuple>>;\
 \
 	/* how many _vec<_vec<...'s there are ... no extra +'s for multi-rank nestings */\
 	/* so _sym<> has numNestings=1 and rank=2, _vec<> has numNestings=1 and rank=1, _vec_vec<>>==_mat<> has numNestings=2 and rank=2 */\
-	struct NumNestingImpl {\
-		static constexpr int value() {\
-			if constexpr (is_tensor_v<Inner>) {\
-				return 1 + Inner::NumNestingImpl::value();\
-			} else {\
-				return 1;\
-			}\
-		};\
-	};\
-	static constexpr int numNestings = NumNestingImpl::value();\
+	static constexpr int numNestings = std::tuple_size_v<NestedPtrTensorTuple>;\
 \
+	/* Get the i'th nested type */\
+	template<int i>\
+	using Nested = typename std::remove_pointer_t<std::tuple_element_t<i, NestedPtrTuple>>;\
+\
+	using countseq = TupleToSeqMap<int, NestedPtrTensorTuple, GetPtrLocalCount>;\
+\
+	/* Get the i'th nesting's count aka storage size */\
+	template<int i>\
+	static constexpr int count = Nested<i>::localCount;\
+	/*static constexpr int count = Common::seq_get_v<i, countseq>;*/\
+\
+	static constexpr int totalCount = seq_product(countseq());\
+\
+	/* same idea as in NestedPtrTensorTuple, but members are duplicated for their localRank */\
+	/* so that it is correlated with tensor index instead of nesting */\
+	using InnerPtrTensorTuple = tuple_apply_t<tuple_cat_t, TupleTypeMap<NestedPtrTensorTuple, RepPtrByLocalRank>>;\
+\
+	/* Just like NestedPtrTuple vs NestedPtrTensorTuple, */\
+	/* and for the sake of InnerForIndex, I'm appending Scalar once again */\
+	using InnerPtrTuple = tuple_cat_t<InnerPtrTensorTuple, std::tuple<Scalar*>>;\
+\
+	/* TODO rename 'Inner' => 'LocalInner' and rename 'InnerForIndex' to just 'Inner' ? */\
+	template<int index>\
+	using InnerForIndex = typename std::remove_pointer_t<std::tuple_element_t<(size_t)index, InnerPtrTuple>>;\
+\
+	/* int sequence of dimensions */\
+	using dimseq = TupleToSeqMap<int, InnerPtrTensorTuple, GetPtrLocalDim>;\
+\
+	template<int index>\
+	static constexpr int dim = Common::seq_get_v<index, dimseq>;\
+	/*static constexpr int dim = InnerForIndex<index>::localDim;*/\
+\
+	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
+	/*  for vectors-of-vectors this is the nesting. */\
+	/*  if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each. */\
+	static constexpr int rank = std::tuple_size_v<InnerPtrTensorTuple>;\
+\
+	/* used for vector-dereferencing into the tensor. */\
+	using intN = _vec<int,rank>;\
+\
+	/* used for write-iterators and converting write-iterator indexes to read index vectors */\
+	using intW = _vec<int,numNestings>;\
+\
+	/* used for getLocalReadForWriteIndex() return type */\
+	/* and ofc the write local index is always 1 */\
+	using intNLocal = _vec<int,localRank>;\
+\
+	/* This needs to be a function because if it was a constexpr value then the compiler would complain that DimsImpl is using _vec<int,1> before it is defined.*/\
+	/* I can circumvent that error by having rank-1 _vec's have a dims == int instead of _vec<int> ... and then i get dims as a value instead of function, and all is well */\
+	/*  except that makes me need to write conditional code everywhere for rank-1 and rank>1 dims */\
+	static constexpr intN dims() { return intN(BuildFromDim<This, intN>()); }\
+\
+	/* TODO alternative for indexForNesting: */\
+	/* get a sequence of the local-rank for the respective nesting ... then make a sequence of the sum-of-sequence */\
+	/*using NestedLocalRankSeq = TupleTypeMaps<NestedPtrTensorTuple, RemovePtr, GetLocalRank>*/\
+	/*using NestedLocalRankSeq = std::make_index_sequence<numNestings>*/\
 	/* Get the first index that this nesting represents. */\
+	/* Same as the sum of all prior nestings' localRanks */\
 	template<int nest>\
 	struct IndexForNestingImpl {\
 		static constexpr int value() {\
@@ -221,22 +383,6 @@ ReplaceScalar<typename>
 	};\
 	template<int nest>\
 	static constexpr int indexForNesting = IndexForNestingImpl<nest>::value();\
-\
-	/*  this is the rank/degree/index/number of letter-indexes of your tensor. */\
-	/*  for vectors-of-vectors this is the nesting. */\
-	/*  if you use any (anti?)symmetric then those take up 2 ranks / 2 indexes each instead of 1-rank each. */\
-	/**/\
-	static constexpr int rank = indexForNesting<numNestings>;\
-\
-	/* used for vector-dereferencing into the tensor. */\
-	using intN = _vec<int,rank>;\
-\
-	/* used for write-iterators and converting write-iterator indexes to read index vectors */\
-	using intW = _vec<int,numNestings>;\
-\
-	/* used for getLocalReadForWriteIndex() return type */\
-	/* and ofc the write local index is always 1 */\
-	using intNLocal = _vec<int,localRank>;\
 \
 	template<int i, typename NewNestedInner>\
 	struct ReplaceNestedImpl {\
@@ -387,26 +533,6 @@ ReplaceScalar<typename>
 	template<int index, int newDim>\
 	using ReplaceDim = typename ReplaceDimImpl<index, newDim>::type;\
 \
-	template<int index>\
-	struct NestedImpl {\
-		static constexpr auto value() {\
-			static_assert(index >= 0);\
-			if constexpr (index >= numNestings) {\
-				return Common::TypeWrapper<Scalar>();\
-			} else if constexpr (index == 0) {\
-				return Common::TypeWrapper<This>();\
-			} else {\
-				return Inner::template NestedImpl<index-1>::value();\
-			}\
-		}\
-		using type = typename decltype(value())::type;\
-	};\
-	template<int index>\
-	using Nested = typename NestedImpl<index>::type;\
-\
-	template<int i>\
-	static constexpr int count = Nested<i>::localCount;\
-\
 	/* get the number of nestings to the j'th index */\
 	template<int index>\
 	struct NestingForIndexImpl {\
@@ -425,50 +551,6 @@ ReplaceScalar<typename>
 	};\
 	template<int index>\
 	static constexpr int numNestingsToIndex = NestingForIndexImpl<index>::value();\
-\
-	/* todo just 'Inner' and Inner => 'LocalInner' ? */\
-	template<int index>\
-	using InnerForIndex = Nested<numNestingsToIndex<index>>;\
-\
-	template<int index>\
-	static constexpr int dim = InnerForIndex<index>::localDim;\
-\
-	/* .. then for loop iterator in dims() function and just a single exceptional case in the dims() function is needed */\
-	struct DimsImpl {\
-		template<int i>\
-		struct AssignLocalDim {\
-			static constexpr bool exec(int * dims) {\
-				dims[i] = localDim;\
-				return false;\
-			}\
-		};\
-		static constexpr intN value() {\
-			/* use an int[localDim] cuz can't use non-literal type */\
-			intN dimv;\
-			/* template-metaprogram constexpr for-loop. */\
-			Common::ForLoop<0, localRank, AssignLocalDim>::exec(dimv.s.data());\
-			/* TODO can I change the template unroll metaprogram to use constexpr lambdas? */\
-			/*static_foreach<localRank>([&dimv](int i) constexpr {\
-				dimv.s[i] = localDim;\
-			});*/\
-			/*for (int i = 0; i < localRank; ++i) {\
-				dimv.s[i] = localDim;\
-			}*/\
-			if constexpr (localRank < rank) {\
-				/* assigning sub-vector */\
-				auto innerDim = Inner::DimsImpl::value();\
-				for (int i = 0; i < rank-localRank; ++i) {\
-					dimv.s[i+localRank] = innerDim.s[i];\
-				}\
-			}\
-			return dimv;\
-		}\
-	};\
-	/* This needs to be a function because if it was a constexpr value then the compiler would complain that DimsImpl is using _vec<int,1> before it is defined.*/\
-	/* I can circumvent that error by having rank-1 _vec's have a dims == int instead of _vec<int> ... and then i get dims as a value instead of function, and all is well */\
-	/*  except that makes me need to write conditional code everywhere for rank-1 and rank>1 dims */\
-	static constexpr intN dims() { return DimsImpl::value(); }\
-	/* TODO index_sequence of dims? */\
 \
 	struct IsSquareImpl {\
 		static constexpr bool value() {\
@@ -676,6 +758,14 @@ ReplaceScalar<typename>
 				*i = Scalar();\
 			}\
 		}\
+	}\
+\
+	/* because constexpr lambdas args still can't be used as template parameters */\
+	/* TODO convert the iterator to an intW then to an intN, then pass to the callback */\
+	template<typename ForLoopBody>\
+	requires std::is_base_of_v<ForLoopBodyBase, ForLoopBody>\
+	constexpr classname(ForLoopBody = {}) {\
+		Common::ForLoop<0, totalCount, ForLoopBody::template Loop>::exec(*this);\
 	}
 
 // lambda ctor

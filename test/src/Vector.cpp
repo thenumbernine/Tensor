@@ -1,5 +1,10 @@
 #include "Test/Test.h"
 
+STATIC_ASSERT_EQ(Tensor::int3::dim<0>, 3);
+STATIC_ASSERT_EQ(Tensor::int3::rank, 1);
+STATIC_ASSERT_EQ((Common::seq_get_v<0, typename Tensor::int3::dimseq>), 3);
+STATIC_ASSERT_EQ(Tensor::int3::totalCount, 3);
+
 void test_Vector() {
 	//vector
 

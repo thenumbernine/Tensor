@@ -119,6 +119,17 @@ struct IndexAccess {
 	using This = IndexAccess;
 	using TensorType = TensorType_;
 	using IndexTuple = IndexTuple_;	// std::tuple<Index<char>... >
+	
+	/*
+	TODO HERE before rank is established,
+	need to find duplicate indexes and flag them as sum indexes
+	then the rank is going to be whats left
+	*/
+	//using SumIndexes = GatherSumIndexes<IndexTuple>;	//pairs of offsets into IndexTuple
+	//using AssignIndexes = GatherAssignIndexes<IndexTuple>; //offsets into IndexTuple of non-summed indexes
+	//static constexpr rank = std::tuple_size_v<AssignIndexes>;
+	//using dims = MapValues<AssignIndexes, TensorType::dimSeq>;
+
 	static constexpr auto rank = TensorType::rank;
 	using intN = _vec<int, rank>;
 	using Scalar = typename TensorType::Scalar;
@@ -142,11 +153,13 @@ struct IndexAccess {
 	}
 
 	template<typename B>
+	requires is_IndexExpr_v<B>
 	IndexAccess & operator=(B const & read) {
 		doAssign<B>(read);
 		return *this;
 	}
 	template<typename B>
+	requires is_IndexExpr_v<B>
 	IndexAccess & operator=(B && read) {
 		doAssign<B>(std::forward<B>(read));
 		return *this;
@@ -192,6 +205,9 @@ struct IndexAccess {
 
 	template<typename DstIndexTuple>
 	static constexpr intN getIndex(intN const & i) {
+		
+		/*
+		*/
 		//TODO this in compile time
 		// that would mean compile-time dereferences
 		// which would mean no longer dereferencing by int vectors but instead by compile-time parameter packs

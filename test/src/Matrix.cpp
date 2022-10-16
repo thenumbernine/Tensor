@@ -1,5 +1,37 @@
 #include "Test/Test.h"
 
+namespace Test {
+	using namespace Common;
+	using namespace Tensor;
+	using namespace std;
+	static_assert(tuple_size_v<float3x3::InnerPtrTensorTuple> == 2);
+	static_assert(is_same_v<
+		tuple_element_t<0, float3x3::InnerPtrTensorTuple>,
+		float3x3*
+	>);
+	static_assert(is_same_v<
+		tuple_element_t<1, float3x3::InnerPtrTensorTuple>,
+		float3*
+	>);
+	static_assert(tuple_size_v<float3x3::InnerPtrTuple> == 3);
+	static_assert(is_same_v<
+		tuple_element_t<0, float3x3::InnerPtrTuple>,
+		float3x3*
+	>);
+	static_assert(is_same_v<
+		tuple_element_t<1, float3x3::InnerPtrTuple>,
+		float3*
+	>);
+	static_assert(is_same_v<
+		tuple_element_t<2, float3x3::InnerPtrTuple>,
+		float*
+	>);
+	static_assert(float3x3::dimseq::size() == std::tuple_size_v<float3x3::InnerPtrTensorTuple>);
+	static_assert(float3x3::dimseq::size() == float3x3::rank);
+	STATIC_ASSERT_EQ((seq_get_v<0, float3x3::dimseq>), 3);
+	STATIC_ASSERT_EQ((seq_get_v<1, float3x3::dimseq>), 3);
+}
+
 void test_Matrix() {	
 	// matrix
 	
@@ -11,13 +43,13 @@ void test_Matrix() {
 	};
 	
 	//dims and rank.  really these are static_assert's, except dims, but it could be, but I'd have to constexpr some things ...
-	static_assert(m.rank == 2);
-	static_assert(m.dim<0> == 3);
-	static_assert(m.dim<1> == 3);
+	STATIC_ASSERT_EQ(m.rank, 2);
+	STATIC_ASSERT_EQ((m.dim<0>), 3);
+	STATIC_ASSERT_EQ((m.dim<1>), 3);
 	TEST_EQ(m.dims(), Tensor::int2(3,3));
-	static_assert(m.numNestings == 2);
-	static_assert(m.count<0> == 3);
-	static_assert(m.count<1> == 3);
+	STATIC_ASSERT_EQ(m.numNestings, 2);
+	STATIC_ASSERT_EQ((m.count<0>), 3);
+	STATIC_ASSERT_EQ((m.count<1>), 3);
 
 	// .x .y .z indexing
 	TEST_EQ(m.x.x, 1);
