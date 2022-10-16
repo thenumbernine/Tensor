@@ -179,6 +179,8 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - - `index_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
 	Ex: `_tensor<float, index_vec<3>, index_sym<4>, index_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
 
+- `tensorScalarTuple<Scalar, StorageTuple>` = same as `_tensori` except the storage arguments are passed in a tuple.
+
 ### Tensor operators
 - `operator += -= /=` = In-place per-element operations.
 - `operator == !=` = Tensor comparison.  So long as the rank and dimensions match then this should evaluate successfully.

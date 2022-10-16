@@ -121,145 +121,12 @@ namespace Tensor {
 
 // not sure if I need these yet ...
 
-template<typename... T>
-using tuple_cat_t = decltype(std::tuple_cat(std::declval<T>()...));
-
-//https://stackoverflow.com/a/15412010
-template< 
-	typename Tuple, 
-	std::size_t N,
-	typename T,
-	typename Indices = typename std::make_index_sequence<std::tuple_size_v<Tuple>>
-> struct element_replace;
-template<typename... Ts, std::size_t N, typename T, std::size_t... Ns>
-struct element_replace<std::tuple< Ts... >, N, T, std::index_sequence< Ns... >> {
-    using type = std::tuple<typename std::conditional_t<Ns == N, T, Ts>...>;
-};
-template<typename Tuple, std::size_t N, typename T>
-using element_replace_t = typename element_replace<Tuple, N, T>::type;
-
-static_assert(std::is_same_v<
-	element_replace_t<std::tuple<int, char*, double>, 1, float>,
-	std::tuple<int, float, double>
->);
-
-// https://stackoverflow.com/a/14852674
-template<size_t I, typename T>
-struct tuple_remove {};
-template<typename T, typename... Ts>
-struct tuple_remove<0, std::tuple<T, Ts...>> {
-	typedef std::tuple<Ts...> type;
-};
-template<size_t I, typename T, typename... Ts>
-struct tuple_remove<I, std::tuple<T, Ts...>> {
-	using type = decltype(tuple_cat(
-		std::declval<std::tuple<T>>(),
-		std::declval<typename tuple_remove<I - 1, std::tuple<Ts...>>::type>()
-	));
-};
-template<size_t I, typename T>
-using tuple_remove_t = typename tuple_remove<I, T>::type;
-
-template<typename T>
-using tuple_remove_last_t = tuple_remove_t<std::tuple_size_v<T>-1, T>;
-
-
-template<typename T, template<typename> typename F>
-struct TupleTypeMapImpl;
-template<typename T, typename... Ts, template<typename> typename F>
-struct TupleTypeMapImpl<std::tuple<T, Ts...>, F> {
-	using type = tuple_cat_t<
-		std::tuple<F<T>>,
-		typename TupleTypeMapImpl<std::tuple<Ts...>, F>::type
-	>;
-};
-template<template<typename> typename F>
-struct TupleTypeMapImpl<std::tuple<>, F> {
-	using type = std::tuple<>;
-};
-template<typename T, template<typename> typename F>
-using TupleTypeMap = typename TupleTypeMapImpl<T, F>::type;
-
-//apply successive types
-template<typename T, template<typename> typename... Fs>
-struct TupleTypeMapsImpl;
-template<typename T, template<typename> typename F, template<typename> typename... Fs>
-struct TupleTypeMapsImpl<T, F, Fs...> {
-	using type = typename TupleTypeMapsImpl<TupleTypeMap<T, F>, Fs...>::type;
-};
-template<typename T>
-struct TupleTypeMapsImpl<T> {
-	using type = T;
-};
-template<typename T, template<typename> typename... Fs>
-using TupleTypeMaps = typename TupleTypeMapsImpl<T, Fs...>::type;
-
-// tuple to sequence map
-// can't seem to pass "template<typename> int F", so F must be a class with a ::value whose type matches integer_sequence type I
-template<typename I, typename Tuple, template<typename> typename F>
-struct TupleToSeqMapImpl;
-template<typename I, typename T, typename... Ts, template<typename> typename F>
-struct TupleToSeqMapImpl<I, std::tuple<T, Ts...>, F> {
-	using type = Common::seq_cat_t<
-		std::integer_sequence<I, F<T>::value>,
-		typename TupleToSeqMapImpl<I, std::tuple<Ts...>, F>::type
-	>;
-};
-template<typename I, template<typename> typename F>
-struct TupleToSeqMapImpl<I, std::tuple<>, F> {
-	using type = std::integer_sequence<I>;
-};
-template<typename I, typename T, template<typename> typename F>
-using TupleToSeqMap = typename TupleToSeqMapImpl<I, T, F>::type;
-
-
-template<typename I, typename Seq, template<I> typename F>
-struct SeqToTupleMapImpl;
-template<typename I, I i1, I... is, template<I> typename F>
-struct SeqToTupleMapImpl<I, std::integer_sequence<I, i1, is...>, F> {
-	using type = Common::seq_cat_t<
-		std::tuple<F<i1>>,
-		typename SeqToTupleMapImpl<I, std::integer_sequence<I, is...>, F>::type
-	>;
-};
-template<typename I, template<I> typename F>
-struct SeqToTupleMapImpl<I, std::integer_sequence<I>, F> {
-	using type = std::tuple<>;
-};
-template<typename Seq, typename I, template<I> typename F>
-using SeqToTupleMap = typename SeqToTupleMapImpl<I, Seq, F>::type;
-
-template<typename Tuple, typename I, I... is>
-using TupleGetVariadic = std::tuple< std::tuple_element_t<is, Tuple> ... >;
-
-template<typename Tuple, typename Seq>
-struct TupleGetSeqImpl;
-template<typename Tuple, typename I, I... is>
-struct TupleGetSeqImpl<Tuple, std::integer_sequence<I, is...>> {
-	using type = TupleGetVariadic<Tuple, I, is...>;
-};
-template<typename Tuple, typename Seq>
-using TupleGetSeq = typename TupleGetSeqImpl<Tuple, Seq>::type; 
-
-template<typename Tuple, size_t from, size_t to>
-using tuple_subset_t = TupleGetSeq<Tuple, Common::make_index_range<from, to>>;
-
-
-// apply tuple arguments to a templated type
-template<template<typename...> typename F, typename TupleOfArgs>
-struct tuple_apply_impl;
-template<template<typename...> typename F, typename... Args>
-struct tuple_apply_impl<F, std::tuple<Args...>> {
-	using type = F<Args...>;
-};
-template<template<typename...> typename F, typename TupleOfArgs>
-using tuple_apply_t = typename tuple_apply_impl<F, TupleOfArgs>::type;
-
-
 
 template<typename T>
 using RepPtrByLocalRank = Common::tuple_rep_t<T, std::remove_pointer_t<T>::localRank>;
 
+//TupleToSeqMap can't handle templated-integrals
+// so you have to pass it a class with a 'integral value' static constexpr instead.
 template<typename T>
 struct GetPtrLocalDim {
 	static constexpr int value = std::remove_pointer_t<T>::localDim;
@@ -271,18 +138,22 @@ struct GetPtrLocalCount {
 };
 
 template<typename T>
-using GetPtrLocalIndexStorage = typename std::remove_pointer_t<T>::LocalIndexStorage;
+using GetPtrLocalStorage = typename std::remove_pointer_t<T>::LocalStorage;
 
 
 // TODO Common/Sequence.h
 //https://stackoverflow.com/a/55247213
 template<typename T, T... Args>
-constexpr T seq_sum(std::integer_sequence<T, Args...> = {}) {
+constexpr T seq_plus(std::integer_sequence<T, Args...> = {}) {
 	return (Args + ... + (0));
 }
 template<typename T, T... Args>
-constexpr T seq_product(std::integer_sequence<T, Args...> = {}) {
+constexpr T seq_multiplies(std::integer_sequence<T, Args...> = {}) {
 	return (Args * ... * (1));
+}
+template<typename T, T... Args>
+constexpr T seq_logical_and(std::integer_sequence<T, Args...> = {}) {
+	return (Args && ... && (true));
 }
 
 // for the templated ForLoop ctor
@@ -362,7 +233,7 @@ Scalar = NestedPtrTuple's last
 	using NestedPtrTuple = typename NestedPtrTupleImpl::type;\
 \
 	/* for when you just want to work with the nested tensors, and not the final scalar */\
-	using NestedPtrTensorTuple = tuple_remove_last_t<NestedPtrTuple>;\
+	using NestedPtrTensorTuple = Common::tuple_remove_last_t<NestedPtrTuple>;\
 \
 	using Scalar = typename std::remove_pointer_t<std::tuple_element_t<std::tuple_size_v<NestedPtrTuple>-1, NestedPtrTuple>>;\
 \
@@ -374,29 +245,29 @@ Scalar = NestedPtrTuple's last
 	template<int i>\
 	using Nested = typename std::remove_pointer_t<std::tuple_element_t<i, NestedPtrTuple>>;\
 \
-	using countseq = TupleToSeqMap<int, NestedPtrTensorTuple, GetPtrLocalCount>;\
+	using countseq = Common::TupleToSeqMap<int, NestedPtrTensorTuple, GetPtrLocalCount>;\
 \
 	/* Get the i'th nesting's count aka storage size */\
 	template<int i>\
 	static constexpr int count = Common::seq_get_v<i, countseq>;\
 	/*static constexpr int count = Nested<i>::localCount;*/\
 \
-	static constexpr int totalCount = seq_product(countseq());\
+	static constexpr int totalCount = seq_multiplies(countseq());\
 \
 	/* same idea as in NestedPtrTensorTuple, but members are duplicated for their localRank */\
 	/* so that it is correlated with tensor index instead of nesting */\
-	using InnerPtrTensorTuple = tuple_apply_t<tuple_cat_t, TupleTypeMap<NestedPtrTensorTuple, RepPtrByLocalRank>>;\
+	using InnerPtrTensorTuple = Common::tuple_apply_t<Common::tuple_cat_t, Common::TupleTypeMap<NestedPtrTensorTuple, RepPtrByLocalRank>>;\
 \
 	/* Just like NestedPtrTuple vs NestedPtrTensorTuple, */\
 	/* and for the sake of InnerForIndex, I'm appending Scalar once again */\
-	using InnerPtrTuple = tuple_cat_t<InnerPtrTensorTuple, std::tuple<Scalar*>>;\
+	using InnerPtrTuple = Common::tuple_cat_t<InnerPtrTensorTuple, std::tuple<Scalar*>>;\
 \
 	/* TODO rename 'Inner' => 'LocalInner' and rename 'InnerForIndex' to just 'Inner' ? */\
 	template<int index>\
 	using InnerForIndex = typename std::remove_pointer_t<std::tuple_element_t<(size_t)index, InnerPtrTuple>>;\
 \
 	/* int sequence of dimensions */\
-	using dimseq = TupleToSeqMap<int, InnerPtrTensorTuple, GetPtrLocalDim>;\
+	using dimseq = Common::TupleToSeqMap<int, InnerPtrTensorTuple, GetPtrLocalDim>;\
 \
 	template<int index>\
 	static constexpr int dim = Common::seq_get_v<index, dimseq>;\
@@ -424,8 +295,8 @@ Scalar = NestedPtrTuple's last
 \
 	/* TODO alternative for indexForNesting: */\
 	/* get a sequence of the local-rank for the respective nesting ... then make a sequence of the sum-of-sequence */\
-	/*using NestedLocalRankSeq = TupleTypeMaps<NestedPtrTensorTuple, RemovePtr, GetLocalRank>*/\
-	/*using NestedLocalRankSeq = tuple_apply_t<seq_cat_t, SeqMapToType<std::make_index_sequence<numNestings>, RepSeqByCount>>*/\
+	/*using NestedLocalRankSeq = Common::TupleTypeMaps<NestedPtrTensorTuple, RemovePtr, GetLocalRank>*/\
+	/*using NestedLocalRankSeq = Common::tuple_apply_t<seq_cat_t, SeqMapToType<std::make_index_sequence<numNestings>, RepSeqByCount>>*/\
 	/*using IndexForNestingSeq = seq_cat_t< 0's x localRank0, 1's x localRank1, ... >;*/\
 	/* Get the first index that this nesting represents. */\
 	/* Same as the sum of all prior nestings' localRanks */\
@@ -444,23 +315,24 @@ Scalar = NestedPtrTuple's last
 	template<int nest>\
 	static constexpr int indexForNesting = IndexForNestingImpl<nest>::value();\
 \
-	/* This == tuple_apply_t<_tensori, tuple_cat_t<std::tuple<Scalar>, IndexStorageTuple>>) */\
-	using IndexStorageTuple = TupleTypeMap<NestedPtrTensorTuple, GetPtrLocalIndexStorage>;\
-	STATIC_ASSERT_EQ((std::tuple_size_v<IndexStorageTuple>), numNestings);\
+	/* This == Common::tuple_apply_t<_tensori, Common::tuple_cat_t<std::tuple<Scalar>, StorageTuple>>) */\
+	using StorageTuple = Common::TupleTypeMap<NestedPtrTensorTuple, GetPtrLocalStorage>;\
+	STATIC_ASSERT_EQ((std::tuple_size_v<StorageTuple>), numNestings);\
 \
-	template<typename StorageTuple>\
-	using MakeWithScalar = tuple_apply_t<_tensori, tuple_cat_t<std::tuple<Scalar>, StorageTuple>>;\
 	/* notice this won't be true for Accessors */\
-	/*static_assert(std::is_same_v<MakeWithScalar<IndexStorageTuple>, This>);*/\
+	/*static_assert(std::is_same_v<tensorScalarTuple<Scalar, StorageTuple>, This>);*/\
 \
 	/* the rest of these, I can make easier if I store a tuple of the tensori index storage helpers per class */\
 	/* then provide a method for rebuiding the tensor from its tupel of strage helpers*/\
 	/* and then the rest of these can be written in terms of tuple manipulation */\
 \
-	/* This is "Replace nesting 'i' and all subsequent nestings with NewType */\
-	using ReplaceNested = tuple_apply_t<_tensori, tuple_cat_t<std::tuple<NewType>, tuple_subset_t<IndexStorageTuple, 0, i>>>;\
+	/* This is "Replace Inner of Nesting 'i' with NewType */\
+	template<int i, typename NewType>\
+	using ReplaceNested = Common::tuple_apply_t<_tensori, Common::tuple_cat_t<std::tuple<NewType>, Common::tuple_subset_t<StorageTuple, 0, i>>>;\
 \
 	/* expand the storage of the i'th index */\
+	/* TODO replace ExpandTensorRankTemplate with ReplaceLocalStorageAtIndex to produce a tuple of new storages */\
+	/*  then just wedge that into the tuple and rebuilt */\
 	template<int index>\
 	struct ExpandIthIndexImpl {\
 		static_assert(index >= 0 && index < rank);\
@@ -509,29 +381,16 @@ Scalar = NestedPtrTuple's last
 \
 	/* remove the i'th nesting, i from 0 to numNestings-1 */\
 	template<int i>\
-	struct RemoveIthNestingImpl {\
-		static constexpr auto value() {\
-			if constexpr (i == 0) {\
-				return This::Inner();\
-			} else {\
-				using recursiveCase = typename Inner::template RemoveIthNestingImpl<i-1>::type;\
-				return ReplaceInner<recursiveCase>();\
-			}\
-		}\
-		using type = decltype(value());\
-	};\
-	template<int i>\
-	using RemoveIthNesting = typename RemoveIthNestingImpl<i>::type;\
+	requires (i >= 0 && i < numNestings)\
+	using RemoveIthNesting = tensorScalarTuple<Scalar, Common::tuple_remove_t<i, StorageTuple>>;\
 \
 	/* same as Expand but now with RemoveIthIndex, RemoveIndex, RemoveIndexSeq */\
 	template<int i>\
 	struct RemoveIthIndexImpl {\
-		static constexpr auto value() {\
-			using expanded = This::template ExpandIthIndex<i>;\
-			constexpr int indexNesting = expanded::template numNestingsToIndex<i>;\
-			return typename expanded::template RemoveIthNesting<indexNesting>();\
-		}\
-		using type = decltype(value());\
+		using ithIndexExpanded = This::template ExpandIthIndex<i>;\
+		using type = typename ithIndexExpanded::template RemoveIthNesting<\
+			ithIndexExpanded::template numNestingsToIndex<i>\
+		>;\
 	};\
 	template<int i>\
 	using RemoveIthIndex = typename RemoveIthIndexImpl<i>::type;\
@@ -613,6 +472,7 @@ Scalar = NestedPtrTuple's last
 	template<int index>\
 	static constexpr int numNestingsToIndex = NestingForIndexImpl<index>::value();\
 \
+	/* isSquare means all dims match */\
 	struct IsSquareImpl {\
 		static constexpr bool value() {\
 			if constexpr (is_tensor_v<Inner>) {\
@@ -625,18 +485,7 @@ Scalar = NestedPtrTuple's last
 	static constexpr bool isSquare = IsSquareImpl::value();\
 \
 	template<typename NewScalar>\
-	struct ReplaceScalarImpl {\
-		static constexpr auto value() {\
-			if constexpr (numNestings == 1) {\
-				return NewScalar();\
-			} else {\
-				return typename Inner::template ReplaceScalar<NewScalar>();\
-			}\
-		}\
-		using type = decltype(value());\
-	};\
-	template<typename NewScalar>\
-	using ReplaceScalar = ReplaceInner<typename ReplaceScalarImpl<NewScalar>::type>;\
+	using ReplaceScalar = tensorScalarTuple<NewScalar, StorageTuple>;\
 \
 	/* not sure about this one ... */\
 	/* I'm suign it with TensorSumResult to expand only the rank that matches this storage */\
@@ -664,7 +513,7 @@ Scalar = NestedPtrTuple's last
 	template<typename O>\
 	using ExpandMatchingLocalRank = typename ExpandMatchingLocalRankImpl<O>::type;
 
-#if 0 // hmm
+#if 0 // hmm, as a member this is choking
 	template<int deferRank = rank>\
 	struct ReplaceWithZeroImpl {\
 		static constexpr auto value() {\
@@ -1351,8 +1200,8 @@ Bit of a hack: MOst these are written in terms of 'This'
 	static constexpr int localCount = localDim;\
 \
 	/* this could replace the ReplaceInner template, and maybe ReplaceLocalDim and Template too */\
-	/* use these with tuple_apply_t<_tensori, IndexStorageTuple> to rebuild the tensor */\
-	using LocalIndexStorage = index_vec<localDim>;
+	/* use these with Common::tuple_apply_t<_tensori, StorageTuple> to rebuild the tensor */\
+	using LocalStorage = index_vec<localDim>;
 
 #define TENSOR_HEADER_VECTOR(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1718,7 +1567,7 @@ struct _vec<Inner_,4> {
 #define TENSOR_HEADER_ZERO_SPECIFIC()\
 \
 	static constexpr int localCount = 1;\
-	using LocalIndexStorage = index_zero<localDim>;
+	using LocalStorage = index_zero<localDim>;
 
 #define TENSOR_HEADER_ZERO(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1812,7 +1661,7 @@ asymR_ijk... => mat_ij-of-{vec,asym,asymR} "
 #define TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
 \
 	static constexpr int localCount = triangleSize(localDim);\
-	using LocalIndexStorage = index_sym<localDim>;
+	using LocalStorage = index_sym<localDim>;
 
 #define TENSOR_HEADER_SYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1881,7 +1730,7 @@ struct Rank2Accessor {
 	//end TENSOR_TEMPLATE_*
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
-	using LocalIndexStorage = index_vec<localDim>;
+	using LocalStorage = index_vec<localDim>;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
 	// treat this like (rank-1) vector storage, so use vector's TensorSumResult
 	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
@@ -2075,7 +1924,7 @@ struct _sym<Inner_, 4> {
 #define TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
 \
 	static constexpr int localCount = 1;\
-	using LocalIndexStorage = index_ident<localDim>;
+	using LocalStorage = index_ident<localDim>;
 
 #define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -2160,7 +2009,7 @@ struct _ident {
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
 \
 	static constexpr int localCount = triangleSize(localDim - 1);\
-	using LocalIndexStorage = index_asym<localDim>;
+	using LocalStorage = index_asym<localDim>;
 
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -2351,7 +2200,7 @@ inline constexpr int symmetricSize(int d, int r) {
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
 \
 	static constexpr int localCount = symmetricSize(localDim, localRank);\
-	using LocalIndexStorage = index_symR<localDim, localRank>;
+	using LocalStorage = index_symR<localDim, localRank>;
 
 // Expand index 0 of asym^N => vec ⊗ asym^(N-1)
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
@@ -2500,7 +2349,7 @@ struct RankNAccessor {
 	//end TENSOR_TEMPLATE_*
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
-	using LocalIndexStorage = index_vec<localDim>;
+	using LocalStorage = index_vec<localDim>;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
 	// treat this like (rank-1) vector storage, so use vector's TensorSumResult
 	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
@@ -2657,7 +2506,7 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
 \
 	static constexpr int localCount = antisymmetricSize(localDim, localRank);\
-	using LocalIndexStorage = index_asymR<localDim, localRank>;
+	using LocalStorage = index_asymR<localDim, localRank>;
 
 // Expand index 0 of asym^N => vec ⊗ asym^(N-1)
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec

@@ -52,8 +52,8 @@ namespace StaticTest1 {
 	using namespace Tensor;
 	using namespace std;
 	
-	static_assert((std::tuple_size_v<float3x3::IndexStorageTuple>) == float3x3::numNestings);
-	static_assert(std::is_same_v<float3x3::MakeWithScalar<float3x3::IndexStorageTuple>, float3x3>);
+	static_assert((std::tuple_size_v<float3x3::StorageTuple>) == float3x3::numNestings);
+	static_assert(std::is_same_v<tensorScalarTuple<float3x3::Scalar, float3x3::StorageTuple>, float3x3>);
 
 	static_assert(is_same_v<_tensori<float, index_vec<3>, index_vec<3>>, float3x3>);
 	static_assert(is_same_v<_tensori<float3, index_vec<3>>, float3x3>);

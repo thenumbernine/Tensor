@@ -216,6 +216,9 @@ template<typename T, typename... Storage>
 using _tensori = typename _tensori_impl<T, Storage...>::type;
 
 
+template<typename Scalar, typename StorageTuple>
+using tensorScalarTuple = Common::tuple_apply_t<_tensori, Common::tuple_cat_t<std::tuple<Scalar>, StorageTuple>>;
+
 // make a tensor from a list of dimensions
 // ex: _tensor<T, dim1, ..., dimN>
 // fully expanded storage - no spatial optimizations
