@@ -70,16 +70,6 @@ if I do column-major then C inline indexing is transposed
 
 namespace Tensor {
 
-
-//insert B into A at 'index'
-template<typename A, int index, typename B>
-using tuple_insert_t = Common::tuple_cat_t<
-	Common::tuple_subset_t<A, 0, index>,
-	std::tuple<B>,
-	Common::tuple_subset_t<A, index+1, std::tuple_size_v<A> - index - 1>
->;
-
-
 template<typename T>
 using RepPtrByLocalRank = Common::tuple_rep_t<T, std::remove_pointer_t<T>::localRank>;
 
@@ -134,23 +124,52 @@ struct BuildFromDim : public ForLoopBodyBase {
 template<
 	int dim,
 	int rank,
-	template<int> typename rank2,
-	template<int, int> typename rankN
+	template<int> typename storageRank2,
+	template<int, int> typename storageRankN
 >
-using GetTupleWrappingStorageForRank =
-	std::conditional_t<
-		rank == 0,
-		std::tuple<>,
-		std::conditional_t<
-			rank == 1,
-			std::tuple<index_vec<dim>>,
-			std::conditional_t<
-				rank == 2,
-				std::tuple<rank2<dim>>,
-				std::tuple<rankN<dim, rank>>
-			>
-		>
-	>;
+struct GetTupleWrappingStorageForRankImpl {
+	static_assert(rank >= 0);
+	static constexpr auto value() {
+		if constexpr (rank == 0) {
+			return Common::TypeWrapper<std::tuple<>>();
+		} else if constexpr (rank == 1) {
+			return Common::TypeWrapper<std::tuple<index_vec<dim>>>();
+		} else if constexpr (rank == 2) {
+			return Common::TypeWrapper<std::tuple<storageRank2<dim>>>();
+		} else {
+			return Common::TypeWrapper<std::tuple<storageRankN<dim, rank>>>();
+		}
+	}
+	using type = typename decltype(value())::type;
+};
+template<
+	int dim,
+	int rank,
+	template<int> typename storageRank2,
+	template<int, int> typename storageRankN
+>
+using GetTupleWrappingStorageForRank = typename GetTupleWrappingStorageForRankImpl<dim, rank, storageRank2, storageRankN>::type;
+
+static_assert(std::is_same_v<
+	GetTupleWrappingStorageForRank<3,0,index_sym,index_symR>,
+	std::tuple<>
+>);
+static_assert(std::is_same_v<
+	GetTupleWrappingStorageForRank<3,1,index_sym,index_symR>,
+	std::tuple<index_vec<3>>
+>);
+static_assert(std::is_same_v<
+	GetTupleWrappingStorageForRank<3,2,index_sym,index_symR>,
+	std::tuple<index_sym<3>>
+>);
+static_assert(std::is_same_v<
+	GetTupleWrappingStorageForRank<3,3,index_sym,index_symR>,
+	std::tuple<index_symR<3,3>>
+>);
+static_assert(std::is_same_v<
+	GetTupleWrappingStorageForRank<3,4,index_sym,index_symR>,
+	std::tuple<index_symR<3,4>>
+>);
 
 // Template<> is used for rearranging internal structure when performing linear operations on tensors
 // Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
@@ -414,19 +433,25 @@ Scalar = NestedPtrTuple's last
 	/* and that would mean splitting the HEADER and putting it in between this and other stuf above */\
 	template<int index>\
 	struct ExpandIthIndex2Impl {\
-		using type = tuple_insert_t<\
-			Common::tuple_remove_t<\
-				numNestingsToIndex<index>,\
-				StorageTuple\
-			>,\
-			numNestingsToIndex<index>,\
-			typename This::template ReplaceLocalStorage<\
-				index - indexForNesting<numNestingsToIndex<index>>\
-			>\
-		>;\
+		static_assert(index >= 0 && index < rank);\
+		static constexpr auto value() {\
+			constexpr int nest = numNestingsToIndex<index>;\
+			return Common::TypeWrapper<Common::tuple_insert_t<\
+				Common::tuple_remove_t<\
+					nest,\
+					StorageTuple\
+				>,\
+				nest,\
+				typename Nested<nest>\
+				::template ReplaceLocalStorage<\
+					index - indexForNesting<nest>\
+				>\
+			>>();\
+		}\
+		using type = typename decltype(value())::type;\
 	};\
 	/*template<int index>*/\
-	/*using ExpandIthIndex = ExpandIthIndex2Impl<index>;*/\
+	/*using ExpandIthIndex = typename ExpandIthIndex2Impl<index>::type;*/\
 \
 	template<int i1, int... I>\
 	struct ExpandIndexImpl {\
