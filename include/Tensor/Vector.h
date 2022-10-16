@@ -406,47 +406,38 @@ Scalar = NestedPtrTuple's last
 	/* impl is only here cuz i would need to move ReplaceLocalStorage up above this otherwise */\
 	/* and that would mean splitting the HEADER and putting it in between this and other stuf above */\
 	template<int index>\
-	struct ExpandIthIndex2Impl {\
+	struct ExpandIthIndexImpl {\
 		static_assert(index >= 0 && index < rank);\
-		static constexpr auto value() {\
-			constexpr int nest = numNestingsToIndex<index>;\
-			return tensorScalarTuple<\
-					Scalar,\
-					Common::tuple_insert_t<\
-						Common::tuple_remove_t<nest, StorageTuple>,\
-						nest,\
-						typename Nested<nest>::template ReplaceLocalStorage<\
-							index - indexForNesting<nest>\
-						>\
-					>\
-				>();\
-		}\
-		using type = decltype(value());\
+		static constexpr int nest = numNestingsToIndex<index>;\
+		using type = tensorScalarTuple<\
+			Scalar,\
+			Common::tuple_insert_t<\
+				Common::tuple_remove_t<nest, StorageTuple>,\
+				nest,\
+				typename Nested<nest>::template ReplaceLocalStorage<\
+					index - indexForNesting<nest>\
+				>\
+			>\
+		>;\
 	};\
 	template<int index>\
-	using ExpandIthIndex = typename ExpandIthIndex2Impl<index>::type;\
-\
-	template<int i1, int... I>\
-	struct ExpandIndexImpl {\
-		using type = typename This\
-			::template ExpandIthIndex<i1>\
-			::template ExpandIndexImpl<I...>::type;\
-	};\
-	template<int i1>\
-	struct ExpandIndexImpl<i1> {\
-		using type = This::template ExpandIthIndex<i1>;\
-	};\
-	template<int... I>\
-	using ExpandIndex = typename ExpandIndexImpl<I...>::type;\
+	using ExpandIthIndex = typename ExpandIthIndexImpl<index>::type;\
 \
 	template<typename Seq>\
-	struct ExpandIndexSeqImpl {};\
-	template<int... I>\
-	struct ExpandIndexSeqImpl<std::integer_sequence<int, I...>> {\
-		using type = ExpandIndex<I...>;\
+	struct ExpandIndexSeqImpl;\
+	template<int i1, int... is>\
+	struct ExpandIndexSeqImpl<std::integer_sequence<int, i1, is...>> {\
+		using type = typename ExpandIthIndex<i1>::template ExpandIndexSeqImpl<std::integer_sequence<int, is...>>::type;\
+	};\
+	template<>\
+	struct ExpandIndexSeqImpl<std::integer_sequence<int>> {\
+		using type = This;\
 	};\
 	template<typename Seq>\
 	using ExpandIndexSeq = typename ExpandIndexSeqImpl<Seq>::type;\
+\
+	template<int... is>\
+	using ExpandIndex = ExpandIndexSeq<std::integer_sequence<int, is...>>;\
 \
 	template<int deferRank = rank> /* evaluation needs to be deferred */\
 	using ExpandAllIndexes = ExpandIndexSeq<std::make_integer_sequence<int, deferRank>>;\
