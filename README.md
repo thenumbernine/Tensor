@@ -7,7 +7,7 @@ this is the latest result.
 I know I've put the word "Tensor" in the title.
 Ever since the deep learning revolution in AI that computer scientists have come to believe that a "tensor" is an arbitrary dimensioned array of numbers, preferrably larger dimensioned and smaller-indexed.
 But this library is moreso centered around "tensor" in the original differential geometry definition, as "geometric object that lives in the tangent space at some point on a manifold and is invariant to coordinate transform."
-That means I am designing this library is centered around compile-time sized small arrays and larger ranks/degrees (whatever the term is for the number of indexes).
+That means I am designing this library is centered around compile-time sized small arrays and larger ranks/degrees/grades (whatever the term is for the number of indexes).
 
 The old and pre-C++11 and ugly version had extra math indicators like Upper<> and Lower<> for tracking variance, but I've done away with that now.
 There was no programmatically functional reason to track it (unless I wanted to verify Einstein-index summation correctness, which I never got to), so I've just done away with it.

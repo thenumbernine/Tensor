@@ -70,6 +70,88 @@ if I do column-major then C inline indexing is transposed
 
 namespace Tensor {
 
+
+//insert B into A at 'index'
+template<typename A, int index, typename B>
+using tuple_insert_t = Common::tuple_cat_t<
+	Common::tuple_subset_t<A, 0, index>,
+	std::tuple<B>,
+	Common::tuple_subset_t<A, index+1, std::tuple_size_v<A> - index - 1>
+>;
+
+
+template<typename T>
+using RepPtrByLocalRank = Common::tuple_rep_t<T, std::remove_pointer_t<T>::localRank>;
+
+//TupleToSeqMap can't handle templated-integrals
+// so you have to pass it a class with a 'integral value' static constexpr instead.
+template<typename T>
+struct GetPtrLocalDim {
+	static constexpr int value = std::remove_pointer_t<T>::localDim;
+};
+
+template<typename T>
+struct GetPtrLocalCount {
+	static constexpr int value = std::remove_pointer_t<T>::localCount;
+};
+
+template<typename T>
+using GetPtrLocalStorage = typename std::remove_pointer_t<T>::LocalStorage;
+
+
+// TODO Common/Sequence.h
+//https://stackoverflow.com/a/55247213
+template<typename T, T... Args>
+constexpr T seq_plus(std::integer_sequence<T, Args...> = {}) {
+	return (Args + ... + (0));
+}
+template<typename T, T... Args>
+constexpr T seq_multiplies(std::integer_sequence<T, Args...> = {}) {
+	return (Args * ... * (1));
+}
+template<typename T, T... Args>
+constexpr T seq_logical_and(std::integer_sequence<T, Args...> = {}) {
+	return (Args && ... && (true));
+}
+
+// for the templated ForLoop ctor
+struct ForLoopBodyBase {};
+
+// for initializing intN's using template indexes
+template<typename Src, typename Dst>
+requires (Src::rank == Dst::totalCount)
+struct BuildFromDim : public ForLoopBodyBase {
+	// NOTICE right now this is from 0 to Dst::totalCount-1 , which is the product of all count<>'s
+	template<int i>
+	struct Loop {
+		static constexpr bool exec(Dst & t) {
+			t.s[i] = Src::template dim<i>;
+			return false;
+		}
+	};
+};
+
+template<
+	int dim,
+	int rank,
+	template<int> typename rank2,
+	template<int, int> typename rankN
+>
+using GetTupleWrappingStorageForRank =
+	std::conditional_t<
+		rank == 0,
+		std::tuple<>,
+		std::conditional_t<
+			rank == 1,
+			std::tuple<index_vec<dim>>,
+			std::conditional_t<
+				rank == 2,
+				std::tuple<rank2<dim>>,
+				std::tuple<rankN<dim, rank>>
+			>
+		>
+	>;
+
 // Template<> is used for rearranging internal structure when performing linear operations on tensors
 // Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
 #define TENSOR_THIS(classname)\
@@ -116,61 +198,14 @@ namespace Tensor {
 
 // used for ExpandIthIndex.  all tensors use _tensorr, except _symR and _asymR can use _symR and _asymR.
 #define TENSOR_EXPAND_TEMPLATE_TENSORR()\
+\
 	template<int index>\
-	using ExpandTensorRankTemplate = _tensorr<Inner, localDim, localRank>;
-
-// not sure if I need these yet ...
-
-
-template<typename T>
-using RepPtrByLocalRank = Common::tuple_rep_t<T, std::remove_pointer_t<T>::localRank>;
-
-//TupleToSeqMap can't handle templated-integrals
-// so you have to pass it a class with a 'integral value' static constexpr instead.
-template<typename T>
-struct GetPtrLocalDim {
-	static constexpr int value = std::remove_pointer_t<T>::localDim;
-};
-
-template<typename T>
-struct GetPtrLocalCount {
-	static constexpr int value = std::remove_pointer_t<T>::localCount;
-};
-
-template<typename T>
-using GetPtrLocalStorage = typename std::remove_pointer_t<T>::LocalStorage;
-
-
-// TODO Common/Sequence.h
-//https://stackoverflow.com/a/55247213
-template<typename T, T... Args>
-constexpr T seq_plus(std::integer_sequence<T, Args...> = {}) {
-	return (Args + ... + (0));
-}
-template<typename T, T... Args>
-constexpr T seq_multiplies(std::integer_sequence<T, Args...> = {}) {
-	return (Args * ... * (1));
-}
-template<typename T, T... Args>
-constexpr T seq_logical_and(std::integer_sequence<T, Args...> = {}) {
-	return (Args && ... && (true));
-}
-
-// for the templated ForLoop ctor
-struct ForLoopBodyBase {};
-
-template<typename Src, typename Dst>
-requires (Src::rank == Dst::totalCount)
-struct BuildFromDim : public ForLoopBodyBase {
-	// NOTICE right now this is from 0 to Dst::totalCount-1 , which is the product of all count<>'s
-	template<int i>
-	struct Loop {
-		static constexpr bool exec(Dst & t) {
-			t.s[i] = Src::template dim<i>;
-			return false;
-		}
-	};
-};
+	requires (index >= 0 && index < localRank)\
+	using ExpandTensorRankTemplate = _tensorr<Inner, localDim, localRank>;\
+\
+	template<int index>\
+	requires (index >= 0 && index < localRank)\
+	using ReplaceLocalStorage = Common::tuple_rep_t<index_vec<localDim>, localRank>;
 
 /*
 This contains definitions of types and values used in all tensors.
@@ -332,8 +367,27 @@ Scalar = NestedPtrTuple's last
 	template<int i, typename NewType>\
 	using ReplaceNested = Common::tuple_apply_t<_tensori, Common::tuple_cat_t<std::tuple<NewType>, Common::tuple_subset_t<StorageTuple, 0, i>>>;\
 \
+	/* get the number of nestings to the j'th index */\
+	template<int index>\
+	struct NestingForIndexImpl {\
+		static constexpr int value() {\
+			static_assert(index >= 0 && index <= rank);\
+			/* to get the scalar-most nesting, query rank */\
+			if constexpr (index == rank) {\
+				return numNestings;\
+			} else if constexpr (index < localRank) {\
+				return 0;\
+			} else {\
+				using Impl = typename Inner::template NestingForIndexImpl<index - localRank>;\
+				return 1 + Impl::value();\
+			}\
+		}\
+	};\
+	template<int index>\
+	static constexpr int numNestingsToIndex = NestingForIndexImpl<index>::value();\
+\
 	/* expand the storage of the i'th index */\
-	/* TODO replace ExpandTensorRankTemplate with ReplaceLocalStorageAtIndex to produce a tuple of new storages */\
+	/* TODO replace ExpandTensorRankTemplate with ReplaceLocalStorage to produce a tuple of new storages */\
 	/*  then just wedge that into the tuple and rebuilt */\
 	template<int index>\
 	struct ExpandIthIndexImpl {\
@@ -355,6 +409,24 @@ Scalar = NestedPtrTuple's last
 	};\
 	template<int index>\
 	using ExpandIthIndex = typename ExpandIthIndexImpl<index>::type;\
+\
+	/* impl is only here cuz i would need to move ReplaceLocalStorage up above this otherwise */\
+	/* and that would mean splitting the HEADER and putting it in between this and other stuf above */\
+	template<int index>\
+	struct ExpandIthIndex2Impl {\
+		using type = tuple_insert_t<\
+			Common::tuple_remove_t<\
+				numNestingsToIndex<index>,\
+				StorageTuple\
+			>,\
+			numNestingsToIndex<index>,\
+			typename This::template ReplaceLocalStorage<\
+				index - indexForNesting<numNestingsToIndex<index>>\
+			>\
+		>;\
+	};\
+	/*template<int index>*/\
+	/*using ExpandIthIndex = ExpandIthIndex2Impl<index>;*/\
 \
 	template<int i1, int... I>\
 	struct ExpandIndexImpl {\
@@ -454,25 +526,6 @@ Scalar = NestedPtrTuple's last
 	};\
 	template<int index, int newDim>\
 	using ReplaceDim = typename ReplaceDimImpl<index, newDim>::type;\
-\
-	/* get the number of nestings to the j'th index */\
-	template<int index>\
-	struct NestingForIndexImpl {\
-		static constexpr int value() {\
-			static_assert(index >= 0 && index <= rank);\
-			/* to get the scalar-most nesting, query rank */\
-			if constexpr (index == rank) {\
-				return numNestings;\
-			} else if constexpr (index < localRank) {\
-				return 0;\
-			} else {\
-				using Impl = typename Inner::template NestingForIndexImpl<index - localRank>;\
-				return 1 + Impl::value();\
-			}\
-		}\
-	};\
-	template<int index>\
-	static constexpr int numNestingsToIndex = NestingForIndexImpl<index>::value();\
 \
 	/* isSquare means all dims match */\
 	struct IsSquareImpl {\
@@ -2209,6 +2262,7 @@ inline constexpr int symmetricSize(int d, int r) {
 // TODO Remove of an index will Expand it first ... but we can also shorcut Remove to *always* use this type.
 #define TENSOR_EXPAND_TEMPLATE_TOTALLY_SYMMETRIC()\
 	template<int index>\
+	requires (index >= 0 && index < localRank)\
 	struct ExpandTensorRankTemplateImpl {\
 		static constexpr auto value() {\
 			if constexpr (index == 0) {\
@@ -2234,7 +2288,23 @@ inline constexpr int symmetricSize(int d, int r) {
 		using type = typename decltype(value())::type;\
 	};\
 	template<int index>\
-	using ExpandTensorRankTemplate = typename This::template ExpandTensorRankTemplateImpl<index>::type;
+	using ExpandTensorRankTemplate = typename This::template ExpandTensorRankTemplateImpl<index>::type;\
+\
+	template<int index>\
+	requires (index >= 0 && index < localRank)\
+	struct ReplaceLocalStorageImpl {\
+		static constexpr auto value() {\
+			return Common::tuple_cat_t<\
+				GetTupleWrappingStorageForRank<localDim, index, index_sym, index_symR>,\
+				std::tuple<index_vec<localDim>>,\
+				GetTupleWrappingStorageForRank<localDim, localRank-index-1, index_sym, index_symR>\
+			>();\
+		}\
+		using type = decltype(value);\
+	};\
+	template<int index>\
+	requires (index >= 0 && index < localRank)\
+	using ReplaceLocalStorage = typename ReplaceLocalStorageImpl<index>::type;
 
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC(classname, Inner_, localDim_, localRank_)\
 	TENSOR_THIS(classname)\
@@ -2515,6 +2585,7 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 // TODO Remove of an index will Expand it first ... but we can also shorcut Remove to *always* use this type.
 #define TENSOR_EXPAND_TEMPLATE_TOTALLY_ANTISYMMETRIC()\
 	template<int index>\
+	requires (index >= 0 && index < localRank)\
 	struct ExpandTensorRankTemplateImpl {\
 		static constexpr auto value() {\
 			if constexpr (index == 0) {\
@@ -2540,7 +2611,23 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 		using type = typename decltype(value())::type;\
 	};\
 	template<int index>\
-	using ExpandTensorRankTemplate = typename This::template ExpandTensorRankTemplateImpl<index>::type;
+	using ExpandTensorRankTemplate = typename This::template ExpandTensorRankTemplateImpl<index>::type;\
+\
+	template<int index>\
+	requires (index >= 0 && index < localRank)\
+	struct ReplaceLocalStorageImpl {\
+		static constexpr auto value() {\
+			return Common::tuple_cat_t<\
+				GetTupleWrappingStorageForRank<localDim, index, index_asym, index_asymR>,\
+				std::tuple<index_vec<localDim>>,\
+				GetTupleWrappingStorageForRank<localDim, localRank-index-1, index_asym, index_asymR>\
+			>();\
+		}\
+		using type = decltype(value);\
+	};\
+	template<int index>\
+	requires (index >= 0 && index < localRank)\
+	using ReplaceLocalStorage = typename ReplaceLocalStorageImpl<index>::type;
 
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC(classname, Inner_, localDim_, localRank_)\
 	TENSOR_THIS(classname)\
