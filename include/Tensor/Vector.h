@@ -231,6 +231,8 @@ Scalar = NestedPtrTuple's last
 		using type = decltype(value());\
 	};\
 	using NestedPtrTuple = typename NestedPtrTupleImpl::type;\
+	/* can't do this, because first type is This, and we're still in This */\
+	/*using NestedTuple = Common::TupleTypeMap<NestedPtrTupleImpl, std::remove_pointer_t>;*/\
 \
 	/* for when you just want to work with the nested tensors, and not the final scalar */\
 	using NestedPtrTensorTuple = Common::tuple_remove_last_t<NestedPtrTuple>;\

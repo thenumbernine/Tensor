@@ -204,18 +204,27 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `::Inner` = The next most nested vector/matrix/symmetric.
 - `::Template<T, N[, R]>` = The template of this class, useful for nesting operations.
 - `::rank` = For determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
+- `::dimeq` = Sequence mapping the i'th index to the dimension of the i'th index.
 - `::dim<i>` = Get the i'th dimension size , where i is from 0 to rank-1.
 - `::dims` = Get a int-vector with all the dimensions.
 - `::isSquare` = true if all dimensions match, false otherwise.  Yes that means vectors are square.  Maybe I'll change the name.
 - `::localDim` = Get the dimension size of the current class, equal to `dim<0>`.
 - `::numNestings` = Get the number of template-argument-nested classes.  Equivalent to the number of Inner's in `tensor::Inner::...::Inner`.
+- `::countseq` = A sequence of the storage size of each nesting.
 - `::count<i>` = Get the storage size of the i'th nested class.  i is from 0 to numNestings-1.
 - `::localCount` = Get the storage size of the current class, equal to `count<0>`.
+- `::totalCount` = The product of all counts of all nestings.  This times `sizeof(Scalar)` will equal the sizeof `This` tensor.
+- `::LocalStorage` = The associated storage type used for building this tensor's nesting with `_tensori`.
+- `::StorageTuple` = A tuple of all nestings' `LocalStorage`, such that `_tuplei<Scalar, ` ... then all types of `StorageTuple` ... `>` will produce This.  Equivalently, `tensorScalarTuple<Scalar, StorageTuple>` will produce `This`.
+- `::NestedPtrTuple` = Tuple of pointers to the `Nested<i>`'th classes, where the 0'th is `This`, i.e., the current class, and the `numNestings`'th is the `Scalar`.  I had to use pointers because this is a member type, so it cannot contain itself.
+- `::NestedPtrTensorTuple` = Same as above but without the last `Scalar` element, such that all its types are tensor types.
 - `::Nested<i>` = Get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
 - `::numNestingsToIndex<i>` = Gets the number of nestings deep that the index 'i' is located, where i is from 0 to rank.
 	`numNestingsToIndex<0>` will always return 0, `numNestingsToIndex<rank>` will always return `numNestings`.
 - `::indexForNesting<i>` = Get the index of the i'th nesting, where i is from 0 to `numNestings`.  `indexForNesting<numNestings>` will produce `rank`.
-- `::InnerForIndex<i>` = Get the type associated with the i'th index, where i is from 0 to rank.
+- `::InnerPtrTuple` = Tuple mapping the i'th tuple element to the i'th index associated nested Inner type. Tuple size is `rank`+1 (the +1 is for Scalar at the end).
+- `::InnerPtrTemplateTuple` = Same as above but without Scalar at the end.  Useful for tuple operations.
+- `::InnerForIndex<i>` = Get the type associated with the i'th index, where i is from 0 to rank.  Equivalent to getting the i'th element from `InnerPtrTuple`.
 	Equivalent to `::Nested<numNestingsToIndex<i>>`  `_vec`'s 0 will point to itself, `_sym`'s and `_asym`'s 0 and 1 will point to themselves, all others drill down.
 - `::ReplaceInner<T>` = Replaces this tensor's Inner with a new type, T.
 - `::ReplaceNested<i,T>` = Replace the i'th nesting of this tensor with the type 'T', where i is from 0 to numNestings-1.
