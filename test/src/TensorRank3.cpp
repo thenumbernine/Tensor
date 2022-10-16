@@ -50,6 +50,7 @@ inverse
 
 namespace StaticTest1 {
 	using namespace Tensor;
+	using namespace Common;
 	using namespace std;
 	
 	static_assert((std::tuple_size_v<float3x3::StorageTuple>) == float3x3::numNestings);
@@ -76,6 +77,23 @@ namespace StaticTest1 {
 	static_assert(_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>::template numNestingsToIndex<1> == 1);
 	static_assert(_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>::template numNestingsToIndex<2> == 1);
 	static_assert(_tensori<int,index_vec<3>,index_sym<3>,index_vec<3>>::template numNestingsToIndex<3> == 2);
+
+	static_assert(is_same_v<
+		float3a3a3::StorageTuple,
+		std::tuple<index_asymR<3,3>>
+	>);
+	static_assert(is_same_v<
+		float3a3a3::ReplaceLocalStorage<0>,
+		std::tuple<index_vec<3>, index_asym<3>>
+	>);
+	static_assert(is_same_v<
+		float3a3a3::ReplaceLocalStorage<1>,
+		std::tuple<index_vec<3>, index_vec<3>, index_vec<3>>
+	>);
+	static_assert(is_same_v<
+		float3a3a3::ReplaceLocalStorage<2>,
+		std::tuple<index_asym<3>, index_vec<3>>
+	>);
 
 	static_assert(is_same_v<_vec<int,3>::ExpandIthIndex<0>, _tensor<int,3>>);
 	static_assert(is_same_v<_tensor<int,3,3>::ExpandIthIndex<0>, _tensorr<int,3,2>>);

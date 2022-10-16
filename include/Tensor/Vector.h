@@ -131,16 +131,16 @@ struct GetTupleWrappingStorageForRankImpl {
 	static_assert(rank >= 0);
 	static constexpr auto value() {
 		if constexpr (rank == 0) {
-			return Common::TypeWrapper<std::tuple<>>();
+			return std::tuple<>();
 		} else if constexpr (rank == 1) {
-			return Common::TypeWrapper<std::tuple<index_vec<dim>>>();
+			return std::tuple<index_vec<dim>>();
 		} else if constexpr (rank == 2) {
-			return Common::TypeWrapper<std::tuple<storageRank2<dim>>>();
+			return std::tuple<storageRank2<dim>>();
 		} else {
-			return Common::TypeWrapper<std::tuple<storageRankN<dim, rank>>>();
+			return std::tuple<storageRankN<dim, rank>>();
 		}
 	}
-	using type = typename decltype(value())::type;
+	using type = decltype(value());
 };
 template<
 	int dim,
@@ -217,10 +217,6 @@ static_assert(std::is_same_v<
 
 // used for ExpandIthIndex.  all tensors use _tensorr, except _symR and _asymR can use _symR and _asymR.
 #define TENSOR_EXPAND_TEMPLATE_TENSORR()\
-\
-	template<int index>\
-	requires (index >= 0 && index < localRank)\
-	using ExpandTensorRankTemplate = _tensorr<Inner, localDim, localRank>;\
 \
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
@@ -406,29 +402,7 @@ Scalar = NestedPtrTuple's last
 	static constexpr int numNestingsToIndex = NestingForIndexImpl<index>::value();\
 \
 	/* expand the storage of the i'th index */\
-	/* TODO replace ExpandTensorRankTemplate with ReplaceLocalStorage to produce a tuple of new storages */\
-	/*  then just wedge that into the tuple and rebuilt */\
-	template<int index>\
-	struct ExpandIthIndexImpl {\
-		static_assert(index >= 0 && index < rank);\
-		/* another This::template that behaves inside a static constexpr method ... */\
-		static constexpr auto value() {\
-			constexpr int nest = numNestingsToIndex<index>;\
-			using N = typename This::template Nested<nest>;\
-			using R = typename This\
-				::ReplaceNested<\
-					nest,\
-					typename N::template ExpandTensorRankTemplate<\
-						index - indexForNesting<nest>\
-					>\
-				>;\
-			return R();\
-		}\
-		using type = decltype(value());\
-	};\
-	template<int index>\
-	using ExpandIthIndex = typename ExpandIthIndexImpl<index>::type;\
-\
+	/* produce a tuple of new storages and then just wedge that into the tuple and rebuilt */\
 	/* impl is only here cuz i would need to move ReplaceLocalStorage up above this otherwise */\
 	/* and that would mean splitting the HEADER and putting it in between this and other stuf above */\
 	template<int index>\
@@ -436,22 +410,21 @@ Scalar = NestedPtrTuple's last
 		static_assert(index >= 0 && index < rank);\
 		static constexpr auto value() {\
 			constexpr int nest = numNestingsToIndex<index>;\
-			return Common::TypeWrapper<Common::tuple_insert_t<\
-				Common::tuple_remove_t<\
-					nest,\
-					StorageTuple\
-				>,\
-				nest,\
-				typename Nested<nest>\
-				::template ReplaceLocalStorage<\
-					index - indexForNesting<nest>\
-				>\
-			>>();\
+			return tensorScalarTuple<\
+					Scalar,\
+					Common::tuple_insert_t<\
+						Common::tuple_remove_t<nest, StorageTuple>,\
+						nest,\
+						typename Nested<nest>::template ReplaceLocalStorage<\
+							index - indexForNesting<nest>\
+						>\
+					>\
+				>();\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = decltype(value());\
 	};\
-	/*template<int index>*/\
-	/*using ExpandIthIndex = typename ExpandIthIndex2Impl<index>::type;*/\
+	template<int index>\
+	using ExpandIthIndex = typename ExpandIthIndex2Impl<index>::type;\
 \
 	template<int i1, int... I>\
 	struct ExpandIndexImpl {\
@@ -2286,34 +2259,6 @@ inline constexpr int symmetricSize(int d, int r) {
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
 // TODO Remove of an index will Expand it first ... but we can also shorcut Remove to *always* use this type.
 #define TENSOR_EXPAND_TEMPLATE_TOTALLY_SYMMETRIC()\
-	template<int index>\
-	requires (index >= 0 && index < localRank)\
-	struct ExpandTensorRankTemplateImpl {\
-		static constexpr auto value() {\
-			if constexpr (index == 0) {\
-				if constexpr (localRank == 2) {\
-					return Common::TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
-				} else if constexpr (localRank == 3) {\
-					return Common::TypeWrapper<_vec<_sym<Inner, localDim>, localDim>>();\
-				} else {\
-					return Common::TypeWrapper<_vec<_symR<Inner, localDim, localRank-1>, localDim>>();\
-				}\
-			} else if constexpr (index == localRank-1) {\
-				if constexpr (localRank == 2) {\
-					return Common::TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
-				} else if constexpr (localRank == 3) {\
-					return Common::TypeWrapper<_sym<_vec<Inner, localDim>, localDim>>();\
-				} else {\
-					return Common::TypeWrapper<_symR<_vec<Inner, localDim>, localDim, localRank-1>>();\
-				}\
-			} else {\
-				return Common::TypeWrapper<_tensorr<Inner, localDim, localRank>>();\
-			}\
-		}\
-		using type = typename decltype(value())::type;\
-	};\
-	template<int index>\
-	using ExpandTensorRankTemplate = typename This::template ExpandTensorRankTemplateImpl<index>::type;\
 \
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
@@ -2325,7 +2270,7 @@ inline constexpr int symmetricSize(int d, int r) {
 				GetTupleWrappingStorageForRank<localDim, localRank-index-1, index_sym, index_symR>\
 			>();\
 		}\
-		using type = decltype(value);\
+		using type = decltype(value());\
 	};\
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
@@ -2609,34 +2554,6 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
 // TODO Remove of an index will Expand it first ... but we can also shorcut Remove to *always* use this type.
 #define TENSOR_EXPAND_TEMPLATE_TOTALLY_ANTISYMMETRIC()\
-	template<int index>\
-	requires (index >= 0 && index < localRank)\
-	struct ExpandTensorRankTemplateImpl {\
-		static constexpr auto value() {\
-			if constexpr (index == 0) {\
-				if constexpr (localRank == 2) {\
-					return Common::TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
-				} else if constexpr (localRank == 3) {\
-					return Common::TypeWrapper<_vec<_asym<Inner, localDim>, localDim>>();\
-				} else {\
-					return Common::TypeWrapper<_vec<_asymR<Inner, localDim, localRank-1>, localDim>>();\
-				}\
-			} else if constexpr (index == localRank-1) {\
-				if constexpr (localRank == 2) {\
-					return Common::TypeWrapper<_vec<_vec<Inner, localDim>, localDim>>();\
-				} else if constexpr (localRank == 3) {\
-					return Common::TypeWrapper<_asym<_vec<Inner, localDim>, localDim>>();\
-				} else {\
-					return Common::TypeWrapper<_asymR<_vec<Inner, localDim>, localDim, localRank-1>>();\
-				}\
-			} else {\
-				return Common::TypeWrapper<_tensorr<Inner, localDim, localRank>>();\
-			}\
-		}\
-		using type = typename decltype(value())::type;\
-	};\
-	template<int index>\
-	using ExpandTensorRankTemplate = typename This::template ExpandTensorRankTemplateImpl<index>::type;\
 \
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
@@ -2648,7 +2565,7 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 				GetTupleWrappingStorageForRank<localDim, localRank-index-1, index_asym, index_asymR>\
 			>();\
 		}\
-		using type = decltype(value);\
+		using type = decltype(value());\
 	};\
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
