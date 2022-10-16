@@ -51,6 +51,13 @@ inverse
 namespace StaticTest1 {
 	using namespace Tensor;
 	using namespace std;
+	
+	static_assert((std::tuple_size_v<float3x3::IndexStorageTuple>) == float3x3::numNestings);
+	static_assert(std::is_same_v<float3x3::MakeWithScalar<float3x3::IndexStorageTuple>, float3x3>);
+
+	static_assert(is_same_v<_tensori<float, index_vec<3>, index_vec<3>>, float3x3>);
+	static_assert(is_same_v<_tensori<float3, index_vec<3>>, float3x3>);
+	static_assert(is_same_v<_tensori<float3x3>, float3x3>);
 
 	static_assert(is_same_v<_tensorr<int,3,1>, _tensor<int,3>>);
 	static_assert(is_same_v<_tensorr<int,3,2>, _tensor<int,3,3>>);

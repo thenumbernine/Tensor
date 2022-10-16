@@ -197,18 +197,23 @@ struct index_asymR {
 // _tensori:
 // tensor which allows custom nested storage, such as symmetric indexes
 
+template<typename T, typename... Storage>
+struct _tensori_impl;
 template<typename T, typename Storage, typename... MoreStorage>
-struct _tensori_impl {
-	using tensor = typename Storage::template type<typename _tensori_impl<T, MoreStorage...>::tensor>;
+struct _tensori_impl<T, Storage, MoreStorage...> {
+	using type = typename Storage::template type<typename _tensori_impl<T, MoreStorage...>::type>;
 };
-
 template<typename T, typename Storage>
 struct _tensori_impl<T, Storage> {
-	using tensor = typename Storage::template type<T>;
+	using type = typename Storage::template type<T>;
+};
+template<typename T>
+struct _tensori_impl<T> {
+	using type = T;
 };
 
-template<typename T, typename Storage, typename... MoreStorage>
-using _tensori = typename _tensori_impl<T, Storage, MoreStorage...>::tensor;
+template<typename T, typename... Storage>
+using _tensori = typename _tensori_impl<T, Storage...>::type;
 
 
 // make a tensor from a list of dimensions
@@ -219,15 +224,15 @@ using _tensori = typename _tensori_impl<T, Storage, MoreStorage...>::tensor;
 
 template<typename T, int dim, int... dims>
 struct _tensor_impl {
-	using tensor = _vec<typename _tensor_impl<T, dims...>::tensor, dim>;
+	using type = _vec<typename _tensor_impl<T, dims...>::type, dim>;
 };
 
 template<typename T, int dim>
 struct _tensor_impl<T, dim> {
-	using tensor = _vec<T,dim>;
+	using type = _vec<T,dim>;
 };
 
 template<typename T, int dim, int... dims>
-using _tensor = typename _tensor_impl<T, dim, dims...>::tensor;
+using _tensor = typename _tensor_impl<T, dim, dims...>::type;
 
 }

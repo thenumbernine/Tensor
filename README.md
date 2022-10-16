@@ -92,9 +92,15 @@ a(i,j) = .5 * (a(i,j) + a(j,i));
 - Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A\_{ij}$.
 	This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
 
+Tensor/tensor operator result storage optimizations:
+- `mat` + `T` = `mat`
+
 ### Zero Vector:
 `_zero<type, dim>` = vectors of zeroes.  Requires only the inner type worth of storage.  Use nesting for arbitrary-rank, arbitrary-dimension zero tensors all for no extra storage.
 Always returns zero.  This is a shorthand for simpliciations like symmetrizing antisymmetric indexes or antisymmetrizing symmetric indexes.
+
+Tensor/tensor operator result storage optimizations:
+- `zero` + `T` = `T`
 
 ### Identity Matrix:
 `_ident<type, dim>` = identity matrix.
@@ -102,6 +108,7 @@ This will only take up a single value of storage.  Specifying the internal stora
 i.e. $a\_{ij} \otimes \delta\_{kl}$ = `outer( _mat<float,3,3>(...), _ident<float,3>(1) )` will produce a rank-4 tensor $c\_{ijkl} = a\_{ij} \cdot \delta\_{kl}$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
 
 Tensor/tensor operator result storage optimizations:
+- `ident` + `zero` = `ident`
 - `ident` + `ident` = `ident`
 - `ident` + `sym` = `sym`
 - `ident` + `asym` = `matrix`
@@ -112,6 +119,7 @@ Tensor/tensor operator result storage optimizations:
 - `.x_x .x_y .x_z .y_y .y_z .z_z .x_w .y_w .z_w .w_w` storage, `.y_x .z_x, .z_y` union'd access.
 
 Tensor/tensor operator result storage optimizations:
+- `sym` + `zero` = `sym`
 - `sym` + `ident` = `sym`
 - `sym` + `sym` = `sym`
 - `sym` + `asym` = `matrix`
@@ -122,6 +130,7 @@ Tensor/tensor operator result storage optimizations:
 - `.x_x() .w_w()` access methods
 
 Tensor/tensor operator result storage optimizations:
+- `asym` + `zero` = `asym`
 - `asym` + `ident` = `matrix`
 - `asym` + `sym` = `matrix`
 - `asym` + `asym` = `asym`
@@ -133,6 +142,8 @@ The size of a totally-symmetric tensor storage is
 the number of unique permutations of a symmetric tensor of dimension `d` and rank `r`,
 which is `(d + r - 1) choose r`.
 
+Tensor/tensor operator result storage works the same as `_sym`:
+
 ### Totally-antisymmetric tensors:
 `_asymR<type, dim, rank>` = totally-antisymmetric tensor.
 The size of a totally-antisymmetric tensor storage is
@@ -140,6 +151,8 @@ the number of unique permutations of an antisymmetric tensor of dimension `d` an
 which is `d choose r`.
 This means the Levi-Civita permutation tensor takes up exactly 1 float.  
 Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
+
+Tensor/tensor operator result storage works the same as `_asym`:
 
 ### Accessors:
 An accessor is an object used for intermediate access to a tensor when it is not fully indexed.  For example, if you construct an object `auto a = float3s3()` to be a rank-2 symmetric 3x3 matrix,

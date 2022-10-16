@@ -52,6 +52,7 @@ if I do column-major then C inline indexing is transposed
 #include "Common/Function.h"	//FunctionFromLambda
 #include "Common/Sequence.h"	//seq_reverse_t, make_integer_range
 #include "Common/Exception.h"
+#include "Common/Test.h"		//STATIC_TEST_EQ
 #include <tuple>
 #include <functional>	//reference_wrapper, also function<> is by Partial
 #include <cmath>		//sqrt()
@@ -121,7 +122,26 @@ namespace Tensor {
 // not sure if I need these yet ...
 
 template<typename... T>
-using tuple_cat_t = decltype(std::tuple_cat(T()...));
+using tuple_cat_t = decltype(std::tuple_cat(std::declval<T>()...));
+
+//https://stackoverflow.com/a/15412010
+template< 
+	typename Tuple, 
+	std::size_t N,
+	typename T,
+	typename Indices = typename std::make_index_sequence<std::tuple_size_v<Tuple>>
+> struct element_replace;
+template<typename... Ts, std::size_t N, typename T, std::size_t... Ns>
+struct element_replace<std::tuple< Ts... >, N, T, std::index_sequence< Ns... >> {
+    using type = std::tuple<typename std::conditional_t<Ns == N, T, Ts>...>;
+};
+template<typename Tuple, std::size_t N, typename T>
+using element_replace_t = typename element_replace<Tuple, N, T>::type;
+
+static_assert(std::is_same_v<
+	element_replace_t<std::tuple<int, char*, double>, 1, float>,
+	std::tuple<int, float, double>
+>);
 
 // https://stackoverflow.com/a/14852674
 template<size_t I, typename T>
@@ -174,9 +194,6 @@ struct TupleTypeMapsImpl<T> {
 template<typename T, template<typename> typename... Fs>
 using TupleTypeMaps = typename TupleTypeMapsImpl<T, Fs...>::type;
 
-template<typename T>
-using RepPtrByLocalRank = Common::tuple_rep_t<T, std::remove_pointer_t<T>::localRank>;
-
 // tuple to sequence map
 // can't seem to pass "template<typename> int F", so F must be a class with a ::value whose type matches integer_sequence type I
 template<typename I, typename Tuple, template<typename> typename F>
@@ -196,6 +213,38 @@ template<typename I, typename T, template<typename> typename F>
 using TupleToSeqMap = typename TupleToSeqMapImpl<I, T, F>::type;
 
 
+template<typename I, typename Seq, template<I> typename F>
+struct SeqToTupleMapImpl;
+template<typename I, I i1, I... is, template<I> typename F>
+struct SeqToTupleMapImpl<I, std::integer_sequence<I, i1, is...>, F> {
+	using type = Common::seq_cat_t<
+		std::tuple<F<i1>>,
+		typename SeqToTupleMapImpl<I, std::integer_sequence<I, is...>, F>::type
+	>;
+};
+template<typename I, template<I> typename F>
+struct SeqToTupleMapImpl<I, std::integer_sequence<I>, F> {
+	using type = std::tuple<>;
+};
+template<typename Seq, typename I, template<I> typename F>
+using SeqToTupleMap = typename SeqToTupleMapImpl<I, Seq, F>::type;
+
+template<typename Tuple, typename I, I... is>
+using TupleGetVariadic = std::tuple< std::tuple_element_t<is, Tuple> ... >;
+
+template<typename Tuple, typename Seq>
+struct TupleGetSeqImpl;
+template<typename Tuple, typename I, I... is>
+struct TupleGetSeqImpl<Tuple, std::integer_sequence<I, is...>> {
+	using type = TupleGetVariadic<Tuple, I, is...>;
+};
+template<typename Tuple, typename Seq>
+using TupleGetSeq = typename TupleGetSeqImpl<Tuple, Seq>::type; 
+
+template<typename Tuple, size_t from, size_t to>
+using tuple_subset_t = TupleGetSeq<Tuple, Common::make_index_range<from, to>>;
+
+
 // apply tuple arguments to a templated type
 template<template<typename...> typename F, typename TupleOfArgs>
 struct tuple_apply_impl;
@@ -206,6 +255,11 @@ struct tuple_apply_impl<F, std::tuple<Args...>> {
 template<template<typename...> typename F, typename TupleOfArgs>
 using tuple_apply_t = typename tuple_apply_impl<F, TupleOfArgs>::type;
 
+
+
+template<typename T>
+using RepPtrByLocalRank = Common::tuple_rep_t<T, std::remove_pointer_t<T>::localRank>;
+
 template<typename T>
 struct GetPtrLocalDim {
 	static constexpr int value = std::remove_pointer_t<T>::localDim;
@@ -215,6 +269,10 @@ template<typename T>
 struct GetPtrLocalCount {
 	static constexpr int value = std::remove_pointer_t<T>::localCount;
 };
+
+template<typename T>
+using GetPtrLocalIndexStorage = typename std::remove_pointer_t<T>::LocalIndexStorage;
+
 
 // TODO Common/Sequence.h
 //https://stackoverflow.com/a/55247213
@@ -233,6 +291,7 @@ struct ForLoopBodyBase {};
 template<typename Src, typename Dst>
 requires (Src::rank == Dst::totalCount)
 struct BuildFromDim : public ForLoopBodyBase {
+	// NOTICE right now this is from 0 to Dst::totalCount-1 , which is the product of all count<>'s
 	template<int i>
 	struct Loop {
 		static constexpr bool exec(Dst & t) {
@@ -319,8 +378,8 @@ Scalar = NestedPtrTuple's last
 \
 	/* Get the i'th nesting's count aka storage size */\
 	template<int i>\
-	static constexpr int count = Nested<i>::localCount;\
-	/*static constexpr int count = Common::seq_get_v<i, countseq>;*/\
+	static constexpr int count = Common::seq_get_v<i, countseq>;\
+	/*static constexpr int count = Nested<i>::localCount;*/\
 \
 	static constexpr int totalCount = seq_product(countseq());\
 \
@@ -366,7 +425,8 @@ Scalar = NestedPtrTuple's last
 	/* TODO alternative for indexForNesting: */\
 	/* get a sequence of the local-rank for the respective nesting ... then make a sequence of the sum-of-sequence */\
 	/*using NestedLocalRankSeq = TupleTypeMaps<NestedPtrTensorTuple, RemovePtr, GetLocalRank>*/\
-	/*using NestedLocalRankSeq = std::make_index_sequence<numNestings>*/\
+	/*using NestedLocalRankSeq = tuple_apply_t<seq_cat_t, SeqMapToType<std::make_index_sequence<numNestings>, RepSeqByCount>>*/\
+	/*using IndexForNestingSeq = seq_cat_t< 0's x localRank0, 1's x localRank1, ... >;*/\
 	/* Get the first index that this nesting represents. */\
 	/* Same as the sum of all prior nestings' localRanks */\
 	template<int nest>\
@@ -384,20 +444,21 @@ Scalar = NestedPtrTuple's last
 	template<int nest>\
 	static constexpr int indexForNesting = IndexForNestingImpl<nest>::value();\
 \
-	template<int i, typename NewNestedInner>\
-	struct ReplaceNestedImpl {\
-		static constexpr auto value() {\
-			if constexpr (i == 0) {\
-				return NewNestedInner();\
-			} else {\
-				using NewType = typename Inner::template ReplaceNestedImpl<i-1, NewNestedInner>::type;\
-				return ReplaceInner<NewType>();\
-			}\
-		}\
-		using type = decltype(value());\
-	};\
-	template<int i, typename NewType>\
-	using ReplaceNested = typename ReplaceNestedImpl<i, NewType>::type;\
+	/* This == tuple_apply_t<_tensori, tuple_cat_t<std::tuple<Scalar>, IndexStorageTuple>>) */\
+	using IndexStorageTuple = TupleTypeMap<NestedPtrTensorTuple, GetPtrLocalIndexStorage>;\
+	STATIC_ASSERT_EQ((std::tuple_size_v<IndexStorageTuple>), numNestings);\
+\
+	template<typename StorageTuple>\
+	using MakeWithScalar = tuple_apply_t<_tensori, tuple_cat_t<std::tuple<Scalar>, StorageTuple>>;\
+	/* notice this won't be true for Accessors */\
+	/*static_assert(std::is_same_v<MakeWithScalar<IndexStorageTuple>, This>);*/\
+\
+	/* the rest of these, I can make easier if I store a tuple of the tensori index storage helpers per class */\
+	/* then provide a method for rebuiding the tensor from its tupel of strage helpers*/\
+	/* and then the rest of these can be written in terms of tuple manipulation */\
+\
+	/* This is "Replace nesting 'i' and all subsequent nestings with NewType */\
+	using ReplaceNested = tuple_apply_t<_tensori, tuple_cat_t<std::tuple<NewType>, tuple_subset_t<IndexStorageTuple, 0, i>>>;\
 \
 	/* expand the storage of the i'th index */\
 	template<int index>\
@@ -1287,7 +1348,11 @@ Bit of a hack: MOst these are written in terms of 'This'
 	/* for vectors etc it is 's' */\
 	/* for (anti?)symmetric it is N*(N+1)/2 */\
 	/* TODO make a 'count<int nesting>', same as dim? */\
-	static constexpr int localCount = localDim;
+	static constexpr int localCount = localDim;\
+\
+	/* this could replace the ReplaceInner template, and maybe ReplaceLocalDim and Template too */\
+	/* use these with tuple_apply_t<_tensori, IndexStorageTuple> to rebuild the tensor */\
+	using LocalIndexStorage = index_vec<localDim>;
 
 #define TENSOR_HEADER_VECTOR(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1652,7 +1717,8 @@ struct _vec<Inner_,4> {
 
 #define TENSOR_HEADER_ZERO_SPECIFIC()\
 \
-	static constexpr int localCount = 1; /* will this work? */
+	static constexpr int localCount = 1;\
+	using LocalIndexStorage = index_zero<localDim>;
 
 #define TENSOR_HEADER_ZERO(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1745,7 +1811,8 @@ asymR_ijk... => mat_ij-of-{vec,asym,asymR} "
 */
 #define TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
 \
-	static constexpr int localCount = triangleSize(localDim);
+	static constexpr int localCount = triangleSize(localDim);\
+	using LocalIndexStorage = index_sym<localDim>;
 
 #define TENSOR_HEADER_SYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1814,6 +1881,7 @@ struct Rank2Accessor {
 	//end TENSOR_TEMPLATE_*
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
+	using LocalIndexStorage = index_vec<localDim>;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
 	// treat this like (rank-1) vector storage, so use vector's TensorSumResult
 	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
@@ -2006,7 +2074,8 @@ struct _sym<Inner_, 4> {
 
 #define TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
 \
-	static constexpr int localCount = 1;
+	static constexpr int localCount = 1;\
+	using LocalIndexStorage = index_ident<localDim>;
 
 #define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -2090,7 +2159,8 @@ struct _ident {
 
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
 \
-	static constexpr int localCount = triangleSize(localDim - 1);
+	static constexpr int localCount = triangleSize(localDim - 1);\
+	using LocalIndexStorage = index_asym<localDim>;
 
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -2280,7 +2350,8 @@ inline constexpr int symmetricSize(int d, int r) {
 
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
 \
-	static constexpr int localCount = symmetricSize(localDim, localRank);
+	static constexpr int localCount = symmetricSize(localDim, localRank);\
+	using LocalIndexStorage = index_symR<localDim, localRank>;
 
 // Expand index 0 of asym^N => vec ⊗ asym^(N-1)
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
@@ -2429,6 +2500,7 @@ struct RankNAccessor {
 	//end TENSOR_TEMPLATE_*
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
+	using LocalIndexStorage = index_vec<localDim>;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
 	// treat this like (rank-1) vector storage, so use vector's TensorSumResult
 	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
@@ -2584,7 +2656,8 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
 \
-	static constexpr int localCount = antisymmetricSize(localDim, localRank);
+	static constexpr int localCount = antisymmetricSize(localDim, localRank);\
+	using LocalIndexStorage = index_asymR<localDim, localRank>;
 
 // Expand index 0 of asym^N => vec ⊗ asym^(N-1)
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
