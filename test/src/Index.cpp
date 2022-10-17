@@ -67,6 +67,59 @@ void test_Index() {
 		a(i,j) = a(j,i);
 		TEST_EQ(a, (Tensor::double3x3{{1,4,7},{2,5,8},{3,6,9}}));
 
+		{
+			using namespace Tensor;
+			using namespace std;
+			STATIC_ASSERT_EQ((tuple_find_v<Index<'i'>, tuple<>>), -1);
+			STATIC_ASSERT_EQ((tuple_find_v<Index<'i'>, tuple<Index<'i'>>>), 0);
+			STATIC_ASSERT_EQ((tuple_find_v<Index<'i'>, tuple<Index<'j'>>>), -1);
+			STATIC_ASSERT_EQ((tuple_find_v<Index<'i'>, tuple<Index<'i'>, Index<'j'>>>), 0);
+			STATIC_ASSERT_EQ((tuple_find_v<Index<'i'>, tuple<Index<'j'>, Index<'i'>>>), 1);
+
+			static_assert(is_same_v<
+				GatherIndexesImpl<
+					decltype(a(i))::IndexTuple,
+					make_integer_sequence<int, 1>
+				>::indexes,
+				tuple<Index<'i'>>
+			>);
+
+			static_assert(is_same_v<
+				GatherIndexesImpl<
+					decltype(a(i))::IndexTuple,
+					make_integer_sequence<int, 1>
+				>::type,
+				tuple<
+					pair<
+						Index<'i'>,
+						integer_sequence<int, 0>
+					>
+				>
+			>);
+
+			static_assert(is_same_v<
+				GatherIndexesImpl<
+					decltype(a(i,j))::IndexTuple,
+					make_integer_sequence<int, 2>
+				>::indexes,
+				tuple<Index<'i'>, Index<'j'>>
+			>);
+			
+			static_assert(is_same_v<
+				decltype(a(i,j))::IndexInfo,
+				tuple<
+					pair<
+						Index<'i'>,
+						integer_sequence<int, 0>
+					>,
+					pair<
+						Index<'j'>,
+						integer_sequence<int, 1>
+					>
+				>
+			>);
+		}
+
 		// add to transpose and self-assign
 		a(i,j) = a(i,j) + a(j,i);
 		TEST_EQ(a, (Tensor::double3x3{{2,6,10},{6,10,14},{10,14,18}}));

@@ -303,7 +303,29 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `.begin() / .end() / .cbegin() / .cend()` = read-iterators, for iterating over indexes (including duplicate elements in symmetric matrices).
 - `.write().begin(), ...` = write-iterators, for iterating over the stored elements (excluding duplicates for symmetric indexes).
 - read-iterators have `.index` as the int-vector of the index into the tensor.
-- write-iterators have `.readIndex` as the int-vector lookup index and `.writeIndex` as the nested-storage int-vector.
+- write-iterators have `.readIndex` as the int-vector lookup index and `.index` as the nested-storage int-vector.
+Iterations acts over all scalars of the tensor:
+```c++
+// read-iterators:
+auto t = _tensorx<float, 3, -'s', 4>; // construct a 3x4x4 tensor with 2nd two indexes symmetric.
+// loop over all indexes for reading, including symmetric indexes (where duplicates are not stored separately)
+for (auto t_ijk : t) {
+	doSomething(t_ijk);	//do something with the t_ijk's element of t
+}
+// loop but you want to access the read-iterator's index
+for (auto i = t_ijk.begin(); i != t_ijk.end(); ++i) {
+	doSomethingElse(t_ijk, i.index);
+}
+// loop over indexes of uniquely stored objects:
+for (auto & t_ijk : t.write()) {
+	t_ijk = calcSomething();
+}
+// loop but you want to access the write-iterator's index
+auto w = t_ijk.write();
+for (auto i = w.begin(); i != w.end(); ++i) {
+	t_ijk = calcSomethingElse(i.readIndex);
+}
+```
 
 ### Swizzling
 Swizzling is only available for expanded storage, i.e. `_vec` and compositions of `_vec` (like `_mat`), i.e. it is not available for `_sym` and `_asym`.

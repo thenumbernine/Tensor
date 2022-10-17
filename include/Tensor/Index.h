@@ -114,15 +114,11 @@ struct tuple_find;
 
 template<typename What, typename Where1, typename... Wheres>
 struct tuple_find<What, std::tuple<Where1, Wheres...>> {
-	static constexpr auto nextvalue = tuple_find<What, Wheres...>::value;
+	static constexpr auto nextvalue = tuple_find<What, std::tuple<Wheres...>>::value;
 	static constexpr auto value = 
 		std::is_same_v<What, Where1>
 		? 0
 		: (nextvalue == -1 ? -1 : nextvalue + 1);
-};
-template<typename What, typename Where1>
-struct tuple_find<What, std::tuple<Where1>> {
-	static constexpr auto value = 0;
 };
 template<typename What>
 struct tuple_find<What, std::tuple<>> {
@@ -163,11 +159,11 @@ struct GatherIndexesImpl<std::tuple<IndexType, IndexTypes...>, std::integer_sequ
 		if constexpr (resultLoc == -1) {
 			return (
 				Common::tuple_cat_t<
-					NextType,
 					std::tuple<std::pair<
 						IndexType,
 						std::integer_sequence<int, i1>
-					>>
+					>>,
+					NextType
 				>
 			*)nullptr;
 		} else {
@@ -198,7 +194,10 @@ struct GatherIndexesImpl<std::tuple<>, std::integer_sequence<int>> {
 	using indexes = std::tuple<>;
 };
 template<typename IndexTuple>
-using GatherIndexes = typename GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, std::tuple_size_v<IndexTuple>>>::type;
+using GatherIndexes = typename GatherIndexesImpl<
+	IndexTuple,
+	std::make_integer_sequence<int, std::tuple_size_v<IndexTuple>>
+>::type;
 
 /*
 rather than this matching a Tensor for index dereferencing,
@@ -220,6 +219,7 @@ struct IndexAccess {
 	//using AssignIndexes = GatherAssignIndexes<IndexTuple>; //offsets into IndexTuple of non-summed indexes
 	//static constexpr rank = std::tuple_size_v<AssignIndexes>;
 	//using dims = MapValues<AssignIndexes, TensorType::dimseq>;
+	using IndexInfo = GatherIndexes<IndexTuple>;
 
 	static constexpr auto rank = TensorType::rank;
 	using intN = _vec<int, rank>;
