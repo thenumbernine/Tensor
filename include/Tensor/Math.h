@@ -405,7 +405,7 @@ auto makeSym(T const & t) {
 			intN ij = [&](int k) -> int { return i[j[k]]; };
 			result += t(ij);
 		} while (std::next_permutation(j.s.begin(), j.s.end()));
-		return result / (S)factorial(T::rank);
+		return result / (S)constexpr_factorial(T::rank);
 	});
 }
 
@@ -461,7 +461,7 @@ auto makeAsym(T const & t) {
 				result += t(ij);
 			}
 		} while (std::next_permutation(j.s.begin(), j.s.end()));
-		return result / (S)factorial(T::rank);
+		return result / (S)constexpr_factorial(T::rank);
 	});
 }
 
@@ -482,7 +482,7 @@ auto hodgeDual(A const & a) {
 	static constexpr int dim = A::template dim<0>;
 	static_assert(rank <= dim);
 	using S = typename A::Scalar;
-	return interior<rank>(a, _asymR<S, dim, dim>(1)) / (S)factorial(rank);
+	return interior<rank>(a, _asymR<S, dim, dim>(1)) / (S)constexpr_factorial(rank);
 }
 
 // operator* is contract(outer(a,b)) ... aka interior1(a,b)
@@ -543,12 +543,12 @@ auto diagonal(T const & t) {
 	/* TODO ::InsertIndex that uses _tensor index indicators for what kind of storage to insert
 	using R = T
 		::ExpandIndex<m>
-		::InsertIndex<m, index_vec<T::dim<m>>>;
+		::InsertIndex<m, storage_vec<T::dim<m>>>;
 	... but can't use InsertIndex to insert a _sym with the expanded index
 	... maybe instead
 	using R = T
 		::RemoveIndex<m>
-		::InsertIndex<m, index_sym<T::dim<m>>>
+		::InsertIndex<m, storage_sym<T::dim<m>>>
 	*/
 	using E = typename T::template ExpandIndex<m>;
 	constexpr int nest = E::template numNestingsToIndex<m>;

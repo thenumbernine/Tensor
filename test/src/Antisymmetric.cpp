@@ -188,8 +188,8 @@ void test_Antisymmetric() {
 		// TODO outer of antisym and ident is failing ...
 		auto I = Tensor::_ident<float, 3>(1);
 		auto aOuterI = outer(a, I);
-		static_assert(std::is_same_v<decltype(aOuterI), Tensor::_tensori<float, Tensor::index_asym<3>, Tensor::index_ident<3>>>);
-		static_assert(std::is_same_v<decltype(outer(I, a)), Tensor::_tensori<float, Tensor::index_ident<3>, Tensor::index_asym<3>>>);
+		static_assert(std::is_same_v<decltype(aOuterI), Tensor::_tensori<float, Tensor::storage_asym<3>, Tensor::storage_ident<3>>>);
+		static_assert(std::is_same_v<decltype(outer(I, a)), Tensor::_tensori<float, Tensor::storage_ident<3>, Tensor::storage_asym<3>>>);
 		static_assert(sizeof(aOuterI) == sizeof(float) * 3); // expanded storage would be 3^4 = 81 floats, but this is just 3 ...
 
 		auto aTimesI = a * I;

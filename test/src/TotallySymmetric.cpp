@@ -10,11 +10,23 @@ namespace TestTotallySymmetric {
 
 
 	using namespace Tensor;
-	static_assert(factorial(0) == 1);
-	static_assert(factorial(1) == 1);
-	static_assert(factorial(2) == 2);
-	static_assert(factorial(3) == 6);
-	static_assert(factorial(4) == 24);
+	
+	STATIC_ASSERT_EQ((constexpr_isqrt(0)), 0);
+	STATIC_ASSERT_EQ((constexpr_isqrt(1)), 1);
+	STATIC_ASSERT_EQ((constexpr_isqrt(2)), 1);
+	STATIC_ASSERT_EQ((constexpr_isqrt(3)), 1);
+	STATIC_ASSERT_EQ((constexpr_isqrt(4)), 2);
+	STATIC_ASSERT_EQ((constexpr_isqrt(5)), 2);
+	STATIC_ASSERT_EQ((constexpr_isqrt(6)), 2);
+	STATIC_ASSERT_EQ((constexpr_isqrt(7)), 2);
+	STATIC_ASSERT_EQ((constexpr_isqrt(8)), 2);
+	STATIC_ASSERT_EQ((constexpr_isqrt(9)), 3);
+
+	static_assert(constexpr_factorial(0) == 1);
+	static_assert(constexpr_factorial(1) == 1);
+	static_assert(constexpr_factorial(2) == 2);
+	static_assert(constexpr_factorial(3) == 6);
+	static_assert(constexpr_factorial(4) == 24);
 
 	static_assert(nChooseR(0,0) == 1);
 	static_assert(nChooseR(1,0) == 1);
@@ -93,7 +105,7 @@ void test_TotallySymmetric() {
 		auto f = [](int i, int j, int k, int l, int m, int n) -> float {
 			return (i+j) - (k+l+m) + n;
 		};
-		auto t = _tensori<float, index_sym<3>, index_symR<3,3>, index_vec<3>>(f);
+		auto t = _tensori<float, storage_sym<3>, storage_symR<3,3>, storage_vec<3>>(f);
 		ECHO(t);
 		ECHO(t(0,0,0,0,0,0));
 	}

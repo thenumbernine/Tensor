@@ -63,9 +63,14 @@ auto inner(auto const & a, auto const & b)
 //here 'isSquare' means all dimension sizes match
 requires (a.dims() == b.dims() && a.isSquare && b.isSquare)
 {
-	auto bstar = b.hodgeDual();	//totally-antisymmetric tensors are space-optimized, so the storage of bstar will always be < the storage of b
-	auto c = a.wedge(bstar);	//at this point c should be a n-form for dimension n, which will take up a single numeric value (while representing n distinct tensor indexes)
-	return c.hodgeDual();		//return c's dual, which is a scalar
+	//totally-antisymmetric tensors are space-optimized,
+	//so the storage of bstar will always be < the storage of b
+	auto bstar = b.hodgeDual();	
+	//at this point c should be a n-form for dimension n, 
+	//which will take up a single numeric value (while representing n distinct tensor indexes)
+	auto c = a.wedge(bstar);	
+	//return c's dual, which is a 0-form scalar
+	return c.hodgeDual();		
 }
 ```
 
@@ -170,14 +175,14 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 - `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
 	`I1 I2` etc are one of the following storage types:
-- - `index_vec<dim>` for a single index of dimension `dim`,
-- - `index_zero<dim>` for rank-one zero valued indexes of dimension `dim`.  (If any are `index_zero` then all should be `index_zero`, but I left it to be specified per-index so that it could have varying dimensions per-index.),
-- - `index_ident<dim>` for rank-two identity indexes of dimension `dim`,
-- - `index_sym<dim>` for two symmetric indexes of dimension `dim`,
-- - `index_asym<dim>` for two antisymmetric indexes of dimension `dim`,
-- - `index_symR<dim, rank>` for `rank` symmetric indexes of dimension `dim`,
-- - `index_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
-	Ex: `_tensor<float, index_vec<3>, index_sym<4>, index_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
+- - `storage_vec<dim>` for a single index of dimension `dim`,
+- - `storage_zero<dim>` for rank-one zero valued indexes of dimension `dim`.  (If any are `storage_zero` then all should be `storage_zero`, but I left it to be specified per-index so that it could have varying dimensions per-index.),
+- - `storage_ident<dim>` for rank-two identity indexes of dimension `dim`,
+- - `storage_sym<dim>` for two symmetric indexes of dimension `dim`,
+- - `storage_asym<dim>` for two antisymmetric indexes of dimension `dim`,
+- - `storage_symR<dim, rank>` for `rank` symmetric indexes of dimension `dim`,
+- - `storage_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
+	Ex: `_tensor<float, storage_vec<3>, storage_sym<4>, storage_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
 
 - `tensorScalarTuple<Scalar, StorageTuple>` = same as `_tensori` except the storage arguments are passed in a tuple.
 
@@ -460,8 +465,8 @@ TODO:
 - or call 'Inner" "Next" or something?
 
 - ReplaceDim and ReplaceLocalDim that take a int pack and insert that many new dimensions into that index' location.
-- would be nice to insert the template to wedge into it, like `tuple<index_int<3>, index_sym<3>>`.
-	like `InsertIndexes<index, index_vec<3>, index_sym<3> >` etc,
+- would be nice to insert the template to wedge into it, like `tuple<storage_int<3>, storage_sym<3>>`.
+	like `InsertIndexes<index, storage_vec<3>, storage_sym<3> >` etc,
 		which would insert the listed structure into the nest of tensors.  make sure 'index' was expanded, expand it otherwise.
 
 - shorthand, if you symmetrize an asym tensor then return a zero-tensor
@@ -470,7 +475,7 @@ TODO:
 
 - To make `_ident` true to name, maybe make `_ident` default initialize its value to 1?
 
-- shorter names for `index_*` for easier building tensors.
+- shorter names for `storage_*` for easier building tensors.
 
 - more tensor types:  maybe diagonalized rank-2 with N-DOF, where each diagonal element has a unique value.
 

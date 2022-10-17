@@ -75,7 +75,7 @@ requires(localDim > 0 && localRank > 2)
 struct _asymR;
 
 
-// hmm, I'm trying to use these index_*'s in combination with is_instance_v<T, index_*<dim>::template type> but it's failing, so here they are specialized
+// hmm, I'm trying to use these storage_*'s in combination with is_instance_v<T, storage_*<dim>::template type> but it's failing, so here they are specialized
 template<typename T> struct is_vec : public std::false_type {};
 template<typename T, int d> struct is_vec<_vec<T,d>> : public std::true_type {};
 template<typename T> constexpr bool is_vec_v = is_vec<T>::value;
@@ -138,104 +138,152 @@ template<typename T> using _asym4 = _asym<T,4>;
 //  including operators, esp *
 
 // _tensori helpers:
-// _tensor<T, index_vec<dim>, index_vec<dim2>, ..., index_vec<dimN>>
-//  use index_sym<> index_asym<> for injecting storage optimization
-// _tensor<T, index_sym<dim1>, ..., dimN>
+// _tensor<Scalar, storage_vec<dim>, storage_vec<dim2>, ..., storage_vec<dimN>>
+//  use storage_sym<> storage_asym<> for injecting storage optimization
+// _tensor<Scalar, storage_sym<dim1>, ..., dimN>
 
 template<int dim>
-struct index_vec {
-	template<typename T>
-	using type = _vec<T,dim>;
-	// so (hopefully) index_vec<dim><T> == _vec<dim,T>
+struct storage_vec {
+	template<typename Inner>
+	using type = _vec<Inner,dim>;
+	// so (hopefully) storage_vec<dim><Inner> == _vec<dim,Inner>
 };
 
 template<int dim>
-struct index_zero {
-	template<typename T>
-	using type = _zero<T,dim>;
+struct storage_zero {
+	template<typename Inner>
+	using type = _zero<Inner,dim>;
 };
 
 template<int dim>
-struct index_sym {
-	template<typename T>
-	using type = _sym<T,dim>;
+struct storage_sym {
+	template<typename Inner>
+	using type = _sym<Inner,dim>;
 };
 
 template<int dim>
-struct index_asym {
-	template<typename T>
-	using type = _asym<T,dim>;
+struct storage_asym {
+	template<typename Inner>
+	using type = _asym<Inner,dim>;
 };
 
 template<int dim>
-struct index_ident {
-	template<typename T>
-	using type = _ident<T,dim>;
+struct storage_ident {
+	template<typename Inner>
+	using type = _ident<Inner,dim>;
 };
 
 template<int dim, int rank>
-struct index_symR {
-	template<typename T>
-	using type = _symR<T,dim,rank>;
+struct storage_symR {
+	template<typename Inner>
+	using type = _symR<Inner,dim,rank>;
 };
 
 template<int dim, int rank>
-struct index_asymR {
-	template<typename T>
-	using type = _asymR<T,dim,rank>;
+struct storage_asymR {
+	template<typename Inner>
+	using type = _asymR<Inner,dim,rank>;
 };
 
 
 // can I shorthand this? what is the syntax?
 // this has a template and not a type on the lhs so I think no?
-//template<int dim> using _vecI = index_vec<dim>::type;
-//template<int dim> using _symI = index_sym<dim>::type;
-//template<int dim> using _asymI = index_asym<dim>::type;
+//template<int dim> using _vecI = storage_vec<dim>::type;
+//template<int dim> using _symI = storage_sym<dim>::type;
+//template<int dim> using _asymI = storage_asym<dim>::type;
 
 // useful helper macros, same as above but with transposed order
 
 // _tensori:
 // tensor which allows custom nested storage, such as symmetric indexes
 
-template<typename T, typename... Storage>
+template<typename Scalar, typename... Storage>
 struct _tensori_impl;
-template<typename T, typename Storage, typename... MoreStorage>
-struct _tensori_impl<T, Storage, MoreStorage...> {
-	using type = typename Storage::template type<typename _tensori_impl<T, MoreStorage...>::type>;
+template<typename Scalar, typename Storage, typename... MoreStorage>
+struct _tensori_impl<Scalar, Storage, MoreStorage...> {
+	using type = typename Storage::template type<typename _tensori_impl<Scalar, MoreStorage...>::type>;
 };
-template<typename T, typename Storage>
-struct _tensori_impl<T, Storage> {
-	using type = typename Storage::template type<T>;
+template<typename Scalar, typename Storage>
+struct _tensori_impl<Scalar, Storage> {
+	using type = typename Storage::template type<Scalar>;
 };
-template<typename T>
-struct _tensori_impl<T> {
-	using type = T;
+template<typename Scalar>
+struct _tensori_impl<Scalar> {
+	using type = Scalar;
 };
+template<typename Scalar, typename... Storage>
+using _tensori = typename _tensori_impl<Scalar, Storage...>::type;
 
-template<typename T, typename... Storage>
-using _tensori = typename _tensori_impl<T, Storage...>::type;
-
+// this is a useful enough one
 
 template<typename Scalar, typename StorageTuple>
 using tensorScalarTuple = Common::tuple_apply_t<_tensori, Common::tuple_cat_t<std::tuple<Scalar>, StorageTuple>>;
 
 // make a tensor from a list of dimensions
-// ex: _tensor<T, dim1, ..., dimN>
+// ex: _tensor<Scalar, dim1, ..., dimN>
 // fully expanded storage - no spatial optimizations
 // TODO can I accept template args as int or Index?
 // maybe vararg function return type and decltype()?
 
-template<typename T, int dim, int... dims>
+template<typename Scalar, int dim, int... dims>
 struct _tensor_impl {
-	using type = _vec<typename _tensor_impl<T, dims...>::type, dim>;
+	using type = _vec<typename _tensor_impl<Scalar, dims...>::type, dim>;
 };
-
-template<typename T, int dim>
-struct _tensor_impl<T, dim> {
-	using type = _vec<T,dim>;
+template<typename Scalar, int dim>
+struct _tensor_impl<Scalar, dim> {
+	using type = _vec<Scalar,dim>;
 };
+template<typename Scalar, int dim, int... dims>
+using _tensor = typename _tensor_impl<Scalar, dim, dims...>::type;
 
-template<typename T, int dim, int... dims>
-using _tensor = typename _tensor_impl<T, dim, dims...>::type;
+/*
+ok maybe this is a bad idea ..
+_tensorx< type, dim1, dim2, ... , storage char, [storage args] >
+ where storage args are:
+  -'z', dim = rank-1 zero index
+  -'i', dim = rank-2 identity index
+  -'s', dim = rank-2 symmetric
+  -'a', dim = rank-2 antisymmetric
+  -'S', dim, rank = rank-N symmetric
+  -'A', dim, rank = rank-N antisymmetric
+TODO rename _tensor into _tensorx and rename _tensorx to _tensor  ... so _tensorx is for float3x3 float4x4x4 float2x3x4 etc, hence the 'x'
+*/
+
+template<typename Scalar, int... Args>
+struct _tensorx_impl;
+template<typename Scalar, int dim, int... Args>
+struct _tensorx_impl<Scalar, dim, Args...> {
+	using type = _vec<typename _tensorx_impl<Scalar, Args...>::type, dim>;
+};
+template<typename Scalar, int dim, int... Args>
+struct _tensorx_impl<Scalar, -'z', dim, Args...> {
+	using type = _zero<typename _tensorx_impl<Scalar, Args...>::type, dim>;
+};
+template<typename Scalar, int dim, int... Args>
+struct _tensorx_impl<Scalar, -'i', dim, Args...> {
+	using type = _ident<typename _tensorx_impl<Scalar, Args...>::type, dim>;
+};
+template<typename Scalar, int dim, int... Args>
+struct _tensorx_impl<Scalar, -'s', dim, Args...> {
+	using type = _sym<typename _tensorx_impl<Scalar, Args...>::type, dim>;
+};
+template<typename Scalar, int dim, int... Args>
+struct _tensorx_impl<Scalar, -'a', dim, Args...> {
+	using type = _asym<typename _tensorx_impl<Scalar, Args...>::type, dim>;
+};
+template<typename Scalar, int dim, int rank, int... Args>
+struct _tensorx_impl<Scalar, -'S', dim, rank, Args...> {
+	using type = _symR<typename _tensorx_impl<Scalar, Args...>::type, dim, rank>;
+};
+template<typename Scalar, int dim, int rank, int... Args>
+struct _tensorx_impl<Scalar, -'A', dim, rank, Args...> {
+	using type = _asymR<typename _tensorx_impl<Scalar, Args...>::type, dim, rank>;
+};
+template<typename Scalar>
+struct _tensorx_impl<Scalar> {
+	using type = Scalar;
+};
+template<typename Scalar, int... Args>
+using _tensorx = typename _tensorx_impl<Scalar, Args...>::type;
 
 }

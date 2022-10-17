@@ -70,23 +70,58 @@ if I do column-major then C inline indexing is transposed
 
 namespace Tensor {
 
+// for the templated ForLoop ctor
+struct ForLoopBodyBase {};
 
+//funny, 'if constexpr' causes this to lose constexpr-ness, but ternary is ok.
 constexpr int constexpr_isqrt_r(int inc, int limit) {
 	return inc * inc > limit ? inc-1 : constexpr_isqrt_r(inc+1, limit);
 }
 constexpr int constexpr_isqrt(int i) {
 	return constexpr_isqrt_r(0, i);
 }
-STATIC_ASSERT_EQ((constexpr_isqrt(0)), 0);
-STATIC_ASSERT_EQ((constexpr_isqrt(1)), 1);
-STATIC_ASSERT_EQ((constexpr_isqrt(2)), 1);
-STATIC_ASSERT_EQ((constexpr_isqrt(3)), 1);
-STATIC_ASSERT_EQ((constexpr_isqrt(4)), 2);
-STATIC_ASSERT_EQ((constexpr_isqrt(5)), 2);
-STATIC_ASSERT_EQ((constexpr_isqrt(6)), 2);
-STATIC_ASSERT_EQ((constexpr_isqrt(7)), 2);
-STATIC_ASSERT_EQ((constexpr_isqrt(8)), 2);
-STATIC_ASSERT_EQ((constexpr_isqrt(9)), 3);
+
+//https://en.cppreference.com/w/cpp/language/constexpr
+constexpr int constexpr_factorial(int n) {
+	return n <= 1 ? 1 : (n * constexpr_factorial(n-1));
+}
+constexpr int consteval_nChooseR(int m, int n) {
+    return constexpr_factorial(n) / constexpr_factorial(m) / constexpr_factorial(n - m);
+}
+
+//https://stackoverflow.com/a/9331125
+constexpr int nChooseR(int n, int k) {
+    if (k > n) return 0;
+    if (k << 1 > n) k = n - k;
+    if (k == 0) return 1;
+    int result = n;
+    // TODO can you guarantee that /=i will always have 'i' as a divisor? or do we need two loops?
+	for (int i = 2; i <= k; ++i) {
+		result *= n - i + 1;
+		result /= i;
+    }
+    return result;
+}
+
+constexpr int consteval_symmetricSize(int d, int r) {
+	return nChooseR(d + r - 1, r);
+}
+
+
+constexpr int consteval_antisymmetricSize(int d, int r) {
+	return nChooseR(d, r);
+}
+
+// TODO use the ForLoopBodyBase ctor
+template<typename T>
+struct initIntVecWithSequence {};
+template<typename T, T... I>
+struct initIntVecWithSequence<std::integer_sequence<T, I...>> {
+	static constexpr auto value() {
+		return _vec<T, sizeof...(I)>{I...};
+	}
+};
+
 
 
 
@@ -124,9 +159,6 @@ constexpr T seq_logical_and(std::integer_sequence<T, Args...> = {}) {
 	return (Args && ... && (true));
 }
 
-// for the templated ForLoop ctor
-struct ForLoopBodyBase {};
-
 // for initializing intN's using template indexes
 template<typename Src, typename Dst>
 requires (Src::rank == Dst::totalCount)
@@ -153,7 +185,7 @@ struct GetTupleWrappingStorageForRankImpl {
 		if constexpr (rank == 0) {
 			return std::tuple<>();
 		} else if constexpr (rank == 1) {
-			return std::tuple<index_vec<dim>>();
+			return std::tuple<storage_vec<dim>>();
 		} else if constexpr (rank == 2) {
 			return std::tuple<storageRank2<dim>>();
 		} else {
@@ -171,24 +203,24 @@ template<
 using GetTupleWrappingStorageForRank = typename GetTupleWrappingStorageForRankImpl<dim, rank, storageRank2, storageRankN>::type;
 
 static_assert(std::is_same_v<
-	GetTupleWrappingStorageForRank<3,0,index_sym,index_symR>,
+	GetTupleWrappingStorageForRank<3,0,storage_sym,storage_symR>,
 	std::tuple<>
 >);
 static_assert(std::is_same_v<
-	GetTupleWrappingStorageForRank<3,1,index_sym,index_symR>,
-	std::tuple<index_vec<3>>
+	GetTupleWrappingStorageForRank<3,1,storage_sym,storage_symR>,
+	std::tuple<storage_vec<3>>
 >);
 static_assert(std::is_same_v<
-	GetTupleWrappingStorageForRank<3,2,index_sym,index_symR>,
-	std::tuple<index_sym<3>>
+	GetTupleWrappingStorageForRank<3,2,storage_sym,storage_symR>,
+	std::tuple<storage_sym<3>>
 >);
 static_assert(std::is_same_v<
-	GetTupleWrappingStorageForRank<3,3,index_sym,index_symR>,
-	std::tuple<index_symR<3,3>>
+	GetTupleWrappingStorageForRank<3,3,storage_sym,storage_symR>,
+	std::tuple<storage_symR<3,3>>
 >);
 static_assert(std::is_same_v<
-	GetTupleWrappingStorageForRank<3,4,index_sym,index_symR>,
-	std::tuple<index_symR<3,4>>
+	GetTupleWrappingStorageForRank<3,4,storage_sym,storage_symR>,
+	std::tuple<storage_symR<3,4>>
 >);
 
 // Template<> is used for rearranging internal structure when performing linear operations on tensors
@@ -240,7 +272,7 @@ static_assert(std::is_same_v<
 \
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
-	using ExpandLocalStorage = Common::tuple_rep_t<index_vec<localDim>, localRank>;
+	using ExpandLocalStorage = Common::tuple_rep_t<storage_vec<localDim>, localRank>;
 
 /*
 This contains definitions of types and values used in all tensors.
@@ -1288,7 +1320,7 @@ Bit of a hack: MOst these are written in terms of 'This'
 \
 	/* this could replace the ReplaceInner template, and maybe ReplaceLocalDim and Template too */\
 	/* use these with Common::tuple_apply_t<_tensori, StorageTuple> to rebuild the tensor */\
-	using LocalStorage = index_vec<localDim>;
+	using LocalStorage = storage_vec<localDim>;
 
 #define TENSOR_HEADER_VECTOR(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1654,7 +1686,7 @@ struct _vec<Inner_,4> {
 #define TENSOR_HEADER_ZERO_SPECIFIC()\
 \
 	static constexpr int localCount = 1;\
-	using LocalStorage = index_zero<localDim>;
+	using LocalStorage = storage_zero<localDim>;
 
 #define TENSOR_HEADER_ZERO(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1748,7 +1780,7 @@ asymR_ijk... => mat_ij-of-{vec,asym,asymR} "
 #define TENSOR_HEADER_SYMMETRIC_MATRIX_SPECIFIC()\
 \
 	static constexpr int localCount = triangleSize(localDim);\
-	using LocalStorage = index_sym<localDim>;
+	using LocalStorage = storage_sym<localDim>;
 
 #define TENSOR_HEADER_SYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -1817,7 +1849,7 @@ struct Rank2Accessor {
 	//end TENSOR_TEMPLATE_*
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
-	using LocalStorage = index_vec<localDim>;
+	using LocalStorage = storage_vec<localDim>;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
 	// treat this like (rank-1) vector storage, so use vector's TensorSumResult
 	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
@@ -2011,7 +2043,7 @@ struct _sym<Inner_, 4> {
 #define TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
 \
 	static constexpr int localCount = 1;\
-	using LocalStorage = index_ident<localDim>;
+	using LocalStorage = storage_ident<localDim>;
 
 #define TENSOR_HEADER_IDENTITY_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -2096,7 +2128,7 @@ struct _ident {
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
 \
 	static constexpr int localCount = triangleSize(localDim - 1);\
-	using LocalStorage = index_asym<localDim>;
+	using LocalStorage = storage_asym<localDim>;
 
 #define TENSOR_HEADER_ANTISYMMETRIC_MATRIX(classname, Inner_, localDim_)\
 	TENSOR_THIS(classname)\
@@ -2259,35 +2291,12 @@ https://math.stackexchange.com/a/3795166
 so for r=2 we get (d+1)! / (2! (d-1)!) = d * (d + 1) / 2
 */
 
-//https://en.cppreference.com/w/cpp/language/constexpr
-inline constexpr int factorial(int n) {
-	return n <= 1 ? 1 : (n * factorial(n-1));
-}
-
-//https://stackoverflow.com/a/9331125
-constexpr int nChooseR(int n, int k) {
-    if (k > n) return 0;
-    if (k << 1 > n) k = n - k;
-    if (k == 0) return 1;
-    int result = n;
-    // TODO can you guarantee that /=i will always have 'i' as a divisor? or do we need two loops?
-	for (int i = 2; i <= k; ++i) {
-		result *= n - i + 1;
-		result /= i;
-    }
-    return result;
-}
-
 // totally-symmetric
-
-inline constexpr int symmetricSize(int d, int r) {
-	return nChooseR(d + r - 1, r);
-}
 
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
 \
-	static constexpr int localCount = symmetricSize(localDim, localRank);\
-	using LocalStorage = index_symR<localDim, localRank>;
+	static constexpr int localCount = consteval_symmetricSize(localDim_, localRank_);\
+	using LocalStorage = storage_symR<localDim, localRank>;
 
 // Expand index 0 of asym^N => vec ⊗ asym^(N-1)
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
@@ -2299,9 +2308,9 @@ inline constexpr int symmetricSize(int d, int r) {
 	struct ExpandLocalStoragImpl {\
 		static constexpr auto value() {\
 			return Common::tuple_cat_t<\
-				GetTupleWrappingStorageForRank<localDim, index, index_sym, index_symR>,\
-				std::tuple<index_vec<localDim>>,\
-				GetTupleWrappingStorageForRank<localDim, localRank-index-1, index_sym, index_symR>\
+				GetTupleWrappingStorageForRank<localDim, index, storage_sym, storage_symR>,\
+				std::tuple<storage_vec<localDim>>,\
+				GetTupleWrappingStorageForRank<localDim, localRank-index-1, storage_sym, storage_symR>\
 			>();\
 		}\
 		using type = decltype(value());\
@@ -2425,7 +2434,7 @@ struct RankNAccessor {
 	//end TENSOR_TEMPLATE_*
 	//begin TENSOR_HEADER_*_SPECIFIC
 	static constexpr int localCount = AccessorOwnerConst::localDim;
-	using LocalStorage = index_vec<localDim>;
+	using LocalStorage = storage_vec<localDim>;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
 	// treat this like (rank-1) vector storage, so use vector's TensorSumResult
 	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
@@ -2548,19 +2557,6 @@ struct _symR {
 
 // totally antisymmetric
 
-inline constexpr int antisymmetricSize(int d, int r) {
-	return nChooseR(d, r);
-}
-
-template<typename T>
-struct initIntVecWithSequence {};
-template<typename T, T... I>
-struct initIntVecWithSequence<std::integer_sequence<T, I...>> {
-	static constexpr auto value() {
-		return _vec<T, sizeof...(I)>{I...};
-	}
-};
-
 // bubble-sorts 'i', sets 'sign' if an odd # of flips were required to sort it
 //  returns 'sign' or 'ZERO' if any duplicate indexes were found (and does not finish sorting)
 template<int N>
@@ -2581,8 +2577,8 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
 \
-	static constexpr int localCount = antisymmetricSize(localDim, localRank);\
-	using LocalStorage = index_asymR<localDim, localRank>;
+	static constexpr int localCount = consteval_antisymmetricSize(localDim_, localRank_);\
+	using LocalStorage = storage_asymR<localDim, localRank>;
 
 // Expand index 0 of asym^N => vec ⊗ asym^(N-1)
 // Expand index N-1 of asym^N => asym^(N-1) ⊗ vec
@@ -2594,9 +2590,9 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 	struct ExpandLocalStoragImpl {\
 		static constexpr auto value() {\
 			return Common::tuple_cat_t<\
-				GetTupleWrappingStorageForRank<localDim, index, index_asym, index_asymR>,\
-				std::tuple<index_vec<localDim>>,\
-				GetTupleWrappingStorageForRank<localDim, localRank-index-1, index_asym, index_asymR>\
+				GetTupleWrappingStorageForRank<localDim, index, storage_asym, storage_asymR>,\
+				std::tuple<storage_vec<localDim>>,\
+				GetTupleWrappingStorageForRank<localDim, localRank-index-1, storage_asym, storage_asymR>\
 			>();\
 		}\
 		using type = decltype(value());\
@@ -2983,20 +2979,20 @@ static_assert(nick##dim12##i##dim12::numNestings == 1);\
 static_assert(nick##dim12##i##dim12::count<0> == 1);
 
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)\
-static_assert(sizeof(nick##suffix) == sizeof(ctype) * symmetricSize(localDim, localRank));\
+static_assert(sizeof(nick##suffix) == sizeof(ctype) * consteval_symmetricSize(localDim, localRank));\
 static_assert(std::is_same_v<typename nick##suffix::Scalar, ctype>);\
 static_assert(nick##suffix::rank == localRank);\
 static_assert(nick##suffix::dim<0> == localDim); /* TODO repeat depending on dimension */\
 static_assert(nick##suffix::numNestings == 1);\
-static_assert(nick##suffix::count<0> == symmetricSize(localDim, localRank));
+static_assert(nick##suffix::count<0> == consteval_symmetricSize(localDim, localRank));
 
 #define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)\
-static_assert(sizeof(nick##suffix) == sizeof(ctype) * antisymmetricSize(localDim, localRank));\
+static_assert(sizeof(nick##suffix) == sizeof(ctype) * consteval_antisymmetricSize(localDim, localRank));\
 static_assert(std::is_same_v<typename nick##suffix::Scalar, ctype>);\
 static_assert(nick##suffix::rank == localRank);\
 static_assert(nick##suffix::dim<0> == localDim); /* TODO repeat depending on dimension */\
 static_assert(nick##suffix::numNestings == 1);\
-static_assert(nick##suffix::count<0> == antisymmetricSize(localDim, localRank));
+static_assert(nick##suffix::count<0> == consteval_antisymmetricSize(localDim, localRank));
 
 #else //TENSOR_USE_STATIC_ASSERTS
 

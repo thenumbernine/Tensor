@@ -15,7 +15,7 @@ void test_TensorRank4() {
 
 	// sym-vec-vec
 	{
-		using T = Tensor::_tensori<float, Tensor::index_sym<3>, Tensor::index_vec<3>, Tensor::index_vec<3>>;
+		using T = Tensor::_tensori<float, Tensor::storage_sym<3>, Tensor::storage_vec<3>, Tensor::storage_vec<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -25,7 +25,7 @@ void test_TensorRank4() {
 #if 0
 	// asym-vec-vec
 	{
-		using T = Tensor::_tensori<float, Tensor::index_asym<3>, Tensor::index_vec<3>, Tensor::index_vec<3>>;
+		using T = Tensor::_tensori<float, Tensor::storage_asym<3>, Tensor::storage_vec<3>, Tensor::storage_vec<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i-j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -35,7 +35,7 @@ void test_TensorRank4() {
 
 	// vec-sym-vec
 	{
-		using T = Tensor::_tensori<float, Tensor::index_vec<3>, Tensor::index_sym<3>, Tensor::index_vec<3>>;
+		using T = Tensor::_tensori<float, Tensor::storage_vec<3>, Tensor::storage_sym<3>, Tensor::storage_vec<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -45,7 +45,7 @@ void test_TensorRank4() {
 #if 0
 	// vec-asym-vec
 	{
-		using T = Tensor::_tensori<float, Tensor::index_vec<3>, Tensor::index_asym<3>, Tensor::index_vec<3>>;
+		using T = Tensor::_tensori<float, Tensor::storage_vec<3>, Tensor::storage_asym<3>, Tensor::storage_vec<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j-k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -55,7 +55,7 @@ void test_TensorRank4() {
 
 	// vec-vec-sym
 	{
-		using T = Tensor::_tensori<float, Tensor::index_vec<3>, Tensor::index_vec<3>, Tensor::index_sym<3>>;
+		using T = Tensor::_tensori<float, Tensor::storage_vec<3>, Tensor::storage_vec<3>, Tensor::storage_sym<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -64,7 +64,7 @@ void test_TensorRank4() {
 #if 0
 	// vec-vec-asym
 	{
-		using T = Tensor::_tensori<float, Tensor::index_vec<3>, Tensor::index_vec<3>, Tensor::index_asym<3>>;
+		using T = Tensor::_tensori<float, Tensor::storage_vec<3>, Tensor::storage_vec<3>, Tensor::storage_asym<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k-l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -74,7 +74,7 @@ void test_TensorRank4() {
 
 	// sym-sym
 	{
-		using T = Tensor::_tensori<float, Tensor::index_sym<3>, Tensor::index_sym<3>>;
+		using T = Tensor::_tensori<float, Tensor::storage_sym<3>, Tensor::storage_sym<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<decltype(t)>(t, f);
@@ -83,7 +83,7 @@ void test_TensorRank4() {
 
 #if 0	// asym-asym
 	{
-		using T = Tensor::_tensori<float, Tensor::index_asym<3>, Tensor::index_asym<3>>;
+		using T = Tensor::_tensori<float, Tensor::storage_asym<3>, Tensor::storage_asym<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<decltype(t)>(t, f);
@@ -93,7 +93,7 @@ void test_TensorRank4() {
 
 	{
 		using Real = double;
-		using Riemann2 = Tensor::_tensori<Real, Tensor::index_asym<2>, Tensor::index_asym<2>>;
+		using Riemann2 = Tensor::_tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<2>>;
 		//using Riemann2 = Tensor::_asym<Tensor::_asym<Real, 2>, 2>;	// R_[ij][kl]
 		//using Riemann2 = Tensor::_sym<Tensor::_asym<Real, 2>, 2>;	// ... R_(ij)[kl] ...
 		// how would I define R_( [ij] [kl ) ... i.e. R_ijkl = R_klij and R_ijkl = -R_jikl ?
@@ -137,7 +137,7 @@ void test_TensorRank4() {
 	}
 	{
 		constexpr int N = 3;
-		using Riemann3 = Tensor::_tensori<double, Tensor::index_asym<N>, Tensor::index_asym<N>>;
+		using Riemann3 = Tensor::_tensori<double, Tensor::storage_asym<N>, Tensor::storage_asym<N>>;
 		auto r = Riemann3();
 		static_assert(Riemann3::rank == 4);
 		static_assert(Riemann3::dim<0> == N);
@@ -194,7 +194,7 @@ void test_TensorRank4() {
 		Vector v = {1,2,3};
 		TEST_EQ(v, Tensor::double3(1,2,3));
 		
-		using Metric = Tensor::_tensori<Real,Tensor::index_sym<3>>;
+		using Metric = Tensor::_tensori<Real,Tensor::storage_sym<3>>;
 		Metric g;
 		for (int i = 0; i < 3; ++i) {
 			g(i,i) = 1;

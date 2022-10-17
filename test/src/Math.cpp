@@ -136,11 +136,11 @@ void test_Math() {
 	TENSOR_TEST_1(inverse,			float3x3,	({{1,0,0},{0,1,0},{0,0,1}}),	float3x3,	({{1,0,0},{0,1,0},{0,0,1}}));
 	TENSOR_TEST_2(inverse,			float3x3,	({{1,0,0},{0,1,0},{0,0,1}}),	float3x3,	({{1,0,0},{0,1,0},{0,0,1}}), float, (1.f));
 
-	static_assert(sizeof(_tensori<float, index_zero<3>, index_zero<3>, index_zero<3>>) == sizeof(float));
+	static_assert(sizeof(_tensori<float, storage_zero<3>, storage_zero<3>, storage_zero<3>>) == sizeof(float));
 	
-	static_assert(std::is_same_v<decltype(makeSym(float3a3())), _tensori<float, index_zero<3>, index_zero<3>>>);
-	static_assert(std::is_same_v<decltype(makeSym(float3a3a3())), _tensori<float, index_zero<3>, index_zero<3>, index_zero<3>>>);
+	static_assert(std::is_same_v<decltype(makeSym(float3a3())), _tensori<float, storage_zero<3>, storage_zero<3>>>);
+	static_assert(std::is_same_v<decltype(makeSym(float3a3a3())), _tensori<float, storage_zero<3>, storage_zero<3>, storage_zero<3>>>);
 	
-	static_assert(std::is_same_v<decltype(makeAsym(float3s3())), _tensori<float, index_zero<3>, index_zero<3>>>);
-	static_assert(std::is_same_v<decltype(makeAsym(float3s3s3())), _tensori<float, index_zero<3>, index_zero<3>, index_zero<3>>>);
+	static_assert(std::is_same_v<decltype(makeAsym(float3s3())), _tensori<float, storage_zero<3>, storage_zero<3>>>);
+	static_assert(std::is_same_v<decltype(makeAsym(float3s3s3())), _tensori<float, storage_zero<3>, storage_zero<3>, storage_zero<3>>>);
 }
