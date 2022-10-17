@@ -401,27 +401,29 @@ Scalar = NestedPtrTuple's last
 	template<int index>\
 	static constexpr int numNestingsToIndex = NestingForIndexImpl<index>::value();\
 \
+	template<int index>\
+	requires (index >= 0 && index < rank)\
+	struct ExpandIthStorageImpl {\
+		static constexpr int nest = numNestingsToIndex<index>;\
+		using type = Common::tuple_insert_t<\
+			Common::tuple_remove_t<nest, StorageTuple>,\
+			nest,\
+			typename Nested<nest>::template ExpandLocalStorage<\
+				index - indexForNesting<nest>\
+			>\
+		>;\
+	};\
+	template<int index>\
+	requires (index >= 0 && index < rank)\
+	using ExpandIthStorage = typename ExpandIthStorageImpl<index>::type;\
+\
 	/* expand the storage of the i'th index */\
 	/* produce a tuple of new storages and then just wedge that into the tuple and rebuilt */\
 	/* impl is only here cuz i would need to move ExpandLocalStorage up above this otherwise */\
 	/* and that would mean splitting the HEADER and putting it in between this and other stuf above */\
 	template<int index>\
-	struct ExpandIthIndexImpl {\
-		static_assert(index >= 0 && index < rank);\
-		static constexpr int nest = numNestingsToIndex<index>;\
-		using type = tensorScalarTuple<\
-			Scalar,\
-			Common::tuple_insert_t<\
-				Common::tuple_remove_t<nest, StorageTuple>,\
-				nest,\
-				typename Nested<nest>::template ExpandLocalStorage<\
-					index - indexForNesting<nest>\
-				>\
-			>\
-		>;\
-	};\
-	template<int index>\
-	using ExpandIthIndex = typename ExpandIthIndexImpl<index>::type;\
+	requires (index >= 0 && index < rank)\
+	using ExpandIthIndex = tensorScalarTuple<Scalar, ExpandIthStorage<index>>;\
 \
 	template<typename Seq>\
 	struct ExpandIndexSeqImpl;\
