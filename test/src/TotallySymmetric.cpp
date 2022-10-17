@@ -1,15 +1,68 @@
 #include "Test/Test.h"
 
+// TODO move this to Tensor/Vector.h.h
+namespace Tensor {
+	using float3x3x3 = _tensorr<float, 3, 3>;
+	using float3x3i3 = _tensori<float, storage_vec<3>, storage_ident<3>>;
+	using float3i3x3 = _tensori<float, storage_ident<3>, storage_vec<3>>;
+	using float3x3s3 = _tensori<float, storage_vec<3>, storage_sym<3>>;
+	using float3s3x3 = _tensori<float, storage_sym<3>, storage_vec<3>>;
+	using float3x3a3 = _tensori<float, storage_vec<3>, storage_asym<3>>;
+	using float3a3x3 = _tensori<float, storage_asym<3>, storage_vec<3>>;
+}
 namespace TestTotallySymmetric {
-	
-	static_assert(std::is_same_v<Tensor::float3a3::RemoveIndex<0>, Tensor::float3>);
-	static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<0>, Tensor::float3a3>);
-	// TODO get this to work
-	static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<1>, Tensor::float3x3>);
-	static_assert(std::is_same_v<Tensor::float3a3a3::RemoveIndex<2>, Tensor::float3a3>);
-
-
 	using namespace Tensor;
+	using namespace std;
+
+	// _tensorx creation notation
+	// test against _tensori so I'm sure it's not just testing itself to itself
+	static_assert(is_same_v<_tensorx<float, 3>, _tensori<float, storage_vec<3>>>);																//T_i
+	static_assert(is_same_v<_tensorx<float, 3, 3>, _tensori<float, storage_vec<3>, storage_vec<3>>>);											//T_ij
+	static_assert(is_same_v<_tensorx<float, -'i', 3>, _tensori<float, storage_ident<3>>>);														//δ_ij = δ_(ij)
+	static_assert(is_same_v<_tensorx<float, -'s', 3>, _tensori<float, storage_sym<3>>>);														//T_ij = T_(ij)
+	static_assert(is_same_v<_tensorx<float, -'a', 3>, _tensori<float, storage_asym<3>>>);														//T_ij = T_[ij]
+	static_assert(is_same_v<_tensorx<float, 3, 3, 3>, _tensori<float, storage_vec<3>, storage_vec<3>, storage_vec<3>>>);						//T_ijk
+	static_assert(is_same_v<_tensorx<float, 3, -'i', 3>, _tensori<float, storage_vec<3>, storage_ident<3>>>);									//T_ijk = a_i δ_(jk)
+	static_assert(is_same_v<_tensorx<float, 3, -'s', 3>, _tensori<float, storage_vec<3>, storage_sym<3>>>);										//T_ijk = T_i(jk)
+	static_assert(is_same_v<_tensorx<float, 3, -'a', 3>, _tensori<float, storage_vec<3>, storage_asym<3>>>);									//T_ijk = T_i[jk]
+	static_assert(is_same_v<_tensorx<float, -'i', 3, 3>, _tensori<float, storage_ident<3>, storage_vec<3>>>);									//T_ijk = δ_(ij) b_k
+	static_assert(is_same_v<_tensorx<float, -'s', 3, 3>, _tensori<float, storage_sym<3>, storage_vec<3>>>);										//T_ijk = T_(ij)k
+	static_assert(is_same_v<_tensorx<float, -'a', 3, 3>, _tensori<float, storage_asym<3>, storage_vec<3>>>);									//T_ijk = T_[ij]_k
+	static_assert(is_same_v<_tensorx<float, 3, 3, 3, 3>, _tensori<float, storage_vec<3>, storage_vec<3>, storage_vec<3>, storage_vec<3>>>);		//T_ijkl
+	static_assert(is_same_v<_tensorx<float, 3, 3, -'s', 3>, _tensori<float, storage_vec<3>, storage_vec<3>, storage_sym<3>>>);					//T_ijkl = T_ij(kl)
+	static_assert(is_same_v<_tensorx<float, 3, 3, -'i', 3>, _tensori<float, storage_vec<3>, storage_vec<3>, storage_ident<3>>>);				//T_ijkl = a_ij δ_(kl)
+	static_assert(is_same_v<_tensorx<float, 3, 3, -'a', 3>, _tensori<float, storage_vec<3>, storage_vec<3>, storage_asym<3>>>);					//T_ijkl = T_ij[kl]
+	static_assert(is_same_v<_tensorx<float, 3, -'s', 3, 3>, _tensori<float, storage_vec<3>, storage_sym<3>, storage_vec<3>>>);					//T_ijkl = T_i(jk)l
+	static_assert(is_same_v<_tensorx<float, 3, -'i', 3, 3>, _tensori<float, storage_vec<3>, storage_ident<3>, storage_vec<3>>>);				//T_ijkl = a_i δ_(jk) c_l
+	static_assert(is_same_v<_tensorx<float, 3, -'a', 3, 3>, _tensori<float, storage_vec<3>, storage_asym<3>, storage_vec<3>>>);					//T_ijkl = T_i[jk]l
+	static_assert(is_same_v<_tensorx<float, -'s', 3, 3, 3>, _tensori<float, storage_sym<3>, storage_vec<3>, storage_vec<3>>>);					//T_ijkl = T_(ij)kl
+	static_assert(is_same_v<_tensorx<float, -'i', 3, 3, 3>, _tensori<float, storage_ident<3>, storage_vec<3>, storage_vec<3>>>);				//T_ijkl = delta_(ij) b_kl
+	static_assert(is_same_v<_tensorx<float, -'s', 3, -'s', 3>, _tensori<float, storage_sym<3>, storage_sym<3>>>);								//T_ijkl = T_(ij)(kl)
+	static_assert(is_same_v<_tensorx<float, -'i', 3, -'s', 3>, _tensori<float, storage_ident<3>, storage_sym<3>>>);								//T_ijkl = delta_(ij) b_(kl)
+	static_assert(is_same_v<_tensorx<float, -'s', 3, -'a', 3>, _tensori<float, storage_sym<3>, storage_asym<3>>>);								//T_ijkl = T_(ij)[kl]
+	static_assert(is_same_v<_tensorx<float, -'i', 3, -'a', 3>, _tensori<float, storage_ident<3>, storage_asym<3>>>);							//T_ijkl = delta_(ij) b_[kl]
+	static_assert(is_same_v<_tensorx<float, -'a', 3, 3, 3>, _tensori<float, storage_asym<3>, storage_vec<3>, storage_vec<3>>>);					//T_ijkl = T_[ij]kl
+	static_assert(is_same_v<_tensorx<float, -'a', 3, -'s', 3>, _tensori<float, storage_asym<3>, storage_sym<3>>>);								//T_ijkl = T_[ij](kl)
+	static_assert(is_same_v<_tensorx<float, -'a', 3, -'i', 3>, _tensori<float, storage_asym<3>, storage_ident<3>>>);							//T_ijkl = a_[ij] delta_(kl)
+	static_assert(is_same_v<_tensorx<float, -'a', 3, -'a', 3>, _tensori<float, storage_asym<3>, storage_asym<3>>>);								//T_ijkl = T_[ij][kl]
+	static_assert(is_same_v<_tensorx<float, 3, -'S', 3, 3>, _tensori<float, storage_vec<3>, storage_symR<3, 3>>>);								//T_ijkl = T_i(jkl)
+	static_assert(is_same_v<_tensorx<float, 3, -'A', 3, 3>, _tensori<float, storage_vec<3>, storage_asymR<3, 3>>>);								//T_ijkl = T_i[jkl]
+	static_assert(is_same_v<_tensorx<float, -'S', 3, 3, 3>, _tensori<float, storage_symR<3, 3>, storage_vec<3>>>);								//T_ijkl = T_(ijk)l
+	static_assert(is_same_v<_tensorx<float, -'A', 3, 3, 3>, _tensori<float, storage_asymR<3, 3>, storage_vec<3>>>);								//T_ijkl = T_[ijk]l
+	static_assert(is_same_v<_tensorx<float, -'S', 3, 4>, _tensori<float, storage_symR<3, 4>>>);													//T_ijkl = T_(ijkl)
+	static_assert(is_same_v<_tensorx<float, -'A', 3, 4>, _tensori<float, storage_asymR<3, 4>>>);												//T_ijkl = T_[ijkl]
+
+	// TODO storage helper? if the user chooses storage_symR rank=1 then use storage_vec, for rank=2 use storage_sym ...
+	//  however doing _symR<dim,rank>  for rank==1 or rank==2 does static_assert / require fail,
+	//  so should I just also let storage_symR fail in the same way?
+
+	//RemoveIndex:
+	static_assert(is_same_v<float3a3::RemoveIndex<0>, float3>);
+	static_assert(is_same_v<float3a3a3::RemoveIndex<0>, float3a3>);
+	// TODO get this to work
+	static_assert(is_same_v<float3a3a3::RemoveIndex<1>, float3x3>);
+	static_assert(is_same_v<float3a3a3::RemoveIndex<2>, float3a3>);
+
 	
 	STATIC_ASSERT_EQ((constexpr_isqrt(0)), 0);
 	STATIC_ASSERT_EQ((constexpr_isqrt(1)), 1);

@@ -88,12 +88,14 @@ a(i,j) = .5 * (a(i,j) + a(j,i));
 
 ### Vectors:
 `_vec<type, dim>` = vectors:
+- rank-1
 - `.s` = `std::array<type>` = element std::array access.  Tempted to change it back to `type[] s` for ease of ue as pointer access... but I do like the ease of iterator use with `std::array`... hmm...
 - for 1D through 4D: `.x .y .z .w`, `.s0 .s1 .s2 .s2` storage.
 - `.subset<size>(index), .subset<size,index>()` = return a vector reference to a subset of this vector.
 
 ### Matrices:
 `_mat<type, dim1, dim2>` = `_vec<_vec<type,dim2>,dim1>` = matrices:
+- rank-2
 - Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A\_{ij}$.
 	This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
 
@@ -102,15 +104,19 @@ Tensor/tensor operator result storage optimizations:
 
 ### Zero Vector:
 `_zero<type, dim>` = vectors of zeroes.  Requires only the inner type worth of storage.  Use nesting for arbitrary-rank, arbitrary-dimension zero tensors all for no extra storage.
+- rank-1
 Always returns zero.  This is a shorthand for simpliciations like symmetrizing antisymmetric indexes or antisymmetrizing symmetric indexes.
+Currently the internal mechanics expect - and provide - tensors such that, if any internal storage is zero, then all will be zero.
 
 Tensor/tensor operator result storage optimizations:
 - `zero` + `T` = `T`
 
 ### Identity Matrix:
 `_ident<type, dim>` = identity matrix.
+- rank-2
 This will only take up a single value of storage.  Specifying the internal storage type is still required, which enables `_ident` to be used in conjunction with outer products to produce optimized-storage tensors,
 i.e. $a\_{ij} \otimes \delta\_{kl}$ = `outer( _mat<float,3,3>(...), _ident<float,3>(1) )` will produce a rank-4 tensor $c\_{ijkl} = a\_{ij} \cdot \delta\_{kl}$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
+Notice that `_ident` is rank-2, i.e. represents 2 indexes.  Sorry, no generalized Kronecker delta.  Besides, that's antisymmetric anyways, for its use check out `_asymR`.
 
 Tensor/tensor operator result storage optimizations:
 - `ident` + `zero` = `ident`
@@ -121,6 +127,7 @@ Tensor/tensor operator result storage optimizations:
 
 ### Symmetric Matrices:
 `_sym<type, dim>` = symmetric matrices:
+- rank-2
 - `.x_x .x_y .x_z .y_y .y_z .z_z .x_w .y_w .z_w .w_w` storage, `.y_x .z_x, .z_y` union'd access.
 
 Tensor/tensor operator result storage optimizations:
@@ -132,7 +139,8 @@ Tensor/tensor operator result storage optimizations:
 
 ### Antisymmetric Matrices:
 `_asym<type, dim>` = antisymmetric matrices:
-- `.x_x() .w_w()` access methods
+- rank-2
+- `.x_x() ... .w_w()` access methods.  No access fields, sorry. I had the option of making half named access via fields (maybe the upper trianglular ones) and the other half methods, but decided for consistency's sake to just use methods everywhere.
 
 Tensor/tensor operator result storage optimizations:
 - `asym` + `zero` = `asym`
@@ -143,6 +151,7 @@ Tensor/tensor operator result storage optimizations:
 
 ### Totally-symmetric tensors:
 `_symR<type, dim, rank>` = totally-symmetric tensor.
+- rank-N
 The size of a totally-symmetric tensor storage is
 the number of unique permutations of a symmetric tensor of dimension `d` and rank `r`,
 which is `(d + r - 1) choose r`.
@@ -151,6 +160,7 @@ Tensor/tensor operator result storage works the same as `_sym`:
 
 ### Totally-antisymmetric tensors:
 `_asymR<type, dim, rank>` = totally-antisymmetric tensor.
+- rank-N
 The size of a totally-antisymmetric tensor storage is
 the number of unique permutations of an antisymmetric tensor of dimension `d` and rank `r`,
 which is `d choose r`.
