@@ -339,6 +339,11 @@ void test_TensorRank4() {
 			TEST_EQ(outer(a,b), aouterb);
 			ECHO((Tensor::contract<0,0>(aouterb)));
 			
+			static_assert(std::is_same_v<Tensor::_tensorr<int,2,3>::RemoveIndex<0>, Tensor::int2x2>);
+			static_assert(std::is_same_v<Tensor::_tensorr<int,2,3>::RemoveIndex<1>, Tensor::int2x2>);
+			static_assert(std::is_same_v<Tensor::_tensorr<int,2,3>::RemoveIndex<2>, Tensor::int2x2>);
+			static_assert(std::is_same_v<Tensor::int2x2::RemoveIndex<0>, Tensor::int2>);
+			static_assert(std::is_same_v<Tensor::int2x2::RemoveIndex<1>, Tensor::int2>);
 			static_assert(std::is_same_v<Tensor::_tensorr<int,2,3>::RemoveIndex<0,1>, Tensor::int2>);
 			ECHO((Tensor::contract<0,1>(aouterb)));
 			

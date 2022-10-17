@@ -220,7 +220,7 @@ static_assert(std::is_same_v<
 \
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
-	using ReplaceLocalStorage = Common::tuple_rep_t<index_vec<localDim>, localRank>;
+	using ExpandLocalStorage = Common::tuple_rep_t<index_vec<localDim>, localRank>;
 
 /*
 This contains definitions of types and values used in all tensors.
@@ -403,7 +403,7 @@ Scalar = NestedPtrTuple's last
 \
 	/* expand the storage of the i'th index */\
 	/* produce a tuple of new storages and then just wedge that into the tuple and rebuilt */\
-	/* impl is only here cuz i would need to move ReplaceLocalStorage up above this otherwise */\
+	/* impl is only here cuz i would need to move ExpandLocalStorage up above this otherwise */\
 	/* and that would mean splitting the HEADER and putting it in between this and other stuf above */\
 	template<int index>\
 	struct ExpandIthIndexImpl {\
@@ -414,7 +414,7 @@ Scalar = NestedPtrTuple's last
 			Common::tuple_insert_t<\
 				Common::tuple_remove_t<nest, StorageTuple>,\
 				nest,\
-				typename Nested<nest>::template ReplaceLocalStorage<\
+				typename Nested<nest>::template ExpandLocalStorage<\
 					index - indexForNesting<nest>\
 				>\
 			>\
@@ -458,40 +458,38 @@ Scalar = NestedPtrTuple's last
 	template<int i>\
 	using RemoveIthIndex = typename RemoveIthIndexImpl<i>::type;\
 \
-	/* assumes Seq is a integer_sequence<int, ...> */\
-	/*  and assumes it is already sorted */\
+	/* RemoveIndexSeqImpl assumes Seq is a integer_sequence<int, ...> */\
+	/*  and assumes it is already sorted in descending order. */\
 	template<typename Seq>\
-	struct RemoveIndexImpl;\
-	template<int i1, int... I>\
-	struct RemoveIndexImpl<std::integer_sequence<int, i1,I...>>  {\
-		using tmp = This::template RemoveIthIndex<i1>;\
-		using type = typename tmp\
-			::template RemoveIndexImpl<\
-				std::integer_sequence<int, I...>\
-			>::type;\
+	struct RemoveIndexSeqImpl;\
+	template<int i1, int... is>\
+	struct RemoveIndexSeqImpl<std::integer_sequence<int, i1, is...>> {\
+		static constexpr auto value() {\
+			using R = RemoveIthIndex<i1>;\
+			if constexpr (rank == 1) {\
+				return R();\
+			} else {\
+				return typename R::template RemoveIndexSeqImpl<std::integer_sequence<int, is...>>::type();\
+			}\
+		}\
+		using type = decltype(value());\
 	};\
-	template<int i1>\
-	struct RemoveIndexImpl<std::integer_sequence<int, i1>> {\
-		using type = This::template RemoveIthIndex<i1>;\
+	template<>\
+	struct RemoveIndexSeqImpl<std::integer_sequence<int>> {\
+		using type = This;\
 	};\
-	/* RemoveIndex sorts the list, so you don't need to worry about order of arguments */\
-	template<int... I>\
-	using RemoveIndex = typename RemoveIndexImpl<\
+	/* RemoveIndexSeq sorts the list, so you don't need to worry about order of arguments */\
+	template<typename Seq>\
+	using RemoveIndexSeq = typename RemoveIndexSeqImpl<\
 		Common::seq_reverse_t<\
 			Common::seq_sort_t<\
-				std::integer_sequence<int, I...>\
+				Seq\
 			>\
 		>\
 	>::type;\
 \
-	template<typename Seq>\
-	struct RemoveIndexSeqImpl {};\
-	template<int... I>\
-	struct RemoveIndexSeqImpl<std::integer_sequence<int, I...>> {\
-		using type = RemoveIndex<I...>;\
-	};\
-	template<typename Seq>\
-	using RemoveIndexSeq = typename RemoveIndexSeqImpl<Seq>::type;\
+	template<int... is>\
+	using RemoveIndex = RemoveIndexSeq<std::integer_sequence<int, is...>>;\
 \
 	template<int index, int newDim>\
 	struct ReplaceDimImpl {\
@@ -2253,7 +2251,7 @@ inline constexpr int symmetricSize(int d, int r) {
 \
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
-	struct ReplaceLocalStorageImpl {\
+	struct ExpandLocalStoragImpl {\
 		static constexpr auto value() {\
 			return Common::tuple_cat_t<\
 				GetTupleWrappingStorageForRank<localDim, index, index_sym, index_symR>,\
@@ -2265,7 +2263,7 @@ inline constexpr int symmetricSize(int d, int r) {
 	};\
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
-	using ReplaceLocalStorage = typename ReplaceLocalStorageImpl<index>::type;
+	using ExpandLocalStorage = typename ExpandLocalStoragImpl<index>::type;
 
 #define TENSOR_HEADER_TOTALLY_SYMMETRIC(classname, Inner_, localDim_, localRank_)\
 	TENSOR_THIS(classname)\
@@ -2548,7 +2546,7 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 \
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
-	struct ReplaceLocalStorageImpl {\
+	struct ExpandLocalStoragImpl {\
 		static constexpr auto value() {\
 			return Common::tuple_cat_t<\
 				GetTupleWrappingStorageForRank<localDim, index, index_asym, index_asymR>,\
@@ -2560,7 +2558,7 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 	};\
 	template<int index>\
 	requires (index >= 0 && index < localRank)\
-	using ReplaceLocalStorage = typename ReplaceLocalStorageImpl<index>::type;
+	using ExpandLocalStorage = typename ExpandLocalStoragImpl<index>::type;
 
 #define TENSOR_HEADER_TOTALLY_ANTISYMMETRIC(classname, Inner_, localDim_, localRank_)\
 	TENSOR_THIS(classname)\

@@ -83,15 +83,15 @@ namespace StaticTest1 {
 		std::tuple<index_asymR<3,3>>
 	>);
 	static_assert(is_same_v<
-		float3a3a3::ReplaceLocalStorage<0>,
+		float3a3a3::ExpandLocalStorage<0>,
 		std::tuple<index_vec<3>, index_asym<3>>
 	>);
 	static_assert(is_same_v<
-		float3a3a3::ReplaceLocalStorage<1>,
+		float3a3a3::ExpandLocalStorage<1>,
 		std::tuple<index_vec<3>, index_vec<3>, index_vec<3>>
 	>);
 	static_assert(is_same_v<
-		float3a3a3::ReplaceLocalStorage<2>,
+		float3a3a3::ExpandLocalStorage<2>,
 		std::tuple<index_asym<3>, index_vec<3>>
 	>);
 
@@ -182,6 +182,8 @@ namespace StaticTest1 {
 	static_assert(is_same_v<_tensor<int,2,3,4>::RemoveIthNesting<1>, _tensor<int,2,4>>);
 	static_assert(is_same_v<_tensor<int,2,3,4>::RemoveIthNesting<2>, _tensor<int,2,3>>);
 
+	static_assert(is_same_v<float3::RemoveIthIndex<0>, float>);
+	
 	static_assert(is_same_v<float3::RemoveIndex<0>, float>);
 	static_assert(is_same_v<float3x3::RemoveIndex<0>, float3>);
 	static_assert(is_same_v<float3x3::RemoveIndex<1>, float3>);

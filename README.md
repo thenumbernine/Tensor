@@ -232,6 +232,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 	Should be equivalent to `This::ReplaceNested<This::numNestings, T>`.
 - `::ReplaceLocalDim<n>` = Replaces this tensor's localDim with a new dimension, n.
 - `::ReplaceDim<i,n>` = Replace the i'th index dimension with the dimension, n.  If the dimensions already match then nothing is done.  If not then the stroage at this index is expanded.
+- `::ExpandLocalStorage` = A tuple of storage types representing our type with the i'th local index undone from storage optimizations.  Un-expanded indexes storage is still preserved.
 - `::ExpandIthIndex<i>` = Produce a type with only the storage at the i'th index replaced with expanded storage.
 	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
 	So a `_sym`'s ExpandIthIndex<0> or <1> would produce a `_vec`-of-`_vec`, a `_sym`-of-`_vec`'s ExpandIthIndex<2> would return the same type, and a `_vec`-of-`_sym`'s ExpandIthIndex<0> would return the same type.
