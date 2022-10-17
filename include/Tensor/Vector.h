@@ -415,7 +415,7 @@ Scalar = NestedPtrTuple's last
 	};\
 	template<int index>\
 	requires (index >= 0 && index < rank)\
-	using ExpandIthStorage = typename ExpandIthStorageImpl<index>::type;\
+	using ExpandIthIndexStorage = typename ExpandIthStorageImpl<index>::type;\
 \
 	/* expand the storage of the i'th index */\
 	/* produce a tuple of new storages and then just wedge that into the tuple and rebuilt */\
@@ -423,7 +423,7 @@ Scalar = NestedPtrTuple's last
 	/* and that would mean splitting the HEADER and putting it in between this and other stuf above */\
 	template<int index>\
 	requires (index >= 0 && index < rank)\
-	using ExpandIthIndex = tensorScalarTuple<Scalar, ExpandIthStorage<index>>;\
+	using ExpandIthIndex = tensorScalarTuple<Scalar, ExpandIthIndexStorage<index>>;\
 \
 	template<typename Seq>\
 	struct ExpandIndexSeqImpl;\
@@ -444,21 +444,34 @@ Scalar = NestedPtrTuple's last
 	template<int deferRank = rank> /* evaluation needs to be deferred */\
 	using ExpandAllIndexes = ExpandIndexSeq<std::make_integer_sequence<int, deferRank>>;\
 \
-	/* remove the i'th nesting, i from 0 to numNestings-1 */\
 	template<int i>\
 	requires (i >= 0 && i < numNestings)\
-	using RemoveIthNesting = tensorScalarTuple<Scalar, Common::tuple_remove_t<i, StorageTuple>>;\
+	using RemoveIthNestedStorage = Common::tuple_remove_t<i, StorageTuple>;\
 \
-	/* same as Expand but now with RemoveIthIndex, RemoveIndex, RemoveIndexSeq */\
 	template<int i>\
+	requires (i >= 0 && i < numNestings)\
+	using RemoveIthNesting = tensorScalarTuple<Scalar, RemoveIthNestedStorage<i>>;\
+\
+	/* ok despite RemoveIthNestingStorage being up there, RemoveIthIndex will still need to know the rank and index placement info of the tensor with storage expanded and removed ... */\
+	/*  so I don't think there's an easy way to do this just by storage manipulation ... */\
+	template<int i>\
+	requires (i >= 0 && i < rank)\
 	struct RemoveIthIndexImpl {\
 		using ithIndexExpanded = This::template ExpandIthIndex<i>;\
 		using type = typename ithIndexExpanded::template RemoveIthNesting<\
 			ithIndexExpanded::template numNestingsToIndex<i>\
 		>;\
 	};\
+	/* same as Expand but now with RemoveIthIndex, RemoveIndex, RemoveIndexSeq */\
 	template<int i>\
-	using RemoveIthIndex = typename RemoveIthIndexImpl<i>::type;\
+	requires (i >= 0 && i < rank)\
+	using RemoveIthIndex =  typename RemoveIthIndexImpl<i>::type;\
+\
+	/* so whereas other functions are manip-storage-first, rebuild-tensor-next, */\
+	/*  this one is more change-tensor-first, get-storage-next */\
+	template<int i>\
+	requires (i >= 0 && i < rank)\
+	using RemoveIthIndexStorage = typename RemoveIthIndex<i>::StorageTuple;\
 \
 	/* RemoveIndexSeqImpl assumes Seq is a integer_sequence<int, ...> */\
 	/*  and assumes it is already sorted in descending order. */\
@@ -2225,8 +2238,8 @@ constexpr int nChooseR(int n, int k) {
     int result = n;
     // TODO can you guarantee that /=i will always have 'i' as a divisor? or do we need two loops?
 	for (int i = 2; i <= k; ++i) {
-        result *= n - i + 1;
-        result /= i;
+		result *= n - i + 1;
+		result /= i;
     }
     return result;
 }

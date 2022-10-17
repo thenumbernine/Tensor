@@ -169,7 +169,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 - `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
-	`I1 I2` etc are one of the following:
+	`I1 I2` etc are one of the following storage types:
 - - `index_vec<dim>` for a single index of dimension `dim`,
 - - `index_zero<dim>` for rank-one zero valued indexes of dimension `dim`.  (If any are `index_zero` then all should be `index_zero`, but I left it to be specified per-index so that it could have varying dimensions per-index.),
 - - `index_ident<dim>` for rank-two identity indexes of dimension `dim`,
@@ -232,8 +232,9 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 	Should be equivalent to `This::ReplaceNested<This::numNestings, T>`.
 - `::ReplaceLocalDim<n>` = Replaces this tensor's localDim with a new dimension, n.
 - `::ReplaceDim<i,n>` = Replace the i'th index dimension with the dimension, n.  If the dimensions already match then nothing is done.  If not then the stroage at this index is expanded.
-- `::ExpandLocalStorage` = A tuple of storage types representing our type with the i'th local index undone from storage optimizations.  Un-expanded indexes storage is still preserved.
-- `::ExpandIthIndex<i>` = Produce a type with only the storage at the i'th index replaced with expanded storage.
+- `::ExpandLocalStorage<i>` = Produce a tuple of storage types representing our type with the i'th local index undone from storage optimizations, where i is from 0 to `localRank-1`.  Un-expanded indexes storage is still preserved.
+- `::ExpandIthIndexStorage<i>` = Produce a tuple of storage types but with its i'th index expanded, where i is from 0 to `rank-1`.
+- `::ExpandIthIndex<i>` = Produce a tensor type with the storage at the i'th index replaced with expanded storage.
 	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
 	So a `_sym`'s ExpandIthIndex<0> or <1> would produce a `_vec`-of-`_vec`, a `_sym`-of-`_vec`'s ExpandIthIndex<2> would return the same type, and a `_vec`-of-`_sym`'s ExpandIthIndex<0> would return the same type.
 - `::ExpandIndex<i1, i2, ...>` = Expand the all indexes listed.
@@ -241,6 +242,9 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `::ExpandAllIndexes<>` = Produce a type with all storage replaced with expanded storage.
 	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
 	Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `_tensori<Scalar, dim1, ..., dimN>`.
+- `::RemoveIthNestedStorage<i>` = Produce a tuple of storage types but with the i'th element removed.
+- `::RemoveIthNesting<i>` = Produce a tensor but with the i'th nesting removed.
+- `::RemoveIthIndexStorage<i>` = Produce a tuple of storage types but with the i'th index expanded and i'th index storage removed.
 - `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into `_vec`s.  Then removes it.
 - `::RemoveIndex<i1, i2, ...>` = Removes all the indexes, `i1` ..., from the tensor.
 - `ReplaceWithZero<T>` = Returns a type with matching rank and dimensions, but all nestings are zeroes.  The result is fully-expanded so the nesting count matches the rank.
