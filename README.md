@@ -84,6 +84,27 @@ requires (a.dims() == b.dims() && a.isSquare && b.isSquare)
 }
 ```
 
+Example: Implementing the Levi-Civita totally-antisymmetric tensor in an orthonormal metric:
+```c++
+auto LC = _tensorx<float, -'A', dim, dim>(1);	// uses 1 whole float of storage.
+```
+
+Example: Implementing the covariant valence Levi-Civita totally-antisymmetric tensor for an arbitrary metric $g\_{\mu \nu}$:
+```c++
+auto g_ll = floatNsN<dim>( /* provide your metric here */ );
+auto detg = g.determinant();
+auto LC_lower = floatNaR<dim, dim>(sqrt(det));	// uses 1 whole float of storage.
+auto LC_upper = LC_lower / detg;
+```
+Mind you `LC_lower[0][0]...[0]` and `LC_lower[dim-1][dim-1]...[dim-1]` and every possible index access between are all valid C++ expressions.  But yeah, just 1 float of storage.
+
+Example: ... and using it to compute the generalized Kronecker delta tensor:
+```c++
+auto KD = LC_lower.outer(LC.upper);
+```
+KD is now a rank-`2*dim` tensor of dimension `dim`.
+Take note of the order of your outer product and therefore the order of your result's indexes.  In this case the generalized-Kronecker-delta lower indexes are first. 
+
 Example of index notation:
 ```c++
 Index<'i'> i; 
