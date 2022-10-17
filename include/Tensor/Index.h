@@ -8,7 +8,47 @@
 #include <tuple>
 #include <functional>	// plus minus binary_operator etc
 
-// needs to be included *after* Vector.h
+/*
+Ok here's a dilemma ... a_i = b_ijk^jk_lm^lm * c_npq^npq
+ if I outer-first this can become huge in its storage and calculations 
+ if I constract-first then I have to use some extra storage.
+which do I choose?
+or do I choose both?  std::variant<TensorType, TensorType&> t; ?
+tempted to go for storing tensors themselves within IndexAccess objs (which means contract-upon-initialization)
+ but that means no more need to construct AST's of tensor expressions... just process the tensor math as the operators are encountered.
+
+a_i = b_ij * c_jk * d_k ...
+	becomes:
+a_x = sum_j (b_xj * (c_jx * d_x + c_jy * d_y + c_jz * d_z))
+a_y = sum_j (b_yj * (c_jx * d_x + c_jy * d_y + c_jz * d_z))
+a_z = sum_j (b_zj * (c_jx * d_x + c_jy * d_y + c_jz * d_z))
+ ... 4 x 3 (sum) x 3 (dst) = 36 muls
+ ... (2 (c*d) + 2 (b*c)) x 3 = 12 adds
+	unless i perform contractions up-front and DO NOT maintain the AST but only push IndexAccess objects forward ... then its more like:
+result of c_jk d_k = [
+	c_xx * d_x + c_xy * d_y + c_xz * d_z,
+	c_yx * d_x + c_yy * d_y + c_yz * d_z,
+	c_zx * d_x + c_zy * d_y + c_zz * d_z,
+]
+ ... 9 muls, 6 adds
+a_ij = b_ij * (result of c_jk d_k) = [
+	b_xx * (c*d)_x + b_xy * (c*d)_y + b_xz * (c*d)_z,
+	b_yx * (c*d)_x + b_yy * (c*d)_y + b_yz * (c*d)_z,
+	b_zx * (c*d)_x + b_zy * (c*d)_y + b_zz * (c*d)_z,
+]
+ ... another 9 muls and 6 adds
+ ... total 18 muls 12 adds
+
+hmm, 36 muls or 18 muls?  which is more?
+seems like more often than not it's better to evalute expressions per-opration rather than all-upon-assignment (which it seems like I see promoted doing this way everywhere)
+the only time delaying evaluation until assignment could be good is if you're doing traces or transposes or sums or something ... in which case just store the index remap and don't need to copy the source.
+ but wait (theres more) to allow for same-reference reading and writing, i'm already copying the written tensor in assign() before returning it ...
+ ... aren't I halfway there?
+
+I guess one option is ... implement both & perf test.
+Easiest one to implement first is computing up front rather than preserving expression trees.
+
+*/
 
 namespace Tensor {
 
@@ -111,7 +151,6 @@ struct FindDstForSrcOuter {
 
 template<typename What, typename WhereTuple>
 struct tuple_find;
-
 template<typename What, typename Where1, typename... Wheres>
 struct tuple_find<What, std::tuple<Where1, Wheres...>> {
 	static constexpr auto nextvalue = tuple_find<What, std::tuple<Wheres...>>::value;
@@ -124,6 +163,59 @@ template<typename What>
 struct tuple_find<What, std::tuple<>> {
 	static constexpr auto value = -1;
 };
+
+// F<T>::value is a bool for yes or no to add to 'has' or 'hasnot'
+template<typename Tuple, typename indexSeq, template<typename> typename F>
+struct tuple_get_filtered_indexes;
+template<
+	typename T, typename... Ts,
+	int i1, int... is,
+	template<typename> typename F
+>
+struct tuple_get_filtered_indexes<
+	std::tuple<T, Ts...>, 
+	std::integer_sequence<int, i1, is...>,
+	F
+> {
+	using next = tuple_get_filtered_indexes<
+		std::tuple<Ts...>, 
+		std::integer_sequence<int, is...>,
+		F
+	>;
+	static constexpr auto value() {
+		if constexpr (F<T>::value) {
+			using has = Common::seq_cat_t<
+				std::integer_sequence<int, i1>,
+				typename next::has
+			>;
+			using hasnot = typename next::hasnot;
+			return (std::pair<has, hasnot>*)nullptr;
+		} else {
+			using has = typename next::has;
+			using hasnot = Common::seq_cat_t<
+				std::integer_sequence<int, i1>,
+				typename next::hasnot
+			>;
+			return (std::pair<has, hasnot>*)nullptr;
+		}
+	}
+	using result = typename std::remove_pointer_t<decltype(value())>;
+	using has = typename result::first_type;
+	using hasnot = typename result::second_type;
+};
+template<template<typename> typename F>
+struct tuple_get_filtered_indexes<std::tuple<>, std::integer_sequence<int>, F> {
+	using has = std::integer_sequence<int>;
+	using hasnot = std::integer_sequence<int>;
+};
+template<typename Tuple, template<typename> typename F>
+using tuple_get_filtered_indexes_t = tuple_get_filtered_indexes<
+	Tuple,
+	std::make_integer_sequence<int, std::tuple_size_v<Tuple>>,
+	F
+>;
+
+
 
 template<typename What, typename WhereTuple>
 static constexpr int tuple_find_v = tuple_find<What, WhereTuple>::value;
@@ -199,6 +291,12 @@ using GatherIndexes = typename GatherIndexesImpl<
 	std::make_integer_sequence<int, std::tuple_size_v<IndexTuple>>
 >::type;
 
+// T is a member of the tuple within GatherIndexes<>'s results
+template<typename T>
+struct HasMoreThanOneIndex {
+	static constexpr bool value = T::second_type::size() > 1;
+};
+
 /*
 rather than this matching a Tensor for index dereferencing,
 this needs its index access abstracted so that binary operations can provide their own as well
@@ -208,20 +306,31 @@ struct IndexAccess {
 	static constexpr bool isIndexExprFlag = {};
 	using This = IndexAccess;
 	using TensorType = TensorType_;
-	using IndexTuple = IndexTuple_;	// std::tuple<Index<char>... >
+	
+	// std::tuple<Index<char>... >
+	// this is the input indexes wrapping the tensor, like a(i,j,k ...)
+	using IndexTuple = IndexTuple_;	
 	
 	/*
 	TODO HERE before rank is established,
 	need to find duplicate indexes and flag them as sum indexes
 	then the rank is going to be whats left
 	*/
-	//using SumIndexes = GatherSumIndexes<IndexTuple>;	//pairs of offsets into IndexTuple
-	//using AssignIndexes = GatherAssignIndexes<IndexTuple>; //offsets into IndexTuple of non-summed indexes
+	//using SumIndexSeq = GatherSumIndexes<IndexTuple>;	//pairs of offsets into IndexTuple
+	//using AssignIndexSeq = GatherAssignIndexes<IndexTuple>; //offsets into IndexTuple of non-summed indexes
 	//static constexpr rank = std::tuple_size_v<AssignIndexes>;
 	//using dims = MapValues<AssignIndexes, TensorType::dimseq>;
-	using IndexInfo = GatherIndexes<IndexTuple>;
+	using GatheredIndexes = GatherIndexes<IndexTuple>;
+	using GetSingleVsDouble = tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;
+	// collect the offsets of the Index's that are duplicated (summed) into one sequence ...
+	using SumIndexSeq = typename GetSingleVsDouble::has; 
+	// ... and the single Index's (used for assignment) into another sequence.
+	// this is what we need to match up when performing operations like = + etc
+	using AssignIndexSeq = typename GetSingleVsDouble::hasnot; 
 
-	static constexpr auto rank = TensorType::rank;
+	//"rank" of this expression is the # of assignment-indexes ... excluding the sum-indexes
+	static constexpr auto rank = AssignIndexSeq::size();
+	
 	using intN = _vec<int, rank>;
 	using Scalar = typename TensorType::Scalar;
 	static constexpr auto dims() { return TensorType::dims(); }
@@ -297,8 +406,6 @@ struct IndexAccess {
 	template<typename DstIndexTuple>
 	static constexpr intN getIndex(intN const & i) {
 		
-		/*
-		*/
 		//TODO this in compile time
 		// that would mean compile-time dereferences
 		// which would mean no longer dereferencing by int vectors but instead by compile-time parameter packs
@@ -306,6 +413,7 @@ struct IndexAccess {
 		Common::ForLoop<
 			0,
 			rank,
+			// TODO only search the members of 'IndexTuple' that are found in AssignIndexSeq
 			FindDstForSrcOuter<DstIndexTuple, IndexTuple>::template Find
 		>::exec(dstForSrcIndex);
 	

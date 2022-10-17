@@ -169,7 +169,17 @@ void test_Vector() {
 		TEST_EQ(Tensor::float2(f.xy()), Tensor::float2(4,5));
 		TEST_EQ(Tensor::float2(f.yx()), Tensor::float2(5,4));
 		TEST_EQ(Tensor::float2(f.yy()), Tensor::float2(5,5));
-		
+		{
+			auto x = Tensor::float3(1,2,3);
+			x = x.yzx();
+			TEST_EQ(x, Tensor::float3(2,3,1));
+// ERROR: no matching constructor for initialization of 'std::reference_wrapper<float>' 
+//			x.yzx() = Tensor::float3(7,8,9);
+//			TEST_EQ(x, Tensor::float3(9,7,8));
+		}
+
+static_assert(sizeof(Tensor::float3a3a3) == sizeof(float));
+
 		/* more tests ...
 		float2 float4
 		int2 int3 int4

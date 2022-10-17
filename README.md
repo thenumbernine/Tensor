@@ -5,9 +5,9 @@ and then getting into differential geometry and relativity, and trying to design
 this is the latest result.
 
 I know I've put the word "Tensor" in the title.
-Ever since the deep learning revolution in AI that computer scientists have come to believe that a "tensor" is an arbitrary dimensioned array of numbers, preferrably larger dimensioned and smaller-indexed.
-But this library is moreso centered around "tensor" in the original differential geometry definition, as "geometric object that lives in the tangent space at some point on a manifold and is invariant to coordinate transform."
-That means I am designing this library is centered around compile-time sized small arrays and larger ranks/degrees/grades (whatever the term is for the number of indexes).
+Ever since the deep learning revolution in AI computer scientists have come to believe that a "tensor" is an arbitrary dimensioned array of numbers, preferrably larger dimensioned and smaller-indexed.
+This library is moreso centered around "tensor" in the original differential geometry definition: a geometric object that lives in the tangent space at some point on a manifold and is invariant to coordinate transforms.
+This means I am designing this library centered around compile-time sized small arrays and larger ranks/degrees/grades (whatever the term is for the number of indexes).
 
 The old and pre-C++11 and ugly version had extra math indicators like Upper<> and Lower<> for tracking variance, but I've done away with that now.
 There was no programmatically functional reason to track it (unless I wanted to verify Einstein-index summation correctness, which I never got to), so I've just done away with it.
@@ -29,24 +29,34 @@ So I guess overall this library is midway between a mathematician's and a progra
 Example of using a totally-antisymmetric tensor for implementing the cross-product:
 ```c++
 float3 cross(float3 a, float3 b) {
-	constexpr auto LC = floatNaR<3,3>(1);	//1 constexpr float ... create a Levi-Civita totally-antisymmetric permutation tensor for dim 3 rank 3
-	return (LC * b) * a;					//cross(a,b)_i = epsilon_ijk * a^j * b^k
+	// Create the Levi-Civita totally-antisymmetric permutation tensor for dim 3 rank 3 ... using up a single float of memory:
+	constexpr auto LC = float3a3a3(1);	
+	static_assert(sizeof(LC) == sizeof(float));
+	// cross(a,b)_i = ε_ijk * a^j * b^k
+	return (LC * b) * a;					
 }
 ```
 
 Same thing but using exterior algebra:
 ```c++
 float3 cross(float3 a, float3 b) {
-	auto c = a.wedge(b);	// returns a 3x3 antisymmetric, storing only 3 floats
-	return hodgeDual(c);	// maps those 3 antisymmetric rank-2 floats onto 3 rank-1 floats
+	// Create a 3x3 antisymmetric, storing only 3 floats
+	auto c = a.wedge(b);	
+	static_assert(sizeof(a) == 3*sizeof(float));
+	// Return the dual, mapping those 3 antisymmetric rank-2 floats onto 3 rank-1 floats:
+	return hodgeDual(c);	
 }
 ```
 
 Example of using a totally-antisymmetric tensor to construct a basis perpendicular to a vector:
 ```c++
 float2x3 basis(float3 n) {
-	auto d = hodgeDual(n);	// return a 3x3 antisymmetric, only storing 3 values, equivalent of initializing a matrix with the cross products of 'n' and each basis vector
-	// done.  the 3 rows/cols are all perpendicular to n.  but maybe n is closer to one of them, in which case the cross tends to zero, so best to pick the largest two.
+	// Return a 3x3 antisymmetric, only storing 3 values, equivalent of initializing a matrix with the cross products of 'n' and each basis vector
+	auto d = hodgeDual(n);	
+	static_assert(sizeof(d) == 3*sizeof(float));
+	// Done.  
+	// We now have 3 vectors perpendicular to 'n' stored the 3 rows/cols of 'd'.  
+	// But maybe 'n' is closer to one of them, in which case the cross tends to zero, so best to pick the largest two:
 	auto sq = float3([&d](int i) -> float { return d(i).lenSq(); }); 
 	auto n2 = (
 			(sq.x > sq.y)
@@ -333,6 +343,16 @@ Swizzling will return a vector-of-references:
 - 2D: `.xx() .xy() ... .wz() .ww()`
 - 3D: `.xxx() ... .www()`
 - 4D: `.xxxx() ... .wwww()`
+
+```c++
+auto a = float3(1,2,3);
+// The swizzle methods themselves returns a vector-of-references.
+auto bref = x.yzx();	
+// Writing values?  TODO. Still in the works ... 
+// bref = float3(4,5,6); // In a perfect world this would assign swizzled values to x ... for now it just errors.  Something about the complications of defining objects' ctors and operator='s, and having the two not fight with one another.
+// Reading values works fine:
+float3 b = x.yzx();
+```
 
 ### Functions
 Functions are provided as `Tensor::` namespace or as member-functions where `this` is automatically padded into the first argument. 

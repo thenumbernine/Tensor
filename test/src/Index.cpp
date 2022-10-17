@@ -2,6 +2,17 @@
 #include "Common/Test.h"
 #include <algorithm>
 
+namespace TupleTests {
+	using namespace std;
+	using namespace Common;
+	using yesno = Tensor::tuple_get_filtered_indexes_t<
+		tuple<float, int, double, char>,
+		is_integral
+	>;
+	static_assert(is_same_v<typename yesno::has, std::integer_sequence<int, 1, 3>>);
+	static_assert(is_same_v<typename yesno::hasnot, std::integer_sequence<int, 0, 2>>);
+}
+
 void test_Index() {
 	//index assignment
 	{
@@ -106,7 +117,7 @@ void test_Index() {
 			>);
 			
 			static_assert(is_same_v<
-				decltype(a(i,j))::IndexInfo,
+				decltype(a(i,j))::GatheredIndexes,
 				tuple<
 					pair<
 						Index<'i'>,
