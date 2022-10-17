@@ -1,4 +1,4 @@
-## Tensor Library
+## Differential Geometry Tensor Library
 
 After using fixed-dimension vectors and tensors for a few decades, and having a few goes at designing a C++ math library around them,
 and then getting into differential geometry and relativity, and trying to design a C++ math library around that,
