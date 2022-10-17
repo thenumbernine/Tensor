@@ -70,6 +70,26 @@ if I do column-major then C inline indexing is transposed
 
 namespace Tensor {
 
+
+constexpr int constexpr_isqrt_r(int inc, int limit) {
+	return inc * inc > limit ? inc-1 : constexpr_isqrt_r(inc+1, limit);
+}
+constexpr int constexpr_isqrt(int i) {
+	return constexpr_isqrt_r(0, i);
+}
+STATIC_ASSERT_EQ((constexpr_isqrt(0)), 0);
+STATIC_ASSERT_EQ((constexpr_isqrt(1)), 1);
+STATIC_ASSERT_EQ((constexpr_isqrt(2)), 1);
+STATIC_ASSERT_EQ((constexpr_isqrt(3)), 1);
+STATIC_ASSERT_EQ((constexpr_isqrt(4)), 2);
+STATIC_ASSERT_EQ((constexpr_isqrt(5)), 2);
+STATIC_ASSERT_EQ((constexpr_isqrt(6)), 2);
+STATIC_ASSERT_EQ((constexpr_isqrt(7)), 2);
+STATIC_ASSERT_EQ((constexpr_isqrt(8)), 2);
+STATIC_ASSERT_EQ((constexpr_isqrt(9)), 3);
+
+
+
 template<typename T>
 using RepPtrByLocalRank = Common::tuple_rep_t<T, std::remove_pointer_t<T>::localRank>;
 
@@ -1692,7 +1712,7 @@ inline constexpr int triangleSize(int n) {
 	return (n * (n + 1)) / 2;
 }
 
-constexpr int symIndex(int i, int j) {
+inline constexpr int symIndex(int i, int j) {
 	if (i > j) return symIndex(j,i);
 	return i + triangleSize(j);
 }
@@ -1761,9 +1781,9 @@ This is used by _sym , while _asym uses something different since it uses the An
 		return s[getLocalWriteForReadIndex(i,j)];\
 	}
 
-// TODO double-check this is upper-triangular
 // currently set to upper-triangular
 // swap iread 0 and 1 to get lower-triangular
+// TODO use constexpr_isqrt
 #define TENSOR_SYMMETRIC_MATRIX_LOCAL_READ_FOR_WRITE_INDEX()\
 	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
 		intNLocal iread;\
