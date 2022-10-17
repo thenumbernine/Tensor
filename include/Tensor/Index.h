@@ -48,6 +48,10 @@ the only time delaying evaluation until assignment could be good is if you're do
 I guess one option is ... implement both & perf test.
 Easiest one to implement first is computing up front rather than preserving expression trees.
 
+orrrr I could even do both.
+use expression-trees.  lazy evaluate.  and for certain operations like trace or mul (which is outer+trace) thennnn cache.  and have read() read from the cache.
+you can even have some kind of inner class compile-time-dependent for whether a(i,j) IndexAccess should cache or not based on the # of sum-indexes present (0 = dont cache, >0 = do cache)
+
 */
 
 namespace Tensor {
