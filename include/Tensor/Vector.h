@@ -464,15 +464,11 @@ Scalar = NestedPtrTuple's last
 	struct RemoveIndexSeqImpl;\
 	template<int i1, int... is>\
 	struct RemoveIndexSeqImpl<std::integer_sequence<int, i1, is...>> {\
-		static constexpr auto value() {\
-			using R = RemoveIthIndex<i1>;\
-			if constexpr (rank == 1) {\
-				return R();\
-			} else {\
-				return typename R::template RemoveIndexSeqImpl<std::integer_sequence<int, is...>>::type();\
-			}\
-		}\
-		using type = decltype(value());\
+		using type = typename RemoveIthIndex<i1>::template RemoveIndexSeqImpl<std::integer_sequence<int, is...>>::type;\
+	};\
+	template<int i1>\
+	struct RemoveIndexSeqImpl<std::integer_sequence<int, i1>> {\
+		using type = RemoveIthIndex<i1>;\
 	};\
 	template<>\
 	struct RemoveIndexSeqImpl<std::integer_sequence<int>> {\
