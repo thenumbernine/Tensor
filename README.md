@@ -183,6 +183,15 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 ### Tensor creation:
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
+- `_tensorx<type, description...>` = construct a tensor using the following arguments to describe its indexes storage optimization:
+- - any number = an index of this dimension. 
+- - `'-z', dim` = use a rank-1 zero-tensor of dimension `dim`.
+- - `'-i', dim` = use a rank-2 identity-tensor of dimension `dim`.
+- - `'-s', dim` = use a rank-2 symmetric-tensor of dimension `dim`.
+- - `'-a', dim` = use a rank-2 antisymmetric-tensor of dimension `dim`.
+- - `'-S', dim, rank` = use a rank-`rank` totally-symmetric-tensor of dimension `dim`.
+- - `'-A', dim, rank` = use a rank-`rank` totally-antisymmetric-tensor of dimension `dim`.
+	Ex: `_tensorx<float, -'i', 3, -'A', 4, 4>` produces $T\_{ijklm} = t \cdot \delta\_{ij} \cdot \epsilon\_{klm}$.
 - `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
 	`I1 I2` etc are one of the following storage types:
 - - `storage_vec<dim>` for a single index of dimension `dim`,
@@ -192,7 +201,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - - `storage_asym<dim>` for two antisymmetric indexes of dimension `dim`,
 - - `storage_symR<dim, rank>` for `rank` symmetric indexes of dimension `dim`,
 - - `storage_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
-	Ex: `_tensor<float, storage_vec<3>, storage_sym<4>, storage_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
+	Ex: `_tensori<float, storage_vec<3>, storage_sym<4>, storage_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
 
 - `tensorScalarTuple<Scalar, StorageTuple>` = same as `_tensori` except the storage arguments are passed in a tuple.
 
