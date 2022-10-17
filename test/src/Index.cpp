@@ -80,6 +80,7 @@ void test_Index() {
 		Tensor::double3x3 b;
 		b(i,j) = .5 * (a(i,j) + a(j,i));
 		TEST_EQ(b, makeSym(a));
+		// explicitly-specified storage
 		auto c = (.5 * (a(i,j) - a(j,i))).assignR<Tensor::double3a3>(i,j);
 		static_assert(std::is_same_v<Tensor::double3a3, decltype(c)>);
 		TEST_EQ(c, makeAsym(a));
@@ -88,6 +89,20 @@ void test_Index() {
 // and then require Index to specify subrank, or just grab the subset<> of the tensor.
 // TODO sub-tensor casting, not just sub-vector.  return tensor-of-refs. 	
 #if 0 // TODO
+	{
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		Tensor::double3x3 a = {{1,2,3},{4,5,6},{7,8,9}};
+
+		// symmetrize using index notation
+		Tensor::double3x3 b;
+		b(i,j) = .5 * (a(i,j) + a(j,i));
+		TEST_EQ(b, makeSym(a));
+		// implicit storage type, for now picks the worst case
+		auto c = (.5 * (a(i,j) - a(j,i))).assign(i,j);
+		static_assert(std::is_same_v<Tensor::double3x3, decltype(c)>);
+		TEST_EQ(c, makeAsym(a));
+	}
 	{
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;

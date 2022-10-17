@@ -109,6 +109,97 @@ struct FindDstForSrcOuter {
 		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
 	}
 
+template<typename What, typename WhereTuple>
+struct tuple_find;
+
+template<typename What, typename Where1, typename... Wheres>
+struct tuple_find<What, std::tuple<Where1, Wheres...>> {
+	static constexpr auto nextvalue = tuple_find<What, Wheres...>::value;
+	static constexpr auto value = 
+		std::is_same_v<What, Where1>
+		? 0
+		: (nextvalue == -1 ? -1 : nextvalue + 1);
+};
+template<typename What, typename Where1>
+struct tuple_find<What, std::tuple<Where1>> {
+	static constexpr auto value = 0;
+};
+template<typename What>
+struct tuple_find<What, std::tuple<>> {
+	static constexpr auto value = -1;
+};
+
+template<typename What, typename WhereTuple>
+static constexpr int tuple_find_v = tuple_find<What, WhereTuple>::value;
+
+template<typename T>
+using GetFirst = typename T::first_type;
+
+/*
+GatherIndexes<std::integer_sequence<int, ...>> has ...
+	type = std::tuple<
+		std::pair<
+			Index<ch1>,
+			std::integer_sequence<int, i1, ...>
+		>,
+		std::pair<
+			Index<ch2>,
+			std::integer_sequence<int, i1, ...>
+		>,
+	... so type[i][0] represents which index we are looking for
+	... and type[i][1] represents where it is found
+	... and indexes = type map get 2nd of pair
+	([] notation represents element_t<> access) 
+*/
+template<typename IndexTuple, typename indexSeq>
+struct GatherIndexesImpl;
+template<typename IndexType, typename... IndexTypes, int i1, int... is>
+requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)
+struct GatherIndexesImpl<std::tuple<IndexType, IndexTypes...>, std::integer_sequence<int, i1, is...>> {
+	static constexpr auto value() {
+		using Next = GatherIndexesImpl<std::tuple<IndexTypes...>, std::integer_sequence<int, is...>>;
+		using NextType = typename Next::type;
+		constexpr int resultLoc = tuple_find_v<IndexType, typename Next::indexes>;
+		if constexpr (resultLoc == -1) {
+			return (
+				Common::tuple_cat_t<
+					NextType,
+					std::tuple<std::pair<
+						IndexType,
+						std::integer_sequence<int, i1>
+					>>
+				>
+			*)nullptr;
+		} else {
+			return (
+				Common::element_replace_t<
+					NextType,
+					resultLoc,
+					std::pair<
+						IndexType,
+						Common::seq_cat_t<
+							typename std::tuple_element_t<
+								resultLoc,
+								NextType
+							>::second_type,
+							std::integer_sequence<int, i1>
+						>
+					>
+				>
+			*)nullptr;
+		}
+	}
+	using type = typename std::remove_pointer_t<decltype(value())>;
+	using indexes = Common::TupleTypeMap<type, GetFirst>;
+};
+template<>
+struct GatherIndexesImpl<std::tuple<>, std::integer_sequence<int>> {
+	using type = std::tuple<>;
+	using indexes = std::tuple<>;
+};
+template<typename IndexTuple>
+using GatherIndexes = typename GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, std::tuple_size_v<IndexTuple>>>::type;
+
 /*
 rather than this matching a Tensor for index dereferencing,
 this needs its index access abstracted so that binary operations can provide their own as well
@@ -128,7 +219,7 @@ struct IndexAccess {
 	//using SumIndexes = GatherSumIndexes<IndexTuple>;	//pairs of offsets into IndexTuple
 	//using AssignIndexes = GatherAssignIndexes<IndexTuple>; //offsets into IndexTuple of non-summed indexes
 	//static constexpr rank = std::tuple_size_v<AssignIndexes>;
-	//using dims = MapValues<AssignIndexes, TensorType::dimSeq>;
+	//using dims = MapValues<AssignIndexes, TensorType::dimseq>;
 
 	static constexpr auto rank = TensorType::rank;
 	using intN = _vec<int, rank>;
