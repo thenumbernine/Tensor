@@ -7,7 +7,7 @@
 #include "Tensor/Math.h.h"	// forward-declarations better match
 #include "Tensor/Vector.h"	// class bodies must come first so I can use them
 #include "Tensor/Range.h"	// class bodies must come first so I can use them
-#include "Common/Meta.h"	// TypeWrapper
+#include "Common/Meta.h"
 
 namespace Tensor {
 
@@ -351,18 +351,12 @@ template<typename T>
 struct ReplaceWithZeroImpl {
 	static constexpr auto value() {
 		if constexpr (T::rank == 1) {
-			return Common::TypeWrapper<_zero<
-				typename T::Inner,
-				T::localDim
-			>>();
+			return (_zero<typename T::Inner, T::localDim>*)nullptr;
 		} else {
-			return Common::TypeWrapper<_zero<
-				typename ReplaceWithZeroImpl<typename T::Inner>::type,
-				T::localDim
-			>>();
+			return (_zero<typename ReplaceWithZeroImpl<typename T::Inner>::type, T::localDim>*)nullptr;
 		}
 	}
-	using type = typename decltype(value())::type;
+	using type = typename std::remove_pointer_t<decltype(value())>;
 };
 template<typename T>
 using ReplaceWithZero = typename ReplaceWithZeroImpl<typename T::template ExpandAllIndexes<>>::type;
@@ -372,6 +366,7 @@ using ReplaceWithZero = typename ReplaceWithZeroImpl<typename T::template Expand
 // but it should def be made available
 // TODO if any of T's storages are _asym or _asymR then the whole thing becomes zero.
 template<typename T>
+requires (T::rank > 0)
 struct MakeSymResult {
 	template<int i>
 	struct AnyAreAsym {
@@ -381,19 +376,18 @@ struct MakeSymResult {
 		}
 	};
 	static constexpr auto value() {
-		static_assert(T::rank > 0);
 		using S = typename T::Scalar;
 		if constexpr (Common::ForLoop<0, T::numNestings, AnyAreAsym>::exec()) {
-			return Common::TypeWrapper<ReplaceWithZero<T>>();
+			return (ReplaceWithZero<T>*)nullptr;
 		} else if constexpr (T::rank == 1) {
-			return Common::TypeWrapper<_vec<S, T::localDim>>();
+			return (_vec<S, T::localDim>*)nullptr;
 		} else if constexpr (T::rank == 2) {
-			return Common::TypeWrapper<_sym<S, T::localDim>>();
+			return (_sym<S, T::localDim>*)nullptr;
 		} else {
-			return Common::TypeWrapper<_symR<S, T::localDim, T::rank>>();
+			return (_symR<S, T::localDim, T::rank>*)nullptr;
 		}
 	}
-	using type = typename decltype(value())::type;
+	using type = typename std::remove_pointer_t<decltype(value())>;
 };
 template<typename T>
 requires IsSquareTensor<T>
@@ -417,6 +411,7 @@ auto makeSym(T const & t) {
 
 //that's right, same function, just different return type
 template<typename T>
+requires (T::rank > 0)
 struct MakeAntiSymResult {
 	template<int i>
 	struct AnyAreSym {
@@ -426,19 +421,18 @@ struct MakeAntiSymResult {
 		}
 	};
 	static constexpr auto value() {
-		static_assert(T::rank > 0);
 		using S = typename T::Scalar;
 		if constexpr (Common::ForLoop<0, T::numNestings, AnyAreSym>::exec()) {
-			return Common::TypeWrapper<ReplaceWithZero<T>>();
+			return (ReplaceWithZero<T>*)nullptr;
 		} else if constexpr (T::rank == 1) {
-			return Common::TypeWrapper<_vec<S, T::localDim>>();
+			return (_vec<S, T::localDim>*)nullptr;
 		} else if constexpr (T::rank == 2) {
-			return Common::TypeWrapper<_asym<S, T::localDim>>();
+			return (_asym<S, T::localDim>*)nullptr;
 		} else {
-			return Common::TypeWrapper<_asymR<S, T::localDim, T::rank>>();
+			return (_asymR<S, T::localDim, T::rank>*)nullptr;
 		}
 	}
-	using type = typename decltype(value())::type;
+	using type = typename std::remove_pointer_t<decltype(value())>;
 };
 template<typename T>
 requires IsSquareTensor<T>

@@ -444,6 +444,11 @@ Scalar = NestedPtrTuple's last
 	template<int deferRank = rank> /* evaluation needs to be deferred */\
 	using ExpandAllIndexes = ExpandIndexSeq<std::make_integer_sequence<int, deferRank>>;\
 \
+	/* yet another one where tensor type manip is easier than storage manip */\
+	/* in this case, duplicating the storage by their rank means knowing the local-rank, which isn't in the storage classes */\
+	template<int deferRank = rank>\
+	using ExpandAllStorage = typename ExpandAllIndexes<deferRank>::StorageTuple;\
+\
 	template<int i>\
 	requires (i >= 0 && i < numNestings)\
 	using RemoveIthNestedStorage = Common::tuple_remove_t<i, StorageTuple>;\
@@ -502,11 +507,14 @@ Scalar = NestedPtrTuple's last
 	template<int... is>\
 	using RemoveIndex = RemoveIndexSeq<std::integer_sequence<int, is...>>;\
 \
+	/* This along with RemoveIthIndexStorage suffer from the case that, even if you find and remove a storage component, */\
+	/*  you still need to know nesting<->index information on the subsequent tensor, so storage-manipulation isn't as feesible as simply making the new tensor with exapnded removed storage, then manipulating that storage. */\
 	template<int index, int newDim>\
+	requires (index >= 0 && index < rank)\
 	struct ReplaceDimImpl {\
 		static constexpr auto value() {\
 			if constexpr (This::template dim<index> == newDim) {\
-				return Common::TypeWrapper<This>();\
+				return (This*)nullptr;\
 			} else {\
 				using expanded = typename This\
 					::template ExpandIndex<index>;\
@@ -517,12 +525,13 @@ Scalar = NestedPtrTuple's last
 							::template InnerForIndex<index>\
 							::template ReplaceLocalDim<newDim>\
 					>;\
-				return Common::TypeWrapper<type>();\
+				return (type*)nullptr;\
 			}\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<int index, int newDim>\
+	requires (index >= 0 && index < rank)\
 	using ReplaceDim = typename ReplaceDimImpl<index, newDim>::type;\
 \
 	/* isSquare means all dims match */\
@@ -549,34 +558,39 @@ Scalar = NestedPtrTuple's last
 		static constexpr auto value() {\
 			/* do I need this condition? */\
 			if constexpr (rank == localRank) {\
-				return Common::TypeWrapper<Inner>();\
+				return (Inner*)nullptr;\
 			} else {\
 				/* expand the matching 0 and 1 indexes in the 'other' type */\
 				/* TODO right now I have symR Expand optimized to symR if expanding the end indexes */\
 				/*  so this means make sure to expand the 1st index 1st or you might risk turning symR into tensorr */\
 				using O2 = typename O::template ExpandIndexSeq<std::make_integer_sequence<int, localRank>>;\
 				/* then get its inner past the expanded index (and apply it to the recursive case) */\
-				return Common::TypeWrapper<\
-					typename Inner::template TensorSumResult<typename O2::template InnerForIndex<localRank>>\
-				>();\
+				return (typename Inner::template TensorSumResult<typename O2::template InnerForIndex<localRank>>*)nullptr;\
 			}\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<typename O>\
 	using ExpandMatchingLocalRank = typename ExpandMatchingLocalRankImpl<O>::type;
 
-#if 0 // hmm, as a member this is choking
+#if 0 // hmm, as a member ReplaceWithZero is choking
+	/* once again can't operate on storage cuz it doesn't store rank info */\
+	template<int deferRank = rank>\
+	struct ReplaceStorageWithZeroImpl {\
+	};
+	template<int deferRank = rank>\
+	using ReplaceStorageWithZero = typename ExpandAllStorage<deferRank>::template ReplaceWithZeroImpl<deferRank>::type;
+	
 	template<int deferRank = rank>\
 	struct ReplaceWithZeroImpl {\
 		static constexpr auto value() {\
 			if constexpr (deferRank== 1) {\
-				return Common::TypeWrapper<_zero<Inner, localDim>>();\
+				return (_zero<Inner, localDim>*)nullptr;\
 			} else {\
-				return Common::TypeWrapper<_zero<typename Inner::template ReplaceWithZeroImpl<>, localDim>>();\
+				return (_zero<typename Inner::template ReplaceWithZeroImpl<>, localDim>>*)nullptr;\
 			}\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<int deferRank = rank>\
 	using ReplaceWithZero = typename ExpandAllIndexes<deferRank>::template ReplaceWithZeroImpl<deferRank>::type;
@@ -1331,13 +1345,13 @@ Bit of a hack: MOst these are written in terms of 'This'
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
 			if constexpr (is_zero_v<O>) {\
-				return Common::TypeWrapper<This>();\
+				return (This*)nullptr;\
 			} else {\
 				using I1 = ExpandMatchingLocalRank<O>;\
-				return Common::TypeWrapper<_vec<I1, localDim>>();\
+				return (_vec<I1, localDim>*)nullptr;\
 			}\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<typename O>\
 	using TensorSumResult = typename TensorSumResultImpl<O>::type;
@@ -1826,20 +1840,20 @@ struct Rank2Accessor {
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
 			if constexpr (is_zero_v<O>) {\
-				return Common::TypeWrapper<This>();\
+				return (This*)nullptr;\
 			} else {\
 				using I2 = ExpandMatchingLocalRank<O>;\
 				if constexpr (is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
-					return Common::TypeWrapper<_sym<I2, localDim>>();\
+					return (_sym<I2, localDim>*)nullptr;\
 				} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
-					return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+					return (_mat<I2, localDim, localDim>*)nullptr;\
 				} else {\
 					/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
-					return Common::TypeWrapper<void>();\
+					return nullptr;\
 				}\
 			}\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<typename O>\
 	requires (is_tensor_v<O> && dims() == O::dims())\
@@ -2015,22 +2029,22 @@ struct _sym<Inner_, 4> {
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
 			if constexpr (is_zero_v<O>) {\
-				return Common::TypeWrapper<This>();\
+				return (This*)nullptr;\
 			} else {\
 				using I2 = ExpandMatchingLocalRank<O>;\
 				if constexpr (is_ident_v<O>) {\
-					return Common::TypeWrapper<_ident<I2, localDim>>();\
+					return (_ident<I2, localDim>*)nullptr;\
 				} else if constexpr (is_sym_v<O> || is_symR_v<O>) {\
-					return Common::TypeWrapper<_sym<I2, localDim>>();\
+					return (_sym<I2, localDim>*)nullptr;\
 				} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
-					return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+					return (_mat<I2, localDim, localDim>*)nullptr;\
 				} else {\
 					/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
-					return Common::TypeWrapper<void>();\
+					return nullptr;\
 				}\
 			}\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<typename O>\
 	requires (is_tensor_v<O> && dims() == O::dims())\
@@ -2119,20 +2133,20 @@ struct _ident {
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
 			if constexpr (is_zero_v<O>) {\
-				return Common::TypeWrapper<This>();\
+				return (This*)nullptr;\
 			} else {\
 				using I2 = ExpandMatchingLocalRank<O>;\
 				if constexpr (is_asym_v<O> || is_asymR_v<O>) {\
-					return Common::TypeWrapper<_asym<I2, localDim>>();\
+					return (_asym<I2, localDim>*)nullptr;\
 				} else if constexpr (is_vec_v<O> || is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
-					return Common::TypeWrapper<_mat<I2, localDim, localDim>>();\
+					return (_mat<I2, localDim, localDim>*)nullptr;\
 				} else {\
 					/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
-					return Common::TypeWrapper<void>();\
+					return nullptr;\
 				}\
 			}\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<typename O>\
 	requires (is_tensor_v<O> && dims() == O::dims())\
@@ -2477,17 +2491,17 @@ struct RankNAccessor {
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
 			if constexpr (is_zero_v<O>) {\
-				return Common::TypeWrapper<This>();\
+				return (This*)nullptr;\
 			} else {\
 				using I2 = ExpandMatchingLocalRank<O>;\
 				if constexpr (is_symR_v<O> && O::localRank >= localRank) {\
-					return Common::TypeWrapper<_symR<I2, localDim, localRank>>();\
+					return (_symR<I2, localDim, localRank>*)nullptr;\
 				} else {\
-					return Common::TypeWrapper<_tensorr<I2, localDim, localRank>>();\
+					return (_tensorr<I2, localDim, localRank>*)nullptr;\
 				}\
 			}\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<typename O>\
 	requires (is_tensor_v<O> && dims() == O::dims())\
@@ -2714,17 +2728,17 @@ from my symmath/tensor/LeviCivita.lua
 	struct TensorSumResultImpl {\
 		static constexpr auto value() {\
 			if constexpr (is_zero_v<O>) {\
-				return Common::TypeWrapper<This>();\
+				return (This*)nullptr;\
 			} else {\
 				using I2 = ExpandMatchingLocalRank<O>;\
 				if constexpr (is_asymR_v<O> && O::localRank >= localRank) {\
-					return Common::TypeWrapper<_asymR<I2, localDim, localRank>>();\
+					return (_asymR<I2, localDim, localRank>*)nullptr;\
 				} else {\
-					return Common::TypeWrapper<_tensorr<I2, localDim, localRank>>();\
+					return (_tensorr<I2, localDim, localRank>*)nullptr;\
 				}\
 			}\
 		}\
-		using type = typename decltype(value())::type;\
+		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<typename O>\
 	requires (is_tensor_v<O> && dims() == O::dims())\
