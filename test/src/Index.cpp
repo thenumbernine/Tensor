@@ -5,12 +5,56 @@
 namespace TupleTests {
 	using namespace std;
 	using namespace Common;
-	using yesno = Tensor::tuple_get_filtered_indexes_t<
-		tuple<float, int, double, char>,
-		is_integral
-	>;
-	static_assert(is_same_v<typename yesno::has, std::integer_sequence<int, 1, 3>>);
-	static_assert(is_same_v<typename yesno::hasnot, std::integer_sequence<int, 0, 2>>);
+	using namespace Tensor;
+
+	using I = Index<'i'>;
+	using J = Index<'j'>;
+	I i;
+	J j;
+
+	static_assert(is_same_v<
+		GatherIndexesImpl<
+			decltype(float3()(i))::IndexTuple,
+			make_integer_sequence<int, 1>
+		>::indexes,
+		tuple<I>
+	>);
+
+	static_assert(is_same_v<
+		GatherIndexesImpl<
+			decltype(float3()(i))::IndexTuple,
+			make_integer_sequence<int, 1>
+		>::type,
+		tuple<
+			pair<
+				I,
+				integer_sequence<int, 0>
+			>
+		>
+	>);
+
+	static_assert(is_same_v<
+		GatherIndexesImpl<
+			decltype(float3x3()(i,j))::IndexTuple,
+			make_integer_sequence<int, 2>
+		>::indexes,
+		tuple<I, J>
+	>);
+	
+	static_assert(is_same_v<
+		decltype(float3x3()(i,j))::GatheredIndexes,
+		tuple<
+			pair<
+				I,
+				integer_sequence<int, 0>
+			>,
+			pair<
+				J,
+				integer_sequence<int, 1>
+			>
+		>
+	>);
+
 }
 
 void test_Index() {
@@ -77,62 +121,6 @@ void test_Index() {
 		// transpose
 		a(i,j) = a(j,i);
 		TEST_EQ(a, (Tensor::double3x3{{1,4,7},{2,5,8},{3,6,9}}));
-
-		{
-			using namespace Tensor;
-			using namespace std;
-			// TODO move to Common/test/src/meta.cpp
-			STATIC_ASSERT_EQ((Common::tuple_find_v<Index<'i'>, tuple<>>), -1);
-			STATIC_ASSERT_EQ((Common::tuple_find_v<Index<'i'>, tuple<Index<'i'>>>), 0);
-			STATIC_ASSERT_EQ((Common::tuple_find_v<Index<'i'>, tuple<Index<'j'>>>), -1);
-			STATIC_ASSERT_EQ((Common::tuple_find_v<Index<'i'>, tuple<Index<'i'>, Index<'j'>>>), 0);
-			STATIC_ASSERT_EQ((Common::tuple_find_v<Index<'i'>, tuple<Index<'j'>, Index<'i'>>>), 1);
-
-#if 0 // duh, a is rank-2
-			static_assert(is_same_v<
-				GatherIndexesImpl<
-					decltype(a(i))::IndexTuple,
-					make_integer_sequence<int, 1>
-				>::indexes,
-				tuple<Index<'i'>>
-			>);
-
-			static_assert(is_same_v<
-				GatherIndexesImpl<
-					decltype(a(i))::IndexTuple,
-					make_integer_sequence<int, 1>
-				>::type,
-				tuple<
-					pair<
-						Index<'i'>,
-						integer_sequence<int, 0>
-					>
-				>
-			>);
-#endif
-
-			static_assert(is_same_v<
-				GatherIndexesImpl<
-					decltype(a(i,j))::IndexTuple,
-					make_integer_sequence<int, 2>
-				>::indexes,
-				tuple<Index<'i'>, Index<'j'>>
-			>);
-			
-			static_assert(is_same_v<
-				decltype(a(i,j))::GatheredIndexes,
-				tuple<
-					pair<
-						Index<'i'>,
-						integer_sequence<int, 0>
-					>,
-					pair<
-						Index<'j'>,
-						integer_sequence<int, 1>
-					>
-				>
-			>);
-		}
 
 		// add to transpose and self-assign
 		a(i,j) = a(i,j) + a(j,i);

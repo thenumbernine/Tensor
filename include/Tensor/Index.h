@@ -111,57 +111,6 @@ std::ostream & operator<<(std::ostream & o, Index<ch> const & i) {
 		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
 	}
 
-// F<T>::value is a bool for yes or no to add to 'has' or 'hasnot'
-template<typename Tuple, typename indexSeq, template<typename> typename F>
-struct tuple_get_filtered_indexes;
-template<
-	typename T, typename... Ts,
-	int i1, int... is,
-	template<typename> typename F
->
-struct tuple_get_filtered_indexes<
-	std::tuple<T, Ts...>, 
-	std::integer_sequence<int, i1, is...>,
-	F
-> {
-	using next = tuple_get_filtered_indexes<
-		std::tuple<Ts...>, 
-		std::integer_sequence<int, is...>,
-		F
-	>;
-	static constexpr auto value() {
-		if constexpr (F<T>::value) {
-			using has = Common::seq_cat_t<
-				std::integer_sequence<int, i1>,
-				typename next::has
-			>;
-			using hasnot = typename next::hasnot;
-			return (std::pair<has, hasnot>*)nullptr;
-		} else {
-			using has = typename next::has;
-			using hasnot = Common::seq_cat_t<
-				std::integer_sequence<int, i1>,
-				typename next::hasnot
-			>;
-			return (std::pair<has, hasnot>*)nullptr;
-		}
-	}
-	using result = typename std::remove_pointer_t<decltype(value())>;
-	using has = typename result::first_type;
-	using hasnot = typename result::second_type;
-};
-template<template<typename> typename F>
-struct tuple_get_filtered_indexes<std::tuple<>, std::integer_sequence<int>, F> {
-	using has = std::integer_sequence<int>;
-	using hasnot = std::integer_sequence<int>;
-};
-template<typename Tuple, template<typename> typename F>
-using tuple_get_filtered_indexes_t = tuple_get_filtered_indexes<
-	Tuple,
-	std::make_integer_sequence<int, std::tuple_size_v<Tuple>>,
-	F
->;
-
 
 template<typename T>
 using GetFirst = typename T::first_type;
@@ -304,7 +253,7 @@ struct IndexAccess {
 	//static constexpr rank = std::tuple_size_v<AssignIndexes>;
 	//using dims = MapValues<AssignIndexes, InputTensorType::dimseq>;
 	using GatheredIndexes = GatherIndexes<IndexTuple>;
-	using GetSingleVsDouble = tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;
+	using GetSingleVsDouble = Common::tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;
 	// TODO static-assert there index counts are always either 1 or 2.  no a_i = b_ijjj
 	// collect the offsets of the Index's that are duplicated (summed) into one sequence ...
 	using SumIndexSeq = typename GetSingleVsDouble::has; 
@@ -323,6 +272,7 @@ struct IndexAccess {
 	
 	//"rank" of this expression is the # of assignment-indexes ... excluding the sum-indexes
 	static constexpr auto rank = AssignIndexSeq::size();
+	// TODO "intOutputN" vs "intInputN = InputTensorType::intN"
 	using intN = _vec<int, rank>;
 
 	// if it's + - etc then lazy-eval
