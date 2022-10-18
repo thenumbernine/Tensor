@@ -83,8 +83,8 @@ void test_Index() {
 		m(1,0) = 1;
 		ECHO(m);
 		m(i,j) = m(j,i);
-		TEST_EQ(m(0, 1), 1);
 		ECHO(m);
+		TEST_EQ(m(0, 1), 1);
 	}
 
 	{
@@ -140,6 +140,66 @@ void test_Index() {
 		static_assert(std::is_same_v<Tensor::double3a3, decltype(c)>);
 		TEST_EQ(c, makeAsym(a));
 	}
+	{
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		//assignR
+#if 0 // expected compile fail
+		{
+			Tensor::float3x3 a;
+			auto c = a(i);
+		}
+#endif
+		{
+			Tensor::float3x3 a;
+			auto c = a(i,j).assignR<Tensor::float3x3>(i,j);
+			static_assert(std::is_same_v<decltype(c), Tensor::float3x3>);
+		}
+		{
+			Tensor::float3x3 a;
+			auto c = a(i,j).assignR<Tensor::float3x3>(j,i);
+			static_assert(std::is_same_v<decltype(c), Tensor::float3x3>);
+		}	
+		{
+			Tensor::float2x3 a;
+			auto c = a(i,j).assignR<Tensor::float2x3>(i,j);
+			static_assert(std::is_same_v<decltype(c), Tensor::float2x3>);
+		}
+		{
+			Tensor::float2x3 a;
+			auto c = a(i,j).assignR<Tensor::float3x2>(j,i);
+			static_assert(std::is_same_v<decltype(c), Tensor::float3x2>);
+		}
+		//assign
+		{
+			Tensor::float2x3 a;
+			auto c = a(i,j).assign(i,j);
+			static_assert(std::is_same_v<decltype(c), Tensor::float2x3>);
+		}
+		{
+			Tensor::float2x3 a;
+			auto c = a(i,j).assign(j,i);
+			static_assert(std::is_same_v<decltype(c), Tensor::float3x2>);
+		}	
+		{
+			Tensor::float2x3 a;
+			Tensor::float3x2 b;
+			auto c = (a(j,i) + b(i,j)).assign(j,i);
+			static_assert(std::is_same_v<decltype(c), Tensor::float3x2>);
+		}
+		// good because I do support matching-rank, non-matching-dim tensor ctor 
+		{
+			Tensor::float2x3 a;
+			Tensor::float3x3 c = a(j,i);	
+		}
+#if 0	// compile fail because ranks do not match
+		// TODO put compile-fail tests in their own cpp file and have a script assert the compiler fails
+		{
+			Tensor::float3x3x3 d = a(j,i);
+		}
+#endif	
+	}
+
 // TODO DO enforce dimension constraints between expression operations
 // and then require Index to specify subrank, or just grab the subset<> of the tensor.
 // TODO sub-tensor casting, not just sub-vector.  return tensor-of-refs. 	
@@ -158,6 +218,7 @@ void test_Index() {
 		static_assert(std::is_same_v<Tensor::double3x3, decltype(c)>);
 		TEST_EQ(c, makeAsym(a));
 	}
+	
 	{
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
@@ -204,8 +265,6 @@ void test_Index() {
 #endif
 }
 
-#if 0
 int main() {
 	test_Index();
 }
-#endif

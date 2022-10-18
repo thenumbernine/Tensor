@@ -80,37 +80,6 @@ std::ostream & operator<<(std::ostream & o, Index<ch> const & i) {
 	return o << ch;
 }
 
-//shorthand if you don't want to declare your lhs first and dereference it first ...
-// TODO get all dims of the IndexExpr
-#define TENSOR_EXPR_ADD_ASSIGNR()\
-	template<typename R, typename IndexType, typename... IndexTypes>\
-	struct AssignImpl {\
-		static decltype(auto) exec(This const & this_) {\
-			R r;\
-			auto ri = IndexAccess<R, std::tuple<IndexType, IndexTypes...>>(r);\
-			ri = this_;\
-			return r;\
-		}\
-	};\
-	template<typename R, typename IndexType, typename... IndexTypes>\
-	requires (\
-		is_tensor_v<R>\
-		/*&& R::dims() == dims()*/\
-		&& R::rank == rank\
-		&& is_all_base_of_v<IndexBase, IndexType, IndexTypes...>\
-	)\
-	decltype(auto) assignR(IndexType, IndexTypes...) const {\
-		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
-	}
-
-#define TENSOR_EXPR_ADD_ASSIGN()\
-	template<typename IndexType, typename... IndexTypes>\
-	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
-	decltype(auto) assign(IndexType, IndexTypes...) const {\
-		using R = typename OutputTensorType::template ExpandAllIndexes<>;\
-		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
-	}
-
 
 template<typename T>
 using GetFirst = typename T::first_type;
@@ -224,6 +193,45 @@ auto applyTraces(T & x) {
 	return ApplyTracesImpl<T, Seq>::exec(x);
 }
 
+
+
+//shorthand if you don't want to declare your lhs first and dereference it first ...
+// TODO get all dims of the IndexExpr
+#define TENSOR_EXPR_ADD_ASSIGNR()\
+	template<typename R, typename IndexType, typename... IndexTypes>\
+	struct AssignImpl {\
+		static decltype(auto) exec(This const & this_) {\
+			R r;\
+			auto ri = IndexAccess<R, std::tuple<IndexType, IndexTypes...>>(r);\
+			ri = this_;\
+			return r;\
+		}\
+	};\
+	template<typename R, typename IndexType, typename... IndexTypes>\
+	requires (\
+		is_tensor_v<R>\
+		/*&& R::dims() == dims()*/\
+		&& R::rank == rank\
+		&& is_all_base_of_v<IndexBase, IndexType, IndexTypes...>\
+	)\
+	decltype(auto) assignR(IndexType, IndexTypes...) const {\
+		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
+	}
+
+#define TENSOR_EXPR_ADD_ASSIGN()\
+	template<typename IndexType, typename... IndexTypes>\
+	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
+	decltype(auto) assign(IndexType, IndexTypes...) const {\
+		using DstAssignIndexTuple = std::tuple<IndexType, IndexTypes...>;\
+		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple>;\
+		using dims = Common::SeqToSeqMap<destseq, GetTensorIthDim<OutputTensorType>::template Get>;\
+		/* TODO get the dimension layout here */\
+		using R = tensorScalarSeq<Scalar, dims>;\
+		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
+	}
+
+
+
 /*
 rather than this matching a Tensor for index dereferencing,
 this needs its index access abstracted so that binary operations can provide their own as well
@@ -297,15 +305,15 @@ struct IndexAccess {
 	};
 
 	// to cache the tensor in the expression-tree, or to lazy-eval?
-	//  for traces, cache. (also in TensorMulExpr, cache)
-	//  for others, lazy.
-	static constexpr bool useLazyEval = SumIndexSeq::size() > 0;
+	//  for traces, cache upon ctor and use the cache in read. (also in TensorMulExpr, cache)
+	//  for others, store the reference, and eval in read.
+	static constexpr bool useLazyEval = SumIndexSeq::size() == 0;
 	using StorageDetails = 
-		//std::conditional_t<
-		//	useLazyEval,
-			StorageLazy
-		//	StorageEval
-		//>
+		std::conditional_t<
+			useLazyEval,
+			StorageLazy,
+			StorageEval
+		>
 	;
 	using StorageType = typename StorageDetails::type;
 
@@ -325,9 +333,17 @@ struct IndexAccess {
 	template<typename B>
 	requires is_IndexExpr_v<B>
 	IndexAccess(B && read) {
-		doAssign<B>(read);
+		doAssign<B>(std::forward<B>(read));
 	}
 
+	IndexAccess & operator=(This const & read) {
+		doAssign<This>(read);
+		return *this;
+	}
+	IndexAccess & operator=(This && read) {
+		doAssign<This>(std::move(read));
+		return *this;
+	}
 	template<typename B>
 	requires is_IndexExpr_v<B>
 	IndexAccess & operator=(B const & read) {
@@ -426,12 +442,10 @@ struct IndexAccess {
 		// ... and put that there
 		intN destI;
 		for (int j = 0; j < rank; ++j) {
-			destI(j) = i(dstForSrcIndex(j));
+			destI(dstForSrcIndex(j)) = i(j);
 		}
 		return destI;
 	}
-
-
 };
 
 template<typename T, typename Is>
