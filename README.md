@@ -220,12 +220,12 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 - `_tensorx<type, description...>` = construct a tensor using the following arguments to describe its indexes storage optimization:
 - - any number = an index of this dimension. 
-- - `'-z', dim` = use a rank-1 zero-tensor of dimension `dim`.
-- - `'-i', dim` = use a rank-2 identity-tensor of dimension `dim`.
-- - `'-s', dim` = use a rank-2 symmetric-tensor of dimension `dim`.
-- - `'-a', dim` = use a rank-2 antisymmetric-tensor of dimension `dim`.
-- - `'-S', dim, rank` = use a rank-`rank` totally-symmetric-tensor of dimension `dim`.
-- - `'-A', dim, rank` = use a rank-`rank` totally-antisymmetric-tensor of dimension `dim`.
+- - `-'z', dim` = use a rank-1 zero-tensor of dimension `dim`.
+- - `-'i', dim` = use a rank-2 identity-tensor of dimension `dim`.
+- - `-'s', dim` = use a rank-2 symmetric-tensor of dimension `dim`.
+- - `-'a', dim` = use a rank-2 antisymmetric-tensor of dimension `dim`.
+- - `-'S', dim, rank` = use a rank-`rank` totally-symmetric-tensor of dimension `dim`.
+- - `-'A', dim, rank` = use a rank-`rank` totally-antisymmetric-tensor of dimension `dim`.
 	Ex: `_tensorx<float, -'i', 3, -'A', 4, 4>` produces $T\_{ijklm} = t \cdot \delta\_{ij} \cdot \epsilon\_{klm}$.
 - `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
 	`I1 I2` etc are one of the following storage types:
