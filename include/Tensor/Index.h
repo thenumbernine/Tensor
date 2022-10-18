@@ -154,19 +154,20 @@ struct GetTupleIthElem {
 	using Get = std::tuple_element_t<i, IndexTuple>;
 };
 
+template<typename Seq>
+struct GetSeqIth {
+	template<int i>
+	struct go {
+		static constexpr int value = Common::seq_get_v<i, Seq>;
+	};
+};
+
+
 template<typename TensorType>
 struct GetTensorIthDim {
 	template<int i>
 	struct Get {
 		static constexpr int value = TensorType::template dim<i>;
-	};
-};
-
-template<typename Seq>
-struct GetIthSeq {
-	template<int i>
-	struct go {
-		static constexpr int value = Common::seq_get_v<i, Seq>;
 	};
 };
 
@@ -200,8 +201,10 @@ struct FindInAssignIndexTuple {
 };
 
 //shorthand if you don't want to declare your lhs first and dereference it first ...
-// TODO get all dims of the IndexExpr
+// zero assign-indexes should have been handled in tensor's operator()
+//  and shouldn't be possible here
 #define TENSOR_EXPR_ADD_ASSIGNR()\
+\
 	template<typename R, typename IndexType, typename... IndexTypes>\
 	struct AssignImpl {\
 		static decltype(auto) exec(This const & this_) {\
@@ -211,31 +214,39 @@ struct FindInAssignIndexTuple {
 			return r;\
 		}\
 	};\
+\
+	/* assign and specify output type */\
 	template<typename R, typename IndexType, typename... IndexTypes>\
 	requires (\
 		is_tensor_v<R>\
-		/*&& R::dims() == dims()*/\
+		/*&& R::dimseq == dimseq*/\
 		&& R::rank == rank\
 		&& is_all_base_of_v<IndexBase, IndexType, IndexTypes...>\
 	)\
 	decltype(auto) assignR(IndexType, IndexTypes...) const {\
 		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
-	}
-
-// mind you this can be zero args
-//  in which case a scalar result is assumed
-#define TENSOR_EXPR_ADD_ASSIGN()\
+	}\
+\
+	/* assign using the type from mapped dims of the indexes specified in args */\
 	template<typename IndexType, typename... IndexTypes>\
 	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
 	decltype(auto) assign(IndexType, IndexTypes...) const {\
 		using DstAssignIndexTuple = std::tuple<IndexType, IndexTypes...>;\
 		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple<AssignIndexTuple>::template go>;\
-		using dims = Common::SeqToSeqMap<destseq, GetIthSeq<dimseq>::template go>;\
-		/* TODO get the dimension layout here */\
+		using dims = Common::SeqToSeqMap<destseq, GetSeqIth<dimseq>::template go>;\
 		using R = tensorScalarSeq<Scalar, dims>;\
 		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
+	}\
+\
+	/* assign using the current AssignIndexTuple */\
+	decltype(auto) assignI() const {\
+		using DstAssignIndexTuple = AssignIndexTuple;\
+		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple<AssignIndexTuple>::template go>;\
+		static_assert(std::is_same_v<destseq, std::make_integer_sequence<int, destseq::size()>>);\
+		using dims = Common::SeqToSeqMap<destseq, GetSeqIth<dimseq>::template go>;\
+		using R = tensorScalarSeq<Scalar, dims>;\
+		return Common::tuple_apply_t<AssignImpl, Common::tuple_cat_t<std::tuple<R>, DstAssignIndexTuple>>::exec(*this);\
 	}
-
 
 
 /*
@@ -332,7 +343,6 @@ struct IndexAccess {
 
 	
 	TENSOR_EXPR_ADD_ASSIGNR()
-	TENSOR_EXPR_ADD_ASSIGN()
 
 	StorageType t;
 
@@ -454,7 +464,7 @@ struct IndexAccess {
 		auto dstForSrcIndex = intN(destseq());
 
 		//TODO assert dstdim<destseq<i>> == dimseq<i>
-		using CheckDimSeq = Common::SeqToSeqMap<destseq, GetIthSeq<dimseq>::template go>;
+		using CheckDimSeq = Common::SeqToSeqMap<destseq, GetSeqIth<dimseq>::template go>;
 		static_assert(std::is_same_v<CheckDimSeq, DstDimSeq>);
 
 		//for the j'th index of i ...
@@ -523,7 +533,6 @@ struct TensorTensorExpr##name {\
 	using intN = _vec<int,rank>;\
 	using Scalar = decltype(typename A::Scalar() op typename B::Scalar());\
 	TENSOR_EXPR_ADD_ASSIGNR()\
-	TENSOR_EXPR_ADD_ASSIGN()\
 	\
 	A const & a;\
 	B const & b;\
@@ -556,86 +565,81 @@ TENSOR_TENSOR_EXPR_OP(Div,/)
 
 
 // tensor * tensor
+// this is going to cache a temp result since otherwise there risks deferred expressions to expand too many ops
 
-// TODO 
-#if 0
-template<typename A, typename B, template<typename> typename op>
-requires IsBinaryTensorOp<A, B>
+#if 1
+template<typename A, typename B>
+requires (
+	is_IndexExpr_v<A>
+	&& is_IndexExpr_v<B>
+)
 struct TensorMulExpr {
 	static constexpr bool isIndexExprFlag = {};
 	using This = TensorMulExpr;
+
+	using IndexTuple = Common::tuple_cat_t<typename A::AssignIndexTuple, typename B::AssignIndexTuple>;
+	using inputDims = Common::seq_cat_t<int, typename A::dimseq, typename B::dimseq>;
+	using GatheredIndexes = GatherIndexes<IndexTuple>;
+	using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;
+	using SumIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+	using AssignIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+	using AssignIndexTuple = Common::SeqToTupleMap<AssignIndexSeq, GetTupleIthElem<IndexTuple>::template Get>;
+	using dimseq = Common::SeqToSeqMap<AssignIndexSeq, GetSeqIth<inputDims>::template go>;
+	using Scalar = decltype(typename A::Scalar() * typename B::Scalar());
+	using OutputTensorType = tensorScalarSeq<Scalar, dimseq>;
+	static constexpr int rank = AssignIndexSeq::size();
+	using intN = _vec<int, rank>;
 	
 	TENSOR_EXPR_ADD_ASSIGNR()
-	
-	// result-rank = A rank + B rank - duplicate indexes
-	struct RankImpl {
-		static constexpr int value() {
-			constexpr typename A::intN indexAinB(-1);
-			Common::ForLoop<
-				0,
-				rank,
-				FindDstForSrcOuter<
-					typename B::IndexTuple,
-					typename A::IndexTuple
-				>::template Find
-			>::exec(indexAinB);
-			constexpr int rank = A::rank - B::rank;
-			for (int i = 0; i < A::rank; ++i) {
-				if (indexAinB(i) != -1) {
-					rank -= 2;
-				}
-			}
-			return rank;
-		}
-	};
-	static constexpr auto rank = RankImpl::value();
-	
-	using intN = _vec<int,rank>;
-	using Scalar = decltype(op()(typename A::Scalar(), typename B::Scalar()));
-	A const & a;
-	B const & b;
-	
-	TensorMulExpr(A const & a_, B const & b_) : a(a_), b(b_) {}
 
-	// TODO not all indexes here are provided
-	//  so for the duplicates, sum over all possible values
+	// .read() needs an IndexAccess ... but .read() is called multiple times ... so lets not rebuild the IndexAccess each time
+	// but IndexAccess (when not caching from traces) holds a ref to its tuple
+	//  (TODO flag for manual toggling IndexAccess when to cache vs lazy eval)
+	//  so I'm holding the tensor first, then passing it as a ref to the IndexAccess next
+	//  and last using the IndexAccess in .read()
+	OutputTensorType ct;
+	IndexAccess<OutputTensorType, AssignIndexTuple> c;
+	IndexAccess<OutputTensorType, AssignIndexTuple> initC(A const & a, B const & b) {
+		auto at = a.assignI(); // indexes are A::AssignIndexTuple
+		auto bt = b.assignI();
+		// InputTuple = concat'd A::AssignInputTuple & B::AssignIndexTuple
+		// SumIndexSeq are the duplicates of InputTuple 
+		// those will be the contracted indexes of 'c'
+		auto aob = outer(at, bt);
+		ct = applyTraces<decltype(aob), SumIndexSeq>(aob);
+		return std::apply(ct, AssignIndexTuple());
+	}
+	TensorMulExpr(A const & a, B const & b) : c(initC(a,b)) {}
+
 	template<typename DstIndexTuple, typename DstDimSeq>
 	constexpr Scalar read(intN const & i) const {
-		
-		typename A::intN indexAinDst(-1);
-		Common::ForLoop<
-			0,
-			rank,
-			FindDstForSrcOuter<
-				DstIndexTuple,
-				typename A::IndexTuple
-			>::template Find
-		>::exec(indexAinDst);
-
-		typename B::intN indexBinDst(-1);
-		Common::ForLoop<
-			0,
-			rank,
-			FindDstForSrcOuter<
-				DstIndexTuple,
-				typename B::IndexTuple
-			>::template Find
-		>::exec(indexBinDst);
-
-		// so all A's indexes in B's indexes, create a new tmp dim & assert dim match
-		//  then iterate over all these tmp dims in a range iterator
-		//  and then sum
-
-		return op<Scalar>()(
-			a.template read<DstIndexTuple, DstDimSeq>(i),
-			b.template read<DstIndexTuple, DstDimSeq>(i));
+		return c.template read<DstIndexTuple, DstDimSeq>(i);
 	}
 };
-
 template<typename A, typename B>
-requires IsBinaryTensorOp<A, B>
+requires (
+	is_IndexExpr_v<A>
+	&& is_IndexExpr_v<B>
+)
 decltype(auto) operator*(A const & a, B const & b) {
-	return TensorMulExpr<A, B>(a,b);
+	// Just like tensor::operator()(IndexBase...) has to decide beforehand whether it should return a Scalar or not
+	// We have to do the test here too.
+	using IndexTuple = Common::tuple_cat_t<typename A::AssignIndexTuple, typename B::AssignIndexTuple>;
+	using GatheredIndexes = GatherIndexes<IndexTuple>;
+	using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;
+	using SumIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+	using AssignIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+	if constexpr (AssignIndexSeq::size() == 0) {
+		using Scalar = decltype(typename A::Scalar() * typename B::Scalar());
+		auto at = a.assignI();
+		auto bt = b.assignI();
+		auto aob = outer(at, bt);
+		auto result = applyTraces<decltype(aob), SumIndexSeq>(aob);
+		static_assert(std::is_same_v<decltype(result), Scalar>);
+		return result;
+	} else {
+		return TensorMulExpr<A, B>(a,b);
+	}
 }
 #endif
 
@@ -652,7 +656,6 @@ struct TensorScalarExpr {
 	using intN = _vec<int,rank>;
 	using Scalar = typename T::Scalar; // TODO which Scalar to use?
 	TENSOR_EXPR_ADD_ASSIGNR()
-	TENSOR_EXPR_ADD_ASSIGN()
 
 	T const & a;
 	Scalar const & b;
@@ -678,7 +681,6 @@ struct ScalarTensorExpr {
 	using intN = _vec<int, rank>;
 	using Scalar = typename T::Scalar; // TODO which Scalar to use?
 	TENSOR_EXPR_ADD_ASSIGNR()
-	TENSOR_EXPR_ADD_ASSIGN()
 	
 	Scalar const & a;
 	T const & b;
@@ -721,7 +723,6 @@ struct UnaryTensorExpr {
 	using intN = _vec<int, rank>;
 	using Scalar = typename T::Scalar;
 	TENSOR_EXPR_ADD_ASSIGNR()
-	TENSOR_EXPR_ADD_ASSIGN()
 	
 	T const & t;
 

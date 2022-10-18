@@ -55,6 +55,82 @@ namespace TupleTests {
 		>
 	>);
 
+	namespace test1 {
+		using IndexTuple = std::tuple<I>;
+		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
+		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, Tensor::HasMoreThanOneIndex>;
+		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+		static_assert(SumIndexSeq::size() == 0);
+		static_assert(std::is_same_v<AssignIndexSeq, std::integer_sequence<int, 0>>);
+	}
+	namespace test2 {
+		using IndexTuple = std::tuple<I,J>;
+		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
+		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, Tensor::HasMoreThanOneIndex>;
+		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+		static_assert(SumIndexSeq::size() == 0);
+		static_assert(std::is_same_v<AssignIndexSeq, std::integer_sequence<int, 0, 1>>);
+	}
+	namespace test3 {
+		using IndexTuple = std::tuple<I,I>;
+		static_assert(Common::tuple_find_v<I, std::tuple<>> == -1);
+		static_assert(Common::tuple_find_v<I, std::tuple<I>> == 0);
+		static_assert(Common::tuple_find_v<I, std::tuple<I,I>> == 0);
+		// GatheredIndexes == GatheredIndexesImpl::type so ...
+		static_assert(std::is_same_v<
+			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::type,
+			std::tuple<>
+		>);
+		static_assert(std::is_same_v<
+			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::indexes,
+			std::tuple<>
+		>);	
+		static_assert(-1 == Common::tuple_find_v<I, typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::indexes>);	
+		static_assert(std::is_same_v<
+			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::type,
+			std::tuple<
+				std::pair<
+					I,
+					std::integer_sequence<int, 1>
+				>
+			>	
+		>);
+		static_assert(std::is_same_v<
+			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::type,
+			std::tuple<
+				std::pair<
+					I,
+					std::integer_sequence<int, 0, 1>
+				>
+			>	
+		>);	
+		static_assert(std::is_same_v<typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::indexes, std::tuple<I>>);
+		static_assert(std::is_same_v<typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::indexes, std::tuple<I>>);
+		static_assert(std::is_same_v<typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::indexes, std::tuple<>>);
+		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
+		static_assert(std::is_same_v<
+			GatheredIndexes,
+			std::tuple<
+				std::pair<
+					I,
+					std::integer_sequence<int, 0, 1>
+				>
+			>
+		>);
+		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<
+			GatheredIndexes,
+			Tensor::HasMoreThanOneIndex
+		>;
+		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+		static_assert(AssignIndexSeq::size() == 0);
+		static_assert(std::is_same_v<
+			SumIndexSeq,
+			std::integer_sequence<int, 0, 1>
+		>);
+	}
 }
 
 void test_Index() {
@@ -217,6 +293,17 @@ void test_Index() {
 			c(i,j) = a(j,i);	
 		}
 #endif
+		//assignI
+		{
+			Tensor::float2x3 a;
+			auto c = a(i,j).assignI();
+			static_assert(std::is_same_v<decltype(c), Tensor::float2x3>);
+		}
+		{
+			Tensor::float2x3 a;
+			auto c = a(j,i).assignI();
+			static_assert(std::is_same_v<decltype(c), Tensor::float2x3>);
+		}
 		//assign
 		{
 			Tensor::float2x3 a;
@@ -298,90 +385,7 @@ void test_Index() {
 		static_assert(std::is_same_v<Tensor::double3x3, decltype(c)>);
 		TEST_EQ(c, makeAsym(a));
 	}
-
-	{
-		using I = Tensor::Index<'i'>;
-		using IndexTuple = std::tuple<I>;
-		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
-		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, Tensor::HasMoreThanOneIndex>;
-		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
-		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
-		static_assert(SumIndexSeq::size() == 0);
-		static_assert(std::is_same_v<AssignIndexSeq, std::integer_sequence<int, 0>>);
-	}
-	{
-		using I = Tensor::Index<'i'>;
-		using J = Tensor::Index<'j'>;
-		using IndexTuple = std::tuple<I,J>;
-		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
-		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, Tensor::HasMoreThanOneIndex>;
-		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
-		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
-		static_assert(SumIndexSeq::size() == 0);
-		static_assert(std::is_same_v<AssignIndexSeq, std::integer_sequence<int, 0, 1>>);
-	}
-#if 1
-	{
-		using I = Tensor::Index<'i'>;
-		using IndexTuple = std::tuple<I,I>;
-		static_assert(Common::tuple_find_v<I, std::tuple<>> == -1);
-		static_assert(Common::tuple_find_v<I, std::tuple<I>> == 0);
-		static_assert(Common::tuple_find_v<I, std::tuple<I,I>> == 0);
-		// GatheredIndexes == GatheredIndexesImpl::type so ...
-		static_assert(std::is_same_v<
-			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::type,
-			std::tuple<>
-		>);
-		static_assert(std::is_same_v<
-			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::indexes,
-			std::tuple<>
-		>);	
-		static_assert(-1 == Common::tuple_find_v<I, typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::indexes>);	
-		static_assert(std::is_same_v<
-			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::type,
-			std::tuple<
-				std::pair<
-					I,
-					std::integer_sequence<int, 1>
-				>
-			>	
-		>);
-		static_assert(std::is_same_v<
-			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::type,
-			std::tuple<
-				std::pair<
-					I,
-					std::integer_sequence<int, 0, 1>
-				>
-			>	
-		>);	
-		static_assert(std::is_same_v<typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::indexes, std::tuple<I>>);
-		static_assert(std::is_same_v<typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::indexes, std::tuple<I>>);
-		static_assert(std::is_same_v<typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::indexes, std::tuple<>>);
-		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
-		static_assert(std::is_same_v<
-			GatheredIndexes,
-			std::tuple<
-				std::pair<
-					I,
-					std::integer_sequence<int, 0, 1>
-				>
-			>
-		>);
-		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<
-			GatheredIndexes,
-			Tensor::HasMoreThanOneIndex
-		>;
-		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
-		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
-		static_assert(AssignIndexSeq::size() == 0);
-		static_assert(std::is_same_v<
-			SumIndexSeq,
-			std::integer_sequence<int, 0, 1>
-		>);
-	}
-#endif
-#if 1	// trace of tensors ... doesn't use references but instead uses cached intermediate tensors stored in the expression-tree
+	// trace of tensors ... doesn't use references but instead uses cached intermediate tensors stored in the expression-tree
 	{
 		Tensor::Index<'i'> i;
 		auto a = Tensor::float3x3([](int i, int j) -> float { return 1 + j + 3 * i; });
@@ -406,11 +410,6 @@ void test_Index() {
 		auto b = a(i,i,j).assign(j);
 		static_assert(std::is_same_v<decltype(b), Tensor::float3>);
 	}
-#endif
-// TODO DO enforce dimension constraints between expression operations
-// and then require Index to specify subrank, or just grab the subset<> of the tensor.
-// TODO sub-tensor casting, not just sub-vector.  return tensor-of-refs. 	
-#if 0 // TODO
 	{
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
@@ -420,7 +419,7 @@ void test_Index() {
 
 		Tensor::double3x3 c;
 		c(i,j) = a(i) * b(j);
-	
+		TEST_EQ(c, Tensor::double3x3({{5,7,11},{10,14,22},{15,21,33}}));
 	}
 	{
 		Tensor::Index<'i'> i;
@@ -428,8 +427,15 @@ void test_Index() {
 		Tensor::double3 a = {1,2,3};
 		Tensor::double3 b = {5,7,11};
 
-		double c = a(i) * b(i);
+		// ok, trace needed a fully dif avenue to work with IndexAccess
+		//  so will contracting alll indexes in tensor-mul
+		auto c = a(i) * b(i);
+		TEST_EQ(c, 52);
 	}
+// TODO DO enforce dimension constraints between expression operations
+// and then require Index to specify subrank, or just grab the subset<> of the tensor.
+// TODO sub-tensor casting, not just sub-vector.  return tensor-of-refs. 	
+#if 0 // TODO
 	{
 		Tensor::double3x3 a;
 
