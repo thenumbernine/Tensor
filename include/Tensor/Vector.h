@@ -372,7 +372,7 @@ Scalar = NestedPtrTuple's last
 	/* TODO alternative for indexForNesting: */\
 	/* get a sequence of the local-rank for the respective nesting ... then make a sequence of the sum-of-sequence */\
 	/*using NestedLocalRankSeq = Common::TupleTypeMaps<NestedPtrTensorTuple, RemovePtr, GetLocalRank>*/\
-	/*using NestedLocalRankSeq = Common::tuple_apply_t<seq_cat_t, SeqMapToType<std::make_index_sequence<numNestings>, RepSeqByCount>>*/\
+	/*using NestedLocalRankSeq = Common::tuple_apply_t<seq_cat_t, tuple cat <int> with SeqMapToType<std::make_index_sequence<numNestings>, RepSeqByCount>>*/\
 	/*using IndexForNestingSeq = seq_cat_t< 0's x localRank0, 1's x localRank1, ... >;*/\
 	/* Get the first index that this nesting represents. */\
 	/* Same as the sum of all prior nestings' localRanks */\
@@ -1251,16 +1251,37 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return Tensor::inverse(*this);\
 	}\
 
+/*
+how should I handle fully-traced tensors that return scalars?
+a(i,i) a(i,i,j,j) etc ... would have resulting tensor rank 0, which means i can't create IndexAccess wrappers cuz they'd expect intN<0>'s for dereferncing, which can't work by static_assert ...
+so here i've gotta vet the IndexAccess creation ...
+which means duplicating some of the functionality of IndexAccess sorting out sum vs assign indexes
+*/
 #define TENSOR_ADD_INDEX_NOTATION_CALL()\
-	template<typename IndexType, typename... IndexTypes>\
-	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
-	decltype(auto) operator()(IndexType, IndexTypes...) {\
-		return IndexAccess<This, std::tuple<IndexType, IndexTypes...>>(*this);\
+	template<typename ThisConst, typename IndexType, typename... IndexTypes>\
+	static decltype(auto) callIndexOp(ThisConst & this_, IndexType, IndexTypes...) {\
+		/* this is all doubled-up from IndexAccess, but we can't make IndexAccess until we know its |AssignIndexSeq| > 0 */\
+		using IndexTuple = std::tuple<IndexType, IndexTypes...>;\
+		using GatheredIndexes = GatherIndexes<IndexTuple>;\
+		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;\
+		using SumIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;\
+		using AssignIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;\
+		if constexpr (AssignIndexSeq::size() == 0) {\
+			return applyTraces<ThisConst, SumIndexSeq>(this_);\
+		} else {\
+			/* dont' instanciating this until you know IndexTuple has non-summed-indexes or else its rank = 0 and that's bad for its vector member types */\
+			return IndexAccess<ThisConst, IndexTuple>(this_);\
+		}\
 	}\
 	template<typename IndexType, typename... IndexTypes>\
 	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
-	decltype(auto) operator()(IndexType, IndexTypes...) const {\
-		return IndexAccess<This const, std::tuple<IndexType, IndexTypes...>>(*this);\
+	decltype(auto) operator()(IndexType i1, IndexTypes... is) {\
+		return callIndexOp<This>(*this, i1, is...);\
+	}\
+	template<typename IndexType, typename... IndexTypes>\
+	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
+	decltype(auto) operator()(IndexType i1, IndexTypes... is) const {\
+		return callIndexOp<This const>(*this, i1, is...);\
 	}
 
 //these are all per-element assignment operators,

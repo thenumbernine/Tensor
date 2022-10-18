@@ -105,10 +105,10 @@ struct GatherIndexesImpl;
 template<typename IndexType, typename... IndexTypes, int i1, int... is>
 requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)
 struct GatherIndexesImpl<std::tuple<IndexType, IndexTypes...>, std::integer_sequence<int, i1, is...>> {
+	using Next = GatherIndexesImpl<std::tuple<IndexTypes...>, std::integer_sequence<int, is...>>;
+	using NextType = typename Next::type;
+	static constexpr int resultLoc = Common::tuple_find_v<IndexType, typename Next::indexes>;
 	static constexpr auto value() {
-		using Next = GatherIndexesImpl<std::tuple<IndexTypes...>, std::integer_sequence<int, is...>>;
-		using NextType = typename Next::type;
-		constexpr int resultLoc = Common::tuple_find_v<IndexType, typename Next::indexes>;
 		if constexpr (resultLoc == -1) {
 			return (
 				Common::tuple_cat_t<
@@ -127,11 +127,12 @@ struct GatherIndexesImpl<std::tuple<IndexType, IndexTypes...>, std::integer_sequ
 					std::pair<
 						IndexType,
 						Common::seq_cat_t<
+							int,
+							std::integer_sequence<int, i1>,
 							typename std::tuple_element_t<
 								resultLoc,
 								NextType
-							>::second_type,
-							std::integer_sequence<int, i1>
+							>::second_type
 						>
 					>
 				>
@@ -145,17 +146,6 @@ template<>
 struct GatherIndexesImpl<std::tuple<>, std::integer_sequence<int>> {
 	using type = std::tuple<>;
 	using indexes = std::tuple<>;
-};
-template<typename IndexTuple>
-using GatherIndexes = typename GatherIndexesImpl<
-	IndexTuple,
-	std::make_integer_sequence<int, std::tuple_size_v<IndexTuple>>
->::type;
-
-// T is a member of the tuple within GatherIndexes<>'s results
-template<typename T>
-struct HasMoreThanOneIndex {
-	static constexpr bool value = T::second_type::size() > 1;
 };
 
 template<typename IndexTuple>
@@ -209,8 +199,6 @@ struct FindInAssignIndexTuple {
 	};
 };
 
-
-
 //shorthand if you don't want to declare your lhs first and dereference it first ...
 // TODO get all dims of the IndexExpr
 #define TENSOR_EXPR_ADD_ASSIGNR()\
@@ -234,6 +222,8 @@ struct FindInAssignIndexTuple {
 		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
 	}
 
+// mind you this can be zero args
+//  in which case a scalar result is assumed
 #define TENSOR_EXPR_ADD_ASSIGN()\
 	template<typename IndexType, typename... IndexTypes>\
 	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
@@ -277,13 +267,20 @@ struct IndexAccess {
 	//static constexpr rank = std::tuple_size_v<AssignIndexes>;
 	//using dims = MapValues<AssignIndexes, InputTensorType::dimseq>;
 	using GatheredIndexes = GatherIndexes<IndexTuple>;
-	using GetSingleVsDouble = Common::tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;
-	// TODO static-assert there index counts are always either 1 or 2.  no a_i = b_ijjj
+	// this is going to get back the indexes into GatheredIndexes that are sums vs not sums
+	// within HasMoreThanOne this is static-assert'd there index counts are always either 1 or 2.  no a_i = b_ijjj
+	using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;
+	// from here, if we want the indexes into IndexTuple that are summed vs assigned
+	//  we would want to take GetAssignVsSumGatheredLocs::has (or ::hasnot) 
+	//  and then get the associated GatheredIndexes's ::second_type's and seq_cat them all together.
+	// (with that said, all the ::has are the summed, and they should each be of size 2 or else
+	// TODO you can shortcut one step in this if you make a 'tuple_get_filtered_t' instead of getting its 'indexes' (rename to 'locs')
+	using SumIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
 	// collect the offsets of the Index's that are duplicated (summed) into one sequence ...
-	using SumIndexSeq = typename GetSingleVsDouble::has; 
+	//using SumIndexSeq = typename GetAssignVsSumGatheredLocs::has; 
 	// ... and the single Index's (used for assignment) into another sequence.
 	// this is what we need to match up when performing operations like = + etc
-	using AssignIndexSeq = typename GetSingleVsDouble::hasnot;
+	using AssignIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
 	using AssignIndexTuple = Common::SeqToTupleMap<AssignIndexSeq, GetTupleIthElem<IndexTuple>::template Get>;
 	//"dimseq" is the dimensions associated with the assignment-indexes 
 	using dimseq = Common::SeqToSeqMap<AssignIndexSeq, GetTensorIthDim<InputTensorType>::template Get>;
@@ -374,6 +371,13 @@ struct IndexAccess {
 		doAssign<B>(std::forward<B>(src));
 		return *this;
 	}
+
+	// Ok for fully-traced objects , I would like to convert them to Scalars somehow
+	// Should I convert them in the tensor operator()(IndexBase...) ? 
+	// That'd be safest maybe.  but it'd require a bit of duplicating operations that are in IndexAccess.
+	// In light of that how about here as a cast-operator?
+	//  No, in fact, I don't think I can us IndexAccess without it being zero-rank, which means a looot of exceptional conditions within this class would need to be made.
+	//operator Scalar() const requires ...
 
 	/*
 	uses operations of Tensor template parameter:

@@ -146,20 +146,20 @@ void test_Index() {
 		Tensor::Index<'k'> k;
 		//assignR
 		// TODO put compile-fail tests in their own cpp file and have a script assert the compiler fails
-#if 0 	// ranks of 'a' and index call-operator don't match so static-assert failure 
+#if 0 	// ASSERT_FAILURE  ranks of 'a' and index call-operator don't match so static-assert failure 
 		{
 			Tensor::float3x3 a;
 			auto c = a(i);
 		}
 #endif
-#if 0	// compile fail because a(j,i) rank doesn't match assign(i,j,k) rank 
+#if 0	// ASSERT_FAILURE  compile fail because a(j,i) rank doesn't match assign(i,j,k) rank 
 		{
 			Tensor::float3x3 a;
 			Tensor::_tensor<float,3,3,3> d;
 			d = a(j,i).assign(i,j,k);
 		}
 #endif	
-#if 0	// compile fail because assign(i,j) rank doesn't match d(i,j,k) rank 
+#if 0	// ASSERT_FAILURE  compile fail because assign(i,j) rank doesn't match d(i,j,k) rank 
 		{
 			Tensor::float3x3 a;
 			Tensor::_tensor<float,3,3,3> d;
@@ -186,7 +186,7 @@ void test_Index() {
 			auto c = a(i,j).assignR<Tensor::float3x2>(j,i);
 			static_assert(std::is_same_v<decltype(c), Tensor::float3x2>);
 		}
-#if 0	// dims don't match, should compile-fail
+#if 0	// ASSERT_FAILURE  dims don't match, should compile-fail
 		//  mind you under clang this does make a compile-fail, but doesn't point to this line, even tho if0'ing it out makes compile succeed.
 		{
 			Tensor::float2x3 a;
@@ -194,7 +194,7 @@ void test_Index() {
 			ECHO(c);
 		}
 #endif
-#if 0	// dims don't match, should compile-fail
+#if 0	// ASSERT_FAILURE  dims don't match, should compile-fail
 		{
 			Tensor::float2x3 a;
 			Tensor::float3x2 c;
@@ -202,7 +202,7 @@ void test_Index() {
 			ECHO(c);
 		}
 #endif
-#if 0	// dims don't match, should compile-fail
+#if 0	// ASSERT_FAILURE  dims don't match, should compile-fail
 		{
 			Tensor::float2x3 a;
 			Tensor::float2x3 c;
@@ -210,7 +210,7 @@ void test_Index() {
 			ECHO(c);
 		}
 #endif	
-#if 0	// dims don't match, so static-asser failure 
+#if 0	// ASSERT_FAILURE dims don't match, so static-asser failure 
 		{
 			Tensor::float2x3 a;
 			Tensor::float3x3 c;
@@ -267,7 +267,6 @@ void test_Index() {
 /* d_kji = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(k,j,i)), Tensor::_tensor<float,4,3,2>>);
 
 			Tensor::_tensor<float,4,2,3> b;
-#if 1	
 			// d_ijk = a_ijk + b_kij
 			// so d's dims are a's dims ...
 			//  and works only if 
@@ -276,22 +275,15 @@ void test_Index() {
 			//   b's 3nd dim matches a's 2st dim
 			auto ab1 = (a(i,j,k) + b(k,i,j)).assign(i,j,k);
 			static_assert(std::is_same_v<decltype(ab1), Tensor::_tensor<float,2,3,4>>);
-#endif
-#if 1
+			
 			auto ab2 = (a(i,j,k) + b(k,i,j)).assign(k,i,j);
 			static_assert(std::is_same_v<decltype(ab2), Tensor::_tensor<float,4,2,3>>);
-#endif
 
 			Tensor::_tensor<float,4,3,2> c;
 			auto abc = (a(i,j,k) + b(k,i,j) + c(k,j,i)).assign(j,i,k);
 			static_assert(std::is_same_v<decltype(abc), Tensor::_tensor<float,3,2,4>>);
 		}
 	}
-
-// TODO DO enforce dimension constraints between expression operations
-// and then require Index to specify subrank, or just grab the subset<> of the tensor.
-// TODO sub-tensor casting, not just sub-vector.  return tensor-of-refs. 	
-#if 0 // TODO
 	{
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
@@ -306,7 +298,104 @@ void test_Index() {
 		static_assert(std::is_same_v<Tensor::double3x3, decltype(c)>);
 		TEST_EQ(c, makeAsym(a));
 	}
-	
+
+	{
+		using I = Tensor::Index<'i'>;
+		using IndexTuple = std::tuple<I>;
+		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
+		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, Tensor::HasMoreThanOneIndex>;
+		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+		static_assert(SumIndexSeq::size() == 0);
+		static_assert(std::is_same_v<AssignIndexSeq, std::integer_sequence<int, 0>>);
+	}
+	{
+		using I = Tensor::Index<'i'>;
+		using J = Tensor::Index<'j'>;
+		using IndexTuple = std::tuple<I,J>;
+		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
+		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, Tensor::HasMoreThanOneIndex>;
+		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+		static_assert(SumIndexSeq::size() == 0);
+		static_assert(std::is_same_v<AssignIndexSeq, std::integer_sequence<int, 0, 1>>);
+	}
+#if 1
+	{
+		using I = Tensor::Index<'i'>;
+		using IndexTuple = std::tuple<I,I>;
+		static_assert(Common::tuple_find_v<I, std::tuple<>> == -1);
+		static_assert(Common::tuple_find_v<I, std::tuple<I>> == 0);
+		static_assert(Common::tuple_find_v<I, std::tuple<I,I>> == 0);
+		// GatheredIndexes == GatheredIndexesImpl::type so ...
+		static_assert(std::is_same_v<
+			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::type,
+			std::tuple<>
+		>);
+		static_assert(std::is_same_v<
+			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::indexes,
+			std::tuple<>
+		>);	
+		static_assert(-1 == Common::tuple_find_v<I, typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::indexes>);	
+		static_assert(std::is_same_v<
+			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::type,
+			std::tuple<
+				std::pair<
+					I,
+					std::integer_sequence<int, 1>
+				>
+			>	
+		>);
+		static_assert(std::is_same_v<
+			typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::type,
+			std::tuple<
+				std::pair<
+					I,
+					std::integer_sequence<int, 0, 1>
+				>
+			>	
+		>);	
+		static_assert(std::is_same_v<typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::indexes, std::tuple<I>>);
+		static_assert(std::is_same_v<typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::indexes, std::tuple<I>>);
+		static_assert(std::is_same_v<typename Tensor::GatherIndexesImpl<IndexTuple, std::make_integer_sequence<int, 2>>::Next::Next::indexes, std::tuple<>>);
+		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
+		static_assert(std::is_same_v<
+			GatheredIndexes,
+			std::tuple<
+				std::pair<
+					I,
+					std::integer_sequence<int, 0, 1>
+				>
+			>
+		>);
+		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<
+			GatheredIndexes,
+			Tensor::HasMoreThanOneIndex
+		>;
+		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+		static_assert(AssignIndexSeq::size() == 0);
+		static_assert(std::is_same_v<
+			SumIndexSeq,
+			std::integer_sequence<int, 0, 1>
+		>);
+	}
+#endif
+#if 0	// trace of tensors ... doesn't use references but instead uses cached intermediate tensors stored in the expression-tree
+	{
+		Tensor::Index<'i'> i;
+		Tensor::float3x3 a;
+		// zero indexes == scalar result of a trace
+		//  Should IndexAccess need to wrap a fully-traced object?  or should it immediately become a Scalar?
+		//  I think the latter cuz why wait for .assign()?
+		auto b = a(i,i);
+		static_assert(std::is_same_v<decltype(b), float>);
+	}
+#endif
+// TODO DO enforce dimension constraints between expression operations
+// and then require Index to specify subrank, or just grab the subset<> of the tensor.
+// TODO sub-tensor casting, not just sub-vector.  return tensor-of-refs. 	
+#if 0 // TODO
 	{
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
