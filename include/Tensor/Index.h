@@ -172,6 +172,13 @@ struct GetTensorIthDim {
 	};
 };
 
+template<typename Seq>
+struct GetIthSeq {
+	template<int i>
+	struct go {
+		static constexpr int value = Common::seq_get_v<i, Seq>;
+	};
+};
 
 template<typename T, typename Seq>
 struct ApplyTracesImpl;
@@ -194,6 +201,15 @@ auto applyTraces(T & x) {
 }
 
 
+template<typename AssignIndexTuple>
+struct FindInAssignIndexTuple {
+	template<typename Src>
+	struct go {
+		static constexpr int value = Common::tuple_find_v<Src, AssignIndexTuple>;
+	};
+};
+
+
 
 //shorthand if you don't want to declare your lhs first and dereference it first ...
 // TODO get all dims of the IndexExpr
@@ -203,7 +219,7 @@ auto applyTraces(T & x) {
 		static decltype(auto) exec(This const & this_) {\
 			R r;\
 			auto ri = IndexAccess<R, std::tuple<IndexType, IndexTypes...>>(r);\
-			ri = this_;\
+			ri = this_; /* use IndexAccess operator= */\
 			return r;\
 		}\
 	};\
@@ -223,8 +239,8 @@ auto applyTraces(T & x) {
 	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
 	decltype(auto) assign(IndexType, IndexTypes...) const {\
 		using DstAssignIndexTuple = std::tuple<IndexType, IndexTypes...>;\
-		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple>;\
-		using dims = Common::SeqToSeqMap<destseq, GetTensorIthDim<OutputTensorType>::template Get>;\
+		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple<AssignIndexTuple>::template go>;\
+		using dims = Common::SeqToSeqMap<destseq, GetIthSeq<dimseq>::template go>;\
 		/* TODO get the dimension layout here */\
 		using R = tensorScalarSeq<Scalar, dims>;\
 		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
@@ -327,33 +343,35 @@ struct IndexAccess {
 
 	template<typename B>
 	requires is_IndexExpr_v<B>
-	IndexAccess(B const & read) {
-		doAssign<B>(read);
+	IndexAccess(B const & src) {
+		doAssign<B>(src);
 	}
 	template<typename B>
 	requires is_IndexExpr_v<B>
-	IndexAccess(B && read) {
-		doAssign<B>(std::forward<B>(read));
+	IndexAccess(B && src) {
+		doAssign<B>(std::forward<B>(src));
 	}
 
-	IndexAccess & operator=(This const & read) {
-		doAssign<This>(read);
+	// these defaults are deleted in classes with reference members
+	IndexAccess & operator=(This const & src) {
+		doAssign<This>(src);
 		return *this;
 	}
-	IndexAccess & operator=(This && read) {
-		doAssign<This>(std::move(read));
+	IndexAccess & operator=(This && src) {
+		doAssign<This>(std::move(src));
+		return *this;
+	}
+	
+	template<typename B>
+	requires is_IndexExpr_v<B>
+	IndexAccess & operator=(B const & src) {
+		doAssign<B>(src);
 		return *this;
 	}
 	template<typename B>
 	requires is_IndexExpr_v<B>
-	IndexAccess & operator=(B const & read) {
-		doAssign<B>(read);
-		return *this;
-	}
-	template<typename B>
-	requires is_IndexExpr_v<B>
-	IndexAccess & operator=(B && read) {
-		doAssign<B>(std::forward<B>(read));
+	IndexAccess & operator=(B && src) {
+		doAssign<B>(std::forward<B>(src));
 		return *this;
 	}
 
@@ -400,7 +418,7 @@ struct IndexAccess {
 		// OutputTensorType is expanded, for the sake of caching mid-expression 
 		// so just use InputTensorType, that's what wraps the lhs tensor: a(i,j) = b(j,i) , InputTensorType is decltype(a)
 		t = InputTensorType([&](intN i) -> Scalar {
-			return src.template read<AssignIndexTuple>(i);
+			return src.template read<AssignIndexTuple, dimseq>(i);
 		});
 #endif
 	}
@@ -413,9 +431,9 @@ struct IndexAccess {
 	// TODO decltype(auto) 
 	//  to do that, constexpr the validIndex
 	//  to do that, i should be constexpr
-	template<typename DstAssignIndexTuple>
+	template<typename DstAssignIndexTuple, typename DstDimSeq>
 	constexpr Scalar read(intN const & i) const {
-		auto dstI = getIndex<DstAssignIndexTuple>(i);
+		auto dstI = getIndex<DstAssignIndexTuple, DstDimSeq>(i);
 		if (OutputTensorType::validIndex(dstI)) {
 			return t(dstI);
 		} else {
@@ -423,20 +441,18 @@ struct IndexAccess {
 		}
 	}
 
-	//template<AssignIndexTuple> but inner class provides
-	template<typename Src>
-	struct FindInAssignIndexTuple {
-		static constexpr int value = Common::tuple_find_v<Src, AssignIndexTuple>;
-	};
-
-	template<typename DstAssignIndexTuple>
+	template<typename DstAssignIndexTuple, typename DstDimSeq>
 	static constexpr intN getIndex(intN const & i) {
 
 		// i'th destseq = for the i'th element in DstAssignIndexTuple,
 		//  find its position in AssignIndexTuple
-		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple>;
+		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple<AssignIndexTuple>::template go>;
 		auto dstForSrcIndex = intN(destseq());
-	
+
+		//TODO assert dstdim<destseq<i>> == dimseq<i>
+		using CheckDimSeq = Common::SeqToSeqMap<destseq, GetIthSeq<dimseq>::template go>;
+		static_assert(std::is_same_v<CheckDimSeq, DstDimSeq>);
+
 		//for the j'th index of i ...
 		// ... find indexes(j) coinciding with read.indexes(k)
 		// ... and put that there
@@ -486,26 +502,33 @@ logical_not
 
 // tensor + tensor
 
+// used for + - / but not *
 template<typename A, typename B, template<typename> typename op>
 requires IsMatchingRankExpr<A, B>
 struct TensorTensorExpr {
 	static constexpr bool isIndexExprFlag = {};
 	using This = TensorTensorExpr;
 	static constexpr auto rank = A::rank;
+	using AssignIndexTuple = typename A::AssignIndexTuple;
+	using dimseq = typename A::dimseq;
 	using intN = _vec<int,rank>;
 	using Scalar = decltype(op()(typename A::Scalar(), typename B::Scalar()));
 	TENSOR_EXPR_ADD_ASSIGNR()
+	TENSOR_EXPR_ADD_ASSIGN()
 	
 	A const & a;
 	B const & b;
 	
 	TensorTensorExpr(A const & a_, B const & b_) : a(a_), b(b_) {}
 
-	template<typename DstIndexTuple>
+	template<typename DstIndexTuple, typename DstDimSeq>
 	constexpr Scalar read(intN const & i) const {
 		return op<Scalar>()(
-			a.template read<DstIndexTuple>(i),
-			b.template read<DstIndexTuple>(i));
+			// permute a's to match dst's ...
+			a.template read<DstIndexTuple, DstDimSeq>(i),
+			// TODO here gotta permute b's to match a's ... to match dst's
+			b.template read<DstIndexTuple, DstDimSeq>(i)
+		);
 	}
 };
 
@@ -569,7 +592,7 @@ struct TensorMulExpr {
 
 	// TODO not all indexes here are provided
 	//  so for the duplicates, sum over all possible values
-	template<typename DstIndexTuple>
+	template<typename DstIndexTuple, typename DstDimSeq>
 	constexpr Scalar read(intN const & i) const {
 		
 		typename A::intN indexAinDst(-1);
@@ -597,8 +620,8 @@ struct TensorMulExpr {
 		//  and then sum
 
 		return op<Scalar>()(
-			a.template read<DstIndexTuple>(i),
-			b.template read<DstIndexTuple>(i));
+			a.template read<DstIndexTuple, DstDimSeq>(i),
+			b.template read<DstIndexTuple, DstDimSeq>(i));
 	}
 };
 
@@ -617,18 +640,21 @@ struct TensorScalarExpr {
 	static constexpr bool isIndexExprFlag = {};
 	using This = TensorScalarExpr;
 	static constexpr auto rank = T::rank;
+	using AssignIndexTuple = typename T::AssignIndexTuple;
+	using dimseq = typename T::dimseq;
 	using intN = _vec<int,rank>;
 	using Scalar = typename T::Scalar; // TODO which Scalar to use?
 	TENSOR_EXPR_ADD_ASSIGNR()
-	
+	TENSOR_EXPR_ADD_ASSIGN()
+
 	T const & a;
 	Scalar const & b;
 	
 	TensorScalarExpr(T const & a_, Scalar const & b_) : a(a_), b(b_) {}
 
-	template<typename DstIndexTuple>
+	template<typename DstIndexTuple, typename DstDimSeq>
 	constexpr Scalar read(intN const & i) const {
-		return op<Scalar>()(a.template read<DstIndexTuple>(i), b);
+		return op<Scalar>()(a.template read<DstIndexTuple, DstDimSeq>(i), b);
 	}
 };
 
@@ -640,18 +666,21 @@ struct ScalarTensorExpr {
 	static constexpr bool isIndexExprFlag = {};
 	using This = ScalarTensorExpr;
 	static constexpr auto rank = T::rank;
+	using AssignIndexTuple = typename T::AssignIndexTuple;
+	using dimseq = typename T::dimseq;
 	using intN = _vec<int, rank>;
 	using Scalar = typename T::Scalar; // TODO which Scalar to use?
 	TENSOR_EXPR_ADD_ASSIGNR()
+	TENSOR_EXPR_ADD_ASSIGN()
 	
 	Scalar const & a;
 	T const & b;
 	
 	ScalarTensorExpr(Scalar const & a_, T const & b_) : a(a_), b(b_) {}
 
-	template<typename DstIndexTuple>
+	template<typename DstIndexTuple, typename DstDimSeq>
 	constexpr Scalar read(intN const & i) const {
-		return op<Scalar>()(a, b.template read<DstIndexTuple>(i));
+		return op<Scalar>()(a, b.template read<DstIndexTuple, DstDimSeq>(i));
 	}
 };
 
@@ -680,17 +709,20 @@ struct UnaryTensorExpr {
 	static constexpr bool isIndexExprFlag = {};
 	using This = UnaryTensorExpr;
 	static constexpr auto rank = T::rank;
+	using AssignIndexTuple = typename T::AssignIndexTuple;
+	using dimseq = typename T::dimseq;
 	using intN = _vec<int, rank>;
 	using Scalar = typename T::Scalar;
 	TENSOR_EXPR_ADD_ASSIGNR()
+	TENSOR_EXPR_ADD_ASSIGN()
 	
 	T const & t;
 
 	UnaryTensorExpr(T const & t_) : t(t_) {}
 
-	template<typename DstIndexTuple>
+	template<typename DstIndexTuple, typename DstDimSeq>
 	constexpr Scalar read(intN const & i) const {
-		return op<Scalar>()(t.template read<DstIndexTuple>(i));
+		return op<Scalar>()(t.template read<DstIndexTuple, DstDimSeq>(i));
 	}
 };
 template<typename T>

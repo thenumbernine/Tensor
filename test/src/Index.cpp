@@ -143,13 +143,29 @@ void test_Index() {
 	{
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
+		Tensor::Index<'k'> k;
 		//assignR
-#if 0 // expected compile fail
+		// TODO put compile-fail tests in their own cpp file and have a script assert the compiler fails
+#if 0 	// ranks of 'a' and index call-operator don't match so static-assert failure 
 		{
 			Tensor::float3x3 a;
 			auto c = a(i);
 		}
 #endif
+#if 0	// compile fail because a(j,i) rank doesn't match assign(i,j,k) rank 
+		{
+			Tensor::float3x3 a;
+			Tensor::_tensor<float,3,3,3> d;
+			d = a(j,i).assign(i,j,k);
+		}
+#endif	
+#if 0	// compile fail because assign(i,j) rank doesn't match d(i,j,k) rank 
+		{
+			Tensor::float3x3 a;
+			Tensor::_tensor<float,3,3,3> d;
+			d = a(j,i).assign(i,j);
+		}
+#endif	
 		{
 			Tensor::float3x3 a;
 			auto c = a(i,j).assignR<Tensor::float3x3>(i,j);
@@ -170,6 +186,37 @@ void test_Index() {
 			auto c = a(i,j).assignR<Tensor::float3x2>(j,i);
 			static_assert(std::is_same_v<decltype(c), Tensor::float3x2>);
 		}
+#if 0	// dims don't match, should compile-fail
+		//  mind you under clang this does make a compile-fail, but doesn't point to this line, even tho if0'ing it out makes compile succeed.
+		{
+			Tensor::float2x3 a;
+			auto c = a(i,j).assignR<Tensor::float2x3>(j,i);
+			ECHO(c);
+		}
+#endif
+#if 0	// dims don't match, should compile-fail
+		{
+			Tensor::float2x3 a;
+			Tensor::float3x2 c;
+			c(i,j) = a(i,j);
+			ECHO(c);
+		}
+#endif
+#if 0	// dims don't match, should compile-fail
+		{
+			Tensor::float2x3 a;
+			Tensor::float2x3 c;
+			c(i,j) = a(j,i);
+			ECHO(c);
+		}
+#endif	
+#if 0	// dims don't match, so static-asser failure 
+		{
+			Tensor::float2x3 a;
+			Tensor::float3x3 c;
+			c(i,j) = a(j,i);	
+		}
+#endif
 		//assign
 		{
 			Tensor::float2x3 a;
@@ -180,24 +227,65 @@ void test_Index() {
 			Tensor::float2x3 a;
 			auto c = a(i,j).assign(j,i);
 			static_assert(std::is_same_v<decltype(c), Tensor::float3x2>);
+		}
+		{
+			Tensor::float2x3 a;
+			auto c = (2.f * a(i,j)).assign(i,j);
+			static_assert(std::is_same_v<decltype(c), Tensor::float2x3>);
+		}
+		{
+			Tensor::float2x3 a;
+			auto c = (2.f * a(i,j)).assign(j,i);
+			static_assert(std::is_same_v<decltype(c), Tensor::float3x2>);
 		}	
+		{
+			Tensor::float2x3 a;
+			auto c = (a(i,j) * 2.f).assign(i,j);
+			static_assert(std::is_same_v<decltype(c), Tensor::float2x3>);
+		}
+		{
+			Tensor::float2x3 a;
+			auto c = (a(i,j) * 2.f).assign(j,i);
+			static_assert(std::is_same_v<decltype(c), Tensor::float3x2>);
+		}		
 		{
 			Tensor::float2x3 a;
 			Tensor::float3x2 b;
 			auto c = (a(j,i) + b(i,j)).assign(j,i);
-			static_assert(std::is_same_v<decltype(c), Tensor::float3x2>);
+			static_assert(std::is_same_v<decltype(c), Tensor::float2x3>);
 		}
-		// good because I do support matching-rank, non-matching-dim tensor ctor 
+		// make sure inter-index permutations work
+		// since right now tensor+tensor operator just uses the lhs
 		{
-			Tensor::float2x3 a;
-			Tensor::float3x3 c = a(j,i);	
+			Tensor::_tensor<float,2,3,4> a;
+
+/* d_ijk = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(i,j,k)), Tensor::_tensor<float,2,3,4>>);
+/* d_ikj = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(i,k,j)), Tensor::_tensor<float,2,4,3>>);
+/* d_jik = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(j,i,k)), Tensor::_tensor<float,3,2,4>>);
+/* d_jki = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(j,k,i)), Tensor::_tensor<float,3,4,2>>);
+/* d_kij = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(k,i,j)), Tensor::_tensor<float,4,2,3>>);
+/* d_kji = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(k,j,i)), Tensor::_tensor<float,4,3,2>>);
+
+			Tensor::_tensor<float,4,2,3> b;
+#if 1	
+			// d_ijk = a_ijk + b_kij
+			// so d's dims are a's dims ...
+			//  and works only if 
+			//   b's 1st dim matches a's 3rd dim
+			//   b's 2nd dim matches a's 1st dim
+			//   b's 3nd dim matches a's 2st dim
+			auto ab1 = (a(i,j,k) + b(k,i,j)).assign(i,j,k);
+			static_assert(std::is_same_v<decltype(ab1), Tensor::_tensor<float,2,3,4>>);
+#endif
+#if 1
+			auto ab2 = (a(i,j,k) + b(k,i,j)).assign(k,i,j);
+			static_assert(std::is_same_v<decltype(ab2), Tensor::_tensor<float,4,2,3>>);
+#endif
+
+			Tensor::_tensor<float,4,3,2> c;
+			auto abc = (a(i,j,k) + b(k,i,j) + c(k,j,i)).assign(j,i,k);
+			static_assert(std::is_same_v<decltype(abc), Tensor::_tensor<float,3,2,4>>);
 		}
-#if 0	// compile fail because ranks do not match
-		// TODO put compile-fail tests in their own cpp file and have a script assert the compiler fails
-		{
-			Tensor::float3x3x3 d = a(j,i);
-		}
-#endif	
 	}
 
 // TODO DO enforce dimension constraints between expression operations
