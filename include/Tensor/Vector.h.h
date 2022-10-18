@@ -236,6 +236,17 @@ struct _tensor_impl<Scalar, dim> {
 template<typename Scalar, int dim, int... dims>
 using _tensor = typename _tensor_impl<Scalar, dim, dims...>::type;
 
+// useful helper for _tensor:
+
+template<typename Scalar, typename Seq>
+struct tensorScalarSeqImpl;
+template<typename Scalar, typename I, I i1, I... is>
+struct tensorScalarSeqImpl<Scalar, std::integer_sequence<I, i1, is...>> {
+	using type = _tensor<Scalar, i1, is...>;
+};
+template<typename Scalar, typename Seq>
+using tensorScalarSeq = typename tensorScalarSeqImpl<Scalar, Seq>::type;
+
 /*
 ok maybe this is a bad idea ..
 _tensorx< type, dim1, dim2, ... , storage char, [storage args] >

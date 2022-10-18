@@ -107,22 +107,9 @@ constexpr int consteval_symmetricSize(int d, int r) {
 	return nChooseR(d + r - 1, r);
 }
 
-
 constexpr int consteval_antisymmetricSize(int d, int r) {
 	return nChooseR(d, r);
 }
-
-// TODO use the ForLoopBodyBase ctor
-template<typename T>
-struct initIntVecWithSequence {};
-template<typename T, T... I>
-struct initIntVecWithSequence<std::integer_sequence<T, I...>> {
-	static constexpr auto value() {
-		return _vec<T, sizeof...(I)>{I...};
-	}
-};
-
-
 
 
 template<typename T>
@@ -143,21 +130,6 @@ struct GetPtrLocalCount {
 template<typename T>
 using GetPtrLocalStorage = typename std::remove_pointer_t<T>::LocalStorage;
 
-
-// TODO Common/Sequence.h
-//https://stackoverflow.com/a/55247213
-template<typename T, T... Args>
-constexpr T seq_plus(std::integer_sequence<T, Args...> = {}) {
-	return (Args + ... + (0));
-}
-template<typename T, T... Args>
-constexpr T seq_multiplies(std::integer_sequence<T, Args...> = {}) {
-	return (Args * ... * (1));
-}
-template<typename T, T... Args>
-constexpr T seq_logical_and(std::integer_sequence<T, Args...> = {}) {
-	return (Args && ... && (true));
-}
 
 // for initializing intN's using template indexes
 template<typename Src, typename Dst>
@@ -356,7 +328,7 @@ Scalar = NestedPtrTuple's last
 	static constexpr int count = Common::seq_get_v<i, countseq>;\
 	/*static constexpr int count = Nested<i>::localCount;*/\
 \
-	static constexpr int totalCount = seq_multiplies(countseq());\
+	static constexpr int totalCount = Common::seq_multiplies(countseq());\
 \
 	/* same idea as in NestedPtrTensorTuple, but members are duplicated for their localRank */\
 	/* so that it is correlated with tensor index instead of nesting */\
@@ -795,7 +767,11 @@ Scalar = NestedPtrTuple's last
 	requires std::is_base_of_v<ForLoopBodyBase, ForLoopBody>\
 	constexpr classname(ForLoopBody = {}) {\
 		Common::ForLoop<0, totalCount, ForLoopBody::template Loop>::exec(*this);\
-	}
+	}\
+\
+	template<typename T, T... I>\
+	constexpr classname(std::integer_sequence<T, I...>) : classname(I...) {}
+
 
 // lambda ctor
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
@@ -2641,7 +2617,7 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 		}\
 	};\
 	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
-		intNLocal iread = initIntVecWithSequence<std::make_integer_sequence<int, localRank>>::value();\
+		auto iread = intNLocal(std::make_integer_sequence<int, localRank>{});\
 		for (int i = 0; i < writeIndex; ++i) {\
 			if (GetLocalReadForWriteIndexImpl<localRank-1>::exec(iread)) break;\
 		}\
@@ -2651,7 +2627,7 @@ Sign antisymSortAndCountFlips(_vec<int,N> & i) {
 	/* NOTICE this assumes targetReadIndex is already sorted */\
 	static constexpr int getLocalWriteForReadIndex(intNLocal targetReadIndex) {\
 		/* loop until you find the element */\
-		intNLocal iread = initIntVecWithSequence<std::make_integer_sequence<int, localRank>>::value();\
+		auto iread = intNLocal(std::make_integer_sequence<int, localRank>{});\
 		for (int writeIndex = 0; writeIndex < localCount; ++writeIndex) {\
 			if (iread == targetReadIndex) return writeIndex;\
 			if (GetLocalReadForWriteIndexImpl<localRank-1>::exec(iread)) break;\

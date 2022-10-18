@@ -52,6 +52,11 @@ orrrr I could even do both.
 use expression-trees.  lazy evaluate.  and for certain operations like trace or mul (which is outer+trace) thennnn cache.  and have read() read from the cache.
 you can even have some kind of inner class compile-time-dependent for whether a(i,j) IndexAccess should cache or not based on the # of sum-indexes present (0 = dont cache, >0 = do cache)
 
+so ...
+
+lazy-eval expression-trees
+but in the case of traces or tensor-multiplies, cache it at that node.
+
 */
 
 namespace Tensor {
@@ -74,53 +79,6 @@ template<char ch>
 std::ostream & operator<<(std::ostream & o, Index<ch> const & i) {
 	return o << ch;
 }
-
-template<typename IndexTuple, typename ReadIndexTuple, int j>
-struct FindDstForSrcIndex {
-	template<int i>
-	struct Find {
-		static constexpr auto rank = std::tuple_size_v<IndexTuple>;
-		using intN = _vec<int,rank>;
-		static constexpr bool exec(intN& dstForSrcIndex) {
-			
-			struct IndexesMatch {
-				static constexpr bool exec(intN& dstForSrcIndex) {
-					dstForSrcIndex(j) = i;
-					return true;	//meta-for-loop break
-				}
-			};
-			struct IndexesDontMatch {
-				static constexpr bool exec(intN& dstForSrcIndex) {
-					return false;
-				}
-			};
-			
-			return std::conditional_t<
-				std::is_same_v<
-					std::tuple_element_t<j, ReadIndexTuple>,
-					std::tuple_element_t<i, IndexTuple>
-				>,
-				IndexesMatch,
-				IndexesDontMatch
-			>::exec(dstForSrcIndex);
-		}
-	};
-};
-
-template<typename IndexTuple, typename ReadIndexTuple>
-struct FindDstForSrcOuter {
-	template<int j>
-	struct Find {
-		static constexpr auto rank = std::tuple_size_v<IndexTuple>;
-		using intN = _vec<int,rank>;
-		
-		static constexpr bool exec(intN & dstForSrcIndex) {
-			bool found = Common::ForLoop<0, rank, FindDstForSrcIndex<IndexTuple, ReadIndexTuple, j>::template Find>::exec(dstForSrcIndex);
-			if (!found) throw Common::Exception() << "failed to find index";
-			return false;
-		}
-	};
-};
 
 //shorthand if you don't want to declare your lhs first and dereference it first ...
 // TODO get all dims of the IndexExpr
@@ -149,24 +107,9 @@ struct FindDstForSrcOuter {
 	template<typename IndexType, typename... IndexTypes>\
 	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
 	decltype(auto) assign(IndexType, IndexTypes...) const {\
-		using R = typename TensorType::template ExpandAllIndexes<>;\
+		using R = typename OutputTensorType::template ExpandAllIndexes<>;\
 		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
 	}
-
-template<typename What, typename WhereTuple>
-struct tuple_find;
-template<typename What, typename Where1, typename... Wheres>
-struct tuple_find<What, std::tuple<Where1, Wheres...>> {
-	static constexpr auto nextvalue = tuple_find<What, std::tuple<Wheres...>>::value;
-	static constexpr auto value = 
-		std::is_same_v<What, Where1>
-		? 0
-		: (nextvalue == -1 ? -1 : nextvalue + 1);
-};
-template<typename What>
-struct tuple_find<What, std::tuple<>> {
-	static constexpr auto value = -1;
-};
 
 // F<T>::value is a bool for yes or no to add to 'has' or 'hasnot'
 template<typename Tuple, typename indexSeq, template<typename> typename F>
@@ -220,10 +163,6 @@ using tuple_get_filtered_indexes_t = tuple_get_filtered_indexes<
 >;
 
 
-
-template<typename What, typename WhereTuple>
-static constexpr int tuple_find_v = tuple_find<What, WhereTuple>::value;
-
 template<typename T>
 using GetFirst = typename T::first_type;
 
@@ -251,7 +190,7 @@ struct GatherIndexesImpl<std::tuple<IndexType, IndexTypes...>, std::integer_sequ
 	static constexpr auto value() {
 		using Next = GatherIndexesImpl<std::tuple<IndexTypes...>, std::integer_sequence<int, is...>>;
 		using NextType = typename Next::type;
-		constexpr int resultLoc = tuple_find_v<IndexType, typename Next::indexes>;
+		constexpr int resultLoc = Common::tuple_find_v<IndexType, typename Next::indexes>;
 		if constexpr (resultLoc == -1) {
 			return (
 				Common::tuple_cat_t<
@@ -301,19 +240,59 @@ struct HasMoreThanOneIndex {
 	static constexpr bool value = T::second_type::size() > 1;
 };
 
+template<typename IndexTuple>
+struct GetTupleIthElem {
+	template<int i>
+	using Get = std::tuple_element_t<i, IndexTuple>;
+};
+
+template<typename TensorType>
+struct GetTensorIthDim {
+	template<int i>
+	struct Get {
+		static constexpr int value = TensorType::template dim<i>;
+	};
+};
+
+
+template<typename T, typename Seq>
+struct ApplyTracesImpl;
+// assume they're sorted, apply in descending order
+template<typename T, typename I, I i1, I i2, I... is>
+struct ApplyTracesImpl<T, std::integer_sequence<I, i1, i2, is...>> {
+	static constexpr auto exec(T & t) {
+		return trace<i1, i2>(
+			ApplyTracesImpl<T, std::integer_sequence<I, is...>>::exec(t)
+		);
+	}
+};
+template<typename T, typename I>
+struct ApplyTracesImpl<T, std::integer_sequence<I>> {
+	static constexpr auto exec(T & t) { return t; }
+};
+template<typename T, typename Seq>
+auto applyTraces(T & x) {
+	return ApplyTracesImpl<T, Seq>::exec(x);
+}
+
 /*
 rather than this matching a Tensor for index dereferencing,
 this needs its index access abstracted so that binary operations can provide their own as well
+
+TODO instead of .assign() how about just give IndexAccess its own operator()(IndexBase...), and have that produce a tensor.
 */
-template<typename TensorType_, typename IndexTuple_>
+template<typename InputTensorType_, typename IndexTuple_>
+requires is_tensor_v<InputTensorType_>
 struct IndexAccess {
 	static constexpr bool isIndexExprFlag = {};
 	using This = IndexAccess;
-	using TensorType = TensorType_;
-	
+	using InputTensorType = InputTensorType_;
+
 	// std::tuple<Index<char>... >
 	// this is the input indexes wrapping the tensor, like a(i,j,k ...)
 	using IndexTuple = IndexTuple_;	
+	
+	STATIC_ASSERT_EQ(InputTensorType::rank, (std::tuple_size_v<IndexTuple>));
 	
 	/*
 	TODO HERE before rank is established,
@@ -323,27 +302,70 @@ struct IndexAccess {
 	//using SumIndexSeq = GatherSumIndexes<IndexTuple>;	//pairs of offsets into IndexTuple
 	//using AssignIndexSeq = GatherAssignIndexes<IndexTuple>; //offsets into IndexTuple of non-summed indexes
 	//static constexpr rank = std::tuple_size_v<AssignIndexes>;
-	//using dims = MapValues<AssignIndexes, TensorType::dimseq>;
+	//using dims = MapValues<AssignIndexes, InputTensorType::dimseq>;
 	using GatheredIndexes = GatherIndexes<IndexTuple>;
 	using GetSingleVsDouble = tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;
+	// TODO static-assert there index counts are always either 1 or 2.  no a_i = b_ijjj
 	// collect the offsets of the Index's that are duplicated (summed) into one sequence ...
 	using SumIndexSeq = typename GetSingleVsDouble::has; 
 	// ... and the single Index's (used for assignment) into another sequence.
 	// this is what we need to match up when performing operations like = + etc
-	using AssignIndexSeq = typename GetSingleVsDouble::hasnot; 
-
+	using AssignIndexSeq = typename GetSingleVsDouble::hasnot;
+	using AssignIndexTuple = Common::SeqToTupleMap<AssignIndexSeq, GetTupleIthElem<IndexTuple>::template Get>;
+	//"dimseq" is the dimensions associated with the assignment-indexes 
+	using dimseq = Common::SeqToSeqMap<AssignIndexSeq, GetTensorIthDim<InputTensorType>::template Get>;
+	
+	using Scalar = typename InputTensorType::Scalar;
+	// TODO if instead of picking out dims then rebuilding _tensor with them,
+	//  if instead you remove dims one-by-one from the source type (and add a transpose-type template for preserving symmetry and antisymmetric)
+	//  then maybe this could be optimized
+	using OutputTensorType = tensorScalarSeq<Scalar, dimseq>;
+	
 	//"rank" of this expression is the # of assignment-indexes ... excluding the sum-indexes
 	static constexpr auto rank = AssignIndexSeq::size();
-	
 	using intN = _vec<int, rank>;
-	using Scalar = typename TensorType::Scalar;
-	static constexpr auto dims() { return TensorType::dims(); }
+
+	// if it's + - etc then lazy-eval
+	// if we're using lazy-eval then just store a reference
+	// if we're not then store a tensor ... after traces have been computed
+	struct StorageLazy {
+		// If storageLazy is used then assert ...
+		static_assert(std::is_same_v<typename InputTensorType::template ExpandAllIndexes<>, OutputTensorType>);
+		using type = InputTensorType &;
+		static type process(InputTensorType & x) { return x; }
+	};
+	// if it's trace or * then evaluate up front
+	struct StorageEval {
+		using type = OutputTensorType;
+		static type process(InputTensorType & x) {
+			auto trs = applyTraces<InputTensorType, SumIndexSeq>(x);
+			// NOTICE here I'm making an assertion that AssignIndexSeq is matching the indexes when the sum-indexes are all removed.
+			// if it's wrong then ranks (and dims) won't match
+			STATIC_ASSERT_EQ(trs.rank, type::rank);
+			return (type)trs;
+		}
+	};
+
+	// to cache the tensor in the expression-tree, or to lazy-eval?
+	//  for traces, cache. (also in TensorMulExpr, cache)
+	//  for others, lazy.
+	static constexpr bool useLazyEval = SumIndexSeq::size() > 0;
+	using StorageDetails = 
+		//std::conditional_t<
+		//	useLazyEval,
+			StorageLazy
+		//	StorageEval
+		//>
+	;
+	using StorageType = typename StorageDetails::type;
+
+	
 	TENSOR_EXPR_ADD_ASSIGNR()
 	TENSOR_EXPR_ADD_ASSIGN()
 
-	TensorType & t;
+	StorageType t;
 
-	IndexAccess(TensorType & t_) : t(t_) {}
+	IndexAccess(InputTensorType & t_) : t(StorageDetails::process(t_)) {}
 
 	template<typename B>
 	requires is_IndexExpr_v<B>
@@ -389,7 +411,15 @@ struct IndexAccess {
 	template<typename B>//typename Tensor2Type, typename IndexTuple2>
 	requires IsMatchingRankExpr<This, B>
 	void doAssign(B const & src) {
-		// TODO I could assert dim match too, or I can bounds check the src reads
+		// B is the source tensor type
+		// This is the destination tensor type
+		// so This's indexes should have no sums in them
+		static_assert(SumIndexSeq::size() == 0);
+		// and its assign index seq should be 0...rank-1
+		static_assert(std::is_same_v<AssignIndexSeq, std::make_integer_sequence<int, std::tuple_size_v<IndexTuple>>>);
+		static_assert(rank == std::tuple_size_v<IndexTuple>);
+		// and its assign indexes should equal its total indexes
+		static_assert(std::is_same_v<AssignIndexTuple, IndexTuple>);
 
 		//assign using write iterator so the result will be pushed on stack before overwriting the write tensor
 		// this way we get a copy to buffer changes between read and write, in case the same tensor is used for both
@@ -398,28 +428,48 @@ struct IndexAccess {
 		// downside is it can invalidate itself if you're reading and writing to the same tensor
 		auto w = t.write();
 		for (auto i = w.begin(); i != w.end(); ++i) {
-			*i = src.template read<IndexTuple>(i.readIndex);
+			*i = src.template read<AssignIndexTuple>(i.readIndex);
 		};
 #else	// requires an extra object on the stack but can read and write to the same tensor
-		t = TensorType([&](intN i) -> Scalar {
-			return src.template read<IndexTuple>(i);
+		// OutputTensorType is expanded, for the sake of caching mid-expression 
+		// so just use InputTensorType, that's what wraps the lhs tensor: a(i,j) = b(j,i) , InputTensorType is decltype(a)
+		t = InputTensorType([&](intN i) -> Scalar {
+			return src.template read<AssignIndexTuple>(i);
 		});
 #endif
 	}
 
-	template<typename DstIndexTuple>
+	// a(j,i) = b(i,j)
+	// 'this' is b
+	// 'i' is the index in a's type's ctor, so its the dest-i 
+	// DstAssignIndexTuple is a's (j,i) tuple
+	// if we're just wrapping a tensor ... the read operation is just a tensor access
+	// TODO decltype(auto) 
+	//  to do that, constexpr the validIndex
+	//  to do that, i should be constexpr
+	template<typename DstAssignIndexTuple>
+	constexpr Scalar read(intN const & i) const {
+		auto dstI = getIndex<DstAssignIndexTuple>(i);
+		if (OutputTensorType::validIndex(dstI)) {
+			return t(dstI);
+		} else {
+			return Scalar();
+		}
+	}
+
+	//template<AssignIndexTuple> but inner class provides
+	template<typename Src>
+	struct FindInAssignIndexTuple {
+		static constexpr int value = Common::tuple_find_v<Src, AssignIndexTuple>;
+	};
+
+	template<typename DstAssignIndexTuple>
 	static constexpr intN getIndex(intN const & i) {
-		
-		//TODO this in compile time
-		// that would mean compile-time dereferences
-		// which would mean no longer dereferencing by int vectors but instead by compile-time parameter packs
-		_vec<int,rank> dstForSrcIndex;
-		Common::ForLoop<
-			0,
-			rank,
-			// TODO only search the members of 'IndexTuple' that are found in AssignIndexSeq
-			FindDstForSrcOuter<DstIndexTuple, IndexTuple>::template Find
-		>::exec(dstForSrcIndex);
+
+		// i'th destseq = for the i'th element in DstAssignIndexTuple,
+		//  find its position in AssignIndexTuple
+		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple>;
+		auto dstForSrcIndex = intN(destseq());
 	
 		//for the j'th index of i ...
 		// ... find indexes(j) coinciding with read.indexes(k)
@@ -431,19 +481,7 @@ struct IndexAccess {
 		return destI;
 	}
 
-	// if we're just wrapping a tensor ... the read operation is just a tensor access
-	// TODO decltype(auto) 
-	//  to do that, constexpr the validIndex
-	//  to do that, i should be constexpr
-	template<typename DstIndexTuple>
-	constexpr Scalar read(intN const & i) const {
-		auto dstI = getIndex<DstIndexTuple>(i);
-		if (TensorType::validIndex(dstI)) {
-			return t(dstI);
-		} else {
-			return Scalar();
-		}
-	}
+
 };
 
 template<typename T, typename Is>

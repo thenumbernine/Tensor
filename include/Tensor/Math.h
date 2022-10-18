@@ -399,7 +399,7 @@ auto makeSym(T const & t) {
 	return R([&](intN i) -> S {
 		S result = {};
 		//'j' is our permutation
-		intN j = initIntVecWithSequence<std::make_integer_sequence<int, T::rank>>::value();
+		auto j = intN(std::make_integer_sequence<int, T::rank>{});
 		do {
 			// 'ij' is 'i' permuted by 'j'
 			intN ij = [&](int k) -> int { return i[j[k]]; };
@@ -444,7 +444,7 @@ auto makeAsym(T const & t) {
 	return R([&](intN i) -> S {
 		S result = {};
 		//'j' is our permutation
-		intN j = initIntVecWithSequence<std::make_integer_sequence<int, T::rank>>::value();
+		auto j = intN(std::make_integer_sequence<int, T::rank>{});
 		do {
 			//count # of flips
 			// TODO combine this with next_permutation so you don't have to keep recounting

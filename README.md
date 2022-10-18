@@ -40,8 +40,9 @@ float3 cross(float3 a, float3 b) {
 Same thing but using exterior algebra:
 ```c++
 float3 cross(float3 a, float3 b) {
-	// Create a 3x3 antisymmetric, storing only 3 floats
+	// Create a 3x3 antisymmetric
 	auto c = a.wedge(b);	
+	// ... storing only 3 floats. mind you c[i][j] , 0 <= i < 3, 0 <= j < 3 are all accessible
 	static_assert(sizeof(a) == 3*sizeof(float));
 	// Return the dual, mapping those 3 antisymmetric rank-2 floats onto 3 rank-1 floats:
 	return hodgeDual(c);	
@@ -86,12 +87,14 @@ requires (a.dims() == b.dims() && a.isSquare && b.isSquare)
 
 Example: Implementing the Levi-Civita totally-antisymmetric tensor in an orthonormal metric:
 ```c++
-auto LC = _tensorx<float, -'A', dim, dim>(1);	// uses 1 whole float of storage.
+// the 'NaR' suffix stands for N-dimensional, totally-antisymmetric, R-rank, and expects <N,R> to come in the template arguments.
+auto LC = floatNaR(1);
+// uses 1 whole float of storage.
 ```
 
 Example: Implementing the covariant valence Levi-Civita totally-antisymmetric tensor for an arbitrary metric $g\_{\mu \nu}$:
 ```c++
-auto g_ll = floatNsN<dim>( /* provide your metric here */ );
+auto g = floatNsN<dim>( /* provide your metric here */ );
 auto detg = g.determinant();
 auto LC_lower = floatNaR<dim, dim>(sqrt(det));	// uses 1 whole float of storage.
 auto LC_upper = LC_lower / detg;
@@ -103,6 +106,7 @@ Example: ... and using it to compute the generalized Kronecker delta tensor:
 auto KD = LC_lower.outer(LC.upper);
 ```
 KD is now a rank-`2*dim` tensor of dimension `dim`.
+Once again it is represented by just a single float.
 Take note of the order of your outer product and therefore the order of your result's indexes.  In this case the generalized-Kronecker-delta lower indexes are first. 
 
 Example of index notation:
@@ -235,6 +239,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 	Ex: `_tensori<float, storage_vec<3>, storage_sym<4>, storage_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
 
 - `tensorScalarTuple<Scalar, StorageTuple>` = same as `_tensori` except the storage arguments are passed in a tuple.
+- `tensorScalarSeq<Scalar, integer_sequence>` = same as `_tensor` except the dimensions are passed as a sequence.
 
 ### Tensor operators
 - `operator += -= /=` = In-place per-element operations.

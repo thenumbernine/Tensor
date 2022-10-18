@@ -81,12 +81,14 @@ void test_Index() {
 		{
 			using namespace Tensor;
 			using namespace std;
-			STATIC_ASSERT_EQ((tuple_find_v<Index<'i'>, tuple<>>), -1);
-			STATIC_ASSERT_EQ((tuple_find_v<Index<'i'>, tuple<Index<'i'>>>), 0);
-			STATIC_ASSERT_EQ((tuple_find_v<Index<'i'>, tuple<Index<'j'>>>), -1);
-			STATIC_ASSERT_EQ((tuple_find_v<Index<'i'>, tuple<Index<'i'>, Index<'j'>>>), 0);
-			STATIC_ASSERT_EQ((tuple_find_v<Index<'i'>, tuple<Index<'j'>, Index<'i'>>>), 1);
+			// TODO move to Common/test/src/meta.cpp
+			STATIC_ASSERT_EQ((Common::tuple_find_v<Index<'i'>, tuple<>>), -1);
+			STATIC_ASSERT_EQ((Common::tuple_find_v<Index<'i'>, tuple<Index<'i'>>>), 0);
+			STATIC_ASSERT_EQ((Common::tuple_find_v<Index<'i'>, tuple<Index<'j'>>>), -1);
+			STATIC_ASSERT_EQ((Common::tuple_find_v<Index<'i'>, tuple<Index<'i'>, Index<'j'>>>), 0);
+			STATIC_ASSERT_EQ((Common::tuple_find_v<Index<'i'>, tuple<Index<'j'>, Index<'i'>>>), 1);
 
+#if 0 // duh, a is rank-2
 			static_assert(is_same_v<
 				GatherIndexesImpl<
 					decltype(a(i))::IndexTuple,
@@ -107,6 +109,7 @@ void test_Index() {
 					>
 				>
 			>);
+#endif
 
 			static_assert(is_same_v<
 				GatherIndexesImpl<
