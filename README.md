@@ -553,17 +553,8 @@ TODO:
 - or call 'Inner" "Next" or something?
 
 - ReplaceDim and ReplaceLocalDim that take a int pack and insert that many new dimensions into that index' location.
-- would be nice to insert the template to wedge into it, like `tuple<storage_int<3>, storage_sym<3>>`.
-	like `InsertIndexes<index, storage_vec<3>, storage_sym<3> >` etc,
-		which would insert the listed structure into the nest of tensors.  make sure 'index' was expanded, expand it otherwise.
-
-- shorthand, if you symmetrize an asym tensor then return a zero-tensor
-	same if you antisymmetrize a symmetric tensor.
-	`_ident` init to zero wouldn't work cuz it only works for rank-2 ... I'd need a new tensor for rank-N, and why not just return Sign::ZERO's for all instead of just off-diagonals.
 
 - To make `_ident` true to name, maybe make `_ident` default initialize its value to 1?
-
-- shorter names for `storage_*` for easier building tensors.
 
 - more tensor types:  maybe diagonalized rank-2 with N-DOF, where each diagonal element has a unique value.
 
@@ -577,10 +568,8 @@ TODO:
 - make `_symR::operator(int...)` use perfect-forwarding. 
 - make `_asymR::operator(int...)` be primary and `::operator(_vec<int,N>)` be secondary.
 
-- RemoveIthIndex of `_symR` or `_asymR` should preserve the (anti)symmetry of the remaining indexes.  Atm it just turns the whole thing into a expanded-tensor.  Tho I did handle this when ExpandIthIndex is called on the first or last of an (a)sym... 
-
 - eventually merge `_sym` and `_asym` with `_symR` and `_asymR` ... but don't til enough sorts/loops are compile-time.
-		
+
 - `operator+=` and other in-place operators for AntiSymRef
 
 - index notation  ...
@@ -589,9 +578,6 @@ TODO:
 	- and from that, index-multiply
 
 - make innerForIndexSeq which is a sequence mapping index to nesting #
-- make 'dimseq' which is a sequence of nested index dimensions.
-  - then construct dims() from it
-- maybe make a lot of other helper templates into just save all possible as a tuple/sequence, and getter for single elements.
 
 - C++23 operator[] can be variadic.
 	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().

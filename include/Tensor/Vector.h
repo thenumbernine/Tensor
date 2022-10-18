@@ -449,18 +449,21 @@ Scalar = NestedPtrTuple's last
 	requires (index >= 0 && index < rank)\
 	using ExpandIthIndex = tensorScalarTuple<Scalar, ExpandIthIndexStorage<index>>;\
 \
-	template<typename Seq>\
+	template<typename ThisDefer, typename Seq>\
 	struct ExpandIndexSeqImpl;\
-	template<int i1, int... is>\
-	struct ExpandIndexSeqImpl<std::integer_sequence<int, i1, is...>> {\
-		using type = typename ExpandIthIndex<i1>::template ExpandIndexSeqImpl<std::integer_sequence<int, is...>>::type;\
+	template<typename ThisDefer, int i1, int... is>\
+	struct ExpandIndexSeqImpl<ThisDefer, std::integer_sequence<int, i1, is...>> {\
+		using expanded = typename ThisDefer::template ExpandIthIndex<i1>;\
+		using type = typename expanded::template ExpandIndexSeqImpl<expanded, std::integer_sequence<int, is...>>::type;\
 	};\
-	template<>\
-	struct ExpandIndexSeqImpl<std::integer_sequence<int>> {\
-		using type = This;\
+	/* gcc has this error for template<> specializations within a class: "explicit specialization in non-namespace scope" */\
+	/* to fix it? just pad useless template parameters to prevent fully-specialized templates in the class */\
+	template<typename ThisDefer>\
+	struct ExpandIndexSeqImpl<ThisDefer, std::integer_sequence<int>> {\
+		using type = ThisDefer;\
 	};\
-	template<typename Seq>\
-	using ExpandIndexSeq = typename ExpandIndexSeqImpl<Seq>::type;\
+	template<typename Seq, typename ThisDefer = This>\
+	using ExpandIndexSeq = typename ExpandIndexSeqImpl<ThisDefer, Seq>::type;\
 \
 	template<int... is>\
 	using ExpandIndex = ExpandIndexSeq<std::integer_sequence<int, is...>>;\
@@ -504,23 +507,25 @@ Scalar = NestedPtrTuple's last
 \
 	/* RemoveIndexSeqImpl assumes Seq is a integer_sequence<int, ...> */\
 	/*  and assumes it is already sorted in descending order. */\
-	template<typename Seq>\
+	template<typename ThisDefer, typename Seq>\
 	struct RemoveIndexSeqImpl;\
-	template<int i1, int... is>\
-	struct RemoveIndexSeqImpl<std::integer_sequence<int, i1, is...>> {\
-		using type = typename RemoveIthIndex<i1>::template RemoveIndexSeqImpl<std::integer_sequence<int, is...>>::type;\
+	template<typename ThisDefer, int i1, int... is>\
+	struct RemoveIndexSeqImpl<ThisDefer, std::integer_sequence<int, i1, is...>> {\
+		using removed = typename ThisDefer::template RemoveIthIndex<i1>;\
+		using type = typename removed::template RemoveIndexSeqImpl<removed, std::integer_sequence<int, is...>>::type;\
 	};\
-	template<int i1>\
-	struct RemoveIndexSeqImpl<std::integer_sequence<int, i1>> {\
+	template<typename ThisDefer, int i1>\
+	struct RemoveIndexSeqImpl<ThisDefer, std::integer_sequence<int, i1>> {\
 		using type = RemoveIthIndex<i1>;\
 	};\
-	template<>\
-	struct RemoveIndexSeqImpl<std::integer_sequence<int>> {\
-		using type = This;\
+	template<typename ThisDefer>\
+	struct RemoveIndexSeqImpl<ThisDefer, std::integer_sequence<int>> {\
+		using type = ThisDefer;\
 	};\
 	/* RemoveIndexSeq sorts the list, so you don't need to worry about order of arguments */\
-	template<typename Seq>\
+	template<typename Seq, typename ThisDefer = This>\
 	using RemoveIndexSeq = typename RemoveIndexSeqImpl<\
+		ThisDefer,\
 		Common::seq_reverse_t<\
 			Common::seq_sort_t<\
 				Seq\
