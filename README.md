@@ -444,9 +444,10 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	I haven't read enough of the paper on FTensor / copied enough that I am sure my implementation's performance is suffering compared to it. 
 
 - Self-referencing is fine
-- Index permtuations are fine
-- Scalar operations are fine
+- Index permutations are fine
+- Tensor/Scalar and Scalar/Tensor operations are fine
 - Tensor/Tensor add sub and per-element divide is fine.
+- Traces are fine.  Traces producing a scalar can be used immediately, i.e. `float3x3 a; a(i,i);` will produce a float.  Traces producing a tensor will still need to be `.assign()`ed.
 - Still working on tensor-tensor multiplication.
 - LHS typed assignment:
 ```c++
