@@ -470,7 +470,8 @@ auto makeAsym(T const & t) {
 template<typename A, typename B>
 requires IsBinaryTensorOp<A,B>
 auto wedge(A const & a, B const & b) {
-	return makeAsym(outer(a,b));
+	auto aob = outer(a,b);
+	return makeAsym(aob) * constexpr_factorial(aob.rank);;
 }
 
 // Hodge dual

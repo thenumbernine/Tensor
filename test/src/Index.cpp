@@ -432,33 +432,46 @@ void test_Index() {
 		auto c = a(i) * b(i);
 		TEST_EQ(c, 52);
 	}
-// TODO DO enforce dimension constraints between expression operations
-// and then require Index to specify subrank, or just grab the subset<> of the tensor.
-// TODO sub-tensor casting, not just sub-vector.  return tensor-of-refs. 	
+	{
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		Tensor::Index<'k'> k;
+		Tensor::float3s3 a;
+		Tensor::_tensorx<float, 3, -'s', 3> b;
+		auto d = (a(i,j) * b(j,k,k)).assignI();
+		static_assert(std::is_same_v<decltype(d), Tensor::float3>);
+	}
+	{
+		//wedge product
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		auto b = Tensor::float3(1,2,3);
+		auto c = Tensor::float3(4,5,6);
+		auto a = (b(i) * c(j) - b(j) * c(i)).assign(i,j);
+		TEST_EQ(a, wedge(b,c));
+	}
+	{
+		//inner product
+		Tensor::Index<'i'> i;
+		auto b = Tensor::float3(1,2,3);
+		auto c = Tensor::float3(4,5,6);
+		auto d = b(i) * c(i);
+		TEST_EQ(d, dot(b,c));
+	}
+	{
+		//matrix multiplication
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		auto a = Tensor::float3x3({{1,2,3},{4,5,6},{7,8,9}});
+		auto b = Tensor::float3(1,2,3);
+		auto c = (a(i,j) * b(j)).assignI();
+		TEST_EQ(c, a * b);
+	}
 #if 0 // TODO
 	{
-		Tensor::double3x3 a;
-
-		//outer product
-		a(i,j) = b(i) * c(j);
-
-		for (int i = 0; i < 3; ++i) {
-			for (int j = 0; j < 3; ++j) {
-				TEST_EQ(a(i,j), b(i) * c(j));
-			}
-		}
-
-		//exterior product
-		a(i,j) = b(i) * c(j) - b(j) * c(i);
-
-		//inner product?
-		real dot = b(i) * c(i);
-
-		//matrix multiplication
-		c(i) = a(i,j) * b(j);
-	
-		//discrete differentiation?
-		c(i) = (a(i+1) - a(i-1)) / (2 * dx)
+		//TODO? discrete differentiation?
+		// or is that too crazy?
+		//c(i) = (a(i+1) - a(i-1)) / (2 * dx)
 	}
 #endif
 }
