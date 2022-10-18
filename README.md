@@ -479,6 +479,9 @@ auto b = ((a(i,j) - a(j,i)) / 2.f).assignI();
 ```
 - RHS type assignment right now will use an expanded tensor, so storage optimizations get lost:
 
+Maybe I will merge assign, assignR, assignI into a single ugly abomination which is just the call operator, 
+such that if you pass it a specific template arg (can you do that?) it uses it as a return type, otherwise it infers from the indexes you pass it, otherwise if no indexes then it just uses the current index form of the expression as-is.
+
 
 ### Familiar Types
 
