@@ -292,7 +292,7 @@ struct IndexAccess {
 	using OutputTensorType = tensorScalarSeq<Scalar, dimseq>;
 	
 	//"rank" of this expression is the # of assignment-indexes ... excluding the sum-indexes
-	static constexpr auto rank = AssignIndexSeq::size();
+	static constexpr int rank = AssignIndexSeq::size();
 	// TODO "intOutputN" vs "intInputN = InputTensorType::intN"
 	using intN = _vec<int, rank>;
 
@@ -504,52 +504,55 @@ logical_or
 logical_not
 */
 
+// ok clang works for std::plus etc
+// but gcc doesn't like it because of its operator()
+
 // tensor + tensor
 
 // used for + - / but not *
-template<typename A, typename B, template<typename> typename op>
-requires IsMatchingRankExpr<A, B>
-struct TensorTensorExpr {
-	static constexpr bool isIndexExprFlag = {};
-	using This = TensorTensorExpr;
-	static constexpr auto rank = A::rank;
-	using AssignIndexTuple = typename A::AssignIndexTuple;
-	using dimseq = typename A::dimseq;
-	using intN = _vec<int,rank>;
-	using Scalar = decltype(op()(typename A::Scalar(), typename B::Scalar()));
-	TENSOR_EXPR_ADD_ASSIGNR()
-	TENSOR_EXPR_ADD_ASSIGN()
-	
-	A const & a;
-	B const & b;
-	
-	TensorTensorExpr(A const & a_, B const & b_) : a(a_), b(b_) {}
 
-	template<typename DstIndexTuple, typename DstDimSeq>
-	constexpr Scalar read(intN const & i) const {
-		return op<Scalar>()(
-			// permute a's to match dst's ...
-			a.template read<DstIndexTuple, DstDimSeq>(i),
-			// TODO here gotta permute b's to match a's ... to match dst's
-			b.template read<DstIndexTuple, DstDimSeq>(i)
-		);
-	}
-};
-
-#define TENSOR_TENSOR_EXPR_OP(op, optype)\
+#define TENSOR_TENSOR_EXPR_OP(name, op)\
+template<typename A, typename B>\
+requires IsMatchingRankExpr<A, B>\
+struct TensorTensorExpr##name {\
+	static constexpr bool isIndexExprFlag = {};\
+	using This = TensorTensorExpr##name;\
+	static constexpr auto rank = A::rank;\
+	using AssignIndexTuple = typename A::AssignIndexTuple;\
+	using dimseq = typename A::dimseq;\
+	using intN = _vec<int,rank>;\
+	using Scalar = decltype(typename A::Scalar() op typename B::Scalar());\
+	TENSOR_EXPR_ADD_ASSIGNR()\
+	TENSOR_EXPR_ADD_ASSIGN()\
+	\
+	A const & a;\
+	B const & b;\
+	\
+	TensorTensorExpr##name(A const & a_, B const & b_) : a(a_), b(b_) {}\
+\
+	template<typename DstIndexTuple, typename DstDimSeq>\
+	constexpr Scalar read(intN const & i) const {\
+		return\
+			/* permute a's to match dst's ... */\
+			a.template read<DstIndexTuple, DstDimSeq>(i)\
+			/* permute b's to match dst's */\
+			op b.template read<DstIndexTuple, DstDimSeq>(i)\
+		;\
+	}\
+};\
 template<typename A, typename B>\
 requires IsMatchingRankExpr<A, B>\
 decltype(auto) operator op(A const & a, B const & b) {\
-	return TensorTensorExpr<A, B, optype>(a,b);\
+	return TensorTensorExpr##name<A, B>(a,b);\
 }
 
 // TODO ensure A's dims == B's dims
 // but that means recalculating dims and rank for IndexAccess and its expression-trees based on its 
 // and direct assignment doesn't assert this -- instead it bounds-checks ... soo ...
 //static_assert(A::TensorType::dims() == B::TensorType::dims());
-TENSOR_TENSOR_EXPR_OP(+, std::plus)
-TENSOR_TENSOR_EXPR_OP(-, std::minus)
-TENSOR_TENSOR_EXPR_OP(/, std::divides)
+TENSOR_TENSOR_EXPR_OP(Add,+)
+TENSOR_TENSOR_EXPR_OP(Sub,-)
+TENSOR_TENSOR_EXPR_OP(Div,/)
 
 
 // tensor * tensor
