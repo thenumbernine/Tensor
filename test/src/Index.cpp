@@ -381,15 +381,30 @@ void test_Index() {
 		>);
 	}
 #endif
-#if 0	// trace of tensors ... doesn't use references but instead uses cached intermediate tensors stored in the expression-tree
+#if 1	// trace of tensors ... doesn't use references but instead uses cached intermediate tensors stored in the expression-tree
 	{
 		Tensor::Index<'i'> i;
-		Tensor::float3x3 a;
+		auto a = Tensor::float3x3([](int i, int j) -> float { return 1 + j + 3 * i; });
 		// zero indexes == scalar result of a trace
 		//  Should IndexAccess need to wrap a fully-traced object?  or should it immediately become a Scalar?
 		//  I think the latter cuz why wait for .assign()?
-		auto b = a(i,i);
-		static_assert(std::is_same_v<decltype(b), float>);
+		auto tra = a(i,i);
+		static_assert(std::is_same_v<decltype(tra), float>);
+		TEST_EQ(tra, 15);
+	}
+	{
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		auto a = Tensor::_tensorr<float, 3, 3>();
+		auto b = a(i,i,j).assignR<Tensor::float3>(j);
+		static_assert(std::is_same_v<decltype(b), Tensor::float3>);
+	}
+	{
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		auto a = Tensor::_tensorr<float, 3, 3>();
+		auto b = a(i,i,j).assign(j);
+		static_assert(std::is_same_v<decltype(b), Tensor::float3>);
 	}
 #endif
 // TODO DO enforce dimension constraints between expression operations
