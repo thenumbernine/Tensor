@@ -519,13 +519,19 @@ void test_Index() {
 		static_assert(is_same_v<decltype(gu), double4s4>);
 		ECHO(gu);
 		// ehhh symbolic differentiation?
+#if 0 // manual dg	
 		auto dg = _tensorx<double, 4, -'s', 4>();
 		dg(1,0,0) = -R/(r*r);
 		dg(1,1,1) = -R*((R-r)*(R-r));
 		dg(1,2,2) = 2*r;
 		dg(1,3,3) = 2*r*sin(theta)*sin(theta);
 		dg(2,3,3) = 2*r*r*sin(theta)*cos(theta);
-		ECHO(dg);
+		ECHO(dg); // dg :: {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {-0.25, 0, -1, 0, 0, 4, 0, 0, 0, 0.0796594}, {0, 0, 0, 0, 0, 0, 0, 0, 0, -1.11766}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+
+#else	//numeric dg
+		auto dg = diff(gx, x, .01);
+		ECHO(dg); // dg :: {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {-0.250006, 0, -1.0001, 0, 0, 4, 0, 0, 0, 0.0199149}, {0, 0, 0, 0, 0, 0, 0, 0, 0, -0.558794}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+#endif
 #if 0	// assign, naive storage
 		auto connl = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2).assign(i,j,k);
 		static_assert(is_same_v<decltype(x), _tensorx<double, 4, 4, 4>>);
@@ -545,6 +551,7 @@ void test_Index() {
 		auto conn = (gu(i,l) * connl(l,j,k)).assign(i,j,k);
 		ECHO(conn);
 		// once again ...
+		// TODO move last index to first, then swap with diff function()
 		auto dconn = _tensorx<double, 4, -'s', 4, 4>();
 		dconn(0,0,1,1) = R*(R-2*r)/(2*(R*R*r*r - 2*R*r*r*r + r*r*r*r));
 		//dconn(0,1,0,1) = R*(R-2*r)/(2*(R*R*r*r - 2*R*r*r*r + r*r*r*r));
