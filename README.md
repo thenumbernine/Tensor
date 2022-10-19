@@ -1,6 +1,7 @@
 ## Differential Geometry Tensor Library
 
 [Donate via Stripe](https://buy.stripe.com/00gbJZ0OdcNs9zi288)
+
 [![Donate via Paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=KYWUWS86GSFGL)
 
 After using fixed-dimension vectors and tensors for a few decades, and having a few goes at designing a C++ math library around them,
