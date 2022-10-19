@@ -1,6 +1,7 @@
 ## Differential Geometry Tensor Library
 
-[Donate via Stripe](https://buy.stripe.com/00gbJZ0OdcNs9zi288)
+[![Donate via Stripe](https://img.shields.io/badge/Donate-Stripe-green.svg)](https://buy.stripe.com/00gbJZ0OdcNs9zi288)
+[![Donate via Paypal](https://img.shields.io/badge/Donate-Paypal-green.svg)](https://buy.stripe.com/00gbJZ0OdcNs9zi288)
 
 After using fixed-dimension vectors and tensors for a few decades, and having a few goes at designing a C++ math library around them,
 and then getting into differential geometry and relativity, and trying to design a C++ math library around that,
