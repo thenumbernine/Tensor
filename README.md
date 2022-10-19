@@ -1,6 +1,7 @@
 ## Differential Geometry Tensor Library
 
 [![Donate via Stripe](https://img.shields.io/badge/Donate-Stripe-green.svg)](https://buy.stripe.com/00gbJZ0OdcNs9zi288)<br>
+[![Donate via Bitcoin](https://img.shields.io/badge/Donate-Bitcoin-green.svg)](bitcoin:37fsp7qQKU8XoHZGRQvVzQVP8FrEJ73cSJ)<br>
 [![Donate via Paypal](https://img.shields.io/badge/Donate-Paypal-green.svg)](https://buy.stripe.com/00gbJZ0OdcNs9zi288)
 
 After using fixed-dimension vectors and tensors for a few decades, and having a few goes at designing a C++ math library around them,
@@ -33,10 +34,10 @@ Example of using a totally-antisymmetric tensor for implementing the cross-produ
 ```c++
 float3 cross(float3 a, float3 b) {
 	// Create the Levi-Civita totally-antisymmetric permutation tensor for dim 3 rank 3 ... using up a single float of memory:
-	constexpr auto LC = float3a3a3(1);	
+	constexpr auto LC = float3a3a3(1);
 	static_assert(sizeof(LC) == sizeof(float));
 	// cross(a,b)_i = ε_ijk * a^j * b^k
-	return (LC * b) * a;					
+	return (LC * b) * a;
 }
 ```
 
@@ -44,11 +45,11 @@ Same thing but using exterior algebra:
 ```c++
 float3 cross(float3 a, float3 b) {
 	// Create a 3x3 antisymmetric
-	auto c = a.wedge(b);	
+	auto c = a.wedge(b);
 	// ... storing only 3 floats. mind you c[i][j] , 0 <= i < 3, 0 <= j < 3 are all accessible
 	static_assert(sizeof(a) == 3*sizeof(float));
 	// Return the dual, mapping those 3 antisymmetric rank-2 floats onto 3 rank-1 floats:
-	return hodgeDual(c);	
+	return hodgeDual(c);
 }
 ```
 
@@ -56,12 +57,12 @@ Example of using a totally-antisymmetric tensor to construct a basis perpendicul
 ```c++
 float2x3 basis(float3 n) {
 	// Return a 3x3 antisymmetric, only storing 3 values, equivalent of initializing a matrix with the cross products of 'n' and each basis vector
-	auto d = hodgeDual(n);	
+	auto d = hodgeDual(n);
 	static_assert(sizeof(d) == 3*sizeof(float));
-	// Done.  
-	// We now have 3 vectors perpendicular to 'n' stored the 3 rows/cols of 'd'.  
+	// Done.
+	// We now have 3 vectors perpendicular to 'n' stored the 3 rows/cols of 'd'.
 	// But maybe 'n' is closer to one of them, in which case the cross tends to zero, so best to pick the largest two:
-	auto sq = float3([&d](int i) -> float { return d(i).lenSq(); }); 
+	auto sq = float3([&d](int i) -> float { return d(i).lenSq(); });
 	auto n2 = (
 			(sq.x > sq.y)
 			? ((sq.x > sq.z) ? d.x : d.z)
@@ -73,18 +74,18 @@ float2x3 basis(float3 n) {
 
 Example of using the Hodge dual to compute the inner product:
 ```c++
-auto inner(auto const & a, auto const & b) 
+auto inner(auto const & a, auto const & b)
 //here 'isSquare' means all dimension sizes match
 requires (a.dims() == b.dims() && a.isSquare && b.isSquare)
 {
 	//totally-antisymmetric tensors are space-optimized,
 	//so the storage of bstar will always be < the storage of b
-	auto bstar = b.hodgeDual();	
-	//at this point c should be a n-form for dimension n, 
+	auto bstar = b.hodgeDual();
+	//at this point c should be a n-form for dimension n,
 	//which will take up a single numeric value (while representing n distinct tensor indexes)
-	auto c = a.wedge(bstar);	
+	auto c = a.wedge(bstar);
 	//return c's dual, which is a 0-form scalar
-	return c.hodgeDual();		
+	return c.hodgeDual();
 }
 ```
 
@@ -110,13 +111,13 @@ auto KD = LC_lower.outer(LC.upper);
 ```
 KD is now a rank-`2*dim` tensor of dimension `dim`.
 Once again it is represented by just a single float.
-Take note of the order of your outer product and therefore the order of your result's indexes.  In this case the generalized-Kronecker-delta lower indexes are first. 
+Take note of the order of your outer product and therefore the order of your result's indexes.  In this case the generalized-Kronecker-delta lower indexes are first.
 
 Example of index notation:
 ```c++
-Index<'i'> i; 
-Index<'j'> j; 
-Index<'k'> k; 
+Index<'i'> i;
+Index<'j'> j;
+Index<'k'> k;
 auto a = float3x3({{1,2,3},{4,5,6},{7,8,9}});
 // lazy-evaluation of swizzles, addition, subtraction
 a(i,j) = .5 * (a(i,j) + a(j,i));
@@ -209,7 +210,7 @@ Tensor/tensor operator result storage works the same as `_sym`:
 The size of a totally-antisymmetric tensor storage is
 the number of unique permutations of an antisymmetric tensor of dimension `d` and rank `r`,
 which is $\left( \begin{matrix} d \\ r \end{matrix} \right)$.
-This means the Levi-Civita permutation tensor takes up exactly 1 float.  
+This means the Levi-Civita permutation tensor takes up exactly 1 float.
 Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
 
 Tensor/tensor operator result storage works the same as `_asym`:
@@ -241,7 +242,7 @@ Sorry GLSL, Cg wins this round:
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
 - `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 - `_tensorx<type, description...>` = construct a tensor using the following arguments to describe its indexes storage optimization:
-- - any number = an index of this dimension. 
+- - any number = an index of this dimension.
 - - `-'z', dim` = use a rank-1 zero-tensor of dimension `dim`.
 - - `-'i', dim` = use a rank-2 identity-tensor of dimension `dim`.
 - - `-'s', dim` = use a rank-2 symmetric-tensor of dimension `dim`.
@@ -368,15 +369,15 @@ Swizzling will return a vector-of-references:
 ```c++
 auto a = float3(1,2,3);
 // The swizzle methods themselves returns a vector-of-references.
-auto bref = x.yzx();	
-// Writing values?  TODO. Still in the works ... 
+auto bref = x.yzx();
+// Writing values?  TODO. Still in the works ...
 // bref = float3(4,5,6); // In a perfect world this would assign swizzled values to x ... for now it just errors.  Something about the complications of defining objects' ctors and operator='s, and having the two not fight with one another.
 // Reading values works fine:
 float3 b = x.yzx();
 ```
 
 ### Functions
-Functions are provided as `Tensor::` namespace or as member-functions where `this` is automatically padded into the first argument. 
+Functions are provided as `Tensor::` namespace or as member-functions where `this` is automatically padded into the first argument.
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	- rank-N x rank-N -> rank-0.
 	$$dot(a,b) := a^I \cdot b\_I$$
@@ -435,8 +436,8 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
 
 ### Index Notation
-- `Index<char>` = create an index iterator object.  Yeah I did see FTensor/LTensor doing this and thought it was a good idea. 
-	I haven't read enough of the paper on FTensor / copied enough that I am sure my implementation's performance is suffering compared to it. 
+- `Index<char>` = create an index iterator object.  Yeah I did see FTensor/LTensor doing this and thought it was a good idea.
+	I haven't read enough of the paper on FTensor / copied enough that I am sure my implementation's performance is suffering compared to it.
 
 - Index permutations are lazy-evaluated.
 - Tensor/Scalar and Scalar/Tensor operations are lazy-evaluated.
@@ -467,7 +468,7 @@ auto b = ((a(i,j) - a(j,i)) / 2.f).assignI();
 ```
 - RHS type assignment right now will use an expanded tensor, so storage optimizations get lost:
 
-Maybe I will merge assign, assignR, assignI into a single ugly abomination which is just the call operator, 
+Maybe I will merge assign, assignR, assignI into a single ugly abomination which is just the call operator,
 such that if you pass it a specific template arg (can you do that?) it uses it as a return type, otherwise it infers from the indexes you pass it, otherwise if no indexes then it just uses the current index form of the expression as-is.
 
 ### Tensor properties:
@@ -562,7 +563,7 @@ This project depends on the "Common" project, for Exception, template metaprogra
 
 Any code lifted from a stackexchange or anywhere else will have an accompanying comment of where it came from.
 
-Equally poorly referenced are the differential geometry notes of mine that I am basing this library on, found here: [https://thenumbernine.github.io/](https://thenumbernine.github.io/) 
+Equally poorly referenced are the differential geometry notes of mine that I am basing this library on, found here: [https://thenumbernine.github.io/](https://thenumbernine.github.io/)
 
 Likewise these notes' math references can be found here: [https://thenumbernine.github.io/math/Differential%20Geometry/sources.html](https://thenumbernine.github.io/math/Differential%20Geometry/sources.html).
 
@@ -610,7 +611,7 @@ TODO:
 - might do some constexpr loop unrolling stuff maybe.
 - test case write tests should be writing different values and verifying
 
-- make `_symR::operator(int...)` use perfect-forwarding. 
+- make `_symR::operator(int...)` use perfect-forwarding.
 - make `_asymR::operator(int...)` be primary and `::operator(_vec<int,N>)` be secondary.
 
 - eventually merge `_sym` and `_asym` with `_symR` and `_asymR` ... but don't til enough sorts/loops are compile-time.
