@@ -88,7 +88,7 @@ requires (a.dims() == b.dims() && a.isSquare && b.isSquare)
 Example: Implementing the Levi-Civita totally-antisymmetric tensor in an orthonormal metric:
 ```c++
 // the 'NaR' suffix stands for N-dimensional, totally-antisymmetric, R-rank, and expects <N,R> to come in the template arguments.
-auto LC = floatNaR(1);
+auto LC = floatNaR<dim,dim>(1);
 // uses 1 whole float of storage.
 ```
 
@@ -196,7 +196,7 @@ Tensor/tensor operator result storage optimizations:
 - rank-N
 The size of a totally-symmetric tensor storage is
 the number of unique permutations of a symmetric tensor of dimension `d` and rank `r`,
-which is `(d + r - 1) choose r`.
+which is $\left( \begin{matrix} d + r - 1 \\ r \end{matrix} \right)$.
 
 Tensor/tensor operator result storage works the same as `_sym`:
 
@@ -205,22 +205,34 @@ Tensor/tensor operator result storage works the same as `_sym`:
 - rank-N
 The size of a totally-antisymmetric tensor storage is
 the number of unique permutations of an antisymmetric tensor of dimension `d` and rank `r`,
-which is `d choose r`.
+which is $\left( \begin{matrix} d \\ r \end{matrix} \right)$.
 This means the Levi-Civita permutation tensor takes up exactly 1 float.  
 Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
 
 Tensor/tensor operator result storage works the same as `_asym`:
 
-### Accessors:
-An accessor is an object used for intermediate access to a tensor when it is not fully indexed.  For example, if you construct an object `auto a = float3s3()` to be a rank-2 symmetric 3x3 matrix,
-and you decided to read only a single index: `a[i]`, the result will be an Accessor object which merely wraps the owner.  From here the Accessor can be indexed a second time: `a[i][j]` to return a reference to the `_sym`'s variable.
+### Familiar Types
 
-These Accessor objects can be treated like tensors for almost all intents and purposes.
-They can be passed into other tensor math operations, tensor constructors (and by virtue of this, casting).
-I even have tensor member methods that call back into the `Tensor::` namespace as I do other tensors.
-
-I still don't have `+= -= *= /=` math operators for Accessors.  This is because they are tenuous enough for the non-Accessor tensor classes themselves
-(since the non-= operator will often produce a different return type than the lhs tensor, so `a op = b; auto c = a;` in many cases cannot reproduce identical behavior to `auto c = a op b`.
+Sorry GLSL, Cg wins this round:
+- `floatN<N>` = N-dimensional float vector.
+- `float2, float3, float4` = 1D, 2D, 3D float vector.
+- `float2x2, float2x3, float2x4, float3x2, float3x3, float3x4, float4x2, float4x3, float4x4` = matrix of floats.
+- `float2i2, float3i3, float4i4` = identity matrix of floats.
+- `float2s2, float3s3, float4s4` = symmetric matrix of floats.
+- `float2s2s2 float3s3s3 float4s4s4 float2s2s2s2 float3s3s3s3 float4s4s4s4` = totally-symmetric tensor of floats.
+- `float2a2, float3a3, float4a4` = antisymmetric matrix of floats.
+- `float3a3a3 float4a4a4 float4a4a4a4` = totally-antisymmetric tensor of floats.
+- `floatNxN<dim>` = matrix of floats of size `dim`.
+- `floatNiN<dim>` = identity matrix of float of size `dim`.
+- `floatNsN<dim>` = symetric matrix of floats of size `dim`.
+- `floatNaN<dim>` = antisymmetric matrix of floats of size `dim`.
+- `floatNsR<dim, rank>` = totally-symmetric tensor of arbitrary dimension and rank.
+- `floatNaR<dim, rank>` = totally-antisymmetric tensor of arbitrary dimension and rank.
+- ... same with `bool, char, uchar, short, ushort, int, uint, float, double, ldouble, size, intptr, uintptr`.
+- `_vec2<T>, _vec3<T>, _vec4<T>` = templated fixed-size vectors.
+- `_mat2x2<T>, _mat2x3<T>, _mat2x4<T>, _mat3x2<T>, _mat3x3<T>, _mat3x4<T>, _mat4x2<T>, _mat4x3<T>, _mat4x4<T>` = templated fixed-size matrices.
+- `_sym2<T>, _sym3<T>, _sym4<T>` = templated fixed-size symmetric matrices.
+- `_asym2<T>, _asym3<T>, _asym4<T>` = templated fixed-size antisymmetric matrices.
 
 ### Tensor creation:
 - `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
@@ -248,7 +260,7 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 - `tensorScalarTuple<Scalar, StorageTuple>` = same as `_tensori` except the storage arguments are passed in a tuple.
 - `tensorScalarSeq<Scalar, integer_sequence>` = same as `_tensor` except the dimensions are passed as a sequence.
 
-### Tensor operators
+### Tensor Operators
 - `operator += -= /=` = In-place per-element operations.
 - `operator == !=` = Tensor comparison.  So long as the rank and dimensions match then this should evaluate successfully.
 - `operator + - /` = Scalar/tensor, tensor/scalar, per-element tensor/tensor operations.
@@ -263,84 +275,48 @@ I still don't have `+= -= *= /=` math operators for Accessors.  This is because 
 		- `_mat * _vec` as column-multiplication
 		- `_mat * _mat` as matrix-multiplication.
 
-### Tensor properties:
-- `::This` = The current type.  Maybe not useful outside the class definition, but pretty useful within it when defining inner classes.
-- `::Scalar` = Get the scalar type used for this tensor.
-		Mind you, wrt the tensor library, 'Scalar' refers to the nested-most Inner class that is not a tensor.
-		You could always use a vector-of-functions and I won't try to stop you, so long as you implement the necessary functions to perform whatever operations you are doing with it.
-- `::Inner` = The next most nested vector/matrix/symmetric.
-- `::Template<T, N[, R]>` = The template of this class, useful for nesting operations.
-- `::rank` = For determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
-- `::dimeq` = Sequence mapping the i'th index to the dimension of the i'th index.
-- `::dim<i>` = Get the i'th dimension size , where i is from 0 to rank-1.
-- `::dims` = Get a int-vector with all the dimensions.
-- `::isSquare` = true if all dimensions match, false otherwise.  Yes that means vectors are square.  Maybe I'll change the name.
-- `::localDim` = Get the dimension size of the current class, equal to `dim<0>`.
-- `::numNestings` = Get the number of template-argument-nested classes.  Equivalent to the number of Inner's in `tensor::Inner::...::Inner`.
-- `::countseq` = A sequence of the storage size of each nesting.
-- `::count<i>` = Get the storage size of the i'th nested class.  i is from 0 to numNestings-1.
-- `::localCount` = Get the storage size of the current class, equal to `count<0>`.
-- `::totalCount` = The product of all counts of all nestings.  This times `sizeof(Scalar)` will equal the sizeof `This` tensor.
-- `::LocalStorage` = The associated storage type used for building this tensor's nesting with `_tensori`.
-- `::StorageTuple` = A tuple of all nestings' `LocalStorage`, such that `_tuplei<Scalar, ` ... then all types of `StorageTuple` ... `>` will produce This.  Equivalently, `tensorScalarTuple<Scalar, StorageTuple>` will produce `This`.
-- `::NestedPtrTuple` = Tuple of pointers to the `Nested<i>`'th classes, where the 0'th is `This`, i.e., the current class, and the `numNestings`'th is the `Scalar`.  I had to use pointers because this is a member type, so it cannot contain itself.
-- `::NestedPtrTensorTuple` = Same as above but without the last `Scalar` element, such that all its types are tensor types.
-- `::Nested<i>` = Get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
-- `::numNestingsToIndex<i>` = Gets the number of nestings deep that the index 'i' is located, where i is from 0 to rank.
-	`numNestingsToIndex<0>` will always return 0, `numNestingsToIndex<rank>` will always return `numNestings`.
-- `::indexForNesting<i>` = Get the index of the i'th nesting, where i is from 0 to `numNestings`.  `indexForNesting<numNestings>` will produce `rank`.
-- `::InnerPtrTuple` = Tuple mapping the i'th tuple element to the i'th index associated nested Inner type. Tuple size is `rank`+1 (the +1 is for Scalar at the end).
-- `::InnerPtrTemplateTuple` = Same as above but without Scalar at the end.  Useful for tuple operations.
-- `::InnerForIndex<i>` = Get the type associated with the i'th index, where i is from 0 to rank.  Equivalent to getting the i'th element from `InnerPtrTuple`.
-	Equivalent to `::Nested<numNestingsToIndex<i>>`  `_vec`'s 0 will point to itself, `_sym`'s and `_asym`'s 0 and 1 will point to themselves, all others drill down.
-- `::ReplaceInner<T>` = Replaces this tensor's Inner with a new type, T.
-- `::ReplaceNested<i,T>` = Replace the i'th nesting of this tensor with the type 'T', where i is from 0 to numNestings-1.
-- `::ReplaceScalar<T>` = Create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
-	Should be equivalent to `This::ReplaceNested<This::numNestings, T>`.
-- `::ReplaceLocalDim<n>` = Replaces this tensor's localDim with a new dimension, n.
-- `::ReplaceDim<i,n>` = Replace the i'th index dimension with the dimension, n.  If the dimensions already match then nothing is done.  If not then the stroage at this index is expanded.
-- `::ExpandLocalStorage<i>` = Produce a tuple of storage types representing our type with the i'th local index undone from storage optimizations, where i is from 0 to `localRank-1`.  Un-expanded indexes storage is still preserved.
-- `::ExpandIthIndexStorage<i>` = Produce a tuple of storage types but with its i'th index expanded, where i is from 0 to `rank-1`.
-- `::ExpandIthIndex<i>` = Produce a tensor type with the storage at the i'th index replaced with expanded storage.
-	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
-	So a `_sym`'s ExpandIthIndex<0> or <1> would produce a `_vec`-of-`_vec`, a `_sym`-of-`_vec`'s ExpandIthIndex<2> would return the same type, and a `_vec`-of-`_sym`'s ExpandIthIndex<0> would return the same type.
-- `::ExpandIndex<i1, i2, ...>` = Expand the all indexes listed.
-- `::ExpandIndexSeq<std::integer_sequence<int, i1...>>` = Expands the indexes in the `integer_sequence<int, ...>`.
-- `::ExpandAllIndexes<>` = Produce a type with all storage replaced with expanded storage.
-	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
-	Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `_tensori<Scalar, dim1, ..., dimN>`.
-- `::RemoveIthNestedStorage<i>` = Produce a tuple of storage types but with the i'th element removed.
-- `::RemoveIthNesting<i>` = Produce a tensor but with the i'th nesting removed.
-- `::RemoveIthIndexStorage<i>` = Produce a tuple of storage types but with the i'th index expanded and i'th index storage removed.
-- `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into `_vec`s.  Then removes it.
-- `::RemoveIndex<i1, i2, ...>` = Removes all the indexes, `i1` ..., from the tensor.
-- `ReplaceWithZero<T>` = Returns a type with matching rank and dimensions, but all nestings are zeroes.  The result is fully-expanded so the nesting count matches the rank.
-
-### Template Helpers
-- `is_tensor_v<T>` = is it any tensor storage type?
-- `is_vec_v<T>` = is it a `_vec<T,N>`?
-- `is_zero_v<T>` = is it a `_zero<T,N>`?
-- `is_ident_v<T>` = is it a `_ident<T,N>`?
-- `is_sym_v<T>` = is it a `_sym<T,N>`?
-- `is_asym_v<T>` = is it a `_asym<T,N>`?
-- `is_symR_v<T>` = is it a `_symR<T,N>`?
-- `is_asymR_v<T>` = is it a `_asymR<T,N>`?
-- `is_quat_v<T>` = is it a `_quat<T>`?
-
 ### Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.
 - `(s)` = initialize with all elements set to `s`.
 - `(x, y), (x, y, z), (x, y, z, w)` for dimensions 1-4, initialize with scalar values.
+- `{...}` = initialize with `initializer_list`.
+- `(integer_sequence<T>)` = initialize with an integer-sequence.
 - `(function<Scalar(int i1, ...)>)` = initialize with a lambda that accepts the index of the matrix as a list of int arguments and returns the value for that index.
 - `(function<Scalar(intN i)>)` = initialize with a lambda, same as above except the index is stored as an int-vector in `i`.
 - `(tensor t)` = initialize from another tensor.  Truncate dimensions.  Uninitialized elements are set to {}.
 
 ### Overloaded Subscript / Array Access
+Array access, be it by `()`, `[]`, by integer sequence or by int-vectors, is equivalent to accessing the respective elements of the tensor.
 - `(int i1, ...)` = dereference based on a list of ints.  In the case of `_tensori` or `_tensorr`, i.e. `_vec<_vec<_vec<...>>>` storage, this means $a\_{ij}$ in math = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
-	Mind you that in the case of optimized storage being used this means the `[][]` indexing __DOES NOT MATCH__ the `.s[].s[]` indexing.
-	In the case of optimized storage, for intermediate-indexes, an Accessor wrapper object will be returned.
+	
+In the case of optimized storage it can potentially differ with accessing the raw data directly, and for this reason reading the `.s[i]` field will not always produce the same value as reading the `[i]` field.
+In the case of `zero, ident, asym` there are fields that provide wrapper objects which are either represent zero or the negative of another value within the tensor storage.
+```c++
+auto a = float3a3();	//initialize 3x3 antisymmetric of floats
+auto a01 = a(0,1);		//returns a float value
+auto a10 = a(1,0);		//returns an AntiSymRef value which wraps a reference to stored a(0,1), and reads and writes its negative.
+```
+
+### Accessors:
+In the case of optimized storage being used this means the `[][]` indexing does not match the `.s[].s[]` indexing.
+For intermediate-indexes an Accessor wrapper object will be returned.
+```c++
+auto a = float3s3();	//initialize 3x3 symmetric of floats
+auto b = a[i];			//gets a Rank2Accessor object which points back to the original a
+auto c = b[j];			//reads a[i][j] and stores a float value in c
+```
+
+An accessor is an object used for intermediate access to a tensor when it is not fully indexed.  For example, if you construct an object `auto a = float3s3()` to be a rank-2 symmetric 3x3 matrix,
+and you decided to read only a single index: `a[i]`, the result will be an Accessor object which merely wraps the owner.  From here the Accessor can be indexed a second time: `a[i][j]` to return a reference to the `_sym`'s variable.
+
+These Accessor objects can be treated like tensors for almost all intents and purposes.
+They can be passed into other tensor math operations, tensor constructors (and by virtue of this, casting).
+I even have tensor member methods that call back into the `Tensor::` namespace as I do other tensors.
+
+I still don't have `+= -= *= /=` math operators for Accessors.  This is because they are tenuous enough for the non-Accessor tensor classes themselves
+(since the non-= operator will often produce a different return type than the lhs tensor, so `a op = b; auto c = a;` in many cases cannot reproduce identical behavior to `auto c = a op b`.
 
 ### Iterating
 - `.begin() / .end() / .cbegin() / .cend()` = read-iterators, for iterating over indexes (including duplicate elements in symmetric matrices).
@@ -482,29 +458,69 @@ auto b = ((a(i,j) - a(j,i)) / 2.f).assignI();
 Maybe I will merge assign, assignR, assignI into a single ugly abomination which is just the call operator, 
 such that if you pass it a specific template arg (can you do that?) it uses it as a return type, otherwise it infers from the indexes you pass it, otherwise if no indexes then it just uses the current index form of the expression as-is.
 
+### Tensor properties:
+- `::This` = The current type.  Maybe not useful outside the class definition, but pretty useful within it when defining inner classes.
+- `::Scalar` = Get the scalar type used for this tensor.
+		Mind you, wrt the tensor library, 'Scalar' refers to the nested-most Inner class that is not a tensor.
+		You could always use a vector-of-functions and I won't try to stop you, so long as you implement the necessary functions to perform whatever operations you are doing with it.
+- `::Inner` = The next most nested vector/matrix/symmetric.
+- `::Template<T, N[, R]>` = The template of this class, useful for nesting operations.
+- `::rank` = For determining the tensor rank.  Vectors have rank-1, Matrices (including symmetric) have rank-2.
+- `::dimeq` = Sequence mapping the i'th index to the dimension of the i'th index.
+- `::dim<i>` = Get the i'th dimension size , where i is from 0 to rank-1.
+- `::dims` = Get a int-vector with all the dimensions.
+- `::isSquare` = true if all dimensions match, false otherwise.  Yes that means vectors are square.  Maybe I'll change the name.
+- `::localDim` = Get the dimension size of the current class, equal to `dim<0>`.
+- `::numNestings` = Get the number of template-argument-nested classes.  Equivalent to the number of Inner's in `tensor::Inner::...::Inner`.
+- `::countseq` = A sequence of the storage size of each nesting.
+- `::count<i>` = Get the storage size of the i'th nested class.  i is from 0 to numNestings-1.
+- `::localCount` = Get the storage size of the current class, equal to `count<0>`.
+- `::totalCount` = The product of all counts of all nestings.  This times `sizeof(Scalar)` will equal the sizeof `This` tensor.
+- `::LocalStorage` = The associated storage type used for building this tensor's nesting with `_tensori`.
+- `::StorageTuple` = A tuple of all nestings' `LocalStorage`, such that `_tuplei<Scalar, ` ... then all types of `StorageTuple` ... `>` will produce This.  Equivalently, `tensorScalarTuple<Scalar, StorageTuple>` will produce `This`.
+- `::NestedPtrTuple` = Tuple of pointers to the `Nested<i>`'th classes, where the 0'th is `This`, i.e., the current class, and the `numNestings`'th is the `Scalar`.  I had to use pointers because this is a member type, so it cannot contain itself.
+- `::NestedPtrTensorTuple` = Same as above but without the last `Scalar` element, such that all its types are tensor types.
+- `::Nested<i>` = Get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
+- `::numNestingsToIndex<i>` = Gets the number of nestings deep that the index 'i' is located, where i is from 0 to rank.
+	`numNestingsToIndex<0>` will always return 0, `numNestingsToIndex<rank>` will always return `numNestings`.
+- `::indexForNesting<i>` = Get the index of the i'th nesting, where i is from 0 to `numNestings`.  `indexForNesting<numNestings>` will produce `rank`.
+- `::InnerPtrTuple` = Tuple mapping the i'th tuple element to the i'th index associated nested Inner type. Tuple size is `rank`+1 (the +1 is for Scalar at the end).
+- `::InnerPtrTemplateTuple` = Same as above but without Scalar at the end.  Useful for tuple operations.
+- `::InnerForIndex<i>` = Get the type associated with the i'th index, where i is from 0 to rank.  Equivalent to getting the i'th element from `InnerPtrTuple`.
+	Equivalent to `::Nested<numNestingsToIndex<i>>`  `_vec`'s 0 will point to itself, `_sym`'s and `_asym`'s 0 and 1 will point to themselves, all others drill down.
+- `::ReplaceInner<T>` = Replaces this tensor's Inner with a new type, T.
+- `::ReplaceNested<i,T>` = Replace the i'th nesting of this tensor with the type 'T', where i is from 0 to numNestings-1.
+- `::ReplaceScalar<T>` = Create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
+	Should be equivalent to `This::ReplaceNested<This::numNestings, T>`.
+- `::ReplaceLocalDim<n>` = Replaces this tensor's localDim with a new dimension, n.
+- `::ReplaceDim<i,n>` = Replace the i'th index dimension with the dimension, n.  If the dimensions already match then nothing is done.  If not then the stroage at this index is expanded.
+- `::ExpandLocalStorage<i>` = Produce a tuple of storage types representing our type with the i'th local index undone from storage optimizations, where i is from 0 to `localRank-1`.  Un-expanded indexes storage is still preserved.
+- `::ExpandIthIndexStorage<i>` = Produce a tuple of storage types but with its i'th index expanded, where i is from 0 to `rank-1`.
+- `::ExpandIthIndex<i>` = Produce a tensor type with the storage at the i'th index replaced with expanded storage.
+	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
+	So a `_sym`'s ExpandIthIndex<0> or <1> would produce a `_vec`-of-`_vec`, a `_sym`-of-`_vec`'s ExpandIthIndex<2> would return the same type, and a `_vec`-of-`_sym`'s ExpandIthIndex<0> would return the same type.
+- `::ExpandIndex<i1, i2, ...>` = Expand the all indexes listed.
+- `::ExpandIndexSeq<std::integer_sequence<int, i1...>>` = Expands the indexes in the `integer_sequence<int, ...>`.
+- `::ExpandAllIndexes<>` = Produce a type with all storage replaced with expanded storage.
+	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
+	Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `_tensori<Scalar, dim1, ..., dimN>`.
+- `::RemoveIthNestedStorage<i>` = Produce a tuple of storage types but with the i'th element removed.
+- `::RemoveIthNesting<i>` = Produce a tensor but with the i'th nesting removed.
+- `::RemoveIthIndexStorage<i>` = Produce a tuple of storage types but with the i'th index expanded and i'th index storage removed.
+- `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into `_vec`s.  Then removes it.
+- `::RemoveIndex<i1, i2, ...>` = Removes all the indexes, `i1` ..., from the tensor.
+- `ReplaceWithZero<T>` = Returns a type with matching rank and dimensions, but all nestings are zeroes.  The result is fully-expanded so the nesting count matches the rank.
 
-### Familiar Types
-
-Sorry GLSL, Cg wins this round:
-- `floatN<N>` = N-dimensional float vector.
-- `float2, float3, float4` = 1D, 2D, 3D float vector.
-- `float2x2, float2x3, float2x4, float3x2, float3x3, float3x4, float4x2, float4x3, float4x4` = matrix of floats.
-- `float2i2, float3i3, float4i4` = identity matrix of floats.
-- `float2s2, float3s3, float4s4` = symmetric matrix of floats.
-- `float2s2s2 float3s3s3 float4s4s4 float2s2s2s2 float3s3s3s3 float4s4s4s4` = totally-symmetric tensor of floats.
-- `float2a2, float3a3, float4a4` = antisymmetric matrix of floats.
-- `float3a3a3 float4a4a4 float4a4a4a4` = totally-antisymmetric tensor of floats.
-- `floatNxN<dim>` = matrix of floats of size `dim`.
-- `floatNiN<dim>` = identity matrix of float of size `dim`.
-- `floatNsN<dim>` = symetric matrix of floats of size `dim`.
-- `floatNaN<dim>` = antisymmetric matrix of floats of size `dim`.
-- `floatNsR<dim, rank>` = totally-symmetric tensor of arbitrary dimension and rank.
-- `floatNaR<dim, rank>` = totally-antisymmetric tensor of arbitrary dimension and rank.
-- ... same with `bool, char, uchar, short, ushort, int, uint, float, double, ldouble, size, intptr, uintptr`.
-- `_vec2<T>, _vec3<T>, _vec4<T>` = templated fixed-size vectors.
-- `_mat2x2<T>, _mat2x3<T>, _mat2x4<T>, _mat3x2<T>, _mat3x3<T>, _mat3x4<T>, _mat4x2<T>, _mat4x3<T>, _mat4x4<T>` = templated fixed-size matrices.
-- `_sym2<T>, _sym3<T>, _sym4<T>` = templated fixed-size symmetric matrices.
-- `_asym2<T>, _asym3<T>, _asym4<T>` = templated fixed-size antisymmetric matrices.
+### Template Helpers
+- `is_tensor_v<T>` = is it any tensor storage type?
+- `is_vec_v<T>` = is it a `_vec<T,N>`?
+- `is_zero_v<T>` = is it a `_zero<T,N>`?
+- `is_ident_v<T>` = is it a `_ident<T,N>`?
+- `is_sym_v<T>` = is it a `_sym<T,N>`?
+- `is_asym_v<T>` = is it a `_asym<T,N>`?
+- `is_symR_v<T>` = is it a `_symR<T,N>`?
+- `is_asymR_v<T>` = is it a `_asymR<T,N>`?
+- `is_quat_v<T>` = is it a `_quat<T>`?
 
 ## Quaternions:
 `_quat` is the odd class out, where it does have a few of the tensor operations, but it is stuck at 4D.  Maybe I will implement Cayley-Dickson constructs later for higher dimension.
