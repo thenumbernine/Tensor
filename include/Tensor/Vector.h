@@ -2887,115 +2887,26 @@ TENSOR_TENSOR_OP(/)
 
 // specific typed vectors
 
-// TODO i think these slow the build down a bit
-//  put it in a test cpp file
-//  but that means reconstructing the macros that build the nick etc
-//#ifdef DEBUG
-//#define TENSOR_USE_STATIC_ASSERTS
-//#endif
-
-#ifdef TENSOR_USE_STATIC_ASSERTS
-
-#define TENSOR_ADD_VECTOR_STATIC_ASSERTS(nick,ctype,dim)\
-static_assert(sizeof(nick##dim1) == sizeof(ctype) * dim1);\
-static_assert(std::is_same_v<nick##dim1::Scalar, ctype>);\
-static_assert(std::is_same_v<nick##dim1::Inner, ctype>);\
-static_assert(nick##dim1::rank == 1);\
-static_assert(nick##dim1::dim<0> == dim1);\
-static_assert(nick##dim1::numNestings == 1);\
-static_assert(nick##dim1::count<0> == dim1);
-
-#define TENSOR_ADD_MATRIX_STATIC_ASSERTS(nick, ctype, dim1, dim2)\
-static_assert(sizeof(nick##dim1##x##dim2) == sizeof(ctype) * dim1 * dim2);\
-static_assert(nick##dim1##x##dim2::rank == 2);\
-static_assert(nick##dim1##x##dim2::dim<0> == dim1);\
-static_assert(nick##dim1##x##dim2::dim<1> == dim2);\
-static_assert(nick##dim1##x##dim2::numNestings == 2);\
-static_assert(nick##dim1##x##dim2::count<0> == dim1);\
-static_assert(nick##dim1##x##dim2::count<1> == dim2);
-
-#define TENSOR_ADD_SYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)\
-static_assert(sizeof(nick##dim12##s##dim12) == sizeof(ctype) * triangleSize(dim12));\
-static_assert(std::is_same_v<typename nick##dim12##s##dim12::Scalar, ctype>);\
-static_assert(nick##dim12##s##dim12::rank == 2);\
-static_assert(nick##dim12##s##dim12::dim<0> == dim12);\
-static_assert(nick##dim12##s##dim12::dim<1> == dim12);\
-static_assert(nick##dim12##s##dim12::numNestings == 1);\
-static_assert(nick##dim12##s##dim12::count<0> == triangleSize(dim12));
-
-#define TENSOR_ADD_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)\
-static_assert(sizeof(nick##dim12##a##dim12) == sizeof(ctype) * triangleSize(dim12-1));\
-static_assert(std::is_same_v<typename nick##dim12##a##dim12::Scalar, ctype>);\
-static_assert(nick##dim12##a##dim12::rank == 2);\
-static_assert(nick##dim12##a##dim12::dim<0> == dim12);\
-static_assert(nick##dim12##a##dim12::dim<1> == dim12);\
-static_assert(nick##dim12##a##dim12::numNestings == 1);\
-static_assert(nick##dim12##a##dim12::count<0> == triangleSize(dim12-1));
-
-#define TENSOR_ADD_IDENTITY_STATIC_ASSERTS(nick, ctype, dim12)\
-static_assert(sizeof(nick##dim12##i##dim12) == sizeof(ctype));\
-static_assert(std::is_same_v<typename nick##dim12##i##dim12::Scalar, ctype>);\
-static_assert(nick##dim12##i##dim12::rank == 2);\
-static_assert(nick##dim12##i##dim12::dim<0> == dim12);\
-static_assert(nick##dim12##i##dim12::dim<1> == dim12);\
-static_assert(nick##dim12##i##dim12::numNestings == 1);\
-static_assert(nick##dim12##i##dim12::count<0> == 1);
-
-#define TENSOR_ADD_TOTALLY_SYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)\
-static_assert(sizeof(nick##suffix) == sizeof(ctype) * consteval_symmetricSize(localDim, localRank));\
-static_assert(std::is_same_v<typename nick##suffix::Scalar, ctype>);\
-static_assert(nick##suffix::rank == localRank);\
-static_assert(nick##suffix::dim<0> == localDim); /* TODO repeat depending on dimension */\
-static_assert(nick##suffix::numNestings == 1);\
-static_assert(nick##suffix::count<0> == consteval_symmetricSize(localDim, localRank));
-
-#define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)\
-static_assert(sizeof(nick##suffix) == sizeof(ctype) * consteval_antisymmetricSize(localDim, localRank));\
-static_assert(std::is_same_v<typename nick##suffix::Scalar, ctype>);\
-static_assert(nick##suffix::rank == localRank);\
-static_assert(nick##suffix::dim<0> == localDim); /* TODO repeat depending on dimension */\
-static_assert(nick##suffix::numNestings == 1);\
-static_assert(nick##suffix::count<0> == consteval_antisymmetricSize(localDim, localRank));
-
-#else //TENSOR_USE_STATIC_ASSERTS
-
-#define TENSOR_ADD_VECTOR_STATIC_ASSERTS(nick, ctype, dim)
-#define TENSOR_ADD_MATRIX_STATIC_ASSERTS(nick, ctype, dim1, dim2)
-#define TENSOR_ADD_IDENTITY_STATIC_ASSERTS(nick, ctype, dim12)
-#define TENSOR_ADD_SYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
-#define TENSOR_ADD_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
-#define TENSOR_ADD_TOTALLY_SYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
-#define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
-
-#endif //TENSOR_USE_STATIC_ASSERTS
-
 #define TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, dim1)\
-using nick##dim1 = nick##N<dim1>;\
-TENSOR_ADD_VECTOR_STATIC_ASSERTS(nick, ctype,dim1);
+using nick##dim1 = nick##N<dim1>;
 
 #define TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, dim1, dim2)\
-using nick##dim1##x##dim2 = nick##MxN<dim1,dim2>;\
-TENSOR_ADD_MATRIX_STATIC_ASSERTS(nick, ctype, dim1, dim2)
-
-#define TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
-using nick##dim12##s##dim12 = nick##NsN<dim12>;\
-TENSOR_ADD_SYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
-
-#define TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
-using nick##dim12##a##dim12 = nick##NaN<dim12>;\
-TENSOR_ADD_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
+using nick##dim1##x##dim2 = nick##MxN<dim1,dim2>;
 
 #define TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
-using nick##dim12##i##dim12 = nick##NiN<dim12>;\
-TENSOR_ADD_IDENTITY_STATIC_ASSERTS(nick, ctype, dim12)
+using nick##dim12##i##dim12 = nick##NiN<dim12>;
+
+#define TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+using nick##dim12##s##dim12 = nick##NsN<dim12>;
+
+#define TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+using nick##dim12##a##dim12 = nick##NaN<dim12>;
 
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, localDim, localRank, suffix)\
-using nick##suffix = nick##NsR<localDim, localRank>;\
-TENSOR_ADD_TOTALLY_SYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
+using nick##suffix = nick##NsR<localDim, localRank>;
 
 #define TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, localDim, localRank, suffix)\
-using nick##suffix = nick##NaR<localDim, localRank>;\
-TENSOR_ADD_TOTALLY_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
+using nick##suffix = nick##NaR<localDim, localRank>;
 
 #define TENSOR_ADD_NICKNAME_TYPE(nick, ctype)\
 /* typed vectors */\

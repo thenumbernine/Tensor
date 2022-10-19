@@ -1,9 +1,160 @@
 #include "Test/Test.h"
 
-STATIC_ASSERT_EQ(Tensor::int3::dim<0>, 3);
-STATIC_ASSERT_EQ(Tensor::int3::rank, 1);
-STATIC_ASSERT_EQ((Common::seq_get_v<0, typename Tensor::int3::dimseq>), 3);
-STATIC_ASSERT_EQ(Tensor::int3::totalCount, 3);
+namespace Tensor {
+
+#define TEST_TENSOR_ADD_VECTOR_STATIC_ASSERTS(nick,ctype,dim1)\
+static_assert(sizeof(nick##dim1) == sizeof(ctype) * dim1);\
+static_assert(std::is_same_v<nick##dim1::Scalar, ctype>);\
+static_assert(std::is_same_v<nick##dim1::Inner, ctype>);\
+static_assert(nick##dim1::rank == 1);\
+static_assert(nick##dim1::dim<0> == dim1);\
+static_assert(nick##dim1::numNestings == 1);\
+static_assert(nick##dim1::count<0> == dim1);
+
+#define TEST_TENSOR_ADD_MATRIX_STATIC_ASSERTS(nick, ctype, dim1, dim2)\
+static_assert(sizeof(nick##dim1##x##dim2) == sizeof(ctype) * dim1 * dim2);\
+static_assert(nick##dim1##x##dim2::rank == 2);\
+static_assert(nick##dim1##x##dim2::dim<0> == dim1);\
+static_assert(nick##dim1##x##dim2::dim<1> == dim2);\
+static_assert(nick##dim1##x##dim2::numNestings == 2);\
+static_assert(nick##dim1##x##dim2::count<0> == dim1);\
+static_assert(nick##dim1##x##dim2::count<1> == dim2);
+
+#define TEST_TENSOR_ADD_SYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)\
+static_assert(sizeof(nick##dim12##s##dim12) == sizeof(ctype) * triangleSize(dim12));\
+static_assert(std::is_same_v<typename nick##dim12##s##dim12::Scalar, ctype>);\
+static_assert(nick##dim12##s##dim12::rank == 2);\
+static_assert(nick##dim12##s##dim12::dim<0> == dim12);\
+static_assert(nick##dim12##s##dim12::dim<1> == dim12);\
+static_assert(nick##dim12##s##dim12::numNestings == 1);\
+static_assert(nick##dim12##s##dim12::count<0> == triangleSize(dim12));
+
+#define TEST_TENSOR_ADD_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)\
+static_assert(sizeof(nick##dim12##a##dim12) == sizeof(ctype) * triangleSize(dim12-1));\
+static_assert(std::is_same_v<typename nick##dim12##a##dim12::Scalar, ctype>);\
+static_assert(nick##dim12##a##dim12::rank == 2);\
+static_assert(nick##dim12##a##dim12::dim<0> == dim12);\
+static_assert(nick##dim12##a##dim12::dim<1> == dim12);\
+static_assert(nick##dim12##a##dim12::numNestings == 1);\
+static_assert(nick##dim12##a##dim12::count<0> == triangleSize(dim12-1));
+
+#define TEST_TENSOR_ADD_IDENTITY_STATIC_ASSERTS(nick, ctype, dim12)\
+static_assert(sizeof(nick##dim12##i##dim12) == sizeof(ctype));\
+static_assert(std::is_same_v<typename nick##dim12##i##dim12::Scalar, ctype>);\
+static_assert(nick##dim12##i##dim12::rank == 2);\
+static_assert(nick##dim12##i##dim12::dim<0> == dim12);\
+static_assert(nick##dim12##i##dim12::dim<1> == dim12);\
+static_assert(nick##dim12##i##dim12::numNestings == 1);\
+static_assert(nick##dim12##i##dim12::count<0> == 1);
+
+#define TEST_TENSOR_ADD_TOTALLY_SYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)\
+static_assert(sizeof(nick##suffix) == sizeof(ctype) * consteval_symmetricSize(localDim, localRank));\
+static_assert(std::is_same_v<typename nick##suffix::Scalar, ctype>);\
+static_assert(nick##suffix::rank == localRank);\
+static_assert(nick##suffix::dim<0> == localDim); /* TODO repeat depending on dimension */\
+static_assert(nick##suffix::numNestings == 1);\
+static_assert(nick##suffix::count<0> == consteval_symmetricSize(localDim, localRank));
+
+#define TEST_TENSOR_ADD_TOTALLY_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)\
+static_assert(sizeof(nick##suffix) == sizeof(ctype) * consteval_antisymmetricSize(localDim, localRank));\
+static_assert(std::is_same_v<typename nick##suffix::Scalar, ctype>);\
+static_assert(nick##suffix::rank == localRank);\
+static_assert(nick##suffix::dim<0> == localDim); /* TODO repeat depending on dimension */\
+static_assert(nick##suffix::numNestings == 1);\
+static_assert(nick##suffix::count<0> == consteval_antisymmetricSize(localDim, localRank));
+
+
+#define TEST_TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, dim1)\
+TEST_TENSOR_ADD_VECTOR_STATIC_ASSERTS(nick, ctype,dim1);
+
+#define TEST_TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, dim1, dim2)\
+TEST_TENSOR_ADD_MATRIX_STATIC_ASSERTS(nick, ctype, dim1, dim2)
+
+#define TEST_TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+TEST_TENSOR_ADD_SYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
+
+#define TEST_TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+TEST_TENSOR_ADD_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, dim12)
+
+#define TEST_TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, dim12)\
+TEST_TENSOR_ADD_IDENTITY_STATIC_ASSERTS(nick, ctype, dim12)
+
+#define TEST_TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, localDim, localRank, suffix)\
+TEST_TENSOR_ADD_TOTALLY_SYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
+
+#define TEST_TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, localDim, localRank, suffix)\
+TEST_TENSOR_ADD_TOTALLY_ANTISYMMETRIC_STATIC_ASSERTS(nick, ctype, localDim, localRank, suffix)
+
+#define TEST_TENSOR_ADD_NICKNAME_TYPE(nick, ctype)\
+/* typed vectors */\
+TEST_TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, 2)\
+TEST_TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, 3)\
+TEST_TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, 4)\
+/* typed matrices */\
+TEST_TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 2, 2)\
+TEST_TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 2, 3)\
+TEST_TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 2, 4)\
+TEST_TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 3, 2)\
+TEST_TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 3, 3)\
+TEST_TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 3, 4)\
+TEST_TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 2)\
+TEST_TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 3)\
+TEST_TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 4)\
+/* identity matrix */\
+TEST_TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, 2)\
+TEST_TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, 3)\
+TEST_TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, 4)\
+/* typed symmetric matrices */\
+TEST_TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2)\
+TEST_TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3)\
+TEST_TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)\
+/* typed antisymmetric matrices */\
+TEST_TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2)\
+TEST_TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3)\
+TEST_TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)\
+/* totally symmetric tensors */\
+TEST_TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 3, 2s2s2)\
+TEST_TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 3, 3s3s3)\
+TEST_TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 3, 4s4s4)\
+TEST_TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 4, 2s2s2s2)\
+TEST_TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 4, 3s3s3s3)\
+TEST_TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 4, 4s4s4s4)\
+/* totally antisymmetric tensors */\
+/* can't exist: TEST_TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 3, 2a2a2)*/\
+TEST_TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 3, 3a3a3)\
+TEST_TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 3, 4a4a4)\
+/* can't exist: TEST_TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 4, 2a2a2a2)*/\
+/* can't exist: TEST_TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 4, 3a3a3a3)*/\
+TEST_TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 4, 4a4a4a4)
+
+#define TEST_TENSOR_ADD_UTYPE(x)	TEST_TENSOR_ADD_NICKNAME_TYPE(u##x,unsigned x)
+
+#define TEST_TENSOR_ADD_TYPE(x)	TEST_TENSOR_ADD_NICKNAME_TYPE(x,x)
+
+TEST_TENSOR_ADD_TYPE(bool)
+TEST_TENSOR_ADD_TYPE(char)
+TEST_TENSOR_ADD_UTYPE(char)
+TEST_TENSOR_ADD_TYPE(short)
+TEST_TENSOR_ADD_UTYPE(short)
+TEST_TENSOR_ADD_TYPE(int)
+TEST_TENSOR_ADD_UTYPE(int)
+TEST_TENSOR_ADD_TYPE(float)
+TEST_TENSOR_ADD_TYPE(double)
+TEST_TENSOR_ADD_NICKNAME_TYPE(size, size_t)
+TEST_TENSOR_ADD_NICKNAME_TYPE(intptr, intptr_t)
+TEST_TENSOR_ADD_NICKNAME_TYPE(uintptr, uintptr_t)
+TEST_TENSOR_ADD_NICKNAME_TYPE(ldouble, long double)
+
+}
+
+namespace Tests {
+	using namespace Tensor;
+	using namespace Common;
+	STATIC_ASSERT_EQ(int3::dim<0>, 3);
+	STATIC_ASSERT_EQ(int3::rank, 1);
+	STATIC_ASSERT_EQ((seq_get_v<0, typename int3::dimseq>), 3);
+	STATIC_ASSERT_EQ(int3::totalCount, 3);
+}
 
 void test_Vector() {
 	//vector
