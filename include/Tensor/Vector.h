@@ -1269,7 +1269,7 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 		using IndexTuple = std::tuple<IndexType, IndexTypes...>;\
 		using Details = IndexAccessDetails<IndexTuple>;\
 		if constexpr (Details::rank == 0) {\
-			return applyTraces<ThisConst, typename Details::SumIndexSeq>(this_);\
+			return applyTraces<typename Details::SumIndexSeq>(this_);\
 		} else {\
 			/* dont' instanciating this until you know IndexTuple has non-summed-indexes or else its rank = 0 and that's bad for its vector member types */\
 			return IndexAccess<ThisConst, IndexTuple>(this_);\

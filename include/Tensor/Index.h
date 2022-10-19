@@ -180,19 +180,19 @@ struct GetTensorIthDim {
 template<typename T, typename Seq>
 struct ApplyTracesImpl;
 // assume they're sorted, apply in descending order
-template<typename T, typename I, I i1, I i2, I... is>
-struct ApplyTracesImpl<T, std::integer_sequence<I, i1, i2, is...>> {
+template<typename T, typename Int, Int i1, Int i2, Int... is>
+struct ApplyTracesImpl<T, std::integer_sequence<Int, i1, i2, is...>> {
 	static constexpr auto exec(T & t) {
 		return trace<i1, i2>(
-			ApplyTracesImpl<T, std::integer_sequence<I, is...>>::exec(t)
+			ApplyTracesImpl<T, std::integer_sequence<Int, is...>>::exec(t)
 		);
 	}
 };
-template<typename T, typename I>
-struct ApplyTracesImpl<T, std::integer_sequence<I>> {
+template<typename T, typename Int>
+struct ApplyTracesImpl<T, std::integer_sequence<Int>> {
 	static constexpr auto exec(T & t) { return t; }
 };
-template<typename T, typename Seq>
+template<typename Seq, typename T>
 auto applyTraces(T & x) {
 	return ApplyTracesImpl<T, Seq>::exec(x);
 }
@@ -379,7 +379,7 @@ struct IndexAccess {
 	struct StorageEval {
 		using type = OutputTensorType;
 		static type process(InputTensorType & x) {
-			auto trs = applyTraces<InputTensorType, SumIndexSeq>(x);
+			auto trs = applyTraces<SumIndexSeq>(x);
 			// NOTICE here I'm making an assertion that AssignIndexSeq is matching the indexes when the sum-indexes are all removed.
 			// if it's wrong then ranks (and dims) won't match
 			STATIC_ASSERT_EQ(trs.rank, type::rank);
@@ -666,7 +666,7 @@ struct TensorMulExpr {
 		// SumIndexSeq are the duplicates of InputTuple 
 		// those will be the contracted indexes of 'c'
 		auto aob = outer(at, bt);
-		ct = applyTraces<decltype(aob), SumIndexSeq>(aob);
+		ct = applyTraces<SumIndexSeq>(aob);
 		return std::apply(ct, AssignIndexTuple());
 	}
 	TensorMulExpr(A const & a, B const & b) : c(initC(a,b)) {}
@@ -690,7 +690,7 @@ decltype(auto) operator*(A const & a, B const & b) {
 		auto at = a.assignI();
 		auto bt = b.assignI();
 		auto aob = outer(at, bt);
-		auto result = applyTraces<decltype(aob), typename Details::SumIndexSeq>(aob);
+		auto result = applyTraces<typename Details::SumIndexSeq>(aob);
 		using Scalar = decltype(typename A::Scalar() * typename B::Scalar());
 		static_assert(std::is_same_v<decltype(result), Scalar>);
 		return result;
