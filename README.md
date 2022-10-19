@@ -131,7 +131,7 @@ auto d = (a(i,j) * b(j,k,k)).assignI();
 ### Vectors:
 `_vec<type, dim>` = vectors:
 - rank-1
-- `.s` = `std::array<type>` = element std::array access.  Tempted to change it back to `type[] s` for ease of ue as pointer access... but I do like the ease of iterator use with `std::array`... hmm...
+- `.s` = `std::array<type>` = element `std::array` access.  Tempted to change it back to `type[] s` for ease of use as pointer access... but I do like the ease of iterator use with `std::array`... hmm...
 - for 1D through 4D: `.x .y .z .w`, `.s0 .s1 .s2 .s2` storage.
 - `.subset<size>(index), .subset<size,index>()` = return a vector reference to a subset of this vector.
 
