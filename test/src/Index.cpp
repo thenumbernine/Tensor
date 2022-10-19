@@ -2,6 +2,24 @@
 #include "Common/Test.h"
 #include <algorithm>
 
+// TODO move to Tensor/Derivative.h
+namespace Tensor {
+
+auto diff(auto f, auto x, typename decltype(f(x))::Scalar dx = .01) {
+	using T = decltype(f(x));
+	static_assert(T::isSquare);		// all dimensions match
+	constexpr int dim = T::template dim<0>;
+	_vec<T, dim> result; 			//first index is derivative
+	for (int k = 0; k < dim; ++k) {
+		auto xp = x; xp[k] += dx;
+		auto xm = x; xm[k] -= dx;
+		result[k] = (f(xp) - f(xm)) / (2. * dx);
+	}
+	return result;
+}
+
+}
+
 namespace TupleTests {
 	using namespace std;
 	using namespace Common;
@@ -493,82 +511,50 @@ void test_Index() {
 		static_assert(is_same_v<decltype(x), double4>);
 		ECHO(x);
 		auto gx = [R](double4 x) {
-			auto /*t = x(0), */r = x(1), theta = x(2)/*, phi = x(3)*/;
-			// TODO tie semantics
+			auto [t,r,theta,phi] = x;	// tie semantics
 			return double4{(R-r)/r, r/(-R+r), r*r, r*sin(theta)*sin(theta)}.diagonal();
-		};
-		// TODO put this in Derivative, and separate of Grid
-		auto diff = [](auto f, auto x, auto dx) {
-			using T = decltype(f(x));
-			static_assert(T::isSquare);		// all dimensions match
-			constexpr int dim = T::template dim<0>;
-			_vec<T, dim> result; 			//first index is derivative
-			for (int k = 0; k < dim; ++k) {
-				auto xp = x; xp[k] += dx;
-				auto xm = x; xm[k] -= dx;
-				result[k] = (f(xp) - f(xm)) / (2. * dx);
-			}
-			return result;
 		};
 		auto g = gx(x);
 		static_assert(is_same_v<decltype(g), double4s4>);
 		ECHO(g(0,0));
 		ECHO(g);
-		//auto gu = g.inverse();
-		auto gu = inverse(g);
+		auto gux = [&](auto x) { return gx(x).inverse(); };
+		auto gu = gux(x);
 		static_assert(is_same_v<decltype(gu), double4s4>);
 		ECHO(gu);
 		// ehhh symbolic differentiation?
-#if 0 // manual dg	
-		auto dg = _tensorx<double, 4, -'s', 4>();
-		dg(1,0,0) = -R/(r*r);
-		dg(1,1,1) = -R*((R-r)*(R-r));
-		dg(1,2,2) = 2*r;
-		dg(1,3,3) = 2*r*sin(theta)*sin(theta);
-		dg(2,3,3) = 2*r*r*sin(theta)*cos(theta);
-		ECHO(dg); // dg :: {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {-0.25, 0, -1, 0, 0, 4, 0, 0, 0, 0.0796594}, {0, 0, 0, 0, 0, 0, 0, 0, 0, -1.11766}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
-
-#else	//numeric dg
-		auto dg = diff(gx, x, .01);
-		ECHO(dg); // dg :: {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {-0.250006, 0, -1.0001, 0, 0, 4, 0, 0, 0, 0.0199149}, {0, 0, 0, 0, 0, 0, 0, 0, 0, -0.558794}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
-#endif
+		auto dgx = [&](auto x) { return diff(gx, x); };
+		auto dg = dgx(x);
+		ECHO(dg);
+		auto connlx = [&](auto x) {
+			auto dg = dgx(x);
 #if 0	// assign, naive storage
-		auto connl = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2).assign(i,j,k);
-		static_assert(is_same_v<decltype(x), _tensorx<double, 4, 4, 4>>);
+			return ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2).assign(i,j,k);
 #elif 1	// assign with specific storage
-		auto connl = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2).assignR<_tensorx<double, 4, -'s', 4>>(i,j,k);
+			return ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2).template assignR<_tensorx<double, 4, -'s', 4>>(i,j,k);
 #elif 0	// assign to an already-defined variable
-		auto connl = _tensorx<double, 4, -'s', 4>();
-		connl(i,j,k) = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2);
+			auto connl = _tensorx<double, 4, -'s', 4>();
+			connl(i,j,k) = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2);
+			return connl;
 #elif 0
-		auto connl = _tensorx<double, 4, 4, 4>();
-		connl(i,j,k) = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2);
+			auto connl = _tensorx<double, 4, 4, 4>();
+			connl(i,j,k) = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2);
+			return connl;
 #elif 0	// assign using the inferred free indexes
-		auto connl = connl(i,j,k) = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2).assignI();
-		static_assert(is_same_v<decltype(x), _tensorx<double, 4, 4, 4>>);
+			return connl(i,j,k) = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2).assignI();
 #endif	
+		};
+		auto connl = connlx(x);
 		ECHO(connl);
-		auto conn = (gu(i,l) * connl(l,j,k)).assign(i,j,k);
+		auto connx = [&](auto x) {
+			return (gux(x)(i,l) * connlx(x)(l,j,k)).assign(i,j,k);
+		};
+		auto conn = connx(x);
 		ECHO(conn);
-		// once again ...
-		// TODO move last index to first, then swap with diff function()
-		auto dconn = _tensorx<double, 4, -'s', 4, 4>();
-		dconn(0,0,1,1) = R*(R-2*r)/(2*(R*R*r*r - 2*R*r*r*r + r*r*r*r));
-		//dconn(0,1,0,1) = R*(R-2*r)/(2*(R*R*r*r - 2*R*r*r*r + r*r*r*r));
-		dconn(1,0,0,1) = (3*R*R*r*r - 2*R*r*r*r)/(2*r*r*r*r*r*r);
-		dconn(1,1,1,1) = R*(-R+2*r)/(2*(R*R*r*r + r*r*r*r - 2*R*r*r*r));
-		dconn(1,2,2,1) = -1;
-		dconn(1,3,3,1) = -sin(theta)*sin(theta);
-		dconn(1,3,3,2) = 2*(R-r)*cos(theta)*sin(theta);
-		dconn(2,1,2,1) = -1/(r*r);
-		//dconn(2,2,1,1) = -1/(r*r);
-		dconn(2,3,3,2) = sin(theta)*sin(theta);
-		dconn(3,1,3,1) = -1/(r*r);
-		//dconn(3,3,1,1) = -1/(r*r);
-		dconn(3,2,3,2) = -1/(sin(theta)*sin(theta));
-		//dconn(3,3,2,2) = -1/(sin(theta)*sin(theta));
+		auto dconnx = [&](auto x) { return diff(connx, x); };
+		auto dconn = dconnx(x);
 		ECHO(dconn);
-		auto Riemann = (dconn(i,j,l,k) - dconn(i,j,k,l) + conn(i,k,m) * conn(m,j,l) - conn(i,l,m) * conn(m,j,k)).assign(i,j,k,l);
+		auto Riemann = (dconn(k,i,j,l) - dconn(l,i,j,k) + conn(i,k,m) * conn(m,j,l) - conn(i,l,m) * conn(m,j,k)).assign(i,j,k,l);
 		ECHO(Riemann);
 		auto Ricci = Riemann(k,i,k,j).assign(i,j);
 		ECHO(Ricci);

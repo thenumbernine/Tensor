@@ -318,6 +318,15 @@ I even have tensor member methods that call back into the `Tensor::` namespace a
 I still don't have `+= -= *= /=` math operators for Accessors.  This is because they are tenuous enough for the non-Accessor tensor classes themselves
 (since the non-= operator will often produce a different return type than the lhs tensor, so `a op = b; auto c = a;` in many cases cannot reproduce identical behavior to `auto c = a op b`.
 
+### Structure Binding:
+...works:
+```c++
+auto x = float3(1,2,3);
+auto [r,theta,phi] = x;
+```
+
+Of course with structure-binding comes implementations of `std::tuple_size`, `std::tuple_element`, and `Tensor::get` working with tensors.
+
 ### Iterating
 - `.begin() / .end() / .cbegin() / .cend()` = read-iterators, for iterating over indexes (including duplicate elements in symmetric matrices).
 - `.write().begin(), ...` = write-iterators, for iterating over the stored elements (excluding duplicates for symmetric indexes).

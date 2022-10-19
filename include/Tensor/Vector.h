@@ -130,21 +130,6 @@ struct GetPtrLocalCount {
 template<typename T>
 using GetPtrLocalStorage = typename std::remove_pointer_t<T>::LocalStorage;
 
-
-// for initializing intN's using template indexes
-template<typename Src, typename Dst>
-requires (Src::rank == Dst::totalCount)
-struct BuildFromDim : public ForLoopBodyBase {
-	// NOTICE right now this is from 0 to Dst::totalCount-1 , which is the product of all count<>'s
-	template<int i>
-	struct Loop {
-		static constexpr bool exec(Dst & t) {
-			t.s[i] = Src::template dim<i>;
-			return false;
-		}
-	};
-};
-
 template<
 	int dim,
 	int rank,
@@ -173,27 +158,6 @@ template<
 	template<int, int> typename storageRankN
 >
 using GetTupleWrappingStorageForRank = typename GetTupleWrappingStorageForRankImpl<dim, rank, storageRank2, storageRankN>::type;
-
-static_assert(std::is_same_v<
-	GetTupleWrappingStorageForRank<3,0,storage_sym,storage_symR>,
-	std::tuple<>
->);
-static_assert(std::is_same_v<
-	GetTupleWrappingStorageForRank<3,1,storage_sym,storage_symR>,
-	std::tuple<storage_vec<3>>
->);
-static_assert(std::is_same_v<
-	GetTupleWrappingStorageForRank<3,2,storage_sym,storage_symR>,
-	std::tuple<storage_sym<3>>
->);
-static_assert(std::is_same_v<
-	GetTupleWrappingStorageForRank<3,3,storage_sym,storage_symR>,
-	std::tuple<storage_symR<3,3>>
->);
-static_assert(std::is_same_v<
-	GetTupleWrappingStorageForRank<3,4,storage_sym,storage_symR>,
-	std::tuple<storage_symR<3,4>>
->);
 
 // Template<> is used for rearranging internal structure when performing linear operations on tensors
 // Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
@@ -367,7 +331,7 @@ Scalar = NestedPtrTuple's last
 	/* This needs to be a function because if it was a constexpr value then the compiler would complain that DimsImpl is using _vec<int,1> before it is defined.*/\
 	/* I can circumvent that error by having rank-1 _vec's have a dims == int instead of _vec<int> ... and then i get dims as a value instead of function, and all is well */\
 	/*  except that makes me need to write conditional code everywhere for rank-1 and rank>1 dims */\
-	static constexpr intN dims() { return intN(BuildFromDim<This, intN>()); }\
+	static constexpr intN dims() { return intN(dimseq()); }\
 \
 	/* TODO alternative for indexForNesting: */\
 	/* get a sequence of the local-rank for the respective nesting ... then make a sequence of the sum-of-sequence */\
@@ -3124,33 +3088,57 @@ namespace std {
 
 template<typename T>
 requires (Tensor::is_tensor_v<T>)
-std::string to_string(T const & t) {
+string to_string(T const & t) {
 	return Common::objectStringFromOStream(t);
 }
 
-#if 0
-// half baked idea of making std::apply compatible with Tensor::_vec
-// I would just use std::array as the internal storage of _vec, but subset() does some memory casting which maybe I shouldn't be doing .. */
-// tuple_size, make this match array i.e. storage size, returns localCount
+/*
+Ok I started on this thinking I would make _vec work like an std::array
+but ended up just using std::array inside _vec
+but I still want tuple operations (for things like structure binding) so here I am again
+but whereas before I was thinking of using this for sake of its .s[] storage
+now I'm thinking of this as a tensor, so rank-2 std::get<> will return Accessors etc
 
-template<typename T, int N>
-struct tuple_size<Tensor::_vec<T,N>> {
-	static constexpr auto value = Tensor::_vec<T,N>::localCount;
+following: https://devblogs.microsoft.com/oldnewthing/20201015-00/?p=104369
+*/
+
+template<typename T>
+requires Tensor::is_tensor_v<decay_t<T>>
+struct tuple_size<T> {
+	static constexpr size_t value = T::localDim;
 };
 
-template<typename T, int N>
-struct tuple_size<Tensor::_sym<T,N>> {
-	static constexpr auto value = Tensor::_sym<T,N>::localCount; 	// (N*(N+1))/2
+template<size_t i, typename T>
+requires Tensor::is_tensor_v<decay_t<T>>
+struct tuple_element<i, T> {
+	using type = decltype(T()[i]);
 };
 
-// std::get ... all the dif impls ...
+}
 
-template<std::size_t I, typename T, std::size_t N> constexpr T & get(Tensor::_vec<T,N> & v) noexcept { return v[I]; }
-template<std::size_t I, typename T, std::size_t N> constexpr T && get(Tensor::_vec<T,N> && v) noexcept { return v[I]; }
-template<std::size_t I, typename T, std::size_t N> constexpr T const & get(Tensor::_vec<T,N> const & v) noexcept { return v[I]; }
-template<std::size_t I, typename T, std::size_t N> constexpr T const && get(Tensor::_vec<T,N> const && v) noexcept { return v[I]; }
+namespace Tensor {
 
-#endif
+template<std::size_t i, typename T>
+auto&& TensorGetHelper(T && t) {
+	static_assert(i < T::localDim, "index out of bounds for Tensor");
+	return std::forward<T>(t)[i];
+}
+
+template<std::size_t Index, typename T>
+requires Tensor::is_tensor_v<T>
+auto&& get(T& p) { return TensorGetHelper<Index, T>(p); }
+
+template<std::size_t Index, typename T>
+requires Tensor::is_tensor_v<T>
+auto&& get(T const& p) { return TensorGetHelper<Index, T>(p); }
+
+template<std::size_t Index, typename T>
+requires Tensor::is_tensor_v<T>
+auto&& get(T&& p) { return TensorGetHelper<Index, T>(std::move(p)); }
+
+template<std::size_t Index, typename T>
+requires Tensor::is_tensor_v<T>
+auto&& get(T const&& p) { return TensorGetHelper<Index, T>(move(p)); }
 
 }
 

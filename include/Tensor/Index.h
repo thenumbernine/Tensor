@@ -61,6 +61,46 @@ but in the case of traces or tensor-multiplies, cache it at that node.
 
 namespace Tensor {
 
+// move to Common:
+
+// for TupleTypeMap for tuples-of-pairs
+template<typename T> using GetFirst = typename T::first_type;
+template<typename T> using GetSecond = typename T::second_type;
+
+template<typename IndexTuple>
+struct GetTupleIthElem {
+	template<int i>
+	using go = std::tuple_element_t<i, IndexTuple>;
+};
+
+template<typename Seq>
+struct GetSeqIth {
+	template<int i>
+	struct go {
+		static constexpr int value = Common::seq_get_v<i, Seq>;
+	};
+};
+
+
+template<typename TensorType>
+struct GetTensorIthDim {
+	template<int i>
+	struct go {
+		static constexpr int value = TensorType::template dim<i>;
+	};
+};
+
+// used for picking out the summation indexes, used both by IndexAccess and by determining in tensors if the trace produces a scalar or not
+template<typename T>
+struct GetIthTupleSecond {
+	template<int i>
+	using go = typename std::tuple_element_t<i, T>::second_type;
+};
+
+
+
+// index access stuff:
+
 struct IndexBase {};
 
 template<char ident>
@@ -79,10 +119,6 @@ template<char ch>
 std::ostream & operator<<(std::ostream & o, Index<ch> const & i) {
 	return o << ch;
 }
-
-
-template<typename T>
-using GetFirst = typename T::first_type;
 
 /*
 GatherIndexes<std::integer_sequence<int, ...>> has ...
@@ -154,28 +190,6 @@ using GatherIndexes = typename GatherIndexesImpl<
 	IndexTuple
 >::type;
 
-template<typename IndexTuple>
-struct GetTupleIthElem {
-	template<int i>
-	using go = std::tuple_element_t<i, IndexTuple>;
-};
-
-template<typename Seq>
-struct GetSeqIth {
-	template<int i>
-	struct go {
-		static constexpr int value = Common::seq_get_v<i, Seq>;
-	};
-};
-
-
-template<typename TensorType>
-struct GetTensorIthDim {
-	template<int i>
-	struct go {
-		static constexpr int value = TensorType::template dim<i>;
-	};
-};
 
 template<typename T, typename Seq>
 struct ApplyTracesImpl;
@@ -204,13 +218,6 @@ struct FindInAssignIndexTuple {
 	struct go {
 		static constexpr int value = Common::tuple_find_v<Src, AssignIndexTuple>;
 	};
-};
-
-// used for picking out the summation indexes, used both by IndexAccess and by determining in tensors if the trace produces a scalar or not
-template<typename T>
-struct GetIthTupleSecond {
-	template<int i>
-	using go = typename std::tuple_element_t<i, T>::second_type;
 };
 
 // helper for GatherIndexes' results combined with tuple_get_filtered_indexes_t for picking out the IndexTuple locs from the results
