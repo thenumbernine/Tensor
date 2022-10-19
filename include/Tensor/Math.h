@@ -115,6 +115,8 @@ auto outerProduct(T&&... args) {
 // matrix functions
 
 #if 0
+// TODO permute arbitrary # of indexes?
+// or by now I have index-summation-notation permutations working ... soo ...
 //https://stackoverflow.com/a/50471331
 template<typename T, std::size_t N, typename... Ts>
 constexpr std::array<T, N> permuteArray(

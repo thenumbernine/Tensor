@@ -54,6 +54,7 @@ if I do column-major then C inline indexing is transposed
 #include "Common/Exception.h"
 #include "Common/Test.h"		//STATIC_TEST_EQ
 #include <tuple>
+#include <array>
 #include <functional>	//reference_wrapper, also function<> is by Partial
 #include <cmath>		//sqrt()
 
