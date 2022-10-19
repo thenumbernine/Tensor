@@ -55,14 +55,14 @@ struct RangeIterator {
 
 	template<int i>
 	struct FlattenLoop {
-		static constexpr bool exec(RangeIterator const & it, int & flatIndex) {
+		static bool exec(RangeIterator const & it, int & flatIndex) {
 			flatIndex *= it.owner.template getRangeMax<i>() - it.owner.template getRangeMin<i>();
 			flatIndex += it.index[i] - it.owner.template getRangeMin<i>();
 			return false;
 		}
 	};
 	//converts index to int
-	constexpr int flatten() const {
+	int flatten() const {
 		int flatIndex = 0;
 		Common::ForLoop<rankLast, rankFirst-rankStep, FlattenLoop>::exec(*this, flatIndex);
 		return flatIndex;
@@ -70,17 +70,16 @@ struct RangeIterator {
 
 	template<int i>
 	struct UnFlattenLoop {
-		static constexpr bool exec(RangeIterator & it, int & flatIndex) {
-			constexpr int s = it.owner.template getRangeMax<i>() - it.owner.template getRangeMin<i>();
-			int n = flatIndex;
-			if constexpr (i != rankLast) n %= s;
+		static bool exec(RangeIterator & it, int & flatIndex) {
+			int s = it.owner.template getRangeMax<i>() - it.owner.template getRangeMin<i>();
+			int n = i == rankLast ? flatIndex : flatIndex % s;
 			it.index[i] = n + it.owner.template getRangeMin<i>();
 			flatIndex = (flatIndex - n) / s;
 			return false;
 		}
 	};
 	//converts int to index
-	constexpr void unflatten(int flatIndex) {
+	void unflatten(int flatIndex) {
 		Common::ForLoop<rankFirst, rankLast+rankStep, UnFlattenLoop>::exec(*this, flatIndex);
 	}
 

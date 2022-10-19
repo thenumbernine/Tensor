@@ -587,7 +587,7 @@ TODO:
 
 - ReplaceDim and ReplaceLocalDim that take a int pack and insert that many new dimensions into that index' location.
 
-- To make `_ident` true to name, maybe make `_ident` default initialize its value to 1?
+- To make `_ident` true to name, maybe make `_ident` default initialize its value to 1? Not sure...
 
 - more tensor types:  maybe diagonalized rank-2 with N-DOF, where each diagonal element has a unique value.
 
@@ -603,14 +603,18 @@ TODO:
 
 - eventually merge `_sym` and `_asym` with `_symR` and `_asymR` ... but don't til enough sorts/loops are compile-time.
 
-- `operator+=` and other in-place operators for AntiSymRef
-
 - index notation  ...
 	- dimension check at compile-time
 	- dimension-matching at compile-time
 	- and from that, index-multiply
 
 - make innerForIndexSeq which is a sequence mapping index to nesting #
+
+- `operator[]` that takes a single intN?  or is that just redundant at this point?
+
+- `operator+=` and other in-place operators for AntiSymRef
+
+- More tensor operators?  For integral Scalar types?  `<< >> & | ^ ~ && || ! % ?:`.  For tensors and index-notation.
 
 - C++23 operator[] can be variadic.
 	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().
