@@ -42,7 +42,7 @@ namespace TupleTests {
 	>);
 	
 	static_assert(is_same_v<
-		decltype(float3x3()(i,j))::GatheredIndexes,
+		decltype(float3x3()(i,j))::Details::GatheredIndexes,
 		tuple<
 			pair<
 				I,
@@ -58,18 +58,18 @@ namespace TupleTests {
 	namespace test1 {
 		using IndexTuple = std::tuple<I>;
 		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
-		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, Tensor::HasMoreThanOneIndex>;
-		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
-		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;
+		using SumIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+		using AssignIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
 		static_assert(SumIndexSeq::size() == 0);
 		static_assert(std::is_same_v<AssignIndexSeq, std::integer_sequence<int, 0>>);
 	}
 	namespace test2 {
 		using IndexTuple = std::tuple<I,J>;
 		using GatheredIndexes = Tensor::GatherIndexes<IndexTuple>;
-		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, Tensor::HasMoreThanOneIndex>;
-		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
-		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;
+		using SumIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+		using AssignIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
 		static_assert(SumIndexSeq::size() == 0);
 		static_assert(std::is_same_v<AssignIndexSeq, std::integer_sequence<int, 0, 1>>);
 	}
@@ -121,10 +121,10 @@ namespace TupleTests {
 		>);
 		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<
 			GatheredIndexes,
-			Tensor::HasMoreThanOneIndex
+			HasMoreThanOneIndex
 		>;
-		using SumIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
-		using AssignIndexSeq = Tensor::GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
+		using SumIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;
+		using AssignIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;
 		static_assert(AssignIndexSeq::size() == 0);
 		static_assert(std::is_same_v<
 			SumIndexSeq,

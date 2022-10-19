@@ -1265,14 +1265,11 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 #define TENSOR_ADD_INDEX_NOTATION_CALL()\
 	template<typename ThisConst, typename IndexType, typename... IndexTypes>\
 	static decltype(auto) callIndexOp(ThisConst & this_, IndexType, IndexTypes...) {\
-		/* this is all doubled-up from IndexAccess, but we can't make IndexAccess until we know its |AssignIndexSeq| > 0 */\
+		/* get details first because we can't make IndexAccess until we know its |AssignIndexSeq| > 0 */\
 		using IndexTuple = std::tuple<IndexType, IndexTypes...>;\
-		using GatheredIndexes = GatherIndexes<IndexTuple>;\
-		using GetAssignVsSumGatheredLocs = Common::tuple_get_filtered_indexes_t<GatheredIndexes, HasMoreThanOneIndex>;\
-		using SumIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::has, GatheredIndexes>;\
-		using AssignIndexSeq = GetIndexLocsFromGatherResult<typename GetAssignVsSumGatheredLocs::hasnot, GatheredIndexes>;\
-		if constexpr (AssignIndexSeq::size() == 0) {\
-			return applyTraces<ThisConst, SumIndexSeq>(this_);\
+		using Details = IndexAccessDetails<IndexTuple>;\
+		if constexpr (Details::rank == 0) {\
+			return applyTraces<ThisConst, typename Details::SumIndexSeq>(this_);\
 		} else {\
 			/* dont' instanciating this until you know IndexTuple has non-summed-indexes or else its rank = 0 and that's bad for its vector member types */\
 			return IndexAccess<ThisConst, IndexTuple>(this_);\
