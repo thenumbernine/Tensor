@@ -281,6 +281,48 @@ _sym3<T> inverseImpl(_sym3<T> const & a, T const & det) {
 	};
 }
 
+//from the 4x4 case above, which is from: https://stackoverflow.com/questions/1148309/inverting-a-4x4-matrix
+// hmm after comparing symmetric outputs i'm not seeing the results match, makes me suspicious of the above implemenation ...
+template<typename T>
+_sym4<T> inverseImpl(_sym4<T> const & a, T const & det) {
+	T const a2323 = a.s22 * a.s33 - a.s23 * a.s23;
+	T const a1323 = a.s12 * a.s33 - a.s23 * a.s13;
+	T const a1223 = a.s12 * a.s23 - a.s22 * a.s13;
+	T const a0323 = a.s02 * a.s33 - a.s23 * a.s03;
+	T const a0223 = a.s02 * a.s23 - a.s22 * a.s03;
+	//T const a0123 = a.s02 * a.s13 - a.s12 * a.s03;
+	T const a2313 = a.s12 * a.s33 - a.s13 * a.s23;
+	T const a1313 = a.s11 * a.s33 - a.s13 * a.s13;
+	T const a1213 = a.s11 * a.s23 - a.s12 * a.s13;
+	T const a2312 = a.s12 * a.s23 - a.s13 * a.s22;
+	T const a1312 = a.s11 * a.s23 - a.s13 * a.s12;
+	T const a1212 = a.s11 * a.s22 - a.s12 * a.s12;
+	T const a0313 = a.s01 * a.s33 - a.s13 * a.s03;
+	T const a0213 = a.s01 * a.s23 - a.s12 * a.s03;
+	T const a0312 = a.s01 * a.s23 - a.s13 * a.s02;
+	T const a0212 = a.s01 * a.s22 - a.s12 * a.s02;
+	T const a0113 = a.s01 * a.s13 - a.s11 * a.s03;
+	T const a0112 = a.s01 * a.s12 - a.s11 * a.s02;
+	_sym4<T> result; 
+	result(0,0) = (a.s11 * a2323 - a.s12 * a1323 + a.s13 * a1223) / det;
+	result(0,1) = -(a.s01 * a2323 - a.s02 * a1323 + a.s03 * a1223) / det;
+	//result(1,0) = -(a.s01 * a2323 - a.s12 * a0323 + a.s13 * a0223) / det;
+	result(0,2) = (a.s01 * a2313 - a.s02 * a1313 + a.s03 * a1213) / det;
+	//result(2,0) = (a.s01 * a1323 - a.s11 * a0323 + a.s13 * a0123) / det;
+	result(0,3) = -(a.s01 * a2312 - a.s02 * a1312 + a.s03 * a1212) / det;
+	//result(3,0) = -(a.s01 * a1223 - a.s11 * a0223 + a.s12 * a0123) / det;
+	result(1,1) = (a.s00 * a2323 - a.s02 * a0323 + a.s03 * a0223) / det;
+	result(1,2) = -(a.s00 * a2313 - a.s02 * a0313 + a.s03 * a0213) / det;
+	//result(2,1) = -(a.s00 * a1323 - a.s01 * a0323 + a.s03 * a0123) / det;
+	result(1,3) = (a.s00 * a2312 - a.s02 * a0312 + a.s03 * a0212) / det;
+	//result(3,1) = (a.s00 * a1223 - a.s01 * a0223 + a.s02 * a0123) / det;
+	result(2,2) = (a.s00 * a1313 - a.s01 * a0313 + a.s03 * a0113) / det;
+	result(2,3) = -(a.s00 * a1312 - a.s01 * a0312 + a.s03 * a0112) / det;
+	//result(3,2) = -(a.s00 * a1213 - a.s01 * a0213 + a.s02 * a0113) / det;
+	result(3,3) = (a.s00 * a1212 - a.s01 * a0212 + a.s02 * a0112) / det;
+	return result;
+}
+
 template<typename T>
 requires is_tensor_v<T>
 T inverse(T const & a, typename T::Scalar const & det) {
