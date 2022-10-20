@@ -191,15 +191,32 @@ using GatherIndexes = typename GatherIndexesImpl<
 >::type;
 
 
+
+/*
+ex: trace 0 3 1 4 2 5	a_ijkijk
+	0 3		1 4 2 5
+	0 3		1 4		2 5		a_ijkijk
+					... apply to 2 5
+	0 3		1 4				a_ij*ij* => a_ijij
+					... convert 1->1, 4->3 (because of 2 5 ... 2 < 4, so 4=>3)
+					... apply to 1 3
+	0 3						a_i**l**
+					... convert 0->0, 3->1 (because of 1 4 2 5 ... 1 2 < 3, so 3=>1)
+
+	in the successive sequence elements, for each element < i1 we want to decrement i1 (or i2 respectively)
+
+*/
 template<typename T, typename Seq>
 struct ApplyTracesImpl;
-// assume they're sorted, apply in descending order
 template<typename T, typename Int, Int i1, Int i2, Int... is>
 struct ApplyTracesImpl<T, std::integer_sequence<Int, i1, i2, is...>> {
 	static constexpr auto exec(T & t) {
-		return trace<i1, i2>(
-			ApplyTracesImpl<T, std::integer_sequence<Int, is...>>::exec(t)
-		);
+		using Next = ApplyTracesImpl<T, std::integer_sequence<Int, is...>>;
+		// first map integers to 1s if they are < i or 0s if not, then sum them up
+		constexpr int nexti1 = i1 - ((is < i1) + ... + (0));
+		constexpr int nexti2 = i2 - ((is < i2) + ... + (0));
+		// ok now if any of is... is < i1 then for each < i1 we need to decrement i1 ... same with i2
+		return trace<nexti1, nexti2>(Next::exec(t));
 	}
 };
 template<typename T, typename Int>

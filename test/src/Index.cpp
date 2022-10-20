@@ -485,6 +485,14 @@ void test_Index() {
 		auto c = (a(i,j) * b(j)).assignI();
 		TEST_EQ(c, a * b);
 	}
+	{	//TODO double trace
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		auto a = Tensor::float3x3({{1,2,3},{4,5,6},{7,8,9}});
+		auto b = Tensor::float3x3({{1,2,3},{4,5,6},{7,8,9}});
+		auto c = a(i,j) * b(i,j);
+		TEST_EQ(c, a.interior<2>(b));
+	}
 #if 0 // TODO
 	{
 		//TODO? discrete differentiation?
