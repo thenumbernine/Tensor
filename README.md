@@ -30,6 +30,20 @@ So I guess overall this library is midway between a mathematician's and a progra
 
 ## Examples
 
+Example of Einstein index summation notation / Ricci calculus:
+```c++
+Index<'i'> i;
+Index<'j'> j;
+Index<'k'> k;
+auto a = float3x3({{1,2,3},{4,5,6},{7,8,9}});
+// lazy-evaluation of swizzles, addition, subtraction
+a(i,j) = .5 * (a(i,j) + a(j,i));
+auto b = float3s3s3([](int i, int j, int k) -> float { return i+j+k; });
+// mid-evaluation caching of traces and tensor-multiplies
+auto c = b(i,j,j).assignI();
+auto d = (a(i,j) * b(j,k,k)).assignI();
+```
+
 Example of using a totally-antisymmetric tensor for implementing the cross-product:
 ```c++
 float3 cross(float3 a, float3 b) {
@@ -112,20 +126,6 @@ auto KD = LC_lower.outer(LC.upper);
 KD is now a rank-`2*dim` tensor of dimension `dim`.
 Once again it is represented by just a single float.
 Take note of the order of your outer product and therefore the order of your result's indexes.  In this case the generalized-Kronecker-delta lower indexes are first.
-
-Example of index notation:
-```c++
-Index<'i'> i;
-Index<'j'> j;
-Index<'k'> k;
-auto a = float3x3({{1,2,3},{4,5,6},{7,8,9}});
-// lazy-evaluation of swizzles, addition, subtraction
-a(i,j) = .5 * (a(i,j) + a(j,i));
-auto b = float3s3s3([](int i, int j, int k) -> float { return i+j+k; });
-// mid-evaluation caching of traces and tensor-multiplies
-auto c = b(i,j,j).assignI();
-auto d = (a(i,j) * b(j,k,k)).assignI();
-```
 
 ## API Reference:
 

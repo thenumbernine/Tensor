@@ -228,7 +228,6 @@ auto applyTraces(T & x) {
 	return ApplyTracesImpl<T, Seq>::exec(x);
 }
 
-
 template<typename AssignIndexTuple>
 struct FindInAssignIndexTuple {
 	template<typename Src>
