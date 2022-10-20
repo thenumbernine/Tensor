@@ -95,7 +95,7 @@ struct AntiSymRef {
 
 	template<typename... Args>
 	auto operator()(Args&&... args) const
-	//requires (std::is_invocable_v<T()>) 
+	//requires (std::is_invocable_v<T()>)
 	requires (is_tensor_v<T>)
 	{
 		using R = std::decay_t<decltype((*x).get()(std::forward<Args>(args)...))>;
@@ -131,26 +131,112 @@ struct AntiSymRef {
 		}
 		return *this;
 	}
+
+	This & operator+=(T const & y) {
+		if (how == Sign::POSITIVE) {
+			(*x).get() += y;
+		} else if (how == Sign::NEGATIVE) {
+			(*x).get() -= y;
+		}
+		return *this;
+	}
+
+	This & operator-=(T const & y) {
+		if (how == Sign::POSITIVE) {
+			(*x).get() -= y;
+		} else if (how == Sign::NEGATIVE) {
+			(*x).get() *= y;
+		}
+		return *this;
+	}
+
+	This & operator*=(T const & y) {
+		if (how == Sign::POSITIVE || how == Sign::NEGATIVE) {
+			(*x).get() *= y;
+		}
+		return *this;
+	}
+
+	This & operator/=(T const & y) {
+		if (how == Sign::POSITIVE || how == Sign::NEGATIVE) {
+			(*x).get() /= y;
+		}
+		return *this;
+	}
+
+	This & operator%=(T const & y) {
+		if (how == Sign::POSITIVE || how == Sign::NEGATIVE) {
+			(*x).get() %= y;
+		}
+		return *this;
+	}
+
+	This & operator++() {
+		if (how == Sign::POSITIVE) {
+			(*x).get()++;
+		} else if (how == Sign::NEGATIVE) {
+			(*x).get()--;
+		}
+		return *this;
+	}
+
+	This & operator++(int) {
+		if (how == Sign::POSITIVE) {
+			++(*x).get();
+		} else if (how == Sign::NEGATIVE) {
+			--(*x).get();
+		}
+		return *this;
+	}
+
+	This & operator--() {
+		if (how == Sign::POSITIVE) {
+			(*x).get()--;
+		} else if (how == Sign::NEGATIVE) {
+			(*x).get()++;
+		}
+		return *this;
+	}
+
+	This & operator--(int) {
+		if (how == Sign::POSITIVE) {
+			--(*x).get();
+		} else if (how == Sign::NEGATIVE) {
+			++(*x).get();
+		}
+		return *this;
+	}
+
+	T operator-() const {
+		if (how == Sign::POSITIVE) {
+			return -(*x).get();
+		} else if (how == Sign::NEGATIVE) {
+			return (*x).get();
+		}
+		return 0;
+	}
 };
 
-template<typename T>
-bool operator==(AntiSymRef<T> const & a, T const & b) {
-	return a.operator T() == b;
+#define TENSOR_ANTISYMREF_OP(op)\
+template<typename T>\
+decltype(auto) operator op(AntiSymRef<T> const & a, T const & b) {\
+	return a.operator T() op b;\
+}\
+template<typename T>\
+decltype(auto) operator op(T const & a, AntiSymRef<T> const & b) {\
+	return a op b.operator T();\
+}\
+template<typename T>\
+decltype(auto) operator op(AntiSymRef<T> const & a, AntiSymRef<T> const & b) {\
+	return a.operator T() op b.operator T();\
 }
 
-template<typename T>
-bool operator==(T const & a, AntiSymRef<T> const & b) {
-	return a == b.operator T();
-}
-
-template<typename T>
-bool operator==(AntiSymRef<T> const & a, AntiSymRef<T> const & b) {
-	return a.operator T() == b.operator T();
-}
-
-template<typename T> bool operator!=(AntiSymRef<T> const & a, T const & b) { return !operator==(a,b); }
-template<typename T> bool operator!=(T const & a, AntiSymRef<T> const & b) { return !operator==(a,b); }
-template<typename T> bool operator!=(AntiSymRef<T> const & a, AntiSymRef<T> const & b) { return !operator==(a,b); }
+TENSOR_ANTISYMREF_OP(==)
+TENSOR_ANTISYMREF_OP(!=)
+TENSOR_ANTISYMREF_OP(<)
+TENSOR_ANTISYMREF_OP(<=)
+TENSOR_ANTISYMREF_OP(>)
+TENSOR_ANTISYMREF_OP(>=)
 
 template<typename T>
 std::ostream & operator<<(std::ostream & o, AntiSymRef<T> const & t) {

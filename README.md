@@ -578,6 +578,9 @@ TODO:
 - shorthand those longwinded names like "inverse"=>"inv", "determinant"=>"det", "trace"=>"tr", "transpose"=>...? T? tr?  what? "normalize"=>"unit"
 
 - use `_asymR` for an implementation of LeviCivita as constexpr
+- also use `_ident` for KroneckerDelta as constexpr
+- also `_asymR` $ \otimes $ `_asymR` for GeneralizedKroneckerDelta. 
+
 - then use that for cross, determinant, inverse, wedge
 - once index notation is finished that might be most optimal for implementations
 
@@ -624,8 +627,6 @@ TODO:
 - make innerForIndexSeq which is a sequence mapping index to nesting #
 
 - `operator[]` that takes a single intN?  or is that just redundant at this point?
-
-- `operator+=` and other in-place operators for AntiSymRef
 
 - More tensor operators?  For integral Scalar types?  `<< >> & | ^ ~ && || ! % ?:`.  For tensors and index-notation.
 
