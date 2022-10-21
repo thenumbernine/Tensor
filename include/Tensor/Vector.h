@@ -432,6 +432,10 @@ Scalar = NestedPtrTuple's last
 	template<int deferRank = rank> /* evaluation needs to be deferred */\
 	using ExpandAllIndexes = ExpandIndexSeq<std::make_integer_sequence<int, deferRank>>;\
 \
+	decltype(auto) expand() const {\
+		return ExpandAllIndexes<>(*this);\
+	}\
+\
 	/* yet another one where tensor type manip is easier than storage manip */\
 	/* in this case, duplicating the storage by their rank means knowing the local-rank, which isn't in the storage classes */\
 	template<int deferRank = rank>\
@@ -1270,14 +1274,14 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 \
 	/* assumes packed tensor */\
 		/* compile-time offset */\
-	template<int subdim, int offset>\
+	template<int subdim, int offset = 0>\
 	_vec<Inner,subdim> & subset() {\
 		static_assert(subdim >= 0);\
 		static_assert(offset >= 0);\
 		static_assert(offset + subdim <= localCount);\
 		return *(_vec<Inner,subdim>*)(&s[offset]);\
 	}\
-	template<int subdim, int offset>\
+	template<int subdim, int offset = 0>\
 	_vec<Inner,subdim> const & subset() const {\
 		static_assert(subdim >= 0);\
 		static_assert(offset >= 0);\
@@ -2609,11 +2613,11 @@ from my symmath/tensor/LeviCivita.lua
 			return Accessor<ThisConst, N>(this_, i);\
 		} else if constexpr (N == localRank) {\
 			using InnerConst = typename Common::constness_of<ThisConst>::template apply_to_t<Inner>;\
-			auto sign = antisymSortAndCountFlips(i);\
+			auto sign = antisymSortAndCountFlips(i.template subset<localRank>());\
 			if (sign == Sign::ZERO) return AntiSymRef<InnerConst>();\
 			return AntiSymRef<InnerConst>(this_.s[getLocalWriteForReadIndex(i)], sign);\
 		} else if constexpr (N > localRank) {\
-			auto sign = antisymSortAndCountFlips(i);\
+			auto sign = antisymSortAndCountFlips(i.template subset<localRank>());\
 			if (sign == Sign::ZERO) {\
 				using R = decltype(this_(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>()));\
 				return R();\

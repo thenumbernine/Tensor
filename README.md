@@ -376,7 +376,43 @@ auto bref = x.yzx();
 float3 b = x.yzx();
 ```
 
-### Functions
+### Index Notation
+- `Index<char>` = create an index iterator object.  Yeah I did see FTensor/LTensor doing this and thought it was a good idea.
+	I haven't read enough of the paper on FTensor / copied enough that I am sure my implementation's performance is suffering compared to it.
+
+- Index permutations are lazy-evaluated.
+- Tensor/Scalar and Scalar/Tensor operations are lazy-evaluated.
+- Tensor/Tensor add sub and per-element divide is lazy-evaluated.
+- Same references on the LHS and RHS is ok.
+- Traces are fine.  If any trace is present in a tensor expression then it will be cached rather than lazy-evaluated.  Traces producing a scalar can be used immediately, i.e. `float3x3 a; a(i,i);` will produce a float.  Traces producing a tensor will still need to be `.assign()`ed.
+- Tensor-tensor multiplication works, and also caches mid-expression-evaluation.
+- LHS typed assignment:
+```c++
+float3x3 a = ...;
+float3a3 b; b(i,j) = (a(i,j) - a(j,i)) / 2.f;
+```
+- RHS typed assignment into specified return type:
+```c++
+float3x3 a = ...;
+auto b = ((a(i,j) - a(j,i)) / 2.f).assignR<float3a3>(i,j);
+```
+- RHS typed assignment into implied return type based on specified assignment indexes:
+```c++
+float3x3 a = ...;
+auto b = ((a(i,j) - a(j,i)) / 2.f).assign(i,j);
+```
+- RHS typed assignment into implied return type with implied index order.
+This order is the order of non-summed indexes, and in the case of binary operations it is the first term's indexes.
+```c++
+float3x3 a = ...;
+auto b = ((a(i,j) - a(j,i)) / 2.f).assignI();
+```
+- RHS type assignment right now will use an expanded tensor, so storage optimizations get lost:
+
+Maybe I will merge assign, assignR, assignI into a single ugly abomination which is just the call operator,
+such that if you pass it a specific template arg (can you do that?) it uses it as a return type, otherwise it infers from the indexes you pass it, otherwise if no indexes then it just uses the current index form of the expression as-is.
+
+### Mathematic Functions
 Functions are provided as `Tensor::` namespace or as member-functions where `this` is automatically padded into the first argument.
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	- rank-N x rank-N -> rank-0.
@@ -435,41 +471,8 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	- rank-2 -> rank-2:
 	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
 
-### Index Notation
-- `Index<char>` = create an index iterator object.  Yeah I did see FTensor/LTensor doing this and thought it was a good idea.
-	I haven't read enough of the paper on FTensor / copied enough that I am sure my implementation's performance is suffering compared to it.
-
-- Index permutations are lazy-evaluated.
-- Tensor/Scalar and Scalar/Tensor operations are lazy-evaluated.
-- Tensor/Tensor add sub and per-element divide is lazy-evaluated.
-- Same references on the LHS and RHS is ok.
-- Traces are fine.  If any trace is present in a tensor expression then it will be cached rather than lazy-evaluated.  Traces producing a scalar can be used immediately, i.e. `float3x3 a; a(i,i);` will produce a float.  Traces producing a tensor will still need to be `.assign()`ed.
-- Tensor-tensor multiplication works, and also caches mid-expression-evaluation.
-- LHS typed assignment:
-```c++
-float3x3 a = ...;
-float3a3 b; b(i,j) = (a(i,j) - a(j,i)) / 2.f;
-```
-- RHS typed assignment into specified return type:
-```c++
-float3x3 a = ...;
-auto b = ((a(i,j) - a(j,i)) / 2.f).assignR<float3a3>(i,j);
-```
-- RHS typed assignment into implied return type based on specified assignment indexes:
-```c++
-float3x3 a = ...;
-auto b = ((a(i,j) - a(j,i)) / 2.f).assign(i,j);
-```
-- RHS typed assignment into implied return type with implied index order.
-This order is the order of non-summed indexes, and in the case of binary operations it is the first term's indexes.
-```c++
-float3x3 a = ...;
-auto b = ((a(i,j) - a(j,i)) / 2.f).assignI();
-```
-- RHS type assignment right now will use an expanded tensor, so storage optimizations get lost:
-
-Maybe I will merge assign, assignR, assignI into a single ugly abomination which is just the call operator,
-such that if you pass it a specific template arg (can you do that?) it uses it as a return type, otherwise it infers from the indexes you pass it, otherwise if no indexes then it just uses the current index form of the expression as-is.
+### Support Functions
+- `expand()` = convert the tensor to its expanded storage.  The type will be the same as `::ExpandAllIndexes<>`.
 
 ### Tensor properties:
 - `::This` = The current type.  Maybe not useful outside the class definition, but pretty useful within it when defining inner classes.

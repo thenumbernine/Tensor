@@ -149,4 +149,86 @@ void test_TotallyAntisymmetric() {
 		TEST_EQ(ns, n * Tensor::float3a3a3(1));
 		TEST_EQ((Tensor::float3x3)ns, (Tensor::float3x3)(n * Tensor::float3a3a3(1)));
 	}
+	// rank-2 works
+	{
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		Tensor::Index<'k'> k;
+		Tensor::Index<'l'> l;
+		auto L2 = Tensor::float2a2(1);
+		STATIC_ASSERT_EQ(sizeof(L2), sizeof(float));
+		auto gkd2_4 = L2.outer(L2);
+		STATIC_ASSERT_EQ(sizeof(gkd2_4), sizeof(float));
+		auto gkd2_4_index = (L2(i,j) * L2(k,l)).assign(i,j,k,l);
+		TEST_EQ(
+			(Tensor::_tensorr<float,2,4>(gkd2_4)),
+			gkd2_4_index
+		);
+		auto gkd2_2 = gkd2_4.trace<0,2>();
+		TEST_EQ(gkd2_2, Tensor::float2i2(1));
+		auto gkd2_0 = gkd2_2.trace<0,1>();
+		TEST_EQ(gkd2_0, 2);
+	}
+// TODO 
+	//rank-3 fails ...
+	{
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		Tensor::Index<'k'> k;
+		Tensor::Index<'l'> l;
+		Tensor::Index<'m'> m;
+		Tensor::Index<'n'> n;
+		auto L3 = float3a3a3(1);	// Levi-Civita tensor
+		STATIC_ASSERT_EQ(sizeof(L3), sizeof(float));
+		ECHO((Tensor::_tensorr<float,3,3>)L3);	// looks correct
+		// ε^ijk ε_lmn = δ^[ijk]_[lmn] = 6! δ^[i_l δ^j_m δ^k]_n
+		// this is zero:
+		auto gkd3_6 = L3.outer(L3);
+		auto gkd3_6_expand_then_outer = L3.expand().outer(L3.expand());
+		STATIC_ASSERT_EQ(sizeof(gkd3_6), sizeof(float));
+		ECHO((Tensor::_tensorr<float,3,6>)gkd3_6);
+		// this is correct:
+		auto gkd3_6_index = (L3(i,j,k) * L3(l,m,n)).assign(i,j,k,l,m,n);
+		//works
+		TEST_EQ(
+			gkd3_6_expand_then_outer,
+			gkd3_6_index
+		);
+		//failing ... 
+		{
+			for (int i = 0; i < 3; ++i) {
+				for (int j = 0; j < 3; ++j) {
+					for (int k = 0; k < 3; ++k) {
+						for (int l = 0; l < 3; ++l) {
+							for (int m = 0; m < 3; ++m) {
+								for (int n = 0; n < 3; ++n) {
+									std::cout << "ε^" << i << j << k << "_" << l << m << n << std::endl;
+									TEST_EQ(
+										gkd3_6(i,j,k,l,m,n),
+										gkd3_6_index(i,j,k,l,m,n)
+									);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		TEST_EQ(
+			(Tensor::_tensorr<float, 3, 6>(gkd3_6)),
+			gkd3_6_index
+		);
+		// ε^ijk ε_lmk = δ^ijk_lmk = δ^ij_lm
+		auto gkd3_4 = gkd3_6.trace<0, 3>();
+		static_assert(std::is_same_v<decltype(gkd3_4), Tensor::_tensorx<float, -'a', 3, -'a', 3>>);
+		STATIC_ASSERT_EQ(sizeof(gkd3_4), 3 * 3 * sizeof(float));
+		// ε^ijk ε_ljk = δ^ijk_ljk = 2 δ^i_l
+		auto gkd3_2 = gkd3_4.trace<0,2>();
+		// this would evaluate to 3 x 3 == 9 tho it could be opimized to 3 s 3 == 6
+		static_assert(std::is_same_v<decltype(gkd3_2), Tensor::float3x3>);
+		STATIC_ASSERT_EQ(sizeof(gkd3_2), 3 * 3 * sizeof(float));
+		TEST_EQ(gkd3_2, 2. * Tensor::float3i3(1));
+		auto gkd3_0 = gkd3_2.trace<0,1>();
+		TEST_EQ(gkd3_0, 6.);
+	}
 }

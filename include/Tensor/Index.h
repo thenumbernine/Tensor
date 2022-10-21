@@ -322,14 +322,14 @@ struct IndexAccessDetails {
 		&& R::rank == rank\
 		&& is_all_base_of_v<IndexBase, IndexType, IndexTypes...>\
 	)\
-	decltype(auto) assignR(IndexType, IndexTypes...) const {\
+	constexpr decltype(auto) assignR(IndexType, IndexTypes...) const {\
 		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
 	}\
 \
 	/* assign using the type from mapped dims of the indexes specified in args */\
 	template<typename IndexType, typename... IndexTypes>\
 	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
-	decltype(auto) assign(IndexType, IndexTypes...) const {\
+	constexpr decltype(auto) assign(IndexType, IndexTypes...) const {\
 		using DstAssignIndexTuple = std::tuple<IndexType, IndexTypes...>;\
 		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple<AssignIndexTuple>::template go>;\
 		using dims = Common::SeqToSeqMap<destseq, GetSeqIth<dimseq>::template go>;\
@@ -338,7 +338,7 @@ struct IndexAccessDetails {
 	}\
 \
 	/* assign using the current AssignIndexTuple */\
-	decltype(auto) assignI() const {\
+	constexpr decltype(auto) assignI() const {\
 		using DstAssignIndexTuple = AssignIndexTuple;\
 		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple<AssignIndexTuple>::template go>;\
 		static_assert(std::is_same_v<destseq, std::make_integer_sequence<int, destseq::size()>>);\
