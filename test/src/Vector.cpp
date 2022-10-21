@@ -257,7 +257,9 @@ void test_Vector() {
 		TEST_EQ(f+g, Tensor::float3(11, 6, 9));
 		TEST_EQ(f-g, Tensor::float3(-3, 4, 5));
 		TEST_EQ(f/g, Tensor::float3(0.57142857142857, 5.0, 3.5));	// wow, this equality passes while sqrt(90) fails
-	
+		// unary
+		TEST_EQ(-f, Tensor::float3(-4, -5, -7));
+
 		// for vector*vector I'm picking the scalar-result of the 2 GLSL options (are there three? can you do mat = vec * vec in GLSL?)
 		//  this fits with general compatability of tensor operator* being outer+contract
 		TEST_EQ(f*g, 47)

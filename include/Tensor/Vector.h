@@ -592,60 +592,37 @@ Scalar = NestedPtrTuple's last
 //until then...
 
 #define TENSOR_ADD_VECTOR_OP_EQ(op)\
-	This & operator op(This const & b) {\
-		for (int i = 0; i < localCount; ++i) {\
-			s[i] op b.s[i];\
-		}\
-		return *this;\
+	constexpr This & operator op(This const & b) {\
+		return [&]<size_t ... is>(std::index_sequence<is...>) constexpr -> This & {\
+			return ((s[is] op b.s[is]), ..., *this);\
+		}(std::make_index_sequence<localCount>{});\
 	}
 
 #define TENSOR_ADD_SCALAR_OP_EQ(op)\
-	This & operator op(Scalar const & b) {\
-		for (int i = 0; i < localCount; ++i) {\
-			s[i] op b;\
-		}\
-		return *this;\
+	constexpr This & operator op(Scalar const & b) {\
+		return [&]<size_t ... is>(std::index_sequence<is...>) constexpr -> This & {\
+			return ((s[is] op b), ..., *this);\
+		}(std::make_index_sequence<localCount>{});\
 	}
 
 // for comparing like types, use the member operator==, because it is constexpr
 // for non-like tensors there's a non-member non-constexpr below
 #define TENSOR_ADD_CMP_OP()\
 	constexpr bool operator==(This const & b) const {\
-		for (int i = 0; i < localCount; ++i) {\
-			if (s[i] != b.s[i]) return false;\
-		}\
-		return true;\
+		return [&]<size_t ... is>(std::index_sequence<is...>) constexpr -> bool {\
+			return ((s[is] == b.s[is]) && ... && (true));\
+		}(std::make_index_sequence<localCount>{});\
 	}\
 	constexpr bool operator!=(This const & b) const {\
 		return !operator==(b);\
 	}
 
-// danger ... danger ...
-#define TENSOR_ADD_CAST_BOOL_OP()\
-	operator bool() const {\
-		for (int i = 0; i < localCount; ++i) {\
-			if (s[i] != Inner()) return true;\
-		}\
-		return false;\
-	}
-
-// danger ... danger ...
-// don't mix overload='s with overload ctors
-#define TENSOR_ADD_ASSIGN_OP()\
-	This & operator=(This const & o) {\
-		for (int i = 0; i < localCount; ++i) {\
-			s[i] = o.s[i];\
-		}\
-		return *this;\
-	}
-
 #define TENSOR_ADD_UNM()\
-	This operator-() const {\
+	constexpr This operator-() const {\
 		This result;\
-		for (int i = 0; i < localCount; ++i) {\
-			result.s[i] = -s[i];\
-		}\
-		return result;\
+		return [&]<size_t ... is>(std::index_sequence<is...>) constexpr -> This {\
+			return ((result.s[is] = -s[is]), ..., result);\
+		}(std::make_index_sequence<localCount>{});\
 	}
 
 // for rank-1 objects (_vec, _sym::Accessor, _asym::Accessor)
