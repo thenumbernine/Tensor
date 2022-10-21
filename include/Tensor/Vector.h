@@ -2624,7 +2624,9 @@ from my symmath/tensor/LeviCivita.lua
 			}\
 			/* call-thru of AntiSymRef returns another AntiSymRef ... */\
 			auto result = this_(i.template subset<localRank,0>())(i.template subset<N-localRank,localRank>());\
-			if (sign == Sign::NEGATIVE) result.flip();\
+			if (sign == Sign::NEGATIVE) {\
+				return result.flip();\
+			}\
 			return result;\
 		}\
 	}\
