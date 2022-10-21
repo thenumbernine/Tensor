@@ -169,8 +169,7 @@ void test_TotallyAntisymmetric() {
 		auto gkd2_0 = gkd2_2.trace<0,1>();
 		TEST_EQ(gkd2_0, 2);
 	}
-// TODO 
-	//rank-3 fails ...
+	//rank-3 works ...
 	{
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
