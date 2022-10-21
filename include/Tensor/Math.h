@@ -370,16 +370,12 @@ using ReplaceWithZero = typename ReplaceWithZeroImpl<typename T::template Expand
 template<typename T>
 requires (T::rank > 0)
 struct MakeSymResult {
-	template<int i>
-	struct AnyAreAsym {
-		static constexpr bool exec() {
-			using IthNest = typename T::template Nested<i>;
-			return is_asym_v<IthNest> || is_asymR_v<IthNest>;
-		}
-	};
 	static constexpr auto value() {
 		using S = typename T::Scalar;
-		if constexpr (Common::ForLoop<0, T::numNestings, AnyAreAsym>::exec()) {
+		constexpr auto anyAreAsym = []<size_t ... is> (std::index_sequence<is...>) constexpr {
+			return ((is_asym_v<typename T::Nested<is>> || is_asymR_v<typename T::Nested<is>>) && ... && (true));
+		}(std::make_index_sequence<T::numNestings>{});
+		if constexpr (anyAreAsym) {
 			return (ReplaceWithZero<T>*)nullptr;
 		} else if constexpr (T::rank == 1) {
 			return (_vec<S, T::localDim>*)nullptr;
@@ -415,16 +411,12 @@ auto makeSym(T const & t) {
 template<typename T>
 requires (T::rank > 0)
 struct MakeAntiSymResult {
-	template<int i>
-	struct AnyAreSym {
-		static constexpr bool exec() {
-			using IthNest = typename T::template Nested<i>;
-			return is_ident_v<IthNest> || is_sym_v<IthNest> || is_symR_v<IthNest>;
-		}
-	};
 	static constexpr auto value() {
 		using S = typename T::Scalar;
-		if constexpr (Common::ForLoop<0, T::numNestings, AnyAreSym>::exec()) {
+		constexpr auto anyAreSym = []<size_t ... is> (std::index_sequence<is...>) constexpr {
+			return ((is_ident_v<typename T::Nested<is>> || is_sym_v<typename T::Nested<is>> || is_symR_v<typename T::Nested<is>>) && ... && (true));
+		}(std::make_index_sequence<T::numNestings>{});
+		if constexpr (anyAreSym) {
 			return (ReplaceWithZero<T>*)nullptr;
 		} else if constexpr (T::rank == 1) {
 			return (_vec<S, T::localDim>*)nullptr;
@@ -495,46 +487,7 @@ auto hodgeDual(A const & a) {
 template<typename A, typename B>
 requires IsBinaryTensorOpWithMatchingNeighborDims<A,B>
 auto operator*(A const & a, B const & b) {
-#if 1	// lazy way.  inline the lambdas and don't waste the outer()'s operation expenses
-	//return contract<A::rank-1, A::rank>(outer(a,b));
 	return interior<1>(a,b);
-#else	// some optimizations, no wasted storage
-	using S = typename A::Scalar;
-	if constexpr (A::rank == 1 && B::rank == 1) {
-		// rank-0 result case
-		static_assert(A::dims() == B::dims());	//thanks to the 3rd requires condition
-		//scalar return case
-		S sum = a(0) * b(0);
-		for (int k = 1; k < A::template dim<0>; ++k) {
-			sum += a(k) * b(k);
-		}
-		return sum;
-	} else {
-		using R = typename A
-			::template ReplaceScalar<B>
-			::template RemoveIndex<A::rank-1, A::rank>;
-		//static_assert(std::is_same_v<typename A::template ReplaceScalar<B>, decltype(outer(a,b))>);
-		//static_assert(std::is_same_v<R, decltype(interior<1>(a,b))>);
-		return R([&](typename R::intN i) -> S {
-			auto ai = typename A::intN([&](int j) -> int {
-				if (j == A::rank-1) return 0;
-				return i[j];
-			});
-			auto bi = typename B::intN([&](int j) -> int {
-				if (j == 0) return 0;
-				j += A::rank-2;
-				return i[j];
-			});
-			S sum = a(ai) * b(bi);
-			for (int k = 1; k < A::template dim<A::rank-1>; ++k) {
-				ai(A::rank-1) = k;
-				bi(0) = k;
-				sum += a(ai) * b(bi);
-			}
-			return sum;
-		});
-	}
-#endif
 }
 
 // diagonalize an index

@@ -214,6 +214,20 @@ struct _tensori_impl<Scalar> {
 template<typename Scalar, typename... Storage>
 using _tensori = typename _tensori_impl<Scalar, Storage...>::type;
 
+// type of a tensor with specific rank and dimension (for all indexes)
+// used by some _vec members
+
+template<typename Scalar, int dim, int rank>
+struct _tensorr_impl {
+	using type = _vec<typename _tensorr_impl<Scalar, dim, rank-1>::type, dim>;
+};
+template<typename Scalar, int dim>
+struct _tensorr_impl<Scalar, dim, 0> {
+	using type = Scalar;
+};
+template<typename Src, int dim, int rank>
+using _tensorr = typename _tensorr_impl<Src, dim, rank>::type;
+
 // this is a useful enough one
 
 template<typename Scalar, typename StorageTuple>
