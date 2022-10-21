@@ -30,7 +30,7 @@ It's defined in the class in the TENSOR_HEADER, as a static constexpr field.
 TODO should this decay_t T or should I rely on the invoker to is_tensor_v<decay_t<T>> ?
 */
 template<typename T>
-constexpr bool is_tensor_v = requires(T const & t) { &T::isTensorFlag; };
+concept is_tensor_v = T::isTensorFlag;
 
 //https://stackoverflow.com/a/48840842
 // begin static_for

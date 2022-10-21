@@ -160,8 +160,8 @@ using GetTupleWrappingStorageForRank = typename GetTupleWrappingStorageForRankIm
 // Template can't go in TENSOR_HEADER cuz Quat<> uses TENSOR_HEADER and doesn't fit the template form
 #define TENSOR_THIS(classname)\
 	using This = classname;\
-	static constexpr bool isTensorFlag = {};\
-	static constexpr bool dontUseFieldsOStream = {};
+	static constexpr bool isTensorFlag = true;\
+	static constexpr bool dontUseFieldsOStream = true;
 
 #define TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, localDim_, localRank_)\
 \
@@ -1774,7 +1774,6 @@ struct Rank2Accessor {
 	TENSOR_HEADER()
 #endif
 
-	static constexpr bool isAccessorFlag = {};
 	AccessorOwnerConst & owner;
 	int i;
 
@@ -2360,7 +2359,6 @@ struct RankNAccessor {
 #endif
 
 	static_assert(subRank > 0 && subRank < ownerLocalRank);
-	static constexpr bool isAccessorFlag = {};
 	AccessorOwnerConst & owner;
 	_vec<int,subRank> i;
 

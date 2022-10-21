@@ -20,6 +20,31 @@ auto diff(auto f, auto x, typename decltype(f(x))::Scalar dx = .01) {
 
 }
 
+struct Q : public Tensor::quatf {
+	// can I remove tensor status from a quaternion?  so that it doesn't perform outer / inner / indexed operations? 
+	static constexpr bool isTensorFlag = false;
+};
+
+void test_Quaternions() {
+	// me messing around ... putting quaterniong basis elements into a 4x4 matrix
+	using Q = Tensor::quatf;
+	using Q4 = Tensor::_tensor<Tensor::quatf, 4>;
+	//using Q44 = Tensor::_tensor<Q, 4, 4>;
+	// TODO despite convenience of casting-to-vectors ... I should make quat real be q(0) ...
+	auto e0 = Q{0,0,0,1};
+	auto e1 = Q{1,0,0,0};
+	auto e2 = Q{0,1,0,0};
+	auto e3 = Q{0,0,1,0};
+	auto e = Q4{e0,e1,e2,e3};
+	ECHO(e);
+	auto g = e.outer(e);
+	ECHO(g);
+
+	ECHO(g * g);
+}
+
+
+
 namespace TupleTests {
 	using namespace std;
 	using namespace Common;
@@ -562,6 +587,8 @@ void test_Index() {
 		auto Gaussian = Ricci.dot(gu);
 		ECHO(Gaussian);
 	}
+
+	test_Quaternions();
 }
 
 #if 0
