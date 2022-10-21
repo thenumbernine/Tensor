@@ -194,26 +194,7 @@ void test_TotallyAntisymmetric() {
 			gkd3_6_expand_then_outer,
 			gkd3_6_index
 		);
-		//failing ... 
-		{
-			for (int i = 0; i < 3; ++i) {
-				for (int j = 0; j < 3; ++j) {
-					for (int k = 0; k < 3; ++k) {
-						for (int l = 0; l < 3; ++l) {
-							for (int m = 0; m < 3; ++m) {
-								for (int n = 0; n < 3; ++n) {
-									std::cout << "ε^" << i << j << k << "_" << l << m << n << std::endl;
-									TEST_EQ(
-										gkd3_6(i,j,k,l,m,n),
-										gkd3_6_index(i,j,k,l,m,n)
-									);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+		//works... 
 		TEST_EQ(
 			(Tensor::_tensorr<float, 3, 6>(gkd3_6)),
 			gkd3_6_index
