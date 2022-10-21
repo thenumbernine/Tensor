@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Common/ForLoop.h"
 #include "Tensor/Range.h.h"
 #include <algorithm>
 #include <iostream>
@@ -27,15 +28,10 @@ struct RangeIterator {
 	using intN = Tensor::intN<rank>;
 	intN index;
 
-	template<int i>
-	struct FillIndexWithMin {
-		static constexpr bool exec(RangeIterator & it) {
-			it.index[i] = it.owner.template getRangeMin<i>();
-			return false;
-		}
-	};
 	constexpr RangeIterator(Owner & owner_) : owner(owner_) {
-		Common::ForLoop<0, rank-1, FillIndexWithMin>::exec(*this);
+		[]<size_t ... is>(RangeIterator & it, std::index_sequence<is...>) constexpr {
+			it.index = {it.owner.template getRangeMin<is>()...};
+		}(*this, std::make_index_sequence<rank>{});
 	}
 
 	constexpr RangeIterator(Owner & owner_, intN index_) : owner(owner_), index(index_) {}

@@ -408,11 +408,11 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	but transposing 0,2 or 1,2 of a `_sym`-of-`_vec` will produce a `_vec`-of-`_vec`-of-`_vec`.
 	- rank-M -> rank-M, M >= 2
 	$$transpose(a)\_{{i\_1}...{i\_p}...{i\_q}...{i\_n}} = a\_{{i\_1}...{i\_q}...{i\_p}...{i\_n}}$$
-- `contract<m=0,n=1>(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to `trace(t)`.
+- `contract<m=0,n=1>(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to a matrix trace.
 	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes.). M >= 1
 	$$contract(a) = \delta^{i\_m i\_n} a\_I$$
-- `contractN<j=0,n=1>(a)` = Tensor contraction of indexes j ... j+n-1 with indexes j+n ... j+2n-1.
-	$${contractN(a)^I}\_J = {a^{I K}}\_{K J}, |I| = j, |K| = n$$
+- `contractN<i=0,n=1>(a)` = Tensor contraction of indexes i ... i+n-1 with indexes i+n ... i+2n-1.
+	$${contractN(a)^I}\_J = {a^{I K}}\_{K J}, |I| = i, |K| = n$$
 - `interior<n=1>(a,b)` = Interior product of neighboring n indexes.  I know a proper interior product would default n to `A::rank`.  Maybe later.  For n=1 this behaves the same a matrix-multiply.
 	$${interior(a,b)^I}\_J = a^{I K} b\_{K J}, |K| = n$$
 - `makeSym(a)` = Create a symmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.  If the input is a tensor with any antisymmetric indexes then the result will be a zero-tensor.

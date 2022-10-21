@@ -48,7 +48,6 @@ if I do column-major then C inline indexing is transposed
 #include "Tensor/AntiSymRef.h"
 #include "Tensor/Meta.h"
 #include "Common/String.h"
-#include "Common/ForLoop.h"		//ForLoop
 #include "Common/Function.h"	//FunctionFromLambda
 #include "Common/Sequence.h"	//seq_reverse_t, make_integer_range
 #include "Common/Exception.h"
@@ -70,9 +69,6 @@ if I do column-major then C inline indexing is transposed
 #endif
 
 namespace Tensor {
-
-// for the templated ForLoop ctor
-struct ForLoopBodyBase {};
 
 //funny, 'if constexpr' causes this to lose constexpr-ness, but ternary is ok.
 constexpr int constexpr_isqrt_r(int inc, int limit) {
@@ -729,14 +725,6 @@ Scalar = NestedPtrTuple's last
 				*i = Scalar();\
 			}\
 		}\
-	}\
-\
-	/* because constexpr lambdas args still can't be used as template parameters */\
-	/* TODO convert the iterator to an intW then to an intN, then pass to the callback */\
-	template<typename ForLoopBody>\
-	requires std::is_base_of_v<ForLoopBodyBase, ForLoopBody>\
-	constexpr classname(ForLoopBody = {}) {\
-		Common::ForLoop<0, totalCount, ForLoopBody::template Loop>::exec(*this);\
 	}\
 \
 	template<typename T, T... I>\
