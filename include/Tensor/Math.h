@@ -212,18 +212,18 @@ auto contract(T const & t) {
 	} else if constexpr (m == n) {
 		// hmmmm Σ_i g^ii a_i is a technically-incorrect tensor operation
 		if constexpr (T::rank == 1) {
-			S sum = t(0);
-			for (int k = 1; k < T::template dim<0>; ++k) {
-				sum += t(k);
-			}
-			return sum;
+			constexpr int N = T::template dim<0>;
+			return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> S {
+				return ((t(k)) + ... + (t(N-1)));
+			}(std::make_index_sequence<N-1>{});
 		} else {
 			using R = typename T::template RemoveIndex<m>;
 			// TODO a macro to remove the m'th element from 'int... i'
-			//return R([](auto... is) -> S {
+			//return R([](auto... k) -> S {
 			// or TODO implement intN access to asym (and fully sym)
 			return R([&](typename R::intN i) -> S {
 				// static_assert R::intN::dims == T::intN::dims-1
+				// TODO seq op for this j = seq<T::rank> k... - (k > m) then something for k==m => 0 ...
 				auto j = typename T::intN([&](int jk) -> int {
 					if (jk == m) return 0; // set j[m] = 0
 					if (jk > m) --jk;
@@ -240,11 +240,10 @@ auto contract(T const & t) {
 		}
 	} else { // m < n
 		if constexpr (T::rank == 2) {
-			S sum = t(0,0);
-			for (int k = 1; k < T::template dim<m>; ++k) {
-				sum += t(k,k);
-			}
-			return sum;
+			constexpr int N = T::template dim<m>;
+			return [&]<int ... k>(std::integer_sequence<int, k...>) constexpr -> S {
+				return ((t(k,k)) + ... + (t(N-1,N-1)));
+			}(std::make_integer_sequence<int,N-1>{});
 		} else {
 			using R = typename T::template RemoveIndex<m,n>;
 			return R([&](typename R::intN i) -> S {

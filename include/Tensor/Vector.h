@@ -593,15 +593,15 @@ Scalar = NestedPtrTuple's last
 
 #define TENSOR_ADD_VECTOR_OP_EQ(op)\
 	constexpr This & operator op(This const & b) {\
-		return [&]<size_t ... is>(std::index_sequence<is...>) constexpr -> This & {\
-			return ((s[is] op b.s[is]), ..., *this);\
+		return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> This & {\
+			return ((s[k] op b.s[k]), ..., *this);\
 		}(std::make_index_sequence<localCount>{});\
 	}
 
 #define TENSOR_ADD_SCALAR_OP_EQ(op)\
 	constexpr This & operator op(Scalar const & b) {\
-		return [&]<size_t ... is>(std::index_sequence<is...>) constexpr -> This & {\
-			return ((s[is] op b), ..., *this);\
+		return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> This & {\
+			return ((s[k] op b), ..., *this);\
 		}(std::make_index_sequence<localCount>{});\
 	}
 
@@ -609,8 +609,8 @@ Scalar = NestedPtrTuple's last
 // for non-like tensors there's a non-member non-constexpr below
 #define TENSOR_ADD_CMP_OP()\
 	constexpr bool operator==(This const & b) const {\
-		return [&]<size_t ... is>(std::index_sequence<is...>) constexpr -> bool {\
-			return ((s[is] == b.s[is]) && ... && (true));\
+		return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> bool {\
+			return ((s[k] == b.s[k]) && ... && (true));\
 		}(std::make_index_sequence<localCount>{});\
 	}\
 	constexpr bool operator!=(This const & b) const {\
@@ -620,8 +620,8 @@ Scalar = NestedPtrTuple's last
 #define TENSOR_ADD_UNM()\
 	constexpr This operator-() const {\
 		This result;\
-		return [&]<size_t ... is>(std::index_sequence<is...>) constexpr -> This {\
-			return ((result.s[is] = -s[is]), ..., result);\
+		return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> This {\
+			return ((result.s[k] = -s[k]), ..., result);\
 		}(std::make_index_sequence<localCount>{});\
 	}
 
@@ -655,10 +655,10 @@ Scalar = NestedPtrTuple's last
 	/* operator(int, int...) calls through operator(int) */\
 	template<typename... Ints>\
 	requires Common::is_all_v<int, Ints...>\
-	constexpr decltype(auto) operator()(int i, Ints... is) { return (*this)(i)(is...); }\
+	constexpr decltype(auto) operator()(int i, Ints... k) { return (*this)(i)(k...); }\
 	template<typename... Ints>\
 	requires Common::is_all_v<int, Ints...>\
-	constexpr decltype(auto) operator()(int i, Ints... is) const { return (*this)(i)(is...); }
+	constexpr decltype(auto) operator()(int i, Ints... k) const { return (*this)(i)(k...); }
 
 // operator(_vec<int,...>) forwards to operator(int...)
 #define TENSOR_ADD_INT_VEC_CALL_INDEX()\
@@ -677,9 +677,9 @@ Scalar = NestedPtrTuple's last
 	/*requires (!is_tensor_v<T> && !std::is_invocable_v<T>)*/\
 	/* so instead ... */\
 	constexpr classname(Scalar const & x) {\
-		for (int i = 0; i < localCount; ++i) {\
-			s[i] = x;\
-		}\
+		[&]<size_t ... k>(std::index_sequence<k...>) constexpr {\
+			return ((s[k] = x), ..., *this);\
+		}(std::make_index_sequence<localCount>{});\
 	}
 
 // vector cast operator
@@ -1303,11 +1303,9 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 // TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims
 #define TENSOR_ADD_VOLUME()\
 	Inner volume() const {\
-		Inner res = s[0];\
-		for (int i = 1; i < localCount; ++i) {\
-			res *= s[i];\
-		}\
-		return res;\
+		return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> Inner {\
+			return ((s[k]) * ... * (s[localCount-1]));\
+		}(std::make_index_sequence<localCount-1>{});\
 	}
 
 #define TENSOR_VECTOR_ADD_SUM_RESULT()\
