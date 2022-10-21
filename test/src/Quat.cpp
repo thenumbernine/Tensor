@@ -21,6 +21,95 @@ constexpr float epsilon = 1e-6;
 		std::cout << msg << std::endl;\
 	}
 
+
+/// TODO make _quat be non-tensor, and give it this' operator<<
+struct Q : public Tensor::quatf {
+	using Super = Tensor::quatf;
+	using Super::Super;
+	// can I remove tensor status from a quaternion?  so that it doesn't perform outer / inner / indexed operations? 
+	static constexpr bool isTensorFlag = false;
+	Q operator-() const { return Q(Super::operator-()); }
+	Q conjugate() const { return Q(Super::conjugate()); }
+};
+// ... yup 
+static_assert(!Tensor::is_tensor_v<Q>);
+Q operator+(Q const & a, Q const & b) { return Q(operator+((Q::Super)a,(Q::Super)b)); }
+Q operator-(Q const & a, Q const & b) { return Q(operator-((Q::Super)a,(Q::Super)b)); }
+Q operator*(Q const & a, Q const & b) { return Q(operator*((Q::Super)a,(Q::Super)b)); }
+Q operator/(Q const & a, Q const & b) { return Q(operator/((Q::Super)a,(Q::Super)b)); }
+Q operator+(Q const & a, float const & b) { return Q(operator+((Q::Super)a,b)); }
+Q operator-(Q const & a, float const & b) { return Q(operator-((Q::Super)a,b)); }
+Q operator*(Q const & a, float const & b) { return Q(operator*((Q::Super)a,b)); }
+Q operator/(Q const & a, float const & b) { return Q(operator/((Q::Super)a,b)); }
+Q operator+(float const & a, Q const & b) { return Q(operator+(a,(Q::Super)b)); }
+Q operator-(float const & a, Q const & b) { return Q(operator-(a,(Q::Super)b)); }
+Q operator*(float const & a, Q const & b) { return Q(operator*(a,(Q::Super)b)); }
+Q operator/(float const & a, Q const & b) { return Q(operator/(a,(Q::Super)b)); }
+
+std::ostream & operator<<(std::ostream & o, Q const & q) {
+	char const * seporig = "";
+	char const * sep = seporig;
+	for (int i = 0; i < 4; ++i) {
+		auto const & qi = q[i];
+		if (qi != 0) {
+			o << sep;
+			if (qi == -1) {
+				o << "-";
+			} else if (qi != 1) {
+				o << qi << "*";
+			}
+			o << "e_" << ((i + 1) % 4);	// TODO quaternion indexing ...
+			sep = " + ";
+		}
+	}
+	if (sep == seporig) {
+		return o << "0";
+	}
+	return o;
+}
+
+void test_Quaternions() {
+	// me messing around ... putting quaterniong basis elements into a 4x4 matrix
+	using Q4 = Tensor::_tensor<Q, 4>;
+	using Q44 = Tensor::_tensor<Q, 4, 4>;
+	// TODO despite convenience of casting-to-vectors ... I should make quat real be q(0) ...
+	auto e0 = Q{0,0,0,1};
+	auto e1 = Q{1,0,0,0};
+	auto e2 = Q{0,1,0,0};
+	auto e3 = Q{0,0,1,0};
+	auto e = Q4{e0,e1,e2,e3};
+	ECHO(e);
+	auto g = e.outer(e);
+	ECHO(g);
+
+	/*
+g * ginv :: {
+	{-e_0, 2*e_1 + e_0, 2*e_2 + e_0, 2*e_3 + e_0},
+	{-2*e_1 + e_0, -e_0, 2*e_3 + e_0, -2*e_2 + e_0},
+	{-2*e_2 + e_0, -2*e_3 + e_0, -e_0, 2*e_1 + e_0},
+	{-2*e_3 + e_0, 2*e_2 + e_0, -2*e_1 + e_0, -e_0}
+}
+ginv * g :: {
+	{-e_0, -2*e_1 + e_0, -2*e_2 + e_0, -2*e_3 + e_0},
+	{2*e_1 + e_0, -e_0, 2*e_3 + e_0, -2*e_2 + e_0},
+	{2*e_2 + e_0, -2*e_3 + e_0, -e_0, 2*e_1 + e_0},
+	{2*e_3 + e_0, 2*e_2 + e_0, -2*e_1 + e_0, -e_0}
+}
+	*/
+	auto ginv = g.transpose();
+
+	//auto ginv = Q44([&](int i, int j) -> Q { return g(i,j).conjugate(); });
+	//auto ginv = Q44([&](int i, int j) -> Q { return g(j,i).conjugate(); });
+	ECHO(ginv);
+	ECHO(g * ginv);
+	ECHO(ginv * g);
+}
+
+
+
+
+
+
 void test_Quat() {
 	{
 		//verify identity
@@ -130,4 +219,6 @@ void test_Quat() {
 			TEST_QUAT_EQ(vz, Tensor::quatf::vec3(-2, 1, 3));
 		}
 	}
+
+	test_Quaternions();
 }

@@ -3,7 +3,6 @@
 int main() {
 	test_AntiSymRef();
 	test_Vector();
-	test_Quat();
 	test_Identity();
 	test_Symmetric();
 	test_Antisymmetric();
@@ -14,4 +13,5 @@ int main() {
 	test_TotallyAntisymmetric();
 	test_Math();
 	test_Index();
+	test_Quat();
 }
