@@ -29,6 +29,7 @@ _quat<T> operator*(_quat<T> a, _quat<T> b);
 template<typename Inner_>
 struct _quat : public _vec4<Inner_> {
 	using Super = _vec4<Inner_>;
+	// TODO disable the is_tensor_v flag for quaternion so tensor-mul doesn't try indexing into it, so that a matrix-of-quats times a matrix-of-quats produces a matrix-of-quats (and not a rank-5 object)
 	TENSOR_HEADER_QUAT(_quat, Inner_)
 	
 	using vec3 = _vec3<Inner>;
@@ -41,7 +42,17 @@ struct _quat : public _vec4<Inner_> {
 	constexpr _quat(Inner const & x, Inner const & y, Inner const & z, Inner const & w) : Super(x,y,z,w) {}
 
 	//TENSOR_ADD_OPS parts:
-	TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(_quat)
+	// ok I don't just want any tensor constructor ...
+	//TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(_quat)
+	// for 3-component vectors I want to initialize s[0] to 0 and fill the rest
+	// for 4-component vectors I want to copy all across
+	template<typename T>
+	requires (is_tensor_v<T> && T::rank == 1 && T::template dim<0> == 3)
+	_quat(T const & t) : Super(t(0), t(1), t(2), 0) {}
+	template<typename T>
+	requires ((is_tensor_v<T> && T::rank == 1 && T::template dim<0> == 4) || (is_quat_v<T>))
+	_quat(T const & t) : Super(t(0), t(1), t(2), t(3)) {}
+
 	TENSOR_ADD_LAMBDA_CTOR(_quat)
 	TENSOR_ADD_ITERATOR()
 	

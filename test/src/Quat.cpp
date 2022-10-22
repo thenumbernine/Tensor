@@ -73,6 +73,7 @@ void test_Quaternions() {
 	using Q4 = Tensor::_tensor<Q, 4>;
 	using Q44 = Tensor::_tensor<Q, 4, 4>;
 	// TODO despite convenience of casting-to-vectors ... I should make quat real be q(0) ...
+	auto z = Q{0,0,0,0};
 	auto e0 = Q{0,0,0,1};
 	auto e1 = Q{1,0,0,0};
 	auto e2 = Q{0,1,0,0};
@@ -96,7 +97,12 @@ ginv * g :: {
 	{2*e_3 + e_0, 2*e_2 + e_0, -2*e_1 + e_0, -e_0}
 }
 	*/
-	auto ginv = g.transpose();
+	auto ginv = Q44{
+		{e0, -e1, -e2, -e3},
+		{-e1, z, z, z}, 
+		{-e2, z, z, z},
+		{-e3, z, z, z}
+	};
 
 	//auto ginv = Q44([&](int i, int j) -> Q { return g(i,j).conjugate(); });
 	//auto ginv = Q44([&](int i, int j) -> Q { return g(j,i).conjugate(); });
