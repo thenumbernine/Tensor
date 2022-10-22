@@ -28,31 +28,23 @@ struct PartialDerivCoeffs;
 
 template<typename Real>
 struct PartialDerivCoeffs<Real, 2> {
-	static Real const coeffs[1];
+	static constexpr std::array<Real, 1> coeffs = { 1./2. };
 };
-template<typename Real>
-Real const PartialDerivCoeffs<Real, 2>::coeffs[1] = { 1./2. };
 
 template<typename Real>
 struct PartialDerivCoeffs<Real, 4> {
-	static Real const coeffs[2];
+	static constexpr std::array<Real, 2> coeffs = { 2./3., -1./12. };
 };
-template<typename Real>
-Real const PartialDerivCoeffs<Real, 4>::coeffs[2] = { 2./3., -1./12. };
 
 template<typename Real>
 struct PartialDerivCoeffs<Real, 6> {
-	static Real const coeffs[3];
+	static constexpr std::array<Real, 3> coeffs = { 3./4., -3./20., 1./60. };
 };
-template<typename Real>
-Real const PartialDerivCoeffs<Real, 6>::coeffs[3] = { 3./4., -3./20., 1./60. };
 
 template<typename Real>
 struct PartialDerivCoeffs<Real, 8> {
-	static Real const coeffs[4];
+	static constexpr std::array<Real, 4> coeffs = { 4./5., -1./5., 4./105., -1./280. };
 };
-template<typename Real>
-Real const PartialDerivCoeffs<Real, 8>::coeffs[4] = { 4./5., -1./5., 4./105., -1./280. };
 
 /*
 partial derivative operator
@@ -79,17 +71,15 @@ struct PartialDerivativeClass<order, Real, dim, InputType> {
 		return OutputType([&](intN<rank+1> dstIndex) -> Real {
 			int gradIndex = dstIndex(0);
 			intN<rank> srcIndex;
-			for (int i = 0; i < rank; ++i) {
-				srcIndex(i) = dstIndex(i+1);
-			}
-			Real sum = {};
-			for (int i = 1; i <= (int)numberof(Coeffs::coeffs); ++i) {
-				sum += (
+			[&]<size_t ... i>(std::index_sequence<i...>) constexpr -> int {
+				return ((srcIndex(i) = dstIndex(i+1)), ..., (0));
+			}(std::make_index_sequence<rank>{});
+			return [&]<size_t ... i>(std::index_sequence<i...>) constexpr -> Real {
+				return (((
 					getOffset<InputType, dim>(f, gridIndex, gradIndex, i)(srcIndex) 
 					- getOffset<InputType, dim>(f, gridIndex, gradIndex, -i)(srcIndex)
-				) * Coeffs::coeffs[i-1];
-			}
-			return sum / dx(gradIndex);
+				) * Coeffs::coeffs[i-1]) + ... + (0)) / dx(gradIndex);
+			}(Common::make_index_range<1, Coeffs::coeffs::size()>{});
 		});
 	}
 };
@@ -106,16 +96,13 @@ struct PartialDerivativeClass<order, Real, dim, Real> {
 		FuncType f)
 	{
 		using Coeffs = PartialDerivCoeffs<Real, order>;
-		return OutputType([&](intN<1> dstIndex) -> Real {
-			int gradIndex = dstIndex(0);
-			Real sum = {};
-			for (int i = 1; i <= (int)numberof(Coeffs::coeffs); ++i) {
-				sum += (
+		return OutputType([&](int gradIndex) -> Real {
+			return [&]<size_t ... i>(std::index_sequence<i...>) constexpr -> Real {
+				return (((
 					getOffset<InputType, dim>(f, gridIndex, gradIndex, i)
 					- getOffset<InputType, dim>(f, gridIndex, gradIndex, -i)
-				) * Coeffs::coeffs[i-1];
-			}
-			return sum / dx(gradIndex);		
+				) * Coeffs::coeffs[i-1]) + ... + (0)) / dx(gradIndex);
+			}(Common::make_index_range<1, Coeffs::coeffs::size()>{});
 		});
 	}
 };

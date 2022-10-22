@@ -1,21 +1,13 @@
 #pragma once
 
 #include "Tensor/Tensor.h"
+#include <algorithm>	//min, max
 
 namespace Tensor {
 
 template<typename T>
-T& clamp(T &x, T &min, T &max) {
-	if (x < min) return min;
-	if (x > max) return max;
-	return x;
-}
-
-template<typename T>
-T const& clamp(T const &x, T const &min, T const &max) {
-	if (x < min) return min;
-	if (x > max) return max;
-	return x;
+constexpr decltype(auto) clamp(T x, T min, T max) {
+	return std::min(max, std::max(min, x));
 }
 
 template<typename T>

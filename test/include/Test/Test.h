@@ -16,6 +16,7 @@ void test_TotallySymmetric();
 void test_TotallyAntisymmetric();
 void test_Math();
 void test_Index();
+void test_Derivative();
 
 template<typename T>
 T sign (T x) {

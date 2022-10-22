@@ -14,4 +14,5 @@ int main() {
 	test_Math();
 	test_Index();
 	test_Quat();
+	test_Derivative();
 }
