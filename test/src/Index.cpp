@@ -2,9 +2,10 @@
 #include "Common/Test.h"
 #include <algorithm>
 
-// TODO move to Tensor/Derivative.h
 namespace Tensor {
 
+// TODO move to Tensor/Derivative.h ?
+//  or move Derivative.h to DerivativeGrid.h ?
 auto diff(auto f, auto x, typename decltype(f(x))::Scalar dx = .01) {
 	using T = decltype(f(x));
 	static_assert(T::isSquare);		// all dimensions match

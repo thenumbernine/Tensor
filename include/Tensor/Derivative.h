@@ -58,17 +58,14 @@ struct PartialDerivativeClass;
 template<int order, typename Real, int dim, typename InputType>
 requires is_tensor_v<InputType> && std::is_same_v<Real, typename InputType::Scalar>
 struct PartialDerivativeClass<order, Real, dim, InputType> {
-	using RealN = _vec<Real, dim>;
-	using OutputType = _vec<InputType, dim>;
-	using FuncType = std::function<InputType(intN<dim> index)>;
 	static constexpr auto rank = InputType::rank;
-	OutputType operator()(
+	static constexpr decltype(auto) exec(
 		intN<dim> const & gridIndex,
-		RealN const & dx,
-		FuncType f)
-	{
+		_vec<Real, dim> const & dx,
+		std::function<InputType(intN<dim> index)> f
+	) {
 		using Coeffs = PartialDerivCoeffs<Real, order>;
-		return OutputType([&](intN<rank+1> dstIndex) -> Real {
+		return _vec<InputType, dim>([&](intN<rank+1> dstIndex) -> Real {
 			int gradIndex = dstIndex(0);
 			intN<rank> srcIndex;
 			[&]<size_t ... i>(std::index_sequence<i...>) constexpr -> int {
@@ -86,17 +83,14 @@ struct PartialDerivativeClass<order, Real, dim, InputType> {
 
 template<int order, typename Real, int dim>
 struct PartialDerivativeClass<order, Real, dim, Real> {
-	using RealN = _vec<Real, dim>;
 	using InputType = Real;
-	using OutputType = RealN;
-	using FuncType = std::function<InputType(intN<dim> index)>;
-	OutputType operator()(
+	static constexpr decltype(auto) exec(
 		intN<dim> const &gridIndex,
-		RealN const &dx, 
-		FuncType f)
-	{
+		_vec<Real, dim> const &dx, 
+		std::function<InputType(intN<dim> index)> f
+	) {
 		using Coeffs = PartialDerivCoeffs<Real, order>;
-		return OutputType([&](int gradIndex) -> Real {
+		return _vec<Real, dim>([&](int gradIndex) -> Real {
 			return [&]<size_t ... i>(std::index_sequence<i...>) constexpr -> Real {
 				return (((
 					getOffset<InputType, dim>(f, gridIndex, gradIndex, i)
@@ -109,11 +103,11 @@ struct PartialDerivativeClass<order, Real, dim, Real> {
 
 template<int order, typename Real, int dim, typename InputType>
 auto partialDerivative(
-	intN<dim> const &index,
-	_vec<Real, dim> const &dx,
+	intN<dim> const & index,
+	_vec<Real, dim> const & dx,
 	typename PartialDerivativeClass<order, Real, dim, InputType>::FuncType f)
 {
-	return PartialDerivativeClass<order, Real, dim, InputType>()(index, dx, f);
+	return PartialDerivativeClass<order, Real, dim, InputType>::exec(index, dx, f);
 }
 
 }

@@ -557,6 +557,10 @@ struct IndexAccess {
 			destI(dstForSrcIndex(j)) = i(j);
 		}
 		return destI;
+		
+		// TODO
+		//return [&]<size_t ... j>(std::index_sequence<j...>) constexpr -> intN {
+		//}(std::make_index_sequence<rank>{});
 	}
 };
 
