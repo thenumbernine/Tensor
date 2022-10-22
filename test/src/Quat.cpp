@@ -1,7 +1,7 @@
 #include "Test/Test.h"
 
-//ehhh ?
-static_assert(Tensor::is_tensor_v<Tensor::quatf>);
+// quaternions are not tensors ... right?
+static_assert(!Tensor::is_tensor_v<Tensor::quatf>);
 
 constexpr float epsilon = 1e-6;
 
@@ -21,55 +21,9 @@ constexpr float epsilon = 1e-6;
 		std::cout << msg << std::endl;\
 	}
 
-
-/// TODO make _quat be non-tensor, and give it this' operator<<
-struct Q : public Tensor::quatf {
-	using Super = Tensor::quatf;
-	using Super::Super;
-	// can I remove tensor status from a quaternion?  so that it doesn't perform outer / inner / indexed operations? 
-	static constexpr bool isTensorFlag = false;
-	Q operator-() const { return Q(Super::operator-()); }
-	Q conjugate() const { return Q(Super::conjugate()); }
-};
-// ... yup 
-static_assert(!Tensor::is_tensor_v<Q>);
-Q operator+(Q const & a, Q const & b) { return Q(operator+((Q::Super)a,(Q::Super)b)); }
-Q operator-(Q const & a, Q const & b) { return Q(operator-((Q::Super)a,(Q::Super)b)); }
-Q operator*(Q const & a, Q const & b) { return Q(operator*((Q::Super)a,(Q::Super)b)); }
-Q operator/(Q const & a, Q const & b) { return Q(operator/((Q::Super)a,(Q::Super)b)); }
-Q operator+(Q const & a, float const & b) { return Q(operator+((Q::Super)a,b)); }
-Q operator-(Q const & a, float const & b) { return Q(operator-((Q::Super)a,b)); }
-Q operator*(Q const & a, float const & b) { return Q(operator*((Q::Super)a,b)); }
-Q operator/(Q const & a, float const & b) { return Q(operator/((Q::Super)a,b)); }
-Q operator+(float const & a, Q const & b) { return Q(operator+(a,(Q::Super)b)); }
-Q operator-(float const & a, Q const & b) { return Q(operator-(a,(Q::Super)b)); }
-Q operator*(float const & a, Q const & b) { return Q(operator*(a,(Q::Super)b)); }
-Q operator/(float const & a, Q const & b) { return Q(operator/(a,(Q::Super)b)); }
-
-std::ostream & operator<<(std::ostream & o, Q const & q) {
-	char const * seporig = "";
-	char const * sep = seporig;
-	for (int i = 0; i < 4; ++i) {
-		auto const & qi = q[i];
-		if (qi != 0) {
-			o << sep;
-			if (qi == -1) {
-				o << "-";
-			} else if (qi != 1) {
-				o << qi << "*";
-			}
-			o << "e_" << ((i + 1) % 4);	// TODO quaternion indexing ...
-			sep = " + ";
-		}
-	}
-	if (sep == seporig) {
-		return o << "0";
-	}
-	return o;
-}
-
 void test_Quaternions() {
 	// me messing around ... putting quaterniong basis elements into a 4x4 matrix
+	using Q = Tensor::quatf;
 	using Q4 = Tensor::_tensor<Q, 4>;
 	using Q44 = Tensor::_tensor<Q, 4, 4>;
 	// TODO despite convenience of casting-to-vectors ... I should make quat real be q(0) ...

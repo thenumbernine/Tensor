@@ -9,13 +9,6 @@
 
 namespace Tensor {
 
-#define TENSOR_HEADER_QUAT(classname, Inner_)\
-	TENSOR_THIS(classname)\
-	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 1)\
-	TENSOR_TEMPLATE_T(classname)\
-	TENSOR_HEADER_VECTOR_SPECIFIC() /* defines localCount=localDim, matching for _vec and _quat */\
-	TENSOR_HEADER()
-
 template<typename Inner_>
 struct _quat;
 
@@ -30,7 +23,16 @@ template<typename Inner_>
 struct _quat : public _vec4<Inner_> {
 	using Super = _vec4<Inner_>;
 	// TODO disable the is_tensor_v flag for quaternion so tensor-mul doesn't try indexing into it, so that a matrix-of-quats times a matrix-of-quats produces a matrix-of-quats (and not a rank-5 object)
-	TENSOR_HEADER_QUAT(_quat, Inner_)
+	//TENSOR_THIS(_quat)
+	using This = _quat;
+	//static constexpr bool isTensorFlag = true;
+	static constexpr bool isTensorFlag = false;
+	static constexpr bool dontUseFieldsOStream = true;
+	
+	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 1)
+	TENSOR_TEMPLATE_T(_quat)
+	TENSOR_HEADER_VECTOR_SPECIFIC() // defines localCount=localDim, matching for _vec and _quat
+	TENSOR_HEADER()
 	
 	using vec3 = _vec3<Inner>;
 
@@ -104,7 +106,7 @@ struct _quat : public _vec4<Inner_> {
 	}
 
 	vec3 rotate(vec3 const & v) const {
-		return *this * _quat(v) * conjugate();
+		return (*this * _quat(v) * conjugate()).template subset<3>();
 	}
 
 	vec3 xAxis() const {
@@ -135,6 +137,10 @@ struct _quat : public _vec4<Inner_> {
 		*this = *this * o;
 		return *this;
 	}
+	
+	_quat operator-() const {
+		return _quat(Super::operator-());
+	}
 };
 
 template<typename T>
@@ -146,12 +152,50 @@ _quat<T> operator*(_quat<T> a, _quat<T> b) {
 	return _quat<T>::mul(a,b);
 }
 
+//Q operator*(Q const & a, Q const & b) { return Q(operator*((Q::Super)a,(Q::Super)b)); }
+template<typename A, typename B> decltype(auto) operator+(_quat<A> const & a, _quat<B> const & b) { using S = decltype(A() + B()); return _quat<S>(typename _quat<A>::Super(a) + typename _quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator-(_quat<A> const & a, _quat<B> const & b) { using S = decltype(A() - B()); return _quat<S>(typename _quat<A>::Super(a) - typename _quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator/(_quat<A> const & a, _quat<B> const & b) { using S = decltype(A() / B()); return _quat<S>(typename _quat<A>::Super(a) / typename _quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator+(_quat<A> const & a, B const & b) { using S = decltype(A() + B()); return _quat<S>(typename _quat<A>::Super(a) + b); }
+template<typename A, typename B> decltype(auto) operator-(_quat<A> const & a, B const & b) { using S = decltype(A() - B()); return _quat<S>(typename _quat<A>::Super(a) - b); }
+template<typename A, typename B> decltype(auto) operator*(_quat<A> const & a, B const & b) { using S = decltype(A() * B()); return _quat<S>(typename _quat<A>::Super(a) * b); }
+template<typename A, typename B> decltype(auto) operator/(_quat<A> const & a, B const & b) { using S = decltype(A() / B()); return _quat<S>(typename _quat<A>::Super(a) / b); }
+template<typename A, typename B> decltype(auto) operator+(A const & a, _quat<B> const & b) { using S = decltype(A() + B()); return _quat<S>(a + typename _quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator-(A const & a, _quat<B> const & b) { using S = decltype(A() - B()); return _quat<S>(a - typename _quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator*(A const & a, _quat<B> const & b) { using S = decltype(A() * B()); return _quat<S>(a * typename _quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator/(A const & a, _quat<B> const & b) { using S = decltype(A() / B()); return _quat<S>(a / typename _quat<B>::Super(b)); }
+
 template<typename T>
 _quat<T> normalize(_quat<T> const & q) {
 	T len = q.length();
 	if (len <= _quat<T>::angleAxisEpsilon) return _quat<T>();
 	return (_quat<T>)(q / len);
 }
+
+template<typename T>
+std::ostream & operator<<(std::ostream & o, _quat<T> const & q) {
+	char const * seporig = "";
+	char const * sep = seporig;
+	for (int i = 0; i < 4; ++i) {
+		auto const & qi = q[i];
+		if (qi != 0) {
+			o << sep;
+			if (qi == -1) {
+				o << "-";
+			} else if (qi != 1) {
+				o << qi << "*";
+			}
+			o << "e_" << ((i + 1) % 4);	// TODO quaternion indexing ...
+			sep = " + ";
+		}
+	}
+	if (sep == seporig) {
+		return o << "0";
+	}
+	return o;
+}
+
+
 
 using quati = _quat<int>;	// I don't judge
 using quatf = _quat<float>;
