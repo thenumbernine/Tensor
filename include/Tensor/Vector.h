@@ -70,36 +70,6 @@ if I do column-major then C inline indexing is transposed
 
 namespace Tensor {
 
-//funny, 'if constexpr' causes this to lose constexpr-ness, but ternary is ok.
-constexpr int constexpr_isqrt_r(int inc, int limit) {
-	return inc * inc > limit ? inc-1 : constexpr_isqrt_r(inc+1, limit);
-}
-constexpr int constexpr_isqrt(int i) {
-	return constexpr_isqrt_r(0, i);
-}
-
-//https://en.cppreference.com/w/cpp/language/constexpr
-constexpr int constexpr_factorial(int n) {
-	return n <= 1 ? 1 : (n * constexpr_factorial(n-1));
-}
-constexpr int consteval_nChooseR(int m, int n) {
-    return constexpr_factorial(n) / constexpr_factorial(m) / constexpr_factorial(n - m);
-}
-
-//https://stackoverflow.com/a/9331125
-constexpr int nChooseR(int n, int k) {
-    if (k > n) return 0;
-    if (k << 1 > n) k = n - k;
-    if (k == 0) return 1;
-    int result = n;
-    // TODO can you guarantee that /=i will always have 'i' as a divisor? or do we need two loops?
-	for (int i = 2; i <= k; ++i) {
-		result *= n - i + 1;
-		result /= i;
-    }
-    return result;
-}
-
 constexpr int consteval_symmetricSize(int d, int r) {
 	return nChooseR(d + r - 1, r);
 }
@@ -1169,6 +1139,11 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return Tensor::hodgeDual(*this);\
 	}\
 \
+	auto dual() const\
+	requires (isSquare) {\
+		return Tensor::dual(*this);\
+	}\
+\
 	template<typename B>\
 	requires(\
 		IsBinaryTensorOpWithMatchingNeighborDims<This, B>\
@@ -1178,17 +1153,20 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return *this;\
 	}\
 \
-	Scalar determinant() const {\
+	Scalar determinant() const\
+	requires (isSquare) {\
 		return (Scalar)Tensor::determinant<This>((This const &)(*this));\
 	}\
 \
-	This inverse(Scalar const & det) const {\
+	This inverse(Scalar const & det) const\
+	requires (isSquare) {\
 		return Tensor::inverse(*this, det);\
 	}\
 \
-	This inverse() const {\
+	This inverse() const\
+	requires (isSquare) {\
 		return Tensor::inverse(*this);\
-	}\
+	}
 
 /*
 how should I handle fully-traced tensors that return scalars?

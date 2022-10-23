@@ -464,7 +464,7 @@ template<typename A, typename B>
 requires IsBinaryTensorOp<A,B>
 auto wedge(A const & a, B const & b) {
 	auto aob = outer(a,b);
-	return makeAsym(aob) * constexpr_factorial(aob.rank);;
+	return makeAsym(aob) * nChooseR(A::rank + B::rank, A::rank);
 }
 
 // Hodge dual
@@ -477,6 +477,13 @@ auto hodgeDual(A const & a) {
 	static_assert(rank <= dim);
 	using S = typename A::Scalar;
 	return interior<rank>(a, _asymR<S, dim, dim>(1)) / (S)constexpr_factorial(rank);
+}
+
+//name
+// more name compat
+template<typename... T>
+auto dual(T&&... args) {
+	return hodgeDual(std::forward<T>(args)...);
 }
 
 // operator* is contract(outer(a,b)) ... aka interior1(a,b)

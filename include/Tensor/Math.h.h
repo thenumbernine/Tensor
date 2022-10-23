@@ -92,8 +92,44 @@ template<typename T>
 requires IsSquareTensor<T>
 auto hodgeDual(T const & a);
 
+//name
+template<typename... T>
+auto dual(T&&... args);
+
 template<typename A, typename B>
 requires IsBinaryTensorOpWithMatchingNeighborDims<A, B>
 auto operator*(A const & a, B const & b);
+
+
+//funny, 'if constexpr' causes this to lose constexpr-ness, but ternary is ok.
+constexpr int constexpr_isqrt_r(int inc, int limit) {
+	return inc * inc > limit ? inc-1 : constexpr_isqrt_r(inc+1, limit);
+}
+constexpr int constexpr_isqrt(int i) {
+	return constexpr_isqrt_r(0, i);
+}
+
+//https://en.cppreference.com/w/cpp/language/constexpr
+constexpr int constexpr_factorial(int n) {
+	return n <= 1 ? 1 : (n * constexpr_factorial(n-1));
+}
+constexpr int consteval_nChooseR(int m, int n) {
+    return constexpr_factorial(n) / constexpr_factorial(m) / constexpr_factorial(n - m);
+}
+
+//https://stackoverflow.com/a/9331125
+constexpr int nChooseR(int n, int k) {
+    if (k > n) return 0;
+    if (k << 1 > n) k = n - k;
+    if (k == 0) return 1;
+    int result = n;
+    // TODO can you guarantee that /=i will always have 'i' as a divisor? or do we need two loops?
+	for (int i = 2; i <= k; ++i) {
+		result *= n - i + 1;
+		result /= i;
+    }
+    return result;
+}
+
 
 }

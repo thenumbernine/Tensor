@@ -143,4 +143,60 @@ void test_Math() {
 	
 	static_assert(std::is_same_v<decltype(makeAsym(float3s3())), _tensori<float, storage_zero<3>, storage_zero<3>>>);
 	static_assert(std::is_same_v<decltype(makeAsym(float3s3s3())), _tensori<float, storage_zero<3>, storage_zero<3>, storage_zero<3>>>);
+
+	// does a.dot(b) == a.wedge(b.hodgeDual) ?
+	// probably not for non-antisymmetric a and b (since a∧✱b will antisymmetrize a and b)
+	// but will it have a 1/k! factor for k-forms a and b?
+	// looks like it ...
+	// 1-form test
+	{
+		auto a = float3([](int i) -> float { return i + 1; });
+		auto b = float3([](int i) -> float { return 5 - 2*i; });
+		ECHO(a);
+		ECHO(b);
+		ECHO(a.dot(b));
+		ECHO(b.dual().expand());
+		ECHO(b.dual().dual().expand());
+		ECHO(a.wedge(b.dual()).expand());
+		ECHO(a.wedge(b.dual()).dual());
+		// for 1 forms, a dot b = a wedge star b
+		TEST_EQ(a.dot(b), a.wedge(b.dual()).dual());
+	}
+	// 2-form test
+	{
+		auto a = float3x3([](int i, int j) -> float { return i + 4 * j; });
+		auto b = float3x3([](int i, int j) -> float { return 10 - 3 * i - j; });
+		ECHO(a);
+		ECHO(b);
+		ECHO(a.dot(b));
+		ECHO(a.makeSym().expand());
+		ECHO(a.makeSym() + a.makeAsym());
+		TEST_EQ(a, a.makeSym() + a.makeAsym());
+		ECHO(a.makeAsym().expand());
+		ECHO(b.makeAsym().expand());
+		ECHO(a.makeAsym().dot(b.makeAsym()));
+		ECHO(b.dual().expand());
+		ECHO(b.dual().dual().expand());
+		ECHO(a.wedge(b.dual()).expand());
+		ECHO(a.wedge(b.dual()).dual());
+		// for 2 forms, asym(a) dot asym(b) = 2 a wedge star b
+		TEST_EQ(
+			a.makeAsym().dot(b.makeAsym()), 
+			2.f * a.wedge(b.dual()).dual()
+		);
+	}
+	// 3-form test
+	{
+		auto a = floatNaR<3,3>(2.f) + _tensorr<float, 3,3>([](int i, int j, int k) -> float { return 1.f + i + 2. * j - 3. * k; });
+		auto b = floatNaR<3,3>(5.f) + _tensorr<float, 3,3>([](int i, int j, int k) -> float { return 4.f * i - 2. * j +  k + 5.f; });
+		ECHO(a.makeAsym());
+		ECHO(b.makeAsym());
+		TEST_EQ(
+			a.makeAsym().dot(b.makeAsym()), 
+			//6.f * a.wedge(b.dual()).dual()	// b.dual is a float, so a.wedge( b.dual() ) is just mul
+			// TODO should I make Tensor::wedge(float) fall back to operator*() ?
+			// also should I make Tensor::dual(float) make a _asymR<float,N,N> tensor?  but what dimension would it be?
+			6.f * (a * b.dual()).dual()
+		);	
+	}
 }

@@ -86,7 +86,7 @@ float2x3 basis(float3 n) {
 }
 ```
 
-Example of using the Hodge dual to compute the inner product:
+Example of using the Hodge dual to compute the inner product of the antisymmetric representations of a and b:
 ```c++
 auto inner(auto const & a, auto const & b)
 //here 'isSquare' means all dimension sizes match
@@ -94,12 +94,12 @@ requires (a.dims() == b.dims() && a.isSquare && b.isSquare)
 {
 	//totally-antisymmetric tensors are space-optimized,
 	//so the storage of bstar will always be < the storage of b
-	auto bstar = b.hodgeDual();
+	auto bstar = b.dual();
 	//at this point c should be a n-form for dimension n,
 	//which will take up a single numeric value (while representing n distinct tensor indexes)
 	auto c = a.wedge(bstar);
-	//return c's dual, which is a 0-form scalar
-	return c.hodgeDual();
+	//return c's dual, which is a 0-form scalar, times the input rank factorial.
+	return c.dual() * factorial(a.rank);
 }
 ```
 
@@ -457,7 +457,7 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	$$makeAsym(a)\_I = a\_{[i\_1 ... i\_ n]} $$
 - `wedge(a,b)` = The wedge product of tensors 'a' and 'b'.
 	$$wedge(a,b)\_I = (a \wedge b)\_I = Alt (a \otimes b)\_I = a\_{[i\_1 ... i\_p} b\_{i\_{p+1} ... i\_{p+q}]}$$
-- `hodgeDual(a)` = The Hodge-Dual of rank-k tensor 'a'.  This only operates on 'square' tensors.  If you really want to produce the dual of a scalar, just use `_asymR<>(s)`.
+- `hodgeDual(a), dual(a)` = The Hodge-Dual of rank-k tensor 'a'.  This only operates on 'square' tensors.  If you really want to produce the dual of a scalar, just use `_asymR<>(s)`.
 	$$hodgeDual(a)\_I = (\star a)_I = \frac{1}{k!} T\_J {\epsilon^J}\_I$$
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
 	- rank-N -> rank-(N+1), N>=1:
