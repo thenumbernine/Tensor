@@ -384,7 +384,8 @@ float3 b = x.yzx();
 - Tensor/Scalar and Scalar/Tensor operations are lazy-evaluated.
 - Tensor/Tensor add sub and per-element divide is lazy-evaluated.
 - Same references on the LHS and RHS is ok.
-- Traces are fine.  If any trace is present in a tensor expression then it will be cached rather than lazy-evaluated.  Traces producing a scalar can be used immediately, i.e. `float3x3 a; a(i,i);` will produce a float.  Traces producing a tensor will still need to be `.assign()`ed.
+- Traces are fine.  If any trace is present in a tensor expression then it will be calculated immediately and cached rather than lazy-evaluated.
+	Traces producing a scalar can be used immediately, i.e. `float3x3 a; a(i,i);` will produce a float.  Traces producing a tensor will still need to be `.assign()`ed.
 - Tensor-tensor multiplication works, and also caches mid-expression-evaluation.
 - LHS typed assignment:
 ```c++
@@ -622,10 +623,9 @@ TODO:
 
 - eventually merge `_sym` and `_asym` with `_symR` and `_asymR` ... but don't til enough sorts/loops are compile-time.
 
-- index notation  ...
-	- dimension check at compile-time
-	- dimension-matching at compile-time
-	- and from that, index-multiply
+- wedge(a,b) should accept non-tensors, or at least the scalar of whichever is the tensor
+- outer(a,b) too?  both turn into scalar muls.
+- dual(a) too?  but it would require a default rank==k to turn a scalar into k-form of.
 
 - make innerForIndexSeq which is a sequence mapping index to nesting #
 
