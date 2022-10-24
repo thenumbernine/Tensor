@@ -202,7 +202,7 @@ Tensor/tensor operator result storage optimizations:
 - rank-N
 The size of a totally-symmetric tensor storage is
 the number of unique permutations of a symmetric tensor of dimension `d` and rank `r`,
-which is $ \begin{pmatrix} d + r - 1 \\\ r \end{pmatrix} $
+which is $ \begin{pmatrix} d + r - 1 \\ r \end{pmatrix} $
 
 Tensor/tensor operator result storage works the same as `_sym`:
 
