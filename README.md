@@ -206,6 +206,8 @@ which is
 $$
 \begin{pmatrix} d + r - 1 \\ r \end{pmatrix}
 $$
+$
+$
 
 Tensor/tensor operator result storage works the same as `_sym`:
 
