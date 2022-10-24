@@ -86,14 +86,14 @@ float2x3 basis(float3 n) {
 }
 ```
 
-Example of using the Hodge dual to compute the inner product of the antisymmetric representations of a and b:
+Example of using the Hodge dual to compute the inner product of a and b.  In the case of rank &gt; 1, a and b become antisymmetrized.
 ```c++
 auto inner(auto const & a, auto const & b)
 //here 'isSquare' means all dimension sizes match
 requires (a.dims() == b.dims() && a.isSquare && b.isSquare)
 {
 	//totally-antisymmetric tensors are space-optimized,
-	//so the storage of bstar will always be < the storage of b
+	//so the storage of bstar will always be <= the storage of b
 	auto bstar = b.dual();
 	//at this point c should be a n-form for dimension n,
 	//which will take up a single numeric value (while representing n distinct tensor indexes)
@@ -162,7 +162,7 @@ Tensor/tensor operator result storage optimizations:
 - rank-2
 This will only take up a single value of storage.  Specifying the internal storage type is still required, which enables `_ident` to be used in conjunction with outer products to produce optimized-storage tensors,
 i.e. $a\_{ij} \otimes \delta\_{kl}$ = `outer( _mat<float,3,3>(...), _ident<float,3>(1) )` will produce a rank-4 tensor $c\_{ijkl} = a\_{ij} \cdot \delta\_{kl}$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
-Notice that `_ident` is rank-2, i.e. represents 2 indexes.  Sorry, no generalized Kronecker delta.  Besides, that's antisymmetric anyways, for its use check out `_asymR`.
+Notice that `_ident` is rank-2, i.e. represents 2 indexes.  Sorry, just regular Kronecker delta here, not generalized Kronecker delta.  Besides, that's antisymmetric anyways, so for its use check out `_asymR`.
 
 Tensor/tensor operator result storage optimizations:
 - `ident` + `zero` = `ident`
@@ -186,7 +186,9 @@ Tensor/tensor operator result storage optimizations:
 ### Antisymmetric Matrices:
 `_asym<type, dim>` = antisymmetric matrices:
 - rank-2
-- `.x_x() ... .w_w()` access methods.  No access fields, sorry. I had the option of making half named access via fields (maybe the upper trianglular ones) and the other half methods, but decided for consistency's sake to just use methods everywhere.
+- `.x_x() ... .w_w()` access methods.
+No access fields, sorry. I had the option of making half named access via fields (maybe the upper trianglular ones) and the other half methods, but decided for consistency's sake to just use methods everywhere.
+Don't forget that an antisymmetric matrix, i.e. a k-form, can be represented as $a\_{i\_1 ... i\_k} e^{[i\_1} \otimes ... \otimes e^{i\_k]} = \frac{1}{k!} a\_{i\_1 ... i\_k} e^{i\_1} \wedge ... \wedge e^{i\_k}$ - mind your factorials.
 
 Tensor/tensor operator result storage optimizations:
 - `asym` + `zero` = `asym`

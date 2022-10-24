@@ -1,25 +1,7 @@
 #include "Tensor/Tensor.h"
+#include "Tensor/Derivative.h"
 #include "Common/Test.h"
 #include <algorithm>
-
-namespace Tensor {
-
-// TODO move to Tensor/Derivative.h ?
-//  or move Derivative.h to DerivativeGrid.h ?
-auto diff(auto f, auto x, typename decltype(f(x))::Scalar dx = .01) {
-	using T = decltype(f(x));
-	static_assert(T::isSquare);		// all dimensions match
-	constexpr int dim = T::template dim<0>;
-	_vec<T, dim> result; 			//first index is derivative
-	for (int k = 0; k < dim; ++k) {
-		auto xp = x; xp[k] += dx;
-		auto xm = x; xm[k] -= dx;
-		result[k] = (f(xp) - f(xm)) / (2. * dx);
-	}
-	return result;
-}
-
-}
 
 namespace TupleTests {
 	using namespace std;
@@ -525,7 +507,7 @@ void test_Index() {
 		static_assert(is_same_v<decltype(gu), double4s4>);
 		ECHO(gu);
 		// ehhh symbolic differentiation?
-		auto dgx = [&](auto x) { return diff(gx, x); };
+		auto dgx = [&](auto x) { return Tensor::partialDerivative<>(gx, x); };
 		auto dg = dgx(x);
 		ECHO(dg);
 		auto connlx = [&](auto x) {
@@ -553,7 +535,7 @@ void test_Index() {
 		};
 		auto conn = connx(x);
 		ECHO(conn);
-		auto dconnx = [&](auto x) { return diff(connx, x); };
+		auto dconnx = [&](auto x) { return Tensor::partialDerivative<>(connx, x); };
 		auto dconn = dconnx(x);
 		ECHO(dconn);
 		auto Riemann = (dconn(k,i,j,l) - dconn(l,i,j,k) + conn(i,k,m) * conn(m,j,l) - conn(i,l,m) * conn(m,j,k)).assign(i,j,k,l);
