@@ -188,7 +188,7 @@ Tensor/tensor operator result storage optimizations:
 - rank-2
 - `.x_x() ... .w_w()` access methods.
 No access fields, sorry. I had the option of making half named access via fields (maybe the upper trianglular ones) and the other half methods, but decided for consistency's sake to just use methods everywhere.
-Don't forget that an antisymmetric matrix, i.e. a k-form, can be represented as $a\_{i\_1 ... i\_k} e^{[i\_1} \otimes ... \otimes e^{i\_k]} = \frac{1}{k!} a\_{i\_1 ... i\_k} e^{i\_1} \wedge ... \wedge e^{i\_k}$ - mind your factorials.
+Don't forget that an antisymmetric matrix, i.e. a k-form, can be represented as $a\_{i\_1 ... i\_k} e^{[i\_1} \otimes ... \otimes e^{i\_k]} = \frac{1}{k!} a\_{i\_1 ... i\_k} e^{i\_1} \wedge ... \wedge e^{i\_k}$ - mind your scale factors.
 
 Tensor/tensor operator result storage optimizations:
 - `asym` + `zero` = `asym`
