@@ -39,22 +39,14 @@ void test_Quaternions() {
 
 	/*
 g_ab = e_a * e_b
-g^ab = 1/4 * conj(e_a) * conj(e_b)
-then g_ac * g^cb = e_a * e_c * 1/4 * conj(e_c) * conj(e_b)
-Sum_c ( 1/4 * e_c * conj(e_c)) = 1/4 * 4 = 1
-	
-{
-	{e_0, e_1, e_2, e_3},
-	{e_1, -e_0, e_3, -e_2},
-	{e_2, -e_3, -e_0, e_1},
-	{e_3, e_2, -e_1, -e_0}
-}
-{
-	{e_0, -e_1, -e_2, -e_3},
-	{-e_1, -e_0, e_3, -e_2},
-	{-e_2, -e_3, -e_0, e_1},
-	{-e_3, e_2, -e_1, -e_0}
-}
+g^ab = 1/4 * ~e_a * ~e_b
+then g_ac * g^cb = e_a * e_c * 1/4 * ~e_c * ~e_b
+Sum_c ( 1/4 * e_c * ~e_c) = 1/4 * 4 = 1
+so g_ac * g^cb = e_a ~e_b
+so 1/2 (g_ac * g^cb + g_bc * g^ca) = delta_a^b
+and 1/2 ((g_ac * g^cb) + ~(g_ac * g^cb)) = delta_a^b
+and 1/2 ((g_ac * g^cb) + ~g^cb * ~g_ac) = delta_a^b
+
 
 	*/
 	auto conj = [](auto q) { return q.conjugate(); };
@@ -63,11 +55,10 @@ Sum_c ( 1/4 * e_c * conj(e_c)) = 1/4 * 4 = 1
 	ECHO(ginv);
 	ECHO(g * ginv);
 	ECHO(ginv * g);
+	// well at least the diagonal is ident ... and the off-diagonal is imaginary and skew-symmetric ...
+	ECHO(.5f * ((g * ginv) + (g * ginv).transpose()));
+	ECHO(.5f * ((g * ginv) + (g * ginv).map(conj)));
 }
-
-
-
-
 
 
 void test_Quat() {
@@ -77,7 +68,7 @@ void test_Quat() {
 		TEST_EQ(q.x, 0);
 		TEST_EQ(q.y, 0);
 		TEST_EQ(q.z, 0);
-		TEST_EQ(q.w, 0);	//on the fence about this
+		TEST_EQ(q.w, 0);	//on the fence about this ... default to 1 or to 0?  1 for rotations, 0 for summing (which yes sometimes you do sum quaternions, esp if you put them in a matrix.)
 	}
 
 	{
