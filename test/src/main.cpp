@@ -12,7 +12,7 @@ int main() {
 	test_TotallySymmetric();
 	test_TotallyAntisymmetric();
 	test_Index();
-	test_Quat();
 	test_Derivative();
 	test_Math();
+	test_Quat();
 }

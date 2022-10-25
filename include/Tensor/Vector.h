@@ -1153,6 +1153,8 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return *this;\
 	}\
 \
+	/* these are in Tensor/Inverse.h */\
+\
 	Scalar determinant() const\
 	requires (isSquare) {\
 		return (Scalar)Tensor::determinant<This>((This const &)(*this));\
@@ -1166,6 +1168,13 @@ Bit of a hack: MOst these are written in terms of 'This'
 	This inverse() const\
 	requires (isSquare) {\
 		return Tensor::inverse(*this);\
+	}\
+\
+	/* This is dependent on the LAMBDA ctor, so maybe I should put it there? */\
+	/* TODO is it even necessary? why not just use the lambda ctor? All this does is abstract the indexing. */\
+\
+	This map(std::function<Scalar(Scalar)> f) const {\
+		return This([&](intN i) -> Scalar { return f((*this)(i)); });\
 	}
 
 /*

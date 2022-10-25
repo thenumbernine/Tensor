@@ -38,28 +38,28 @@ void test_Quaternions() {
 	ECHO(g);
 
 	/*
-g * ginv :: {
-	{-e_0, 2*e_1 + e_0, 2*e_2 + e_0, 2*e_3 + e_0},
-	{-2*e_1 + e_0, -e_0, 2*e_3 + e_0, -2*e_2 + e_0},
-	{-2*e_2 + e_0, -2*e_3 + e_0, -e_0, 2*e_1 + e_0},
-	{-2*e_3 + e_0, 2*e_2 + e_0, -2*e_1 + e_0, -e_0}
+g_ab = e_a * e_b
+g^ab = 1/4 * conj(e_a) * conj(e_b)
+then g_ac * g^cb = e_a * e_c * 1/4 * conj(e_c) * conj(e_b)
+Sum_c ( 1/4 * e_c * conj(e_c)) = 1/4 * 4 = 1
+	
+{
+	{e_0, e_1, e_2, e_3},
+	{e_1, -e_0, e_3, -e_2},
+	{e_2, -e_3, -e_0, e_1},
+	{e_3, e_2, -e_1, -e_0}
 }
-ginv * g :: {
-	{-e_0, -2*e_1 + e_0, -2*e_2 + e_0, -2*e_3 + e_0},
-	{2*e_1 + e_0, -e_0, 2*e_3 + e_0, -2*e_2 + e_0},
-	{2*e_2 + e_0, -2*e_3 + e_0, -e_0, 2*e_1 + e_0},
-	{2*e_3 + e_0, 2*e_2 + e_0, -2*e_1 + e_0, -e_0}
+{
+	{e_0, -e_1, -e_2, -e_3},
+	{-e_1, -e_0, e_3, -e_2},
+	{-e_2, -e_3, -e_0, e_1},
+	{-e_3, e_2, -e_1, -e_0}
 }
-	*/
-	auto ginv = Q44{
-		{e0, -e1, -e2, -e3},
-		{-e1, z, z, z}, 
-		{-e2, z, z, z},
-		{-e3, z, z, z}
-	};
 
-	//auto ginv = Q44([&](int i, int j) -> Q { return g(i,j).conjugate(); });
-	//auto ginv = Q44([&](int i, int j) -> Q { return g(j,i).conjugate(); });
+	*/
+	auto conj = [](auto q) { return q.conjugate(); };
+	auto econj = e.map(conj);
+	auto ginv = econj.outer(econj) * .25f;
 	ECHO(ginv);
 	ECHO(g * ginv);
 	ECHO(ginv * g);
@@ -77,7 +77,7 @@ void test_Quat() {
 		TEST_EQ(q.x, 0);
 		TEST_EQ(q.y, 0);
 		TEST_EQ(q.z, 0);
-		TEST_EQ(q.w, 1);
+		TEST_EQ(q.w, 0);	//on the fence about this
 	}
 
 	{
@@ -85,7 +85,7 @@ void test_Quat() {
 		Tensor::quatf q = {0,0,0,2};
 		
 		//normal = unit
-		TEST_EQ(normalize(q), Tensor::quatf());
+		TEST_EQ(normalize(q), Tensor::quatf(1));
 		
 		//real quaternion, conjugate = self
 		TEST_EQ(q.conjugate(), q);

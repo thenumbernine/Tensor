@@ -6,15 +6,15 @@
 namespace Tensor {
 
 template<typename T>
-constexpr decltype(auto) clamp(T x, T min, T max) {
-	return std::min(max, std::max(min, x));
+T clamp(T x, T xmin, T xmax) {
+	return std::min(xmax, std::max(xmin, x));
 }
 
 template<typename T>
 requires (Tensor::is_tensor_v<T>)
-T clamp(T const &x, T const &min, T const &max) {
+T clamp(T const & x, T const & xmin, T const & xmax) {
 	return T([&](typename T::intN i) -> typename T::Scalar {
-		return clamp<typename T::Scalar>(x(i), min(i), max(i));
+		return clamp<typename T::Scalar>(x(i), xmin(i), xmax(i));
 	});
 }
 

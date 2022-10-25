@@ -36,7 +36,11 @@ struct _quat : public _vec4<Inner_> {
 	
 	using vec3 = _vec3<Inner>;
 
-	constexpr _quat() : Super(0,0,0,1) {}
+// ok here's a dilemma ... 
+// default ident quat would be useful for rotations
+// but for sums-of-quats, and consistency of equating quats with reals, it is useful to default this to zero
+//	constexpr _quat() : Super(0,0,0,1) {}
+	constexpr _quat() : Super(0,0,0,0) {}
 	
 	// mathematically, a real is equivalent to a quaternion with only the real component defined ...
 	constexpr _quat(Inner const & w) : Super(0,0,0,w) {}
