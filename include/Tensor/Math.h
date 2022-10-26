@@ -372,7 +372,7 @@ struct MakeSymResult {
 	static constexpr auto value() {
 		using S = typename T::Scalar;
 		constexpr auto anyAreAsym = []<size_t ... is>(std::index_sequence<is...>) constexpr {
-			return ((is_asym_v<typename T::Nested<is>> || is_asymR_v<typename T::Nested<is>>) && ... && (true));
+			return ((is_asym_v<typename T::template Nested<is>> || is_asymR_v<typename T::template Nested<is>>) && ... && (true));
 		}(std::make_index_sequence<T::numNestings>{});
 		if constexpr (anyAreAsym) {
 			return (ReplaceWithZero<T>*)nullptr;
@@ -413,7 +413,7 @@ struct MakeAntiSymResult {
 	static constexpr auto value() {
 		using S = typename T::Scalar;
 		constexpr auto anyAreSym = []<size_t ... is>(std::index_sequence<is...>) constexpr {
-			return ((is_ident_v<typename T::Nested<is>> || is_sym_v<typename T::Nested<is>> || is_symR_v<typename T::Nested<is>>) && ... && (true));
+			return ((is_ident_v<typename T::template Nested<is>> || is_sym_v<typename T::template Nested<is>> || is_symR_v<typename T::template Nested<is>>) && ... && (true));
 		}(std::make_index_sequence<T::numNestings>{});
 		if constexpr (anyAreSym) {
 			return (ReplaceWithZero<T>*)nullptr;
