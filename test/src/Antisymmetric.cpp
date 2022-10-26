@@ -18,7 +18,6 @@ void verifyAccessAntisym(T & t, F f) {
 }
 
 void test_Antisymmetric() {
-
 #ifdef STORAGE_LOWER // lower-triangular
 	TEST_EQ(Tensor::float3a3::getLocalReadForWriteIndex(0), Tensor::int2(1,0));
 	TEST_EQ(Tensor::float3a3::getLocalReadForWriteIndex(1), Tensor::int2(2,0));
@@ -161,7 +160,6 @@ void test_Antisymmetric() {
 		TEST_EQ(as,m);
 	}
 
-
 	{
 		Tensor::float3x3 m = {
 			{1,2,3},
@@ -201,7 +199,8 @@ void test_Antisymmetric() {
 
 	{
 		auto a = Tensor::float3a3(1,2,3);
-#if 1 //tensor ctor from Accessor?  shoud need Accessor .rank etc defined ...
+		static_assert(sizeof(a) == 3 * sizeof(float));
+		static_assert(a.localCount == 3);
 		auto ax = a[0];
 		//ECHO(ax);	// TODO operator<< for Accessor?
 		// works
@@ -227,11 +226,10 @@ void test_Antisymmetric() {
 		*/
 		ECHO(ax.rank);
 		ECHO(ax.dims());
-		ECHO(Tensor::lenSq(ax));
-#endif
+		//weird warnings:
+		ECHO(ax.lenSq());
 	}
 	{
-#if 1 // Accessor 's tensor member methods
 		auto a = Tensor::float3a3(1,2,3);
 		auto ax = a[0];
 		ECHO(ax.lenSq());
@@ -239,6 +237,5 @@ void test_Antisymmetric() {
 		ECHO(ay.lenSq());
 		auto az = a[2];
 		ECHO(az.lenSq());
-#endif
 	}
 }

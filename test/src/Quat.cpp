@@ -27,7 +27,7 @@ void test_Quaternions() {
 	using Q4 = Tensor::_tensor<Q, 4>;
 	using Q44 = Tensor::_tensor<Q, 4, 4>;
 	// TODO despite convenience of casting-to-vectors ... I should make quat real be q(0) ...
-	auto z = Q{0,0,0,0};
+	//auto z = Q{0,0,0,0};
 	auto e0 = Q{0,0,0,1};
 	auto e1 = Q{1,0,0,0};
 	auto e2 = Q{0,1,0,0};
@@ -35,6 +35,7 @@ void test_Quaternions() {
 	auto e = Q4{e0,e1,e2,e3};
 	ECHO(e);
 	auto g = e.outer(e);
+	static_assert(std::is_same_v<decltype(g), Q44>);
 	ECHO(g);
 
 	/*

@@ -61,12 +61,12 @@ auto partialDerivative(
 	_vec<T, dim> result; 			//first index is derivative
 	for (int k = 0; k < dim; ++k) {
 		
-		result[k] = [&]<size_t ... i>(std::index_sequence<i...>) constexpr -> T {
+		result[k] = [&]<int ... i>(std::integer_sequence<int, i...>) constexpr -> T {
 			return (((
 				f(xofs(x,h,k,i+1))
 				- f(xofs(x,h,k,-i-1))
 			) * C::coeffs[i] / h) + ... + (0));
-		}(Common::make_index_range<0, C::coeffs.size()>{});
+		}(Common::make_integer_range<int, 0, C::coeffs.size()>{});
 	}
 	return result;
 }
@@ -107,15 +107,15 @@ struct PartialDerivativeGridImpl<order, Real, dim, InputType> {
 		return _vec<InputType, dim>([&](intN<rank+1> dstIndex) -> Real {
 			int gradIndex = dstIndex(0);
 			intN<rank> srcIndex;
-			[&]<size_t ... i>(std::index_sequence<i...>) constexpr -> int {
+			[&]<int ... i>(std::integer_sequence<int, i...>) constexpr -> int {
 				return ((srcIndex(i) = dstIndex(i+1)), ..., (0));
-			}(std::make_index_sequence<rank>{});
-			return [&]<size_t ... i>(std::index_sequence<i...>) constexpr -> Real {
+			}(std::make_integer_sequence<int, rank>{});
+			return [&]<int ... i>(std::integer_sequence<int, i...>) constexpr -> Real {
 				return (((
 					getOffset<InputType, dim>(f, gridIndex, gradIndex, i)(srcIndex) 
 					- getOffset<InputType, dim>(f, gridIndex, gradIndex, -i)(srcIndex)
 				) * Coeffs::coeffs[i-1]) + ... + (0)) / dx(gradIndex);
-			}(Common::make_index_range<1, Coeffs::coeffs::size()>{});
+			}(Common::make_integer_range<int, 1, Coeffs::coeffs::size()>{});
 		});
 	}
 };
