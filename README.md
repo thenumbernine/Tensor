@@ -634,6 +634,8 @@ TODO:
 
 - More tensor operators?  For integral Scalar types?  `<< >> & | ^ ~ && || ! % ?:`.  For tensors and index-notation.
 
+- assign dimension size and offset to Index
+
 - C++23 operator[] can be variadic.
 	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().
 	in fact, why don't I just do that now?

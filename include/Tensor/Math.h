@@ -315,6 +315,7 @@ auto interior(A const & a, B const & b) {
 			::template RemoveIndexSeq<Common::make_integer_range<int, A::rank-num, A::rank+num>>;
 		static_assert(num != 1 || std::is_same_v<R, decltype(contract<A::rank-1,A::rank>(outer(a,b)))>);
 		static_assert(std::is_same_v<R, decltype(contractN<A::rank-num,num>(outer(a,b)))>);
+		static_assert(R::rank == A::rank + B::rank - 2 * num);
 		return R([&](typename R::intN i) -> S {
 			auto ai = typename A::intN([&](int j) -> int {
 				if (j >= A::rank-num) return 0;
