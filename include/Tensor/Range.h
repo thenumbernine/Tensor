@@ -29,9 +29,9 @@ struct RangeIterator {
 	intN index;
 
 	constexpr RangeIterator(Owner & owner_) : owner(owner_) {
-		[]<size_t ... is>(RangeIterator & it, std::index_sequence<is...>) constexpr {
-			it.index = {it.owner.template getRangeMin<is>()...};
-		}(*this, std::make_index_sequence<rank>{});
+		[]<int ... i>(RangeIterator & it, std::integer_sequence<int, i...>) constexpr {
+			it.index = {it.owner.template getRangeMin<i>()...};
+		}(*this, std::make_integer_sequence<int, rank>{});
 	}
 
 	constexpr RangeIterator(Owner & owner_, intN index_) : owner(owner_), index(index_) {}
@@ -104,13 +104,6 @@ struct RangeIterator {
 			Common::make_integer_range<int, rankFirst, rankLast+rankStep>,
 			Inc
 		>(*this);
-#elif 0
-		Common::static_foreach_seq(
-			[&](int i) constexpr {
-				Inc<i>::exec(*this);	// error: non-type template argument is not a constant expression 
-			},
-			Common::make_integer_range<int, rankFirst, rankLast+rankStep>()
-		);
 #endif
 	}
 	constexpr RangeIterator & operator++() { inc(); return *this; }

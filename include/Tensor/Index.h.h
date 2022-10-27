@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Tensor/Meta.h"	//is_tensor_v
-#include <utility>			//integer_sequence
-#include <tuple>			//tuple
 
 namespace Tensor {
 

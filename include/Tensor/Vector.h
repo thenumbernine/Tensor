@@ -567,16 +567,28 @@ Scalar = NestedPtrTuple's last
 
 #define TENSOR_ADD_VECTOR_OP_EQ(op)\
 	constexpr This & operator op(This const & b) {\
-		return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> This & {\
+			/* sequences */\
+		/*return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> This & {\
 			return ((s[k] op b.s[k]), ..., *this);\
-		}(std::make_index_sequence<localCount>{});\
+		}(std::make_index_sequence<localCount>{});*/\
+			/* for-loops */\
+		for (int k = 0; k < localCount; ++k) {\
+			s[k] op b.s[k];\
+		}\
+		return *this;\
 	}
 
 #define TENSOR_ADD_SCALAR_OP_EQ(op)\
 	constexpr This & operator op(Scalar const & b) {\
-		return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> This & {\
+			/* sequences */\
+		/*return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> This & {\
 			return ((s[k] op b), ..., *this);\
-		}(std::make_index_sequence<localCount>{});\
+		}(std::make_index_sequence<localCount>{});*/\
+			/* for-loops */\
+		for (int k = 0; k < localCount; ++k) {\
+			s[k] op b;\
+		}\
+		return *this;\
 	}
 
 // for comparing like types, use the member operator==, because it is constexpr
@@ -594,9 +606,15 @@ Scalar = NestedPtrTuple's last
 #define TENSOR_ADD_UNM()\
 	constexpr This operator-() const {\
 		This result;\
-		return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> This {\
+			/* sequences */\
+		/*return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> This {\
 			return ((result.s[k] = -s[k]), ..., result);\
-		}(std::make_index_sequence<localCount>{});\
+		}(std::make_index_sequence<localCount>{});*/\
+			/* for-loops */\
+		for (int k = 0; k < localCount; ++k) {\
+			result.s[k] = -s[k];\
+		}\
+		return result;\
 	}
 
 // for rank-1 objects (_vec, _sym::Accessor, _asym::Accessor)
@@ -651,9 +669,14 @@ Scalar = NestedPtrTuple's last
 	/*requires (!is_tensor_v<T> && !std::is_invocable_v<T>)*/\
 	/* so instead ... */\
 	constexpr classname(Scalar const & x) {\
-		[&]<size_t ... k>(std::index_sequence<k...>) constexpr {\
+			/* sequences */\
+		/*[&]<size_t ... k>(std::index_sequence<k...>) constexpr {\
 			return ((s[k] = x), ..., *this);\
-		}(std::make_index_sequence<localCount>{});\
+		}(std::make_index_sequence<localCount>{});*/\
+			/* for-loops */\
+		for (int k = 0; k < localCount; ++k) {\
+			s[k] = x;\
+		}\
 	}
 
 // vector cast operator

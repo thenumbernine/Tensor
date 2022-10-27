@@ -7,6 +7,7 @@
 #include "Common/Meta.h"
 #include <tuple>
 #include <functional>	// plus minus binary_operator etc
+#include <utility>			//integer_sequence
 
 /*
 Ok here's a dilemma ... a_i = b_ijk^jk_lm^lm * c_npq^npq

@@ -107,15 +107,21 @@ struct PartialDerivativeGridImpl<order, Real, dim, InputType> {
 		return _vec<InputType, dim>([&](intN<rank+1> dstIndex) -> Real {
 			int gradIndex = dstIndex(0);
 			intN<rank> srcIndex;
+#if 0	// sequences, return types, and release mode gcc, give me a warning about using this trick:			
 			[&]<int ... i>(std::integer_sequence<int, i...>) constexpr -> int {
 				return ((srcIndex(i) = dstIndex(i+1)), ..., (0));
 			}(std::make_integer_sequence<int, rank>{});
+#else
+			for (int i = 0; i < rank; ++i) {
+				srcIndex(i) = dstIndex(i+1);
+			}
+#endif
 			return [&]<int ... i>(std::integer_sequence<int, i...>) constexpr -> Real {
 				return (((
 					getOffset<InputType, dim>(f, gridIndex, gradIndex, i)(srcIndex) 
 					- getOffset<InputType, dim>(f, gridIndex, gradIndex, -i)(srcIndex)
 				) * Coeffs::coeffs[i-1]) + ... + (0)) / dx(gradIndex);
-			}(Common::make_integer_range<int, 1, Coeffs::coeffs::size()>{});
+			}(Common::make_integer_range<int, 1, Coeffs::coeffs.size()>{});
 		});
 	}
 };
@@ -130,12 +136,12 @@ struct PartialDerivativeGridImpl<order, Real, dim, Real> {
 	) {
 		using Coeffs = PartialDerivativeCoeffs<Real, order>;
 		return _vec<Real, dim>([&](int gradIndex) -> Real {
-			return [&]<size_t ... i>(std::index_sequence<i...>) constexpr -> Real {
+			return [&]<int ... i>(std::integer_sequence<int, i...>) constexpr -> Real {
 				return (((
 					getOffset<InputType, dim>(f, gridIndex, gradIndex, i)
 					- getOffset<InputType, dim>(f, gridIndex, gradIndex, -i)
 				) * Coeffs::coeffs[i-1]) + ... + (0)) / dx(gradIndex);
-			}(Common::make_index_range<1, Coeffs::coeffs::size()>{});
+			}(Common::make_integer_range<int, 1, Coeffs::coeffs.size()>{});
 		});
 	}
 };
@@ -144,8 +150,8 @@ template<int order, typename Real, int dim, typename InputType>
 auto partialDerivativeGrid(
 	intN<dim> const & index,
 	_vec<Real, dim> const & dx,
-	typename PartialDerivativeGridImpl<order, Real, dim, InputType>::FuncType f)
-{
+	std::function<InputType(intN<dim>)> f
+) {
 	return PartialDerivativeGridImpl<order, Real, dim, InputType>::exec(index, dx, f);
 }
 
