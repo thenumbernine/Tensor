@@ -223,12 +223,9 @@ auto contract(T const & t) {
 			// or TODO implement intN access to asym (and fully sym)
 			return R([&](typename R::intN i) -> S {
 				// static_assert R::intN::dims == T::intN::dims-1
-				// TODO seq op for this j = seq<T::rank> k... - (k > m) then something for k==m => 0 ...
-				auto j = typename T::intN([&](int jk) -> int {
-					if (jk == m) return 0; // set j[m] = 0
-					if (jk > m) --jk;
-					return i[jk];
-				});
+				auto j = [&]<int ... jk>(std::integer_sequence<int, jk...>) constexpr -> typename T::intN {
+					return typename T::intN{(jk == m ? 0 : (jk > m ? i[jk-1] : i[jk]))...};
+				}(std::make_integer_sequence<int, T::rank>{});
 				//j[m] == 0 ...
 				S sum = t(j);
 				for (int k = 1; k < T::template dim<m>; ++k) {
@@ -248,14 +245,22 @@ auto contract(T const & t) {
 			using R = typename T::template RemoveIndex<m,n>;
 			return R([&](typename R::intN i) -> S {
 				// static_assert R::intN::dims == T::intN::dims-2
-				auto j = typename T::intN([&](int jk) -> int {
-					if (jk == m) return 0; // j[m] = 0
-					if (jk == n) return 0; // j[n] = 0
-					// make sure you compare in decreasing order or else a decrement can destroy iteration and lead to oob lookups
-					if (jk > n) --jk; // if m != n then do this twice
-					if (jk > m) --jk; //  but (case above) if m == n do this once
-					return i[jk];
-				});
+				auto j = [&]<int ... jk>(std::integer_sequence<int, jk...>) constexpr -> typename T::intN {
+					return typename T::intN{(
+						(jk == m || jk == n) 
+						? 0
+						: (
+							(n < jk) 
+							? i[jk-2]
+							: (
+								(m < jk && jk < n)
+								? i[jk-1]
+								: i[jk]
+							)
+						)
+					)...};
+				}(std::make_integer_sequence<int, T::rank>{});
+				
 				// j[m] = j[n] = 0 ...
 				S sum = t(j);
 				for (int k = 1; k < T::template dim<m>; ++k) {
@@ -317,16 +322,13 @@ auto interior(A const & a, B const & b) {
 		static_assert(std::is_same_v<R, decltype(contractN<A::rank-num,num>(outer(a,b)))>);
 		static_assert(R::rank == A::rank + B::rank - 2 * num);
 		return R([&](typename R::intN i) -> S {
-			auto ai = typename A::intN([&](int j) -> int {
-				if (j >= A::rank-num) return 0;
-				return i[j];
-			});
-			auto bi = typename B::intN([&](int j) -> int {
-				if (j < num) return 0;
-				j += A::rank-2*num;
-				return i[j];
-			});
-			
+			auto ai = [&]<int ... j>(std::integer_sequence<int, j...>) constexpr -> typename A::intN {
+				return typename A::intN{(j < A::rank-num ? i[j] : 0)...};
+			}(std::make_integer_sequence<int, A::rank>{});
+			auto bi = [&]<int ... j>(std::integer_sequence<int, j...>) constexpr -> typename B::intN {
+				return typename B::intN{(j < num ? 0 : i[j + A::rank-2*num])...};
+			}(std::make_integer_sequence<int, B::rank>{});
+
 			//TODO instead use A::dim<A::rank-num..A::rank>
 			S sum = {};
 #if 0
@@ -399,9 +401,10 @@ auto makeSym(T const & t) {
 		//'j' is our permutation
 		auto j = intN(std::make_integer_sequence<int, T::rank>{});
 		do {
-			// 'ij' is 'i' permuted by 'j'
-			intN ij = [&](int k) -> int { return i[j[k]]; };
-			result += t(ij);
+			// index 't' by 'i' permuted by 'j'
+			result += [&]<int ... k>(std::integer_sequence<int, k...>) constexpr {
+				return t((i[j[k]])...);
+			}(std::make_integer_sequence<int, T::rank>{});
 		} while (std::next_permutation(j.s.begin(), j.s.end()));
 		return result / (S)constexpr_factorial(T::rank);
 	});
@@ -447,13 +450,17 @@ auto makeAsym(T const & t) {
 			if (sign == Sign::ZERO) {
 				throw Common::Exception() << "shouldn't get here";
 			}
-			// 'ij' is 'i' permuted by 'j'
-			intN ij = [&](int k) -> int { return i[j[k]]; };
+			// index 't' by 'i' permuted by 'j'
 			if (sign == Sign::NEGATIVE) {
-				result -= t(ij);
+				result -= [&]<int ... k>(std::integer_sequence<int, k...>) constexpr {
+					return t((i[j[k]])...);
+				}(std::make_integer_sequence<int, T::rank>{});
 			} else {
-				result += t(ij);
+				result += [&]<int ... k>(std::integer_sequence<int, k...>) constexpr {
+					return t((i[j[k]])...);
+				}(std::make_integer_sequence<int, T::rank>{});
 			}
+		
 		} while (std::next_permutation(j.s.begin(), j.s.end()));
 		return result / (S)constexpr_factorial(T::rank);
 	});
@@ -523,13 +530,14 @@ auto diagonal(T const & t) {
 				E::template dim<m>
 			>
 		>;
+	using S = typename T::Scalar;
 	return R([&](typename R::intN i) {
-		if (i[m] != i[m+1]) return typename T::Scalar();
-		auto isrc = typename T::intN([&](int j) {
-			if (j >= m) return i[j+1];
-			return i[j];
-		});
-		return t(isrc);
+		return 
+			i[m] != i[m+1] 
+			? S()
+			: [&]<int ... j>(std::integer_sequence<int, j...>) constexpr -> S {
+				return t((j >= m ? i[j+1] : i[j])...);
+			}(std::make_integer_sequence<int, T::rank>{});
 	});
 }
 
