@@ -525,38 +525,18 @@ struct IndexAccess {
 	// 'i' is the index in a's type's ctor, so its the dest-i 
 	// DstAssignIndexTuple is a's (j,i) tuple
 	// if we're just wrapping a tensor ... the read operation is just a tensor access
-	// TODO decltype(auto) 
-	//  to do that, constexpr the validIndex
-	//  to do that, i should be constexpr
 	template<typename DstAssignIndexTuple, typename DstDimSeq>
-	constexpr Scalar read(intN const & i) const {
-		auto dstI = getIndex<DstAssignIndexTuple, DstDimSeq>(i);
-		if (OutputTensorType::validIndex(dstI)) {
-			return t(dstI);
-		} else {
-			return Scalar();
-		}
-	}
-
-	template<typename DstAssignIndexTuple, typename DstDimSeq>
-	static constexpr intN getIndex(intN const & i) {
-
+	constexpr decltype(auto) read(intN const & i) const {
 		// i'th destseq = for the i'th element in DstAssignIndexTuple,
 		//  find its position in AssignIndexTuple
+		//assert dstdim<destseq<i>> == dimseq<i>
 		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple<AssignIndexTuple>::template go>;
-		//auto dstForSrcIndex = intN(destseq());
-		// I could use this for:
-		//destI(dstForSrcIndex(j)) = i(j);
-		// but if I instead use srcForDstIndex then I can write it as a sequence expression
-
-		//TODO assert dstdim<destseq<i>> == dimseq<i>
 		using CheckDimSeq = Common::SeqToSeqMap<destseq, GetSeqIth<dimseq>::template go>;
 		static_assert(std::is_same_v<CheckDimSeq, DstDimSeq>);
 
 		using srcseq = Common::TupleToSeqMap<int, AssignIndexTuple, FindInAssignIndexTuple<DstAssignIndexTuple>::template go>;
-
-		return [&]<int ... j>(std::integer_sequence<int, j...>) constexpr -> intN {
-			return intN(
+		return [&]<int ... j>(std::integer_sequence<int, j...>) constexpr {
+			return t(
 				(i(
 					Common::seq_get_v<j, srcseq>
 				))...
