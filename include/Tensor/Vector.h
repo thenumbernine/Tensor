@@ -1220,12 +1220,12 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 		}\
 	}\
 	template<typename IndexType, typename... IndexTypes>\
-	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
+	requires (Common::is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
 	decltype(auto) operator()(IndexType i1, IndexTypes... is) {\
 		return callIndexOp<This>(*this, i1, is...);\
 	}\
 	template<typename IndexType, typename... IndexTypes>\
-	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
+	requires (Common::is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
 	decltype(auto) operator()(IndexType i1, IndexTypes... is) const {\
 		return callIndexOp<This const>(*this, i1, is...);\
 	}

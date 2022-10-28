@@ -142,7 +142,7 @@ template<
 	typename indexSeq = std::make_integer_sequence<int, std::tuple_size_v<IndexTuple>>
 > struct GatherIndexesImpl;
 template<typename IndexType, typename... IndexTypes, int i1, int... is>
-requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)
+requires (Common::is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)
 struct GatherIndexesImpl<std::tuple<IndexType, IndexTypes...>, std::integer_sequence<int, i1, is...>> {
 	using Next = GatherIndexesImpl<std::tuple<IndexTypes...>, std::integer_sequence<int, is...>>;
 	using NextType = typename Next::type;
@@ -321,7 +321,7 @@ struct IndexAccessDetails {
 		is_tensor_v<R>\
 		/*&& R::dimseq == dimseq*/\
 		&& R::rank == rank\
-		&& is_all_base_of_v<IndexBase, IndexType, IndexTypes...>\
+		&& Common::is_all_base_of_v<IndexBase, IndexType, IndexTypes...>\
 	)\
 	constexpr decltype(auto) assignR(IndexType, IndexTypes...) const {\
 		return AssignImpl<R, IndexType, IndexTypes...>::exec(*this);\
@@ -329,7 +329,7 @@ struct IndexAccessDetails {
 \
 	/* assign using the type from mapped dims of the indexes specified in args */\
 	template<typename IndexType, typename... IndexTypes>\
-	requires (is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
+	requires (Common::is_all_base_of_v<IndexBase, IndexType, IndexTypes...>)\
 	constexpr decltype(auto) assign(IndexType, IndexTypes...) const {\
 		using DstAssignIndexTuple = std::tuple<IndexType, IndexTypes...>;\
 		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple<AssignIndexTuple>::template go>;\
