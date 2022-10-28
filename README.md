@@ -12,9 +12,9 @@ Ever since the deep learning revolution in AI computer scientists have come to b
 This library is moreso centered around "tensor" in the original differential geometry definition: a geometric object that lives in the tangent space at some point on a manifold and is invariant to coordinate transforms.
 This means I am designing this library centered around compile-time sized small arrays and larger ranks/degrees/grades (whatever the term is for the number of indexes).
 
-The old and pre-C++11 and ugly version had extra math indicators like Upper<> and Lower<> for tracking variance, but I've done away with that now.
+The old and pre-C++11 and ugly version had extra math indicators like Upper<> and Lower<> for tracking valence, but I've done away with that now.
 There was no programmatically functional reason to track it (unless I wanted to verify Einstein-index summation correctness, which I never got to), so I've just done away with it.
-What that means is you'll have to keep track of upper/lower/tensor basis variance all by yourself, and do your own metric multiplying all by yourself.
+What that means is you'll have to keep track of upper/lower/tensor basis valence all by yourself, and do your own metric multiplying all by yourself.
 Luckily the default tensor `*` operator is a outer+contraction, aka matrix-multiply in the rank-2 case, which means any contraction of tensor `a`'s last index with tensor `b`s first index under metric `g` can just be written as `a * g * b`.
 
 This version has added a lot of C++20 tricks.
@@ -459,8 +459,8 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	$$makeAsym(a)\_I = a\_{[i\_1 ... i\_ n]} $$
 - `wedge(a,b)` = The wedge product of tensors 'a' and 'b'.
 	$$wedge(a,b)\_I = (a \wedge b)\_I = Alt (a \otimes b)\_I = a\_{[i\_1 ... i\_p} b\_{i\_{p+1} ... i\_{p+q}]}$$
-- `hodgeDual(a), dual(a)` = The Hodge-Dual of rank-k tensor 'a'.  This only operates on 'square' tensors.  If you really want to produce the dual of a scalar, just use `_asymR<>(s)`.
-	$$hodgeDual(a)\_I = (\star a)_I = \frac{1}{k!} T\_J {\epsilon^J}\_I$$
+- `hodgeDual(a), dual(a)` = The Hodge-Dual of rank-k tensor 'a'.  This only operates on 'square' tensors.  If you really want to produce the dual of a scalar, just use `_asymR<>(s)`.  Also it does not apply metrics.  It will assume your input tensor is in $\sharp$ valence, and produce a tensor in $\flat$ valence.  It also will assume a unit weight of the Levi-Civita permutation tensor, so if you happen to prefer your L.C. tensors to have weight $\sqrt{|g|}$ then you will have to multiply by this yourself. 
+	$$hodgeDual(a)\_I = (\star a)_I = \frac{1}{k!} a^J \epsilon\_{JI}$$
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
 	- rank-N -> rank-(N+1), N>=1:
 	$$diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
