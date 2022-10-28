@@ -544,24 +544,24 @@ struct IndexAccess {
 		// i'th destseq = for the i'th element in DstAssignIndexTuple,
 		//  find its position in AssignIndexTuple
 		using destseq = Common::TupleToSeqMap<int, DstAssignIndexTuple, FindInAssignIndexTuple<AssignIndexTuple>::template go>;
-		auto dstForSrcIndex = intN(destseq());
+		//auto dstForSrcIndex = intN(destseq());
+		// I could use this for:
+		//destI(dstForSrcIndex(j)) = i(j);
+		// but if I instead use srcForDstIndex then I can write it as a sequence expression
 
 		//TODO assert dstdim<destseq<i>> == dimseq<i>
 		using CheckDimSeq = Common::SeqToSeqMap<destseq, GetSeqIth<dimseq>::template go>;
 		static_assert(std::is_same_v<CheckDimSeq, DstDimSeq>);
 
-		//for the j'th index of i ...
-		// ... find indexes(j) coinciding with read.indexes(k)
-		// ... and put that there
-		intN destI;
-		for (int j = 0; j < rank; ++j) {
-			destI(dstForSrcIndex(j)) = i(j);
-		}
-		return destI;
-		
-		// TODO
-		//return [&]<size_t ... j>(std::index_sequence<j...>) constexpr -> intN {
-		//}(std::make_index_sequence<rank>{});
+		using srcseq = Common::TupleToSeqMap<int, AssignIndexTuple, FindInAssignIndexTuple<DstAssignIndexTuple>::template go>;
+
+		return [&]<int ... j>(std::integer_sequence<int, j...>) constexpr -> intN {
+			return intN(
+				(i(
+					Common::seq_get_v<j, srcseq>
+				))...
+			);
+		}(std::make_integer_sequence<int, rank>{});
 	}
 };
 
