@@ -224,7 +224,7 @@ auto contract(T const & t) {
 			return R([&](typename R::intN i) -> S {
 				// static_assert R::intN::dims == T::intN::dims-1
 				auto j = [&]<int ... jk>(std::integer_sequence<int, jk...>) constexpr -> typename T::intN {
-					return typename T::intN{(jk == m ? 0 : (jk > m ? i[jk-1] : i[jk]))...};
+					return typename T::intN{(jk == m ? 0 : i[jk - (m < jk)])...};
 				}(std::make_integer_sequence<int, T::rank>{});
 				//j[m] == 0 ...
 				S sum = t(j);
@@ -246,19 +246,7 @@ auto contract(T const & t) {
 			return R([&](typename R::intN i) -> S {
 				// static_assert R::intN::dims == T::intN::dims-2
 				auto j = [&]<int ... jk>(std::integer_sequence<int, jk...>) constexpr -> typename T::intN {
-					return typename T::intN{(
-						(jk == m || jk == n) 
-						? 0
-						: (
-							(n < jk) 
-							? i[jk-2]
-							: (
-								(m < jk && jk < n)
-								? i[jk-1]
-								: i[jk]
-							)
-						)
-					)...};
+					return typename T::intN{((jk == m || jk == n) ? 0 : i[jk - (m < jk) - (n < jk)])...};
 				}(std::make_integer_sequence<int, T::rank>{});
 				
 				// j[m] = j[n] = 0 ...
