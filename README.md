@@ -120,7 +120,7 @@ Mind you `LC_lower[0][0]...[0]` and `LC_lower[dim-1][dim-1]...[dim-1]` and every
 
 Example: ... and using it to compute the generalized Kronecker delta tensor:
 ```c++
-auto KD = LC_lower.outer(LC.upper);
+auto KD = LC_lower.outer(LC_upper);
 ```
 KD is now a rank-`2*dim` tensor of dimension `dim`.
 Once again it is represented by just a single float.
