@@ -85,7 +85,7 @@ float2x3 basis(float3 n) {
 }
 ```
 
-Example of using the Hodge dual to compute the inner product of a and b.  In the case of rank &gt; 1, a and b become antisymmetrized.
+Example of using the Hodge dual to compute the Frobenius inner product of a and b.  In the case of rank &gt; 1 the value is the inner product of antisymmetrized a and b.
 ```c++
 auto inner(auto const & a, auto const & b)
 //here 'isSquare' means all dimension sizes match
