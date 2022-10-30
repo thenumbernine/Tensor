@@ -414,7 +414,8 @@ auto b = ((a(i,j) - a(j,i)) / 2.f).assignI();
 Maybe I will merge assign, assignR, assignI into a single ugly abomination which is just the call operator,
 such that if you pass it a specific template arg (can you do that?) it uses it as a return type, otherwise it infers from the indexes you pass it, otherwise if no indexes then it just uses the current index form of the expression as-is.
 
-### Mathematic Functions
+### Mathematics Functions
+Functions are described using [Ricci Calculus](https://en.wikipedia.org/wiki/Ricci_calculus), though no meaning is assigned to upper or lower valence of tensor objects.  As stated earlier, you are responsible for all metric applications.
 Functions are provided as `Tensor::` namespace or as member-functions where `this` is automatically padded into the first argument.
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	- rank-N x rank-N -> rank-0.
