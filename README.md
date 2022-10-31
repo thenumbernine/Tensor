@@ -54,7 +54,7 @@ float3 cross(float3 a, float3 b) {
 }
 ```
 
-Same thing but using exterior algebra:
+Same thing but using exterior algebra.  $a \times b = \star (a \wedge b)$
 ```c++
 float3 cross(float3 a, float3 b) {
 	// Create a 3x3 antisymmetric
