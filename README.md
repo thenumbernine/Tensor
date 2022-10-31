@@ -102,14 +102,14 @@ requires (a.dims() == b.dims() && a.isSquare && b.isSquare)
 }
 ```
 
-Example: Implementing the Levi-Civita totally-antisymmetric tensor in an orthonormal metric:
+Example: Implementing the Levi-Civita totally-antisymmetric tensor in an orthonormal metric.  $\epsilon\_{i\_1 ... i\_n} = 1$
 ```c++
 // the 'NaR' suffix stands for N-dimensional, totally-antisymmetric, R-rank, and expects <N,R> to come in the template arguments.
 auto LC = floatNaR<dim,dim>(1);
 // uses 1 whole float of storage.
 ```
 
-Example: Implementing the covariant valence Levi-Civita totally-antisymmetric tensor for an arbitrary metric $g\_{\mu \nu}$:
+Example: Implementing the covariant valence Levi-Civita totally-antisymmetric tensor for an arbitrary metric $g\_{ij}$: $\epsilon\_{i\_1 ... i\_n} = \sqrt{|det(g\_{ij})|}, \epsilon^{i\_1 ... i\_n} = \frac{1}{\sqrt{|det(g\_{ij})|}}$
 ```c++
 auto g = floatNsN<dim>( /* provide your metric here */ );
 auto detg = g.determinant();
