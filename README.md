@@ -29,7 +29,7 @@ So I guess overall this library is midway between a mathematician's and a progra
 
 ## Examples
 
-Example of Einstein index summation notation / Ricci calculus, calculating $a\_{ij} := \frac{1}{2} (a\_{ij} + a\_{ji}), c\_i := {b\_{ij}}^j, d := a\_{ij} {b^{jk}}\_k$.
+Example of Einstein index summation notation / Ricci calculus. $a\_{ij} := \frac{1}{2} (a\_{ij} + a\_{ji}), c\_i := {b\_{ij}}^j, d\_i := a\_{ij} {b^{jk}}\_k$
 ```c++
 Index<'i'> i;
 Index<'j'> j;
@@ -43,7 +43,7 @@ auto c = b(i,j,j).assignI();
 auto d = (a(i,j) * b(j,k,k)).assignI();
 ```
 
-Example of using a totally-antisymmetric tensor for implementing the cross-product:
+Example of using a totally-antisymmetric tensor for implementing the cross-product. $(a \times b)\_i := \epsilon\_{ijk} a^j b^k$ 
 ```c++
 float3 cross(float3 a, float3 b) {
 	// Create the Levi-Civita totally-antisymmetric permutation tensor for dim 3 rank 3 ... using up a single float of memory:
