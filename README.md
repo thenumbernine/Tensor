@@ -118,7 +118,7 @@ auto LC_upper = LC_lower / detg;
 ```
 Mind you `LC_lower[0][0]...[0]` and `LC_lower[dim-1][dim-1]...[dim-1]` and every possible index access between are all valid C++ expressions.  But yeah, just 1 float of storage.
 
-Example: ... and using it to compute the generalized Kronecker delta tensor:
+Example: ... and using it to compute the generalized Kronecker delta tensor.  $\delta^{i\_1 ... i\_n}\_{j\_1 ... j\_n} = \epsilon\_{j\_1 ... j\_n} \epsilon^{i\_1 ... i\_n}$
 ```c++
 auto KD = LC_lower.outer(LC_upper);
 ```
