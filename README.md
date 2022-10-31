@@ -29,7 +29,7 @@ So I guess overall this library is midway between a mathematician's and a progra
 
 ## Examples
 
-Example of Einstein index summation notation / Ricci calculus:
+Example of Einstein index summation notation / Ricci calculus, calculating $a\_{ij} := \frac{1}{2} (a\_{ij} + a\_{ji}), c\_i := {b\_{ij}}^j, d := a\_{ij} {b^{jk}}\_k$.
 ```c++
 Index<'i'> i;
 Index<'j'> j;

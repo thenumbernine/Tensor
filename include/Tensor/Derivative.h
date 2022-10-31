@@ -60,7 +60,6 @@ auto partialDerivative(
 	};
 	_vec<T, dim> result; 			//first index is derivative
 	for (int k = 0; k < dim; ++k) {
-		
 		result[k] = [&]<int ... i>(std::integer_sequence<int, i...>) constexpr -> T {
 			return (((
 				f(xofs(x,h,k,i+1))
@@ -106,15 +105,16 @@ struct PartialDerivativeGridImpl<order, Real, dim, InputType> {
 		using Coeffs = PartialDerivativeCoeffs<Real, order>;
 		return _vec<InputType, dim>([&](intN<rank+1> dstIndex) -> Real {
 			int gradIndex = dstIndex(0);
-			intN<rank> srcIndex;
-#if 0	// sequences, return types, and release mode gcc, give me a warning about using this trick:			
-			[&]<int ... i>(std::integer_sequence<int, i...>) constexpr -> int {
-				return ((srcIndex(i) = dstIndex(i+1)), ..., (0));
+#if 0
+			intN<rank> srcIndex = [&]<int ... i>(std::integer_sequence<int, i...>) constexpr -> intN<rank> {
+				// this is calling (Scalar, ...) ctors, which have a fixed limit
+				// how do I get this to call the initializer_list ctor?
+				//return intN{((int)dstIndex(i+1))...};
+				return intN(std::make_tuple(((int)dstIndex(i+1))...));
+				//return intN(std::array<int, rank>{((int)dstIndex(i+1))...});
 			}(std::make_integer_sequence<int, rank>{});
 #else
-			for (int i = 0; i < rank; ++i) {
-				srcIndex(i) = dstIndex(i+1);
-			}
+			intN<rank> srcIndex([&](int i) -> int { return dstIndex(i+1); });
 #endif
 			return [&]<int ... i>(std::integer_sequence<int, i...>) constexpr -> Real {
 				return (((
