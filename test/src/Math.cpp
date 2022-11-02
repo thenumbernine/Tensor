@@ -199,4 +199,37 @@ void test_Math() {
 			6.f * (a * b.dual()).dual()
 		);	
 	}
+	// what happens to wedges for rank > dim?
+	{
+		auto a = float3{1,2,3};
+		ECHO(a);
+		auto b = float3{4,5,6};
+		ECHO(b);
+		auto c = float3{6,7,8};
+		ECHO(c);
+		auto d = float3{9,1,2};
+		ECHO(d);
+		auto ab = a.wedge(b);	// a wedge b
+		ECHO(ab);
+		auto abc = ab.wedge(c);	// should be a volume-form, *1
+		ECHO(abc);
+		//auto abcd = abc.wedge(d);	//compiler error ... cuz antisymmetric rank > dim.  in math this is a zero so...
+		// I could set this to zero if A::rank + B::rank > A::dim ... but there's multiple dims ... which dim to use?  the max maybe?
+		//ECHO(abcd);
+	}
+	// btw what is a 1-form 3-dim wedge 1-form 4-dim anyways?
+	//compiler error cuz makeAsym needs a square tensor ...
+	//or should it just grow all vector to the max dim size, forcing it to be square?
+	//leave that for the end-user
+	//how about a 'makeSquare()' function that does that?
+#if 0	
+	{
+		auto a = float3{1,2,3};
+		ECHO(a);
+		auto b = float4{3,4,5,6};
+		ECHO(b);
+		auto c = a.wedge(b);
+		ECHO(c);
+	}
+#endif
 }
