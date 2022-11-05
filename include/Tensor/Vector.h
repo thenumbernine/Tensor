@@ -1399,7 +1399,8 @@ struct _vec<Inner_,2> {
 
 	// 2-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE2_ij(i, j)\
-	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }
+	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }\
+	auto i ## j () const { return _vec<std::reference_wrapper<Inner const>, 2>(i, j); }
 #define TENSOR_VEC2_ADD_SWIZZLE2_i(i)\
 	TENSOR_VEC2_ADD_SWIZZLE2_ij(i,x)\
 	TENSOR_VEC2_ADD_SWIZZLE2_ij(i,y)
@@ -1410,7 +1411,8 @@ struct _vec<Inner_,2> {
 	
 	// 3-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE3_ijk(i, j, k)\
-	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }
+	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
+	auto i ## j ## k() const { return _vec<std::reference_wrapper<Inner const>, 3>(i, j, k); }
 #define TENSOR_VEC2_ADD_SWIZZLE3_ij(i,j)\
 	TENSOR_VEC2_ADD_SWIZZLE3_ijk(i,j,x)\
 	TENSOR_VEC2_ADD_SWIZZLE3_ijk(i,j,y)
@@ -1424,7 +1426,8 @@ struct _vec<Inner_,2> {
 
 	// 4-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i, j, k, l)\
-	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }
+	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }\
+	auto i ## j ## k ## l() const { return _vec<std::reference_wrapper<Inner const>, 4>(i, j, k, l); }
 #define TENSOR_VEC2_ADD_SWIZZLE4_ijk(i,j,k)\
 	TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,x)\
 	TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,y)
@@ -1467,7 +1470,8 @@ struct _vec<Inner_,3> {
 
 	// 2-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE2_ij(i, j)\
-	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }
+	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }\
+	auto i ## j () const { return _vec<std::reference_wrapper<Inner const>, 2>(i, j); }
 #define TENSOR_VEC3_ADD_SWIZZLE2_i(i)\
 	TENSOR_VEC3_ADD_SWIZZLE2_ij(i,x)\
 	TENSOR_VEC3_ADD_SWIZZLE2_ij(i,y)\
@@ -1480,7 +1484,8 @@ struct _vec<Inner_,3> {
 	
 	// 3-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE3_ijk(i, j, k)\
-	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }
+	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
+	auto i ## j ## k() const { return _vec<std::reference_wrapper<Inner const>, 3>(i, j, k); }
 #define TENSOR_VEC3_ADD_SWIZZLE3_ij(i,j)\
 	TENSOR_VEC3_ADD_SWIZZLE3_ijk(i,j,x)\
 	TENSOR_VEC3_ADD_SWIZZLE3_ijk(i,j,y)\
@@ -1497,7 +1502,8 @@ struct _vec<Inner_,3> {
 
 	// 4-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i, j, k, l)\
-	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }
+	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }\
+	auto i ## j ## k ## l() const { return _vec<std::reference_wrapper<Inner const>, 4>(i, j, k, l); }
 #define TENSOR_VEC3_ADD_SWIZZLE4_ijk(i,j,k)\
 	TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,x)\
 	TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,y)\
@@ -1546,7 +1552,8 @@ struct _vec<Inner_,4> {
 
 	// 2-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE2_ij(i, j)\
-	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }
+	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }\
+	auto i ## j () const { return _vec<std::reference_wrapper<Inner const>, 2>(i, j); }
 #define TENSOR_VEC4_ADD_SWIZZLE2_i(i)\
 	TENSOR_VEC4_ADD_SWIZZLE2_ij(i,x)\
 	TENSOR_VEC4_ADD_SWIZZLE2_ij(i,y)\
@@ -1561,7 +1568,8 @@ struct _vec<Inner_,4> {
 	
 	// 3-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE3_ijk(i, j, k)\
-	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }
+	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
+	auto i ## j ## k() const { return _vec<std::reference_wrapper<Inner const>, 3>(i, j, k); }
 #define TENSOR_VEC4_ADD_SWIZZLE3_ij(i,j)\
 	TENSOR_VEC4_ADD_SWIZZLE3_ijk(i,j,x)\
 	TENSOR_VEC4_ADD_SWIZZLE3_ijk(i,j,y)\
@@ -1581,7 +1589,8 @@ struct _vec<Inner_,4> {
 
 	// 4-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i, j, k, l)\
-	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }
+	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }\
+	auto i ## j ## k ## l() const { return _vec<std::reference_wrapper<Inner const>, 4>(i, j, k, l); }
 #define TENSOR_VEC4_ADD_SWIZZLE4_ijk(i,j,k)\
 	TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,x)\
 	TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,y)\
