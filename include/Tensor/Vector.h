@@ -708,7 +708,7 @@ Scalar = NestedPtrTuple's last
 // lambda ctor
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
 	/* use _vec<int, rank> as our lambda index: */\
-	classname(std::function<Scalar(intN)> f) {\
+	constexpr classname(std::function<Scalar(intN)> f) {\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
 			*i = f(i.readIndex);\
@@ -720,7 +720,7 @@ Scalar = NestedPtrTuple's last
 	/* mind you in C++ I can't just say the signature is FunctionFromLambda<Lambda>::FuncType ... */\
 	/* no ... I have to accept all and then requires that part */\
 	template<typename Lambda>\
-	classname(Lambda lambda)\
+	constexpr classname(Lambda lambda)\
 	requires (\
 		std::is_same_v<\
 			Common::FunctionFromLambda<Lambda>,\
@@ -739,7 +739,7 @@ Scalar = NestedPtrTuple's last
 	}
 
 #define TENSOR_ADD_LIST_CTOR(classname)\
-	classname(std::initializer_list<Inner> l)\
+	constexpr classname(std::initializer_list<Inner> l)\
 	/* only do list constructor for non-specialized types */\
 	/*(cuz they already accept lists via matching with their ctor args) */\
 	/* a better requires would check for these ctors existence */\
