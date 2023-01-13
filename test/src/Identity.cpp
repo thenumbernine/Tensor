@@ -145,4 +145,20 @@ void test_Identity() {
 		auto c = a + b;
 		static_assert(std::is_same_v<decltype(c), _tensori<float, storage_ident<3>, storage_vec<3>, storage_vec<3>>>);
 	}
+
+	{
+		using float4i4 = Tensor::float4i4;
+		using float4x4 = Tensor::float4x4;
+		float4i4 id(1);
+ECHO(id);
+		float4x4 f;
+		f = id;
+ECHO(f);
+		for (int i = 0; i < 4; ++i) {
+			for (int j = 0; j < 4; ++j) {
+				float x = i == j ? 1 : 0;
+				TEST_EQ(f[i][j], x);
+			}
+		}
+	}
 }
