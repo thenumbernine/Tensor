@@ -580,15 +580,15 @@ TODO:
 	- mind you that for transposes then you can respect symmetry and you don't need to expand those indexes.
 	- make transpose a specialization of permuteIndexes()
 	- this is already done in index notation assignments.  TODO make them compile-time.
-- index notation summation?  mind you that it shoud preserve non-summed index memory-optimization structures.
+- Does the index-notation summation preserve non-summed index memory-optimization structures?  I don't think it does.
 - shorthand those longwinded names like "inverse"=>"inv", "determinant"=>"det", "trace"=>"tr", "transpose"=>...? T? tr?  what? "normalize"=>"unit"
 
-- use `_asymR` for an implementation of LeviCivita as constexpr
-- also use `_ident` for KroneckerDelta as constexpr
-- also `_asymR` $ \otimes $ `_asymR` for GeneralizedKroneckerDelta. 
+- Add LeviCivita to the API using `constexpr _asymR`.
+- Add KroneckerDelta to the API using `constexpr _ident`.
+- Add GeneralizedKroneckerDelta using `constexpr _asymR` $\otimes$ `_asymR`.
 
-- then use that for cross, determinant, inverse, wedge
-- once index notation is finished that might be most optimal for implementations
+- then use these for cross, determinant, inverse, wedge
+- once index notation is finished that might be most optimal for implementations.
 
 - better function matching for derivatives?
 - move secondderivative from Relativity to Tensor
