@@ -10,7 +10,7 @@ NEW VERSION
 - math indexing.  A.i.j := a_ij, which means row-major storage (sorry OpenGL)
 
 
-alright conventions, esp with my _sym being in the mix ...
+alright conventions, esp with my sym being in the mix ...
 operator[i] will denote a single index.  this means for two-rank structs they will have to return an accessor object
 operator(i) same
 operator(i,j,k,...) should always be allowed for any number of index dereferencing ... which means it will need to be implemented on accessors as well ... and means it may return an accessor
@@ -144,10 +144,10 @@ using GetTupleWrappingStorageForRank = typename GetTupleWrappingStorageForRankIm
 	static constexpr int localDim = localDim_;\
 \
 	/*how much does this structure contribute to the overall rank. */\
-	/* for _vec it is 1, for _sym it is 2 */\
+	/* for vec it is 1, for sym it is 2 */\
 	static constexpr int localRank = localRank_;
 
-// used by _quat
+// used by quat
 #define TENSOR_TEMPLATE_T(classname)\
 \
 	template<typename Inner2>\
@@ -170,7 +170,7 @@ using GetTupleWrappingStorageForRank = typename GetTupleWrappingStorageForRankIm
 	template<int newLocalDim>\
 	using ReplaceLocalDim = Template<Inner, newLocalDim>;
 
-// used for ExpandIthIndex.  all tensors use _tensorr, except _symR and _asymR can use _symR and _asymR.
+// used for ExpandIthIndex.  all tensors use tensorr, except symR and asymR can use symR and asymR.
 #define TENSOR_EXPAND_TEMPLATE_TENSORR()\
 \
 	template<int index>\
@@ -244,8 +244,8 @@ Scalar = NestedPtrTuple's last
 \
 	using Scalar = typename std::remove_pointer_t<std::tuple_element_t<std::tuple_size_v<NestedPtrTuple>-1, NestedPtrTuple>>;\
 \
-	/* how many _vec<_vec<...'s there are ... no extra +'s for multi-rank nestings */\
-	/* so _sym<> has numNestings=1 and rank=2, _vec<> has numNestings=1 and rank=1, _vec_vec<>>==_mat<> has numNestings=2 and rank=2 */\
+	/* how many vec<vec<...'s there are ... no extra +'s for multi-rank nestings */\
+	/* so sym<> has numNestings=1 and rank=2, vec<> has numNestings=1 and rank=1, vec<vec<>>==mat<> has numNestings=2 and rank=2 */\
 	static constexpr int numNestings = std::tuple_size_v<NestedPtrTensorTuple>;\
 \
 	/* Get the i'th nested type */\
@@ -286,17 +286,17 @@ Scalar = NestedPtrTuple's last
 	static constexpr int rank = std::tuple_size_v<InnerPtrTensorTuple>;\
 \
 	/* used for vector-dereferencing into the tensor. */\
-	using intN = _vec<int,rank>;\
+	using intN = vec<int,rank>;\
 \
 	/* used for write-iterators and converting write-iterator indexes to read index vectors */\
-	using intW = _vec<int,numNestings>;\
+	using intW = vec<int,numNestings>;\
 \
 	/* used for getLocalReadForWriteIndex() return type */\
 	/* and ofc the write local index is always 1 */\
-	using intNLocal = _vec<int,localRank>;\
+	using intNLocal = vec<int,localRank>;\
 \
-	/* This needs to be a function because if it was a constexpr value then the compiler would complain that DimsImpl is using _vec<int,1> before it is defined.*/\
-	/* I can circumvent that error by having rank-1 _vec's have a dims == int instead of _vec<int> ... and then i get dims as a value instead of function, and all is well */\
+	/* This needs to be a function because if it was a constexpr value then the compiler would complain that DimsImpl is using vec<int,1> before it is defined.*/\
+	/* I can circumvent that error by having rank-1 vec's have a dims == int instead of vec<int> ... and then i get dims as a value instead of function, and all is well */\
 	/*  except that makes me need to write conditional code everywhere for rank-1 and rank>1 dims */\
 	static constexpr intN dims() { return intN(dimseq()); }\
 \
@@ -322,7 +322,7 @@ Scalar = NestedPtrTuple's last
 	template<int nest>\
 	static constexpr int indexForNesting = IndexForNestingImpl<nest>::value();\
 \
-	/* This == Common::tuple_apply_t<_tensori, Common::tuple_cat_t<std::tuple<Scalar>, StorageTuple>>) */\
+	/* This == Common::tuple_apply_t<tensori, Common::tuple_cat_t<std::tuple<Scalar>, StorageTuple>>) */\
 	using StorageTuple = Common::TupleTypeMap<NestedPtrTensorTuple, GetPtrLocalStorage>;\
 	STATIC_ASSERT_EQ((std::tuple_size_v<StorageTuple>), numNestings);\
 \
@@ -335,7 +335,7 @@ Scalar = NestedPtrTuple's last
 \
 	/* This is "Replace Inner of Nesting 'i' with NewType */\
 	template<int i, typename NewType>\
-	using ReplaceNested = Common::tuple_apply_t<_tensori, Common::tuple_cat_t<std::tuple<NewType>, Common::tuple_subset_t<StorageTuple, 0, i>>>;\
+	using ReplaceNested = Common::tuple_apply_t<tensori, Common::tuple_cat_t<std::tuple<NewType>, Common::tuple_subset_t<StorageTuple, 0, i>>>;\
 \
 	/* get the number of nestings to the j'th index */\
 	template<int index>\
@@ -515,7 +515,7 @@ Scalar = NestedPtrTuple's last
 \
 	/* not sure about this one ... */\
 	/* I'm suign it with TensorSumResult to expand only the rank that matches this storage */\
-	/*  but to do so expanding in sequential order for the sake of the ExpandIthIndex optimizations of _symR and _asymR */\
+	/*  but to do so expanding in sequential order for the sake of the ExpandIthIndex optimizations of symR and asymR */\
 	/* TODO ... 'unpack-and-apply'  template that goes down the Nestings?*/ \
 	template<typename O>\
 	struct ExpandMatchingLocalRankImpl {\
@@ -549,9 +549,9 @@ Scalar = NestedPtrTuple's last
 	struct ReplaceWithZeroImpl {\
 		static constexpr auto value() {\
 			if constexpr (deferRank== 1) {\
-				return (_zero<Inner, localDim>*)nullptr;\
+				return (zero<Inner, localDim>*)nullptr;\
 			} else {\
-				return (_zero<typename Inner::template ReplaceWithZeroImpl<>, localDim>>*)nullptr;\
+				return (zero<typename Inner::template ReplaceWithZeroImpl<>, localDim>>*)nullptr;\
 			}\
 		}\
 		using type = typename std::remove_pointer_t<decltype(value())>;\
@@ -617,7 +617,7 @@ Scalar = NestedPtrTuple's last
 		return result;\
 	}
 
-// for rank-1 objects (_vec, _sym::Accessor, _asym::Accessor)
+// for rank-1 objects (vec, sym::Accessor, asym::Accessor)
 // I'm using use operator(int) as the de-facto for rank-1, operator(int,int) for rank-1 etc
 #define TENSOR_ADD_VECTOR_CALL_INDEX_PRIMARY()\
 \
@@ -652,14 +652,14 @@ Scalar = NestedPtrTuple's last
 	requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(int i, Ints... k) const { return (*this)(i)(k...); }
 
-// operator(_vec<int,...>) forwards to operator(int...)
+// operator(vec<int,...>) forwards to operator(int...)
 #define TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	/* a(intN(i,...)) */\
-	/* operator(_vec<int,N>) calls through operator(int...) */\
+	/* operator(vec<int,N>) calls through operator(int...) */\
 	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> const & i) { return std::apply(*this, i.s); }\
+	constexpr decltype(auto) operator()(vec<int,N> const & i) { return std::apply(*this, i.s); }\
 	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> const & i) const { return std::apply(*this, i.s); }
+	constexpr decltype(auto) operator()(vec<int,N> const & i) const { return std::apply(*this, i.s); }
 
 #define TENSOR_ADD_SCALAR_CTOR(classname)\
 	/* would be nice to have this constructor for non-tensors, non-lambdas*/\
@@ -680,8 +680,8 @@ Scalar = NestedPtrTuple's last
 	}
 
 // vector cast operator
-// TODO not sure how to write this to generalize into _sym and others (or if I should try to?)
-// explicit 'this->s' so subclasses can use this macro (like _quat)
+// TODO not sure how to write this to generalize into sym and others (or if I should try to?)
+// explicit 'this->s' so subclasses can use this macro (like quat)
 #define TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname)\
 	template<typename U>\
 	/* do I want to force matching bounds or bounds-check each read? */\
@@ -691,7 +691,7 @@ Scalar = NestedPtrTuple's last
 		for (auto i = w.begin(); i != w.end(); ++i) {\
 			/* TODO instead an index range iterator that spans the minimum of dims of this and t */\
 			if (U::validIndex(i.readIndex)) {\
-				/* If we use operator()(intN<>) access working for _asym ... */\
+				/* If we use operator()(intN<>) access working for asym ... */\
 				/**i = (Scalar)t(i.readIndex);*/\
 				/* ... or just replace the internal storage with std::array ... */\
 				*i = std::apply(t, i.readIndex.s);\
@@ -707,7 +707,7 @@ Scalar = NestedPtrTuple's last
 
 // lambda ctor
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
-	/* use _vec<int, rank> as our lambda index: */\
+	/* use vec<int, rank> as our lambda index: */\
 	constexpr classname(std::function<Scalar(intN)> f) {\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
@@ -885,7 +885,7 @@ ReadIterator vs WriteIterator
 \
 	template<typename WriteOwnerConst>\
 	struct Write {\
-		using intW = _vec<int, numNestings>;\
+		using intW = vec<int, numNestings>;\
 		using intR = intN;\
 \
 		WriteOwnerConst & owner;\
@@ -1231,7 +1231,7 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	}
 
 //these are all per-element assignment operators,
-// so they should work fine for all tensors: _vec, _sym, _asym, and subsequent nestings.
+// so they should work fine for all tensors: vec, sym, asym, and subsequent nestings.
 #define TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_ITERATOR() /* needed by TENSOR_ADD_CTORS and a lot of tensor methods */\
 	TENSOR_ADD_VALID_INDEX() /* used by generic tensor ctor */\
@@ -1262,7 +1262,7 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	static constexpr int localCount = localDim;\
 \
 	/* this could replace the ReplaceInner template, and maybe ReplaceLocalDim and Template too */\
-	/* use these with Common::tuple_apply_t<_tensori, StorageTuple> to rebuild the tensor */\
+	/* use these with Common::tuple_apply_t<tensori, StorageTuple> to rebuild the tensor */\
 	using LocalStorage = storage_vec<localDim>;
 
 #define TENSOR_HEADER_VECTOR(classname, Inner_, localDim_)\
@@ -1274,7 +1274,7 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	TENSOR_HEADER()
 
 #define TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()\
-	/* accepts int into .s[] storage, returns _intN<localRank> of how to index it using operator() */\
+	/* accepts int into .s[] storage, returns intN<localRank> of how to index it using operator() */\
 	static constexpr intNLocal getLocalReadForWriteIndex(int writeIndex) {\
 		return intNLocal{writeIndex};\
 	}
@@ -1285,31 +1285,31 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	/* assumes packed tensor */\
 		/* compile-time offset */\
 	template<int subdim, int offset = 0>\
-	_vec<Inner,subdim> & subset() {\
+	vec<Inner,subdim> & subset() {\
 		static_assert(subdim >= 0);\
 		static_assert(offset >= 0);\
 		static_assert(offset + subdim <= localCount);\
-		return *(_vec<Inner,subdim>*)(&s[offset]);\
+		return *(vec<Inner,subdim>*)(&s[offset]);\
 	}\
 	template<int subdim, int offset = 0>\
-	_vec<Inner,subdim> const & subset() const {\
+	vec<Inner,subdim> const & subset() const {\
 		static_assert(subdim >= 0);\
 		static_assert(offset >= 0);\
 		static_assert(offset + subdim <= localCount);\
-		return *(_vec<Inner,subdim>*)(&s[offset]);\
+		return *(vec<Inner,subdim>*)(&s[offset]);\
 	}\
 		/* runtime offset */\
 	template<int subdim>\
-	_vec<Inner,subdim> & subset(int offset) {\
+	vec<Inner,subdim> & subset(int offset) {\
 		static_assert(subdim >= 0);\
 		static_assert(subdim <= localCount);\
-		return *(_vec<Inner,subdim>*)(&s[offset]);\
+		return *(vec<Inner,subdim>*)(&s[offset]);\
 	}\
 	template<int subdim>\
-	_vec<Inner,subdim> const & subset(int offset) const {\
+	vec<Inner,subdim> const & subset(int offset) const {\
 		static_assert(subdim >= 0);\
 		static_assert(subdim <= localCount);\
-		return *(_vec<Inner,subdim>*)(&s[offset]);\
+		return *(vec<Inner,subdim>*)(&s[offset]);\
 	}
 
 // vector.volume() == the volume of a size reprensted by the vector
@@ -1341,7 +1341,7 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 				return (This*)nullptr;\
 			} else {\
 				using I1 = ExpandMatchingLocalRank<O>;\
-				return (_vec<I1, localDim>*)nullptr;\
+				return (vec<I1, localDim>*)nullptr;\
 			}\
 		}\
 		using type = typename std::remove_pointer_t<decltype(value())>;\
@@ -1349,8 +1349,8 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	template<typename O>\
 	using TensorSumResult = typename TensorSumResultImpl<O>::type;
 
-// only add these to _vec and specializations
-// ... so ... 'classname' is always '_vec' for this set of macros
+// only add these to vec and specializations
+// ... so ... 'classname' is always 'vec' for this set of macros
 #define TENSOR_VECTOR_CLASS_OPS(classname)\
 	TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX() /* needed by TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS */\
 	TENSOR_ADD_OPS(classname)\
@@ -1366,18 +1366,18 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 // this is this class.  useful for templates.  you'd be surprised.
 template<typename Inner_, int localDim_>
 requires (localDim_ > 0)
-struct _vec {
-	TENSOR_HEADER_VECTOR(_vec, Inner_, localDim_)
+struct vec {
+	TENSOR_HEADER_VECTOR(vec, Inner_, localDim_)
 	std::array<Inner, localCount> s = {};
-	constexpr _vec() {}
-	TENSOR_VECTOR_CLASS_OPS(_vec)
+	constexpr vec() {}
+	TENSOR_VECTOR_CLASS_OPS(vec)
 };
 
 // size == 2 specialization
 
 template<typename Inner_>
-struct _vec<Inner_,2> {
-	TENSOR_HEADER_VECTOR(_vec, Inner_, 2)
+struct vec<Inner_,2> {
+	TENSOR_HEADER_VECTOR(vec, Inner_, 2)
 
 	union {
 		struct {
@@ -1388,19 +1388,19 @@ struct _vec<Inner_,2> {
 		};
 		std::array<Inner, localCount> s = {};
 	};
-	constexpr _vec() {}
+	constexpr vec() {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
 		std::make_pair("y", &This::y)
 	);
 
-	TENSOR_VECTOR_CLASS_OPS(_vec)
+	TENSOR_VECTOR_CLASS_OPS(vec)
 
 	// 2-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE2_ij(i, j)\
-	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }\
-	auto i ## j () const { return _vec<std::reference_wrapper<Inner const>, 2>(i, j); }
+	auto i ## j () { return vec<std::reference_wrapper<Inner>, 2>(i, j); }\
+	auto i ## j () const { return vec<std::reference_wrapper<Inner const>, 2>(i, j); }
 #define TENSOR_VEC2_ADD_SWIZZLE2_i(i)\
 	TENSOR_VEC2_ADD_SWIZZLE2_ij(i,x)\
 	TENSOR_VEC2_ADD_SWIZZLE2_ij(i,y)
@@ -1411,8 +1411,8 @@ struct _vec<Inner_,2> {
 	
 	// 3-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE3_ijk(i, j, k)\
-	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
-	auto i ## j ## k() const { return _vec<std::reference_wrapper<Inner const>, 3>(i, j, k); }
+	auto i ## j ## k() { return vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
+	auto i ## j ## k() const { return vec<std::reference_wrapper<Inner const>, 3>(i, j, k); }
 #define TENSOR_VEC2_ADD_SWIZZLE3_ij(i,j)\
 	TENSOR_VEC2_ADD_SWIZZLE3_ijk(i,j,x)\
 	TENSOR_VEC2_ADD_SWIZZLE3_ijk(i,j,y)
@@ -1426,8 +1426,8 @@ struct _vec<Inner_,2> {
 
 	// 4-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i, j, k, l)\
-	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }\
-	auto i ## j ## k ## l() const { return _vec<std::reference_wrapper<Inner const>, 4>(i, j, k, l); }
+	auto i ## j ## k ## l() { return vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }\
+	auto i ## j ## k ## l() const { return vec<std::reference_wrapper<Inner const>, 4>(i, j, k, l); }
 #define TENSOR_VEC2_ADD_SWIZZLE4_ijk(i,j,k)\
 	TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,x)\
 	TENSOR_VEC2_ADD_SWIZZLE4_ijkl(i,j,k,y)
@@ -1446,8 +1446,8 @@ struct _vec<Inner_,2> {
 // size == 3 specialization
 
 template<typename Inner_>
-struct _vec<Inner_,3> {
-	TENSOR_HEADER_VECTOR(_vec, Inner_, 3)
+struct vec<Inner_,3> {
+	TENSOR_HEADER_VECTOR(vec, Inner_, 3)
 
 	union {
 		struct {
@@ -1458,7 +1458,7 @@ struct _vec<Inner_,3> {
 		};
 		std::array<Inner, localCount> s = {};
 	};
-	constexpr _vec() {}
+	constexpr vec() {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1466,12 +1466,12 @@ struct _vec<Inner_,3> {
 		std::make_pair("z", &This::z)
 	);
 
-	TENSOR_VECTOR_CLASS_OPS(_vec)
+	TENSOR_VECTOR_CLASS_OPS(vec)
 
 	// 2-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE2_ij(i, j)\
-	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }\
-	auto i ## j () const { return _vec<std::reference_wrapper<Inner const>, 2>(i, j); }
+	auto i ## j () { return vec<std::reference_wrapper<Inner>, 2>(i, j); }\
+	auto i ## j () const { return vec<std::reference_wrapper<Inner const>, 2>(i, j); }
 #define TENSOR_VEC3_ADD_SWIZZLE2_i(i)\
 	TENSOR_VEC3_ADD_SWIZZLE2_ij(i,x)\
 	TENSOR_VEC3_ADD_SWIZZLE2_ij(i,y)\
@@ -1484,8 +1484,8 @@ struct _vec<Inner_,3> {
 	
 	// 3-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE3_ijk(i, j, k)\
-	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
-	auto i ## j ## k() const { return _vec<std::reference_wrapper<Inner const>, 3>(i, j, k); }
+	auto i ## j ## k() { return vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
+	auto i ## j ## k() const { return vec<std::reference_wrapper<Inner const>, 3>(i, j, k); }
 #define TENSOR_VEC3_ADD_SWIZZLE3_ij(i,j)\
 	TENSOR_VEC3_ADD_SWIZZLE3_ijk(i,j,x)\
 	TENSOR_VEC3_ADD_SWIZZLE3_ijk(i,j,y)\
@@ -1502,8 +1502,8 @@ struct _vec<Inner_,3> {
 
 	// 4-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i, j, k, l)\
-	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }\
-	auto i ## j ## k ## l() const { return _vec<std::reference_wrapper<Inner const>, 4>(i, j, k, l); }
+	auto i ## j ## k ## l() { return vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }\
+	auto i ## j ## k ## l() const { return vec<std::reference_wrapper<Inner const>, 4>(i, j, k, l); }
 #define TENSOR_VEC3_ADD_SWIZZLE4_ijk(i,j,k)\
 	TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,x)\
 	TENSOR_VEC3_ADD_SWIZZLE4_ijkl(i,j,k,y)\
@@ -1527,8 +1527,8 @@ struct _vec<Inner_,3> {
 /// tho a workaround is just use std::reference<>
 
 template<typename Inner_>
-struct _vec<Inner_,4> {
-	TENSOR_HEADER_VECTOR(_vec, Inner_, 4)
+struct vec<Inner_,4> {
+	TENSOR_HEADER_VECTOR(vec, Inner_, 4)
 
 	union {
 		struct {
@@ -1539,7 +1539,7 @@ struct _vec<Inner_,4> {
 		};
 		std::array<Inner, localCount> s = {};
 	};
-	constexpr _vec() {}
+	constexpr vec() {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x", &This::x),
@@ -1548,12 +1548,12 @@ struct _vec<Inner_,4> {
 		std::make_pair("w", &This::w)
 	);
 
-	TENSOR_VECTOR_CLASS_OPS(_vec)
+	TENSOR_VECTOR_CLASS_OPS(vec)
 
 	// 2-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE2_ij(i, j)\
-	auto i ## j () { return _vec<std::reference_wrapper<Inner>, 2>(i, j); }\
-	auto i ## j () const { return _vec<std::reference_wrapper<Inner const>, 2>(i, j); }
+	auto i ## j () { return vec<std::reference_wrapper<Inner>, 2>(i, j); }\
+	auto i ## j () const { return vec<std::reference_wrapper<Inner const>, 2>(i, j); }
 #define TENSOR_VEC4_ADD_SWIZZLE2_i(i)\
 	TENSOR_VEC4_ADD_SWIZZLE2_ij(i,x)\
 	TENSOR_VEC4_ADD_SWIZZLE2_ij(i,y)\
@@ -1568,8 +1568,8 @@ struct _vec<Inner_,4> {
 	
 	// 3-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE3_ijk(i, j, k)\
-	auto i ## j ## k() { return _vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
-	auto i ## j ## k() const { return _vec<std::reference_wrapper<Inner const>, 3>(i, j, k); }
+	auto i ## j ## k() { return vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
+	auto i ## j ## k() const { return vec<std::reference_wrapper<Inner const>, 3>(i, j, k); }
 #define TENSOR_VEC4_ADD_SWIZZLE3_ij(i,j)\
 	TENSOR_VEC4_ADD_SWIZZLE3_ijk(i,j,x)\
 	TENSOR_VEC4_ADD_SWIZZLE3_ijk(i,j,y)\
@@ -1589,8 +1589,8 @@ struct _vec<Inner_,4> {
 
 	// 4-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i, j, k, l)\
-	auto i ## j ## k ## l() { return _vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }\
-	auto i ## j ## k ## l() const { return _vec<std::reference_wrapper<Inner const>, 4>(i, j, k, l); }
+	auto i ## j ## k ## l() { return vec<std::reference_wrapper<Inner>, 4>(i, j, k, l); }\
+	auto i ## j ## k ## l() const { return vec<std::reference_wrapper<Inner const>, 4>(i, j, k, l); }
 #define TENSOR_VEC4_ADD_SWIZZLE4_ijk(i,j,k)\
 	TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,x)\
 	TENSOR_VEC4_ADD_SWIZZLE4_ijkl(i,j,k,y)\
@@ -1650,7 +1650,7 @@ struct _vec<Inner_,4> {
 
 #define TENSOR_ZERO_ADD_SUM_RESULT()\
 \
-	using ScalarSumResult = _vec<Inner, localDim>;\
+	using ScalarSumResult = vec<Inner, localDim>;\
 \
 	template<typename O>\
 	using TensorSumResult = O;
@@ -1665,11 +1665,11 @@ struct _vec<Inner_,4> {
 
 template<typename Inner_, int localDim_>
 requires (localDim_ > 0)
-struct _zero {
-	TENSOR_HEADER_ZERO(_zero, Inner_, localDim_);
+struct zero {
+	TENSOR_HEADER_ZERO(zero, Inner_, localDim_);
 	std::array<Inner, localCount> s = {};
-	constexpr _zero() {}
-	TENSOR_ZERO_CLASS_OPS(_zero)
+	constexpr zero() {}
+	TENSOR_ZERO_CLASS_OPS(zero)
 };
 
 
@@ -1730,7 +1730,7 @@ Tank-2 based default indexing access.  ALl other indexing of rank-2 's relies on
 
 This depends on getLocalWriteForReadIndex() which is in TENSR_*_LOCAL_READ_FOR_WRITE_INDEX.
 
-This is used by _sym , while _asym uses something different since it uses the AntiSymRef accessors.
+This is used by sym , while asym uses something different since it uses the AntiSymRef accessors.
 */
 #define TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
 \
@@ -1787,7 +1787,7 @@ struct Rank2Accessor {
 	using LocalStorage = storage_vec<localDim>;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
 	// treat this like (rank-1) vector storage, so use vector's TensorSumResult
-	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
+	template<typename O> using TensorSumResult = typename vec<Inner, localDim>::template TensorSumResult<O>;
 	//end TENSOR_HEADER_*_SPECIFIC
 	TENSOR_EXPAND_TEMPLATE_TENSORR()
 	TENSOR_HEADER()
@@ -1798,7 +1798,7 @@ struct Rank2Accessor {
 
 	Rank2Accessor(AccessorOwnerConst & owner_, int i_) : owner(owner_), i(i_) {}
 
-	/* these should call into _sym(int,int) which is always Inner (const) & */
+	/* these should call into sym(int,int) which is always Inner (const) & */
 	constexpr decltype(auto) operator()(int j) { return owner(i,j); }
 	constexpr decltype(auto) operator()(int j) const { return owner(i,j); }
 
@@ -1830,9 +1830,9 @@ struct Rank2Accessor {
 			} else {\
 				using I2 = ExpandMatchingLocalRank<O>;\
 				if constexpr (is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
-					return (_sym<I2, localDim>*)nullptr;\
+					return (sym<I2, localDim>*)nullptr;\
 				} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
-					return (_mat<I2, localDim, localDim>*)nullptr;\
+					return (mat<I2, localDim, localDim>*)nullptr;\
 				} else {\
 					/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
 					return nullptr;\
@@ -1863,16 +1863,16 @@ so the accessors need nested call indexing too
 
 template<typename Inner_, int localDim_>
 requires (localDim_ > 0)
-struct _sym {
-	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, localDim_)
+struct sym {
+	TENSOR_HEADER_SYMMETRIC_MATRIX(sym, Inner_, localDim_)
 	std::array<Inner,localCount> s = {};
-	constexpr _sym() {}
-	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	constexpr sym() {}
+	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(sym)
 };
 
 template<typename Inner_>
-struct _sym<Inner_,2> {
-	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, 2)
+struct sym<Inner_,2> {
+	TENSOR_HEADER_SYMMETRIC_MATRIX(sym, Inner_, 2)
 
 	union {
 		struct {
@@ -1885,7 +1885,7 @@ struct _sym<Inner_,2> {
 		};
 		std::array<Inner, localCount> s = {};
 	};
-	constexpr _sym() {}
+	constexpr sym() {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x_x", &This::x_x),
@@ -1893,12 +1893,12 @@ struct _sym<Inner_,2> {
 		std::make_pair("y_y", &This::y_y)
 	);
 
-	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(sym)
 };
 
 template<typename Inner_>
-struct _sym<Inner_,3> {
-	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, 3)
+struct sym<Inner_,3> {
+	TENSOR_HEADER_SYMMETRIC_MATRIX(sym, Inner_, 3)
 
 	union {
 		struct {
@@ -1914,7 +1914,7 @@ struct _sym<Inner_,3> {
 		};
 		std::array<Inner, localCount> s = {};
 	};
-	constexpr _sym() {}
+	constexpr sym() {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x_x", &This::x_x),
@@ -1925,12 +1925,12 @@ struct _sym<Inner_,3> {
 		std::make_pair("z_z", &This::z_z)
 	);
 
-	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(sym)
 };
 
 template<typename Inner_>
-struct _sym<Inner_, 4> {
-	TENSOR_HEADER_SYMMETRIC_MATRIX(_sym, Inner_, 4)
+struct sym<Inner_, 4> {
+	TENSOR_HEADER_SYMMETRIC_MATRIX(sym, Inner_, 4)
 
 	union {
 		struct {
@@ -1950,7 +1950,7 @@ struct _sym<Inner_, 4> {
 		};
 		std::array<Inner, localCount> s = {};
 	};
-	constexpr _sym() {}
+	constexpr sym() {}
 
 	static constexpr auto fields = std::make_tuple(
 		std::make_pair("x_x", &This::x_x),
@@ -1965,7 +1965,7 @@ struct _sym<Inner_, 4> {
 		std::make_pair("w_w", &This::w_w)
 	);
 
-	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(_sym)
+	TENSOR_SYMMETRIC_MATRIX_CLASS_OPS(sym)
 };
 
 // symmetric, identity ...
@@ -2008,7 +2008,7 @@ struct _sym<Inner_, 4> {
 
 #define TENSOR_IDENTITY_MATRIX_ADD_SUM_RESULT()\
 \
-	using ScalarSumResult = _sym<Inner, localDim>;\
+	using ScalarSumResult = sym<Inner, localDim>;\
 \
 	template<typename O>\
 	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
@@ -2019,11 +2019,11 @@ struct _sym<Inner_, 4> {
 			} else {\
 				using I2 = ExpandMatchingLocalRank<O>;\
 				if constexpr (is_ident_v<O>) {\
-					return (_ident<I2, localDim>*)nullptr;\
+					return (ident<I2, localDim>*)nullptr;\
 				} else if constexpr (is_sym_v<O> || is_symR_v<O>) {\
-					return (_sym<I2, localDim>*)nullptr;\
+					return (sym<I2, localDim>*)nullptr;\
 				} else if constexpr (is_vec_v<O> || is_asym_v<O> || is_asymR_v<O>) {\
-					return (_mat<I2, localDim, localDim>*)nullptr;\
+					return (mat<I2, localDim, localDim>*)nullptr;\
 				} else {\
 					/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
 					return nullptr;\
@@ -2047,11 +2047,11 @@ struct _sym<Inner_, 4> {
 //technically dim doesn't matter for storage, but it does for tensor operations
 template<typename Inner_, int localDim_>
 requires (localDim_ > 0)
-struct _ident {
-	TENSOR_HEADER_IDENTITY_MATRIX(_ident, Inner_, localDim_)
+struct ident {
+	TENSOR_HEADER_IDENTITY_MATRIX(ident, Inner_, localDim_)
 	std::array<Inner_, 1> s = {};
-	constexpr _ident() {}
-	TENSOR_IDENTITY_MATRIX_CLASS_OPS(_ident)
+	constexpr ident() {}
+	TENSOR_IDENTITY_MATRIX_CLASS_OPS(ident)
 };
 
 // TODO symmetric, scale
@@ -2111,8 +2111,8 @@ struct _ident {
 
 #define TENSOR_ANTISYMMETRIC_MATRIX_ADD_SUM_RESULT()\
 \
-	/* _asym + or - a scalar is no longer _asym */\
-	using ScalarSumResult = _tensorr<Inner, localDim, 2>;\
+	/* asym + or - a scalar is no longer asym */\
+	using ScalarSumResult = tensorr<Inner, localDim, 2>;\
 \
 	template<typename O>\
 	requires (is_tensor_v<O> /*&& dims() == O::dims()*/)\
@@ -2123,9 +2123,9 @@ struct _ident {
 			} else {\
 				using I2 = ExpandMatchingLocalRank<O>;\
 				if constexpr (is_asym_v<O> || is_asymR_v<O>) {\
-					return (_asym<I2, localDim>*)nullptr;\
+					return (asym<I2, localDim>*)nullptr;\
 				} else if constexpr (is_vec_v<O> || is_ident_v<O> || is_sym_v<O> || is_symR_v<O>) {\
-					return (_mat<I2, localDim, localDim>*)nullptr;\
+					return (mat<I2, localDim, localDim>*)nullptr;\
 				} else {\
 					/* Don't know how to add this type.  I'd use a static_assert() but those seem to even get evaluated inside unused if-constexpr blocks */\
 					return nullptr;\
@@ -2152,17 +2152,17 @@ this means I could expose some elements as fields and some as methods to return 
 but that seems inconsistent
 so next thought, expose all as methods to return references
 but then if I'm not using any fields then I don't need any specializations
-so no specialized sizes for _asym
+so no specialized sizes for asym
 */
 template<typename Inner_, int localDim_>
 requires (localDim_ > 0)
-struct _asym {
-	TENSOR_HEADER_ANTISYMMETRIC_MATRIX(_asym, Inner_, localDim_)
+struct asym {
+	TENSOR_HEADER_ANTISYMMETRIC_MATRIX(asym, Inner_, localDim_)
 
 	std::array<Inner, localCount> s = {};
-	constexpr _asym() {}
+	constexpr asym() {}
 
-	// I figured I could do the union/struct thing like in _sym, but then half would be methods that returned refs and the other half would be fields..
+	// I figured I could do the union/struct thing like in sym, but then half would be methods that returned refs and the other half would be fields..
 	// so if I just make everything methods then there is some consistancy.
 	AntiSymRef<Inner		> x_x() 		requires (localDim > 0) { return (*this)(0,0); }
 	AntiSymRef<Inner const	> x_x() const 	requires (localDim > 0) { return (*this)(0,0); }
@@ -2200,7 +2200,7 @@ struct _asym {
 	AntiSymRef<Inner		> w_w() 		requires (localDim > 3) { return (*this)(3,3); }
 	AntiSymRef<Inner const	> w_w() const 	requires (localDim > 3) { return (*this)(3,3); }
 
-	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(_asym)
+	TENSOR_ANTISYMMETRIC_MATRIX_CLASS_OPS(asym)
 };
 
 // higher/arbitrary-rank tensors:
@@ -2219,7 +2219,7 @@ struct _asym {
 // helper functions used for the totally-symmetric and totally-antisymmetric tensors:
 
 /*
-higher-rank totally-symmetri (might replace _sym)
+higher-rank totally-symmetri (might replace sym)
 https://math.stackexchange.com/a/3795166
 # of elements in rank-M dim-N storage: (d + r - 1) choose r
 so for r=2 we get (d+1)! / (2! (d-1)!) = d * (d + 1) / 2
@@ -2371,7 +2371,7 @@ struct RankNAccessor {
 	using LocalStorage = storage_vec<localDim>;
 	using ScalarSumResult = typename AccessorOwnerConst::ScalarSumResult;
 	// treat this like (rank-1) vector storage, so use vector's TensorSumResult
-	template<typename O> using TensorSumResult = typename _vec<Inner, localDim>::template TensorSumResult<O>;
+	template<typename O> using TensorSumResult = typename vec<Inner, localDim>::template TensorSumResult<O>;
 	//end TENSOR_HEADER_*_SPECIFIC
 	TENSOR_EXPAND_TEMPLATE_TENSORR()
 	TENSOR_HEADER()
@@ -2379,20 +2379,20 @@ struct RankNAccessor {
 
 	static_assert(subRank > 0 && subRank < ownerLocalRank);
 	AccessorOwnerConst & owner;
-	_vec<int,subRank> i;
+	vec<int,subRank> i;
 
-	RankNAccessor(AccessorOwnerConst & owner_, _vec<int,subRank> i_)
+	RankNAccessor(AccessorOwnerConst & owner_, vec<int,subRank> i_)
 	: owner(owner_), i(i_) {}
 
-	/* until I can think of how to split off parameter-packs at a specific length, I'll just do this in _vec<int> first like below */
+	/* until I can think of how to split off parameter-packs at a specific length, I'll just do this in vec<int> first like below */
 	/* if subRank + sizeof...(Ints) > ownerLocalRank then call-through into owner's inner */
 	/* if subRank + sizeof...(Ints) == ownerLocalRank then just call owner */
 	/* if subRank + sizeof...(Ints) < ownerLocalRank then produce another Accessor */
 	template<int N, typename ThisConst>
-	constexpr decltype(auto) callImpl(ThisConst & this_, _vec<int,N> const & i2) {
+	constexpr decltype(auto) callImpl(ThisConst & this_, vec<int,N> const & i2) {
 		if constexpr (subRank + N < ownerLocalRank) {
 			/* returns Accessor */
-			_vec<int,subRank+N> fulli;
+			vec<int,subRank+N> fulli;
 			fulli.template subset<subRank,0>() = i;
 			fulli.template subset<N,subRank>() = i2;
 			return RankNAccessor<AccessorOwnerConst, subRank+N>(owner, fulli);
@@ -2407,29 +2407,29 @@ struct RankNAccessor {
 			ownerIntN firstI;
 			firstI.template subset<subRank,0>() = i;
 			firstI.template subset<ownerLocalRank-subRank,subRank>() = i2.template subset<ownerLocalRank-subRank, 0>();
-			_vec<int, N - (ownerLocalRank - subRank)> restI = i2.template subset<N - (ownerLocalRank-subRank), ownerLocalRank-subRank>();
+			vec<int, N - (ownerLocalRank - subRank)> restI = i2.template subset<N - (ownerLocalRank-subRank), ownerLocalRank-subRank>();
 			return this_.owner(firstI)(restI);
 		}
 	}
 	// TODO can't I just get rid of the non-const version?  no need to fwd?  nope.  need both.
 	template<int N>
-	constexpr decltype(auto) operator()(_vec<int,N> const & i2) {
+	constexpr decltype(auto) operator()(vec<int,N> const & i2) {
 		return callImpl<N, This>(*this, i2);
 	}
 	template<int N>
-	constexpr decltype(auto) operator()(_vec<int,N> const & i2) const {
+	constexpr decltype(auto) operator()(vec<int,N> const & i2) const {
 		return callImpl<N, This const>(*this, i2);
 	}
 
 	template<typename... Ints>
 	requires Common::is_all_v<int, Ints...>
 	constexpr decltype(auto) operator()(Ints... is) {
-		return (*this)(_vec<int,sizeof...(Ints)>(is...));
+		return (*this)(vec<int,sizeof...(Ints)>(is...));
 	}
 	template<typename... Ints>
 	requires Common::is_all_v<int, Ints...>
 	constexpr decltype(auto) operator()(Ints... is) const {
-		return (*this)(_vec<int,sizeof...(Ints)>(is...));
+		return (*this)(vec<int,sizeof...(Ints)>(is...));
 	}
 
 	TENSOR_ADD_BRACKET_FWD_TO_CALL()
@@ -2446,7 +2446,7 @@ struct RankNAccessor {
 
 #define TENSOR_TOTALLY_SYMMETRIC_ADD_SUM_RESULT()\
 \
-	using ScalarSumResult = _symR<Inner, localDim, localRank>;\
+	using ScalarSumResult = symR<Inner, localDim, localRank>;\
 \
 	template<typename O>\
 	requires (is_tensor_v<O>)\
@@ -2457,9 +2457,9 @@ struct RankNAccessor {
 			} else {\
 				using I2 = ExpandMatchingLocalRank<O>;\
 				if constexpr (is_symR_v<O> && O::localRank >= localRank) {\
-					return (_symR<I2, localDim, localRank>*)nullptr;\
+					return (symR<I2, localDim, localRank>*)nullptr;\
 				} else {\
-					return (_tensorr<I2, localDim, localRank>*)nullptr;\
+					return (tensorr<I2, localDim, localRank>*)nullptr;\
 				}\
 			}\
 		}\
@@ -2472,19 +2472,19 @@ struct RankNAccessor {
 #define TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_RANK_N_ACCESSOR()\
 	TENSOR_TOTALLY_SYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() /* needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS */\
-	TENSOR_ADD_OPS(_symR)\
+	TENSOR_ADD_OPS(symR)\
 	TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
 	TENSOR_TOTALLY_SYMMETRIC_ADD_SUM_RESULT()
 
 // TODO rank restrictions ...
-// should I allow rank-2 symR's? this overlaps with _sym
-// should I allow rank-1 symR's? this overlaps with _vec
+// should I allow rank-2 symR's? this overlaps with sym
+// should I allow rank-1 symR's? this overlaps with vec
 template<typename Inner_, int localDim_, int localRank_>
 requires (localDim_ > 0 && localRank_ > 2)
-struct _symR {
-	TENSOR_HEADER_TOTALLY_SYMMETRIC(_symR, Inner_, localDim_, localRank_)
+struct symR {
+	TENSOR_HEADER_TOTALLY_SYMMETRIC(symR, Inner_, localDim_, localRank_)
 	std::array<Inner, localCount> s = {};
-	constexpr _symR() {}
+	constexpr symR() {}
 	TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()
 };
 
@@ -2493,7 +2493,7 @@ struct _symR {
 // bubble-sorts 'i', sets 'sign' if an odd # of flips were required to sort it
 //  returns 'sign' or 'ZERO' if any duplicate indexes were found (and does not finish sorting)
 template<int N>
-Sign antisymSortAndCountFlips(_vec<int,N> & i) {
+Sign antisymSortAndCountFlips(vec<int,N> & i) {
 	Sign sign = Sign::POSITIVE;
 	for (int k = 0; k < N-1; ++k) {
 		for (int j = 0; j < N-k-1; ++j) {
@@ -2625,7 +2625,7 @@ from my symmath/tensor/LeviCivita.lua
 	/* and that lets us reuse the Accessor for both sym and asym. */\
 	/* So equivalently, here we don't want to bubble-sort indexes until our index size is >= our localRank */\
 	template<typename ThisConst, int N>\
-	static constexpr decltype(auto) callVecImpl(ThisConst & this_, _vec<int,N> i) {\
+	static constexpr decltype(auto) callVecImpl(ThisConst & this_, vec<int,N> i) {\
 		if constexpr (N < localRank) {\
 			return Accessor<ThisConst, N>(this_, i);\
 		} else if constexpr (N == localRank) {\
@@ -2648,31 +2648,31 @@ from my symmath/tensor/LeviCivita.lua
 		}\
 	}\
 	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> i) {\
+	constexpr decltype(auto) operator()(vec<int,N> i) {\
 		return callVecImpl<This>(*this, i);\
 	}\
 	template<int N>\
-	constexpr decltype(auto) operator()(_vec<int,N> i) const {\
+	constexpr decltype(auto) operator()(vec<int,N> i) const {\
 		return callVecImpl<This const>(*this, i);\
 	}\
 \
 	template<typename... Ints>\
 	requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) {\
-		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
+		return (*this)(vec<int,sizeof...(Ints)>(is...));\
 	}\
 	template<typename... Ints>\
 	requires Common::is_all_v<int, Ints...>\
 	constexpr decltype(auto) operator()(Ints... is) const {\
-		return (*this)(_vec<int,sizeof...(Ints)>(is...));\
+		return (*this)(vec<int,sizeof...(Ints)>(is...));\
 	}\
 \
 	TENSOR_ADD_BRACKET_FWD_TO_CALL()
 
 #define TENSOR_TOTALLY_ANTISYMMETRIC_ADD_SUM_RESULT()\
 \
-	/* _asymR + or - a scalar is no longer _asymR */\
-	using ScalarSumResult = _tensorr<Inner, localDim, localRank>;\
+	/* asymR + or - a scalar is no longer asymR */\
+	using ScalarSumResult = tensorr<Inner, localDim, localRank>;\
 \
 	template<typename O>\
 	requires (is_tensor_v<O>)\
@@ -2683,9 +2683,9 @@ from my symmath/tensor/LeviCivita.lua
 			} else {\
 				using I2 = ExpandMatchingLocalRank<O>;\
 				if constexpr (is_asymR_v<O> && O::localRank >= localRank) {\
-					return (_asymR<I2, localDim, localRank>*)nullptr;\
+					return (asymR<I2, localDim, localRank>*)nullptr;\
 				} else {\
-					return (_tensorr<I2, localDim, localRank>*)nullptr;\
+					return (tensorr<I2, localDim, localRank>*)nullptr;\
 				}\
 			}\
 		}\
@@ -2698,16 +2698,16 @@ from my symmath/tensor/LeviCivita.lua
 #define TENSOR_TOTALLY_ANTISYMMETRIC_CLASS_OPS()\
 	TENSOR_ADD_RANK_N_ACCESSOR()\
 	TENSOR_TOTALLY_ANTISYMMETRIC_LOCAL_READ_FOR_WRITE_INDEX() /* needed before TENSOR_ADD_ITERATOR in TENSOR_ADD_OPS */\
-	TENSOR_ADD_OPS(_asymR)\
+	TENSOR_ADD_OPS(asymR)\
 	TENSOR_ADD_TOTALLY_ANTISYMMETRIC_CALL_INDEX()\
 	TENSOR_TOTALLY_ANTISYMMETRIC_ADD_SUM_RESULT()
 
 template<typename Inner_, int localDim_, int localRank_>
 requires (localDim_ > 0 && localRank_ > 2)
-struct _asymR {
-	TENSOR_HEADER_TOTALLY_ANTISYMMETRIC(_asymR, Inner_, localDim_, localRank_)
+struct asymR {
+	TENSOR_HEADER_TOTALLY_ANTISYMMETRIC(asymR, Inner_, localDim_, localRank_)
 	std::array<Inner, localCount> s = {};
-	constexpr _asymR() {}
+	constexpr asymR() {}
 	TENSOR_TOTALLY_ANTISYMMETRIC_CLASS_OPS()
 };
 
@@ -2732,11 +2732,11 @@ bool operator!=(A const & a, A const & b) {
 
 /*
 result type for tensor storage and scalar operation
-	_vec	_ident	_sym	_asym	_symR	_asymR
-+	_vec	_sym	_sym	_mat	_symR	_tensorr
--	_vec	_sym	_sym	_mat	_symR	_tensorr
-*	_vec	_ident	_sym	_asym	_symR	_asymR
-/	_vec	_ident	_sym	_asym	_symR	_asymR
+	vec	ident	sym	asym	symR	asymR
++	vec	sym	sym	mat	symR	tensorr
+-	vec	sym	sym	mat	symR	tensorr
+*	vec	ident	sym	asym	symR	asymR
+/	vec	ident	sym	asym	symR	asymR
 
 ScalarSumResult contains the result type
 */
@@ -2882,12 +2882,12 @@ using nick##suffix = nick##NaR<localDim, localRank>;
 
 #define TENSOR_ADD_NICKNAME_TYPE(nick, ctype)\
 /* typed vectors */\
-template<int N> using nick##N = _vec<ctype, N>;\
+template<int N> using nick##N = vec<ctype, N>;\
 TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, 2)\
 TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, 3)\
 TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, 4)\
 /* typed matrices */\
-template<int M, int N> using nick##MxN = _mat<ctype, M, N>;\
+template<int M, int N> using nick##MxN = mat<ctype, M, N>;\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 2, 2)\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 2, 3)\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 2, 4)\
@@ -2898,22 +2898,22 @@ TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 2)\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 3)\
 TENSOR_ADD_MATRIX_NICKNAME_TYPE_DIM(nick, ctype, 4, 4)\
 /* identity matrix */\
-template<int N> using nick##NiN = _ident<ctype, N>;\
+template<int N> using nick##NiN = ident<ctype, N>;\
 TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, 2)\
 TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, 3)\
 TENSOR_ADD_IDENTITY_NICKNAME_TYPE_DIM(nick, ctype, 4)\
 /* typed symmetric matrices */\
-template<int N> using nick##NsN = _sym<ctype, N>;\
+template<int N> using nick##NsN = sym<ctype, N>;\
 TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2)\
 TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3)\
 TENSOR_ADD_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)\
 /* typed antisymmetric matrices */\
-template<int N> using nick##NaN = _asym<ctype, N>;\
+template<int N> using nick##NaN = asym<ctype, N>;\
 TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2)\
 TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3)\
 TENSOR_ADD_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4)\
 /* totally symmetric tensors */\
-template<int D, int R> using nick##NsR = _symR<ctype, D, R>;\
+template<int D, int R> using nick##NsR = symR<ctype, D, R>;\
 TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 3, 2s2s2)\
 TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 3, 3s3s3)\
 TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 3, 4s4s4)\
@@ -2921,7 +2921,7 @@ TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 4, 2s2s2s2)\
 TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 4, 3s3s3s3)\
 TENSOR_ADD_TOTALLY_SYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 4, 4s4s4s4)\
 /* totally antisymmetric tensors */\
-template<int D, int R> using nick##NaR = _asymR<ctype, D, R>;\
+template<int D, int R> using nick##NaR = asymR<ctype, D, R>;\
 /* can't exist: TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 2, 3, 2a2a2)*/\
 TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 3, 3, 3a3a3)\
 TENSOR_ADD_TOTALLY_ANTISYMMETRIC_NICKNAME_TYPE_DIM(nick, ctype, 4, 3, 4a4a4)\
@@ -2952,7 +2952,7 @@ TENSOR_ADD_NICKNAME_TYPE(ldouble, long double)
 
 
 // ostream
-// _vec does have .fields
+// vec does have .fields
 // and I do have my default .fields ostream in Common
 //  so I added an extra flag to disable it.  (cuz TODO can I make the Common ostream fields also disable itself if a specific already exists?)
 // so that the .fields vec2 vec3 vec4 and the non-.fields other vecs all look the same
@@ -2976,8 +2976,8 @@ string to_string(T const & t) {
 }
 
 /*
-Ok I started on this thinking I would make _vec work like an std::array
-but ended up just using std::array inside _vec
+Ok I started on this thinking I would make vec work like an std::array
+but ended up just using std::array inside vec
 but I still want tuple operations (for things like structure binding) so here I am again
 but whereas before I was thinking of using this for sake of its .s[] storage
 now I'm thinking of this as a tensor, so rank-2 std::get<> will return Accessors etc

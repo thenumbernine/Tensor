@@ -6,7 +6,7 @@ void test_TensorRank4() {
 
 	// vec-vec-vec-vec
 	{
-		using T = Tensor::_tensorr<float, 3, 4>;
+		using T = Tensor::tensorr<float, 3, 4>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -15,7 +15,7 @@ void test_TensorRank4() {
 
 	// sym-vec-vec
 	{
-		using T = Tensor::_tensori<float, Tensor::storage_sym<3>, Tensor::storage_vec<3>, Tensor::storage_vec<3>>;
+		using T = Tensor::tensori<float, Tensor::storage_sym<3>, Tensor::storage_vec<3>, Tensor::storage_vec<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -25,7 +25,7 @@ void test_TensorRank4() {
 #if 0
 	// asym-vec-vec
 	{
-		using T = Tensor::_tensori<float, Tensor::storage_asym<3>, Tensor::storage_vec<3>, Tensor::storage_vec<3>>;
+		using T = Tensor::tensori<float, Tensor::storage_asym<3>, Tensor::storage_vec<3>, Tensor::storage_vec<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i-j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -35,7 +35,7 @@ void test_TensorRank4() {
 
 	// vec-sym-vec
 	{
-		using T = Tensor::_tensori<float, Tensor::storage_vec<3>, Tensor::storage_sym<3>, Tensor::storage_vec<3>>;
+		using T = Tensor::tensori<float, Tensor::storage_vec<3>, Tensor::storage_sym<3>, Tensor::storage_vec<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -45,7 +45,7 @@ void test_TensorRank4() {
 #if 0
 	// vec-asym-vec
 	{
-		using T = Tensor::_tensori<float, Tensor::storage_vec<3>, Tensor::storage_asym<3>, Tensor::storage_vec<3>>;
+		using T = Tensor::tensori<float, Tensor::storage_vec<3>, Tensor::storage_asym<3>, Tensor::storage_vec<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j-k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -55,7 +55,7 @@ void test_TensorRank4() {
 
 	// vec-vec-sym
 	{
-		using T = Tensor::_tensori<float, Tensor::storage_vec<3>, Tensor::storage_vec<3>, Tensor::storage_sym<3>>;
+		using T = Tensor::tensori<float, Tensor::storage_vec<3>, Tensor::storage_vec<3>, Tensor::storage_sym<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -64,7 +64,7 @@ void test_TensorRank4() {
 #if 0
 	// vec-vec-asym
 	{
-		using T = Tensor::_tensori<float, Tensor::storage_vec<3>, Tensor::storage_vec<3>, Tensor::storage_asym<3>>;
+		using T = Tensor::tensori<float, Tensor::storage_vec<3>, Tensor::storage_vec<3>, Tensor::storage_asym<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k-l; };
 		auto t = T(f);
 		verifyAccessRank4<T>(t, f);
@@ -74,7 +74,7 @@ void test_TensorRank4() {
 
 	// sym-sym
 	{
-		using T = Tensor::_tensori<float, Tensor::storage_sym<3>, Tensor::storage_sym<3>>;
+		using T = Tensor::tensori<float, Tensor::storage_sym<3>, Tensor::storage_sym<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<decltype(t)>(t, f);
@@ -83,7 +83,7 @@ void test_TensorRank4() {
 
 #if 0	// asym-asym
 	{
-		using T = Tensor::_tensori<float, Tensor::storage_asym<3>, Tensor::storage_asym<3>>;
+		using T = Tensor::tensori<float, Tensor::storage_asym<3>, Tensor::storage_asym<3>>;
 		auto f = [](int i, int j, int k, int l) -> float { return i+j+k+l; };
 		auto t = T(f);
 		verifyAccessRank4<decltype(t)>(t, f);
@@ -93,9 +93,9 @@ void test_TensorRank4() {
 
 	{
 		using Real = double;
-		using Riemann2 = Tensor::_tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<2>>;
-		//using Riemann2 = Tensor::_asym<Tensor::_asym<Real, 2>, 2>;	// R_[ij][kl]
-		//using Riemann2 = Tensor::_sym<Tensor::_asym<Real, 2>, 2>;	// ... R_(ij)[kl] ...
+		using Riemann2 = Tensor::tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<2>>;
+		//using Riemann2 = Tensor::asym<Tensor::asym<Real, 2>, 2>;	// R_[ij][kl]
+		//using Riemann2 = Tensor::sym<Tensor::asym<Real, 2>, 2>;	// ... R_(ij)[kl] ...
 		// how would I define R_( [ij] [kl ) ... i.e. R_ijkl = R_klij and R_ijkl = -R_jikl ?
 		auto r = Riemann2{{1}};
 		static_assert(Riemann2::rank == 4);
@@ -109,8 +109,8 @@ void test_TensorRank4() {
 		static_assert(sizeof(Riemann2) == sizeof(Real));
 		auto r00 = r(0,0);	// this type will be a ZERO AntiSymRef wrapper around ... nothing ...
 		ECHO(r00);
-		TEST_EQ(r00, (Tensor::AntiSymRef<Tensor::_asym<Real, 2>>()));	// r(0,0) is this type
-		TEST_EQ(r00, (Tensor::_asym<Real, 2>{}));	// ... and r(0,0)'s operator== accepts its wrapped type
+		TEST_EQ(r00, (Tensor::AntiSymRef<Tensor::asym<Real, 2>>()));	// r(0,0) is this type
+		TEST_EQ(r00, (Tensor::asym<Real, 2>{}));	// ... and r(0,0)'s operator== accepts its wrapped type
 		TEST_EQ(r00(0,0), (Tensor::AntiSymRef<Real>()));	// r(0,0)(0,0) is this
 		TEST_EQ(r00(0,0).how, Tensor::Sign::ZERO);
 		TEST_EQ(r00(0,0), 0.);
@@ -118,13 +118,13 @@ void test_TensorRank4() {
 		TEST_EQ(r00(1,0), 0.);
 		TEST_EQ(r00(1,1), 0.);
 		auto r01 = r(0,1);	// this will point to the positive r.x_y element
-		TEST_EQ(r01, (Tensor::_asym<Real, 2>{1}));
+		TEST_EQ(r01, (Tensor::asym<Real, 2>{1}));
 		TEST_EQ(r01(0,0), 0);	//why would this get a bad ref?
 		TEST_EQ(r01(0,1), 1);
 		TEST_EQ(r01(1,0), -1);
 		TEST_EQ(r01(1,1), 0);
 		auto r10 = r(1,0);
-		TEST_EQ(r10, (Tensor::_asym<Real, 2>{-1}));
+		TEST_EQ(r10, (Tensor::asym<Real, 2>{-1}));
 		TEST_EQ(r10(0,0), 0);
 		TEST_EQ(r10(0,1), -1);
 		TEST_EQ(r10(1,0), 1);
@@ -137,7 +137,7 @@ void test_TensorRank4() {
 	}
 	{
 		constexpr int N = 3;
-		using Riemann3 = Tensor::_tensori<double, Tensor::storage_asym<N>, Tensor::storage_asym<N>>;
+		using Riemann3 = Tensor::tensori<double, Tensor::storage_asym<N>, Tensor::storage_asym<N>>;
 		auto r = Riemann3();
 		static_assert(Riemann3::rank == 4);
 		static_assert(Riemann3::dim<0> == N);
@@ -189,19 +189,19 @@ void test_TensorRank4() {
 	// old libraries' tests
 	{
 		using Real = double;
-		using Vector = Tensor::_tensor<Real,3>;
+		using Vector = Tensor::tensor<Real,3>;
 		
 		Vector v = {1,2,3};
 		TEST_EQ(v, Tensor::double3(1,2,3));
 		
-		using Metric = Tensor::_tensori<Real,Tensor::storage_sym<3>>;
+		using Metric = Tensor::tensori<Real,Tensor::storage_sym<3>>;
 		Metric g;
 		for (int i = 0; i < 3; ++i) {
 			g(i,i) = 1;
 		}
 		TEST_EQ(g, Metric(1,0,1,0,0,1));
 
-		using Matrix = Tensor::_tensor<Real,3,3>;
+		using Matrix = Tensor::tensor<Real,3,3>;
 		Matrix h;
 		int index = 0;
 		for (int i = 0; i < 3; ++i) {
@@ -213,7 +213,7 @@ void test_TensorRank4() {
 
 		//iterator access
 		int j = 0;
-		Tensor::_tensor<Real, 3,3,3> ta;
+		Tensor::tensor<Real, 3,3,3> ta;
 		for (auto i = ta.begin(); i != ta.end(); ++i) {
 			*i = j++;
 		}
@@ -230,20 +230,20 @@ void test_TensorRank4() {
 		}
 
 		//subtensor access not working
-		Tensor::_tensor<Real,3,3> tb;
+		Tensor::tensor<Real,3,3> tb;
 		for (auto i = tb.begin(); i != tb.end(); ++i) *i = 2.f;
 		TEST_EQ(tb, Matrix(2.f));
 		ta(0) = tb;
-		TEST_EQ(ta, (Tensor::_tensor<Real,3,3,3>{
+		TEST_EQ(ta, (Tensor::tensor<Real,3,3,3>{
 			{{2, 2, 2}, {2, 2, 2}, {2, 2, 2}},
 			ta(1),//{{1, 10, 19}, {4, 13, 22}, {7, 16, 25}}, // these are whatever the original ta was
 			ta(2),//{{2, 11, 20}, {5, 14, 23}, {8, 17, 26}}
 		} ));
-		Tensor::_tensor<Real, 3> tc;
+		Tensor::tensor<Real, 3> tc;
 		for (auto i = tc.begin(); i != tc.end(); ++i) *i = 3.;
 		TEST_EQ(Tensor::double3(3), tc);
 		ta(0,0) = tc;
-		TEST_EQ(ta, (Tensor::_tensor<Real,3,3,3>{
+		TEST_EQ(ta, (Tensor::tensor<Real,3,3,3>{
 			{{3, 3, 3}, {2, 2, 2}, {2, 2, 2}},
 			ta(1),//{{1, 10, 19}, {4, 13, 22}, {7, 16, 25}},
 			ta(2),//{{2, 11, 20}, {5, 14, 23}, {8, 17, 26}}
@@ -257,9 +257,9 @@ void test_TensorRank4() {
 			}
 		}
 
-		// convert the _sym diagonal to _mat
+		// convert the sym diagonal to mat
 		// TODO operator== between matrices
-		auto d = diagonal(Tensor::_vec<Real, m.dim<0>>(1));
+		auto d = diagonal(Tensor::vec<Real, m.dim<0>>(1));
 		TEST_EQ(m, d);
 		TEST_EQ(m, (Matrix{{1,0,0},{0,1,0},{0,0,1}}));
 		TEST_EQ(Tensor::determinant(m), 1);
@@ -267,17 +267,17 @@ void test_TensorRank4() {
 
 	{
 		using namespace Tensor;
-		using I = _ident<float, 1>;
+		using I = ident<float, 1>;
 		{
-			auto a = _ident<float, 1>(4);
+			auto a = ident<float, 1>(4);
 			TEST_EQ(a, I(4));
 		}
 		{
-			auto a = _ident<float, 1>();
+			auto a = ident<float, 1>();
 			TEST_EQ(a, I(0));
 		}
 		{
-			auto t = _ident<float, 1>{5};
+			auto t = ident<float, 1>{5};
 			t.s[0] = 1;
 			TEST_EQ(t, I(1));
 			t[0][0] = 2;
@@ -289,7 +289,7 @@ void test_TensorRank4() {
 		}
 #if 0 // TODO vector * ident3x3
 		{	
-			auto x = float3{1,2,3} * _ident<float,3>(1.);
+			auto x = float3{1,2,3} * ident<float,3>(1.);
 			ECHO(x);
 		}
 #endif	
@@ -300,14 +300,14 @@ void test_TensorRank4() {
 		using namespace Tensor;
 		using namespace std;
 		// "attempt to use a deleted function"
-		// "destructor of '_vec<..., 3>' is implicitly deleted because variant field '' has a non-trivial destructor"
-		//auto t = _vec<function<void()>, 3>(); // fails
-		//auto t = _vec<optional<function<void()>>, 3>(); // fails
-		auto t = _vec<optional<function<void()>>, 5>(); // works
-		//auto t = _vec<std::array<int, 3>, 4>(); // works, but meh
+		// "destructor of 'vec<..., 3>' is implicitly deleted because variant field '' has a non-trivial destructor"
+		//auto t = vec<function<void()>, 3>(); // fails
+		//auto t = vec<optional<function<void()>>, 3>(); // fails
+		auto t = vec<optional<function<void()>>, 5>(); // works
+		//auto t = vec<std::array<int, 3>, 4>(); // works, but meh
 		//ECHO(t);
-		//auto t = _vec<std::string, 4>(); // hmm  my fixed-size specialization vectors can't ctor
-		//auto t = _vec<std::string, 5>(); // but the default case works fine
+		//auto t = vec<std::string, 4>(); // hmm  my fixed-size specialization vectors can't ctor
+		//auto t = vec<std::string, 5>(); // but the default case works fine
 		//ECHO(t);
 	}
 
@@ -335,16 +335,16 @@ void test_TensorRank4() {
 			ECHO((Tensor::contract<0,0>(b)));
 			ECHO((Tensor::contract<1,1>(b)));
 
-			auto aouterb = Tensor::_tensorr<int,2,3>{{{42, 63}, {42, -42}}, {{-12, -18}, {-12, 12}}};
+			auto aouterb = Tensor::tensorr<int,2,3>{{{42, 63}, {42, -42}}, {{-12, -18}, {-12, 12}}};
 			TEST_EQ(outer(a,b), aouterb);
 			ECHO((Tensor::contract<0,0>(aouterb)));
 			
-			static_assert(std::is_same_v<Tensor::_tensorr<int,2,3>::RemoveIndex<0>, Tensor::int2x2>);
-			static_assert(std::is_same_v<Tensor::_tensorr<int,2,3>::RemoveIndex<1>, Tensor::int2x2>);
-			static_assert(std::is_same_v<Tensor::_tensorr<int,2,3>::RemoveIndex<2>, Tensor::int2x2>);
+			static_assert(std::is_same_v<Tensor::tensorr<int,2,3>::RemoveIndex<0>, Tensor::int2x2>);
+			static_assert(std::is_same_v<Tensor::tensorr<int,2,3>::RemoveIndex<1>, Tensor::int2x2>);
+			static_assert(std::is_same_v<Tensor::tensorr<int,2,3>::RemoveIndex<2>, Tensor::int2x2>);
 			static_assert(std::is_same_v<Tensor::int2x2::RemoveIndex<0>, Tensor::int2>);
 			static_assert(std::is_same_v<Tensor::int2x2::RemoveIndex<1>, Tensor::int2>);
-			static_assert(std::is_same_v<Tensor::_tensorr<int,2,3>::RemoveIndex<0,1>, Tensor::int2>);
+			static_assert(std::is_same_v<Tensor::tensorr<int,2,3>::RemoveIndex<0,1>, Tensor::int2>);
 			ECHO((Tensor::contract<0,1>(aouterb)));
 			
 			ECHO((Tensor::contract<0,2>(aouterb)));
@@ -443,7 +443,7 @@ void test_TensorRank4() {
 
 	// TODO this all goes in a tensor-math test case
 	{
-		using float3x3x3x3 = Tensor::_tensorr<float, 3, 4>;
+		using float3x3x3x3 = Tensor::tensorr<float, 3, 4>;
 		auto a = float3x3x3x3([](int i, int j, int k, int l) -> float {
 			return i - 2 * j + 3 * k - 4 * l;
 		});

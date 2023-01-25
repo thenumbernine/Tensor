@@ -317,7 +317,7 @@ void test_Vector() {
 		// swizzle
 		// TODO need an operator== between T and reference_wrapper<T> ...
 		// or casting ctor?
-		// a generic ctor between _vecs would be nice, but maybe problematic for _mat = _sym
+		// a generic ctor between vecs would be nice, but maybe problematic for mat = sym
 		TEST_EQ(Tensor::float3(f.zyx()), Tensor::float3(7,5,4));
 		TEST_EQ(Tensor::float2(f.xy()), Tensor::float2(4,5));
 		TEST_EQ(Tensor::float2(f.yx()), Tensor::float2(5,4));
@@ -348,7 +348,7 @@ static_assert(sizeof(Tensor::float3a3a3) == sizeof(float));
 		TEST_EQ(h.z, 4);
 		TEST_EQ(h.w, 5);
 
-		Tensor::_vec<float,5> j = {5,6,7,8,9};
+		Tensor::vec<float,5> j = {5,6,7,8,9};
 		//non-specialized: can't use xyzw for dim>4
 		TEST_EQ(j[0], 5);
 		TEST_EQ(j[1], 6);
@@ -439,7 +439,7 @@ static_assert(sizeof(Tensor::float3a3a3) == sizeof(float));
 		for (auto i = w.begin(); i != w.end(); ++i) {
 			/* TODO instead an index range iterator that spans the minimum of dims of this and t */
 			if (Tensor::float2::validIndex(i.readIndex)) {
-				/* If we use operator()(intN<>) access working for _asym ... */
+				/* If we use operator()(intN<>) access working for asym ... */
 				/**i = (Scalar)t(i.readIndex);*/
 				/* ... or just replace the internal storage with std::array ... */
 				*i = std::apply(t, i.readIndex.s);

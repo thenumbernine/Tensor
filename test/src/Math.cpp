@@ -3,10 +3,10 @@
 namespace MathTest {
 	using namespace Tensor;
 	using namespace std;
-	static_assert(is_same_v<decltype(makeSym(_tensorr<float,3,1>())), _vec<float,3>>);
-	static_assert(is_same_v<decltype(makeSym(_tensorr<float,3,2>())), _sym<float,3>>);
-	static_assert(is_same_v<decltype(makeSym(_tensorr<float,3,3>())), _symR<float,3,3>>);
-	static_assert(is_same_v<decltype(makeSym(_tensorr<float,3,4>())), _symR<float,3,4>>);
+	static_assert(is_same_v<decltype(makeSym(tensorr<float,3,1>())), vec<float,3>>);
+	static_assert(is_same_v<decltype(makeSym(tensorr<float,3,2>())), sym<float,3>>);
+	static_assert(is_same_v<decltype(makeSym(tensorr<float,3,3>())), symR<float,3,3>>);
+	static_assert(is_same_v<decltype(makeSym(tensorr<float,3,4>())), symR<float,3,4>>);
 }
 
 #define TENSOR_TEST_1(\
@@ -136,13 +136,13 @@ void test_Math() {
 	TENSOR_TEST_1(inverse,			float3x3,	({{1,0,0},{0,1,0},{0,0,1}}),	float3x3,	({{1,0,0},{0,1,0},{0,0,1}}));
 	TENSOR_TEST_2(inverse,			float3x3,	({{1,0,0},{0,1,0},{0,0,1}}),	float3x3,	({{1,0,0},{0,1,0},{0,0,1}}), float, (1.f));
 
-	static_assert(sizeof(_tensori<float, storage_zero<3>, storage_zero<3>, storage_zero<3>>) == sizeof(float));
+	static_assert(sizeof(tensori<float, storage_zero<3>, storage_zero<3>, storage_zero<3>>) == sizeof(float));
 	
-	static_assert(std::is_same_v<decltype(makeSym(float3a3())), _tensori<float, storage_zero<3>, storage_zero<3>>>);
-	static_assert(std::is_same_v<decltype(makeSym(float3a3a3())), _tensori<float, storage_zero<3>, storage_zero<3>, storage_zero<3>>>);
+	static_assert(std::is_same_v<decltype(makeSym(float3a3())), tensori<float, storage_zero<3>, storage_zero<3>>>);
+	static_assert(std::is_same_v<decltype(makeSym(float3a3a3())), tensori<float, storage_zero<3>, storage_zero<3>, storage_zero<3>>>);
 	
-	static_assert(std::is_same_v<decltype(makeAsym(float3s3())), _tensori<float, storage_zero<3>, storage_zero<3>>>);
-	static_assert(std::is_same_v<decltype(makeAsym(float3s3s3())), _tensori<float, storage_zero<3>, storage_zero<3>, storage_zero<3>>>);
+	static_assert(std::is_same_v<decltype(makeAsym(float3s3())), tensori<float, storage_zero<3>, storage_zero<3>>>);
+	static_assert(std::is_same_v<decltype(makeAsym(float3s3s3())), tensori<float, storage_zero<3>, storage_zero<3>, storage_zero<3>>>);
 
 	// does a.dot(b) == a.wedge(b.hodgeDual) ?
 	// probably not for non-antisymmetric a and b (since a∧✱b will antisymmetrize a and b)
@@ -187,15 +187,15 @@ void test_Math() {
 	}
 	// 3-form test
 	{
-		auto a = floatNaR<3,3>(2.f) + _tensorr<float, 3,3>([](int i, int j, int k) -> float { return 1.f + i + 2. * j - 3. * k; });
-		auto b = floatNaR<3,3>(5.f) + _tensorr<float, 3,3>([](int i, int j, int k) -> float { return 4.f * i - 2. * j +  k + 5.f; });
+		auto a = floatNaR<3,3>(2.f) + tensorr<float, 3,3>([](int i, int j, int k) -> float { return 1.f + i + 2. * j - 3. * k; });
+		auto b = floatNaR<3,3>(5.f) + tensorr<float, 3,3>([](int i, int j, int k) -> float { return 4.f * i - 2. * j +  k + 5.f; });
 		ECHO(a.makeAsym());
 		ECHO(b.makeAsym());
 		TEST_EQ(
 			a.makeAsym().dot(b.makeAsym()), 
 			//6.f * a.wedge(b.dual()).dual()	// b.dual is a float, so a.wedge( b.dual() ) is just mul
 			// TODO should I make Tensor::wedge(float) fall back to operator*() ?
-			// also should I make Tensor::dual(float) make a _asymR<float,N,N> tensor?  but what dimension would it be?
+			// also should I make Tensor::dual(float) make a asymR<float,N,N> tensor?  but what dimension would it be?
 			6.f * (a * b.dual()).dual()
 		);	
 	}

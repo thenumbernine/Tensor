@@ -24,8 +24,8 @@ constexpr float epsilon = 1e-6;
 void test_Quaternions() {
 	// me messing around ... putting quaterniong basis elements into a 4x4 matrix
 	using Q = Tensor::quatf;
-	using Q4 = Tensor::_tensor<Q, 4>;
-	using Q44 = Tensor::_tensor<Q, 4, 4>;
+	using Q4 = Tensor::tensor<Q, 4>;
+	using Q44 = Tensor::tensor<Q, 4, 4>;
 	// TODO despite convenience of casting-to-vectors ... I should make quat real be q(0) ...
 	//auto z = Q{0,0,0,0};
 	auto e0 = Q{0,0,0,1};

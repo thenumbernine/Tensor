@@ -12,10 +12,10 @@ namespace Tensor {
 //glTranslate
 // TODO optimize for storage ... dense upper-right corner, rest is identity
 template<typename real>
-_mat<real,4,4> translate(
-	_vec<real,3> t
+mat<real,4,4> translate(
+	vec<real,3> t
 ) {
-	return _mat<real,4,4>{
+	return mat<real,4,4>{
 		{1, 0, 0, t.x},
 		{0, 1, 0, t.y},
 		{0, 0, 1, t.z},
@@ -26,10 +26,10 @@ _mat<real,4,4> translate(
 //glScale
 // TODO optimized storage ... diagonal scale-only ...
 template<typename real>
-_mat<real,4,4> scale(
-	_vec<real,3> s
+mat<real,4,4> scale(
+	vec<real,3> s
 ) {
-	return _mat<real,4,4>{
+	return mat<real,4,4>{
 		{s.x, 0, 0, 0},
 		{0, s.y, 0, 0},
 		{0, 0, s.z, 0},
@@ -39,11 +39,11 @@ _mat<real,4,4> scale(
 
 //glRotate
 template<typename real>
-_mat<real,4,4> rotate(
+mat<real,4,4> rotate(
 	real rad,
-	_vec<real,3> axis
+	vec<real,3> axis
 ) {
-	auto q = _quat<real>(axis.x, axis.y, axis.z, rad)
+	auto q = quat<real>(axis.x, axis.y, axis.z, rad)
 		.fromAngleAxis();
 	auto x = q.xAxis();
 	auto y = q.yAxis();
@@ -58,7 +58,7 @@ where you can set a cutoff dimension -- and every index beyond that dimension is
 So that this could just be stored as a 3x3's worth (9 reals) in memory, even though it's a 4x4
 Likewise for asymmetric storage, 3x4 translations could be just 12 reals in memory.
 */
-	return _mat<real,4,4> {
+	return mat<real,4,4> {
 		{x.x, y.x, z.x, 0},
 		{x.y, y.y, z.y, 0},
 		{x.z, y.z, z.z, 0},
@@ -69,17 +69,17 @@ Likewise for asymmetric storage, 3x4 translations could be just 12 reals in memo
 //gluLookAt
 //https://stackoverflow.com/questions/21830340/understanding-glmlookat
 template<typename real>
-_mat<real,4,4> lookAt(
-	_vec<real,3> eye,
-	_vec<real,3> center,
-	_vec<real,3> up
+mat<real,4,4> lookAt(
+	vec<real,3> eye,
+	vec<real,3> center,
+	vec<real,3> up
 ) {
 	auto Z = (eye - center).normalize();
 	auto Y = up;
 	auto X = Y.cross(Z).normalize();
 	Y = Z.cross(X);
 	// could explot a submatrix-storage, rest-is-identity optimization ...
-	return _mat<real,4,4>{
+	return mat<real,4,4>{
 		{X.x, X.y, X.z, -eye.dot(X)},
 		{Y.x, Y.y, Y.z, -eye.dot(Y)},
 		{Z.x, Z.y, Z.x, -eye.dot(Z)},
@@ -93,7 +93,7 @@ https://www.khronos.org/opengl/wiki/GluPerspective_code
 https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix.html
 */
 template<typename real>
-_mat<real,4,4> frustum(
+mat<real,4,4> frustum(
 	real left,
 	real right,
 	real bottom,
@@ -102,8 +102,8 @@ _mat<real,4,4> frustum(
 	real far
 ) {
 	auto near2 = 2 * near;
-	auto diff = _vec<real,3>(right, top, far) - _vec<real,3>(left, bottom, near);
-	return _mat<real,4,4>{
+	auto diff = vec<real,3>(right, top, far) - vec<real,3>(left, bottom, near);
+	return mat<real,4,4>{
 		{near2 / diff.x, 0, (right + left) / diff.x, 0},
 		{0, near2 / diff.y, (top + bottom) / diff.y, 0},
 		{0, 0, -(near + far) / diff.z, -(near2 * far) / diff.z},
@@ -121,7 +121,7 @@ though this have to be specialized for perspective since it has that one off-dia
 I see this as the library slowly creeping into sparse-matrix storage. 
 */
 template<typename real>
-_mat<real,4,4> perspective(
+mat<real,4,4> perspective(
 	real fovY,	// in radians
 	real aspectRatio,
 	real near,
@@ -135,7 +135,7 @@ _mat<real,4,4> perspective(
 // glOrtho
 // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/orthographic-projection-matrix.html
 template<typename real>
-_mat<real,4,4> ortho(
+mat<real,4,4> ortho(
 	real left,
 	real right,
 	real bottom,
@@ -143,8 +143,8 @@ _mat<real,4,4> ortho(
 	real near,
 	real far
 ) {
-	auto diff = _vec<real,3>(right, top, far) - _vec<real,3>(left, bottom, near);
-	return _mat<real,4,4>{
+	auto diff = vec<real,3>(right, top, far) - vec<real,3>(left, bottom, near);
+	return mat<real,4,4>{
 		{2 / diff.x, 0, 0, -(right + left) / diff.x},
 		{0, 2 / diff.y, 0, -(top + bottom) / diff.y},
 		{0, 0, -2 / diff.z, -(near + far) / diff.z},
@@ -154,7 +154,7 @@ _mat<real,4,4> ortho(
 
 // gluOrtho2D
 template<typename real>
-_mat<real,4,4> ortho2D(
+mat<real,4,4> ortho2D(
 	real left,
 	real right,
 	real bottom,

@@ -131,7 +131,7 @@ so a.s == {0,1,2,4,5,8};
 #ifdef STORAGE_LOWER // lower triangular
 	// test storage order
 	// this order is for sym/asym getLocalReadForWriteIndex incrementing iread(0) first
-	// it also means for _asym that i<j <=> POSITIVE, j<i <=> NEGATIVE
+	// it also means for asym that i<j <=> POSITIVE, j<i <=> NEGATIVE
 	TEST_EQ(b.s[0], 0);	// xx
 	TEST_EQ(b.s[1], 3); // xy
 	TEST_EQ(b.s[2], 4); // yy
@@ -144,7 +144,7 @@ so a.s == {0,1,2,4,5,8};
 #ifdef STORAGE_UPPER	
 	// test storage order
 	// this order is for sym/asym getLocalReadForWriteIndex incrementing iread(1) first
-	// it also means for _asym that i<j <=> NEGATIVE, j<i <=> POSITIVE
+	// it also means for asym that i<j <=> NEGATIVE, j<i <=> POSITIVE
 	TEST_EQ(b.s[0], 0);	// xx
 	TEST_EQ(b.s[1], 1); // xy
 	TEST_EQ(b.s[2], 4); // yy

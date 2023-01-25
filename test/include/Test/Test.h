@@ -110,7 +110,7 @@ void verifyAccessRank3(T & t, F f) {
 			for (int k = 0; k < T::template dim<2>; ++k) {
 				float x = f(i,j,k);
 			
-				// for _vec interchangeability , do by grouping first then () then [] instead of by () then [] then grouping
+				// for vec interchangeability , do by grouping first then () then [] instead of by () then [] then grouping
 				//()()() and any possible merged ()'s
 				TEST_EQ(t(i)(j)(k), x);
 				TEST_EQ(t[i](j)(k), x);

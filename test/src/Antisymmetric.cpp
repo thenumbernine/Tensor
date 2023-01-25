@@ -109,7 +109,7 @@ void test_Antisymmetric() {
 	// TODO verify that 'float3a3::ExpandStorage<0> == float3x3' & same with <1>
 
 	// verify assignment to expanded type
-	// TODO won't work until you get intN dereference in _asym
+	// TODO won't work until you get intN dereference in asym
 	Tensor::float3x3 c = t;
 	TEST_EQ(c, (Tensor::float3x3{
 		{0, -2, -3},
@@ -142,7 +142,7 @@ void test_Antisymmetric() {
 			}
 			std::cout << std::endl;
 		}
-		//does assigning to _mat work?
+		//does assigning to mat work?
 		Tensor::float3x3 mas = as;
 		ECHO(mas);
 		for (int i = 0; i < 3; ++i) {
@@ -151,7 +151,7 @@ void test_Antisymmetric() {
 			}
 			std::cout << std::endl;
 		}
-		// does equality between _asym and assigned _mat work?
+		// does equality between asym and assigned mat work?
 		for (int i = 0; i < 3; ++i) {
 			for (int j = 0; j < 3; ++j) {
 				TEST_EQ(as(i,j), m(i,j));
@@ -184,10 +184,10 @@ void test_Antisymmetric() {
 		TEST_EQ( .5f * (ma - transpose(ma)), (Tensor::float3x3)ma.makeAsym());
 
 		// TODO outer of antisym and ident is failing ...
-		auto I = Tensor::_ident<float, 3>(1);
+		auto I = Tensor::ident<float, 3>(1);
 		auto aOuterI = outer(a, I);
-		static_assert(std::is_same_v<decltype(aOuterI), Tensor::_tensori<float, Tensor::storage_asym<3>, Tensor::storage_ident<3>>>);
-		static_assert(std::is_same_v<decltype(outer(I, a)), Tensor::_tensori<float, Tensor::storage_ident<3>, Tensor::storage_asym<3>>>);
+		static_assert(std::is_same_v<decltype(aOuterI), Tensor::tensori<float, Tensor::storage_asym<3>, Tensor::storage_ident<3>>>);
+		static_assert(std::is_same_v<decltype(outer(I, a)), Tensor::tensori<float, Tensor::storage_ident<3>, Tensor::storage_asym<3>>>);
 		static_assert(sizeof(aOuterI) == sizeof(float) * 3); // expanded storage would be 3^4 = 81 floats, but this is just 3 ...
 
 		auto aTimesI = a * I;

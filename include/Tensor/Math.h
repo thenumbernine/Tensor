@@ -155,9 +155,9 @@ auto permuteIndexes(T const & t) {
 /*
 Transpose, i.e. exchange two indexes
 
-If the two indexes are sequential and _sym symmetric storage is used then nothing is changed.
-TODO if the two indexes are sequential and _asym storage is used then just negative the values.
-Otherwise expand the internal storage at indexes m and n (i.e. convert it from _sym or _asym into _vec),
+If the two indexes are sequential and sym symmetric storage is used then nothing is changed.
+TODO if the two indexes are sequential and asym storage is used then just negative the values.
+Otherwise expand the internal storage at indexes m and n (i.e. convert it from sym or asym into vec),
 then exchange the dimensions.
 */
 template<int m/*=0*/, int n/*=1*/, typename T>
@@ -327,7 +327,7 @@ auto interior(A const & a, B const & b) {
 			};
 			for (auto k : RangeIteratorInner<num, InteriorRangeIter<B>>(InteriorRangeIter<B>())) {
 #else
-			for (auto k : RangeObj<num, false>(_vec<int, num>(), B::dims().template subset<num, 0>())) {
+			for (auto k : RangeObj<num, false>(vec<int, num>(), B::dims().template subset<num, 0>())) {
 #endif
 				std::copy(k.s.begin(), k.s.end(), ai.s.begin() + (A::rank - num));
 				std::copy(k.s.begin(), k.s.end(), bi.s.begin());
@@ -343,9 +343,9 @@ template<typename T>
 struct ReplaceWithZeroImpl {
 	static constexpr auto value() {
 		if constexpr (T::rank == 1) {
-			return (_zero<typename T::Inner, T::localDim>*)nullptr;
+			return (zero<typename T::Inner, T::localDim>*)nullptr;
 		} else {
-			return (_zero<typename ReplaceWithZeroImpl<typename T::Inner>::type, T::localDim>*)nullptr;
+			return (zero<typename ReplaceWithZeroImpl<typename T::Inner>::type, T::localDim>*)nullptr;
 		}
 	}
 	using type = typename std::remove_pointer_t<decltype(value())>;
@@ -356,7 +356,7 @@ using ReplaceWithZero = typename ReplaceWithZeroImpl<typename T::template Expand
 // symmetrize or antisymmetrize a tensor
 //  I am not convinced this should be the default casting operation from non-(a)sym to (a)sym since it incurs a few more operations
 // but it should def be made available
-// TODO if any of T's storages are _asym or _asymR then the whole thing becomes zero.
+// TODO if any of T's storages are asym or asymR then the whole thing becomes zero.
 template<typename T>
 requires (T::rank > 0)
 struct MakeSymResult {
@@ -368,11 +368,11 @@ struct MakeSymResult {
 		if constexpr (anyAreAsym) {
 			return (ReplaceWithZero<T>*)nullptr;
 		} else if constexpr (T::rank == 1) {
-			return (_vec<S, T::localDim>*)nullptr;
+			return (vec<S, T::localDim>*)nullptr;
 		} else if constexpr (T::rank == 2) {
-			return (_sym<S, T::localDim>*)nullptr;
+			return (sym<S, T::localDim>*)nullptr;
 		} else {
-			return (_symR<S, T::localDim, T::rank>*)nullptr;
+			return (symR<S, T::localDim, T::rank>*)nullptr;
 		}
 	}
 	using type = typename std::remove_pointer_t<decltype(value())>;
@@ -410,11 +410,11 @@ struct MakeAntiSymResult {
 		if constexpr (anyAreSym) {
 			return (ReplaceWithZero<T>*)nullptr;
 		} else if constexpr (T::rank == 1) {
-			return (_vec<S, T::localDim>*)nullptr;
+			return (vec<S, T::localDim>*)nullptr;
 		} else if constexpr (T::rank == 2) {
-			return (_asym<S, T::localDim>*)nullptr;
+			return (asym<S, T::localDim>*)nullptr;
 		} else {
-			return (_asymR<S, T::localDim, T::rank>*)nullptr;
+			return (asymR<S, T::localDim, T::rank>*)nullptr;
 		}
 	}
 	using type = typename std::remove_pointer_t<decltype(value())>;
@@ -472,7 +472,7 @@ auto hodgeDual(A const & a) {
 	static constexpr int dim = A::template dim<0>;
 	static_assert(rank <= dim);
 	using S = typename A::Scalar;
-	return interior<rank>(a, _asymR<S, dim, dim>(1)) / (S)constexpr_factorial(rank);
+	return interior<rank>(a, asymR<S, dim, dim>(1)) / (S)constexpr_factorial(rank);
 }
 
 //name
@@ -493,16 +493,16 @@ auto operator*(A const & a, B const & b) {
 }
 
 // diagonalize an index
-// well if it's diagonal, might as well use _sym
+// well if it's diagonal, might as well use sym
 template<int m/*=0*/, typename T>
 requires (is_tensor_v<T>)
 auto diagonal(T const & t) {
 	static_assert(m >= 0 && m < T::rank);
-	/* TODO ::InsertIndex that uses _tensor index indicators for what kind of storage to insert
+	/* TODO ::InsertIndex that uses tensor index indicators for what kind of storage to insert
 	using R = T
 		::ExpandIndex<m>
 		::InsertIndex<m, storage_vec<T::dim<m>>>;
-	... but can't use InsertIndex to insert a _sym with the expanded index
+	... but can't use InsertIndex to insert a sym with the expanded index
 	... maybe instead
 	using R = T
 		::RemoveIndex<m>
@@ -513,7 +513,7 @@ auto diagonal(T const & t) {
 	using R = typename E
 		::template ReplaceNested<
 			nest,
-			_sym<
+			sym<
 				typename E::template Nested<nest+1>,
 				E::template dim<m>
 			>

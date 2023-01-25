@@ -130,17 +130,17 @@ Take note of the order of your outer product and therefore the order of your res
 ## API Reference:
 
 ### Tensors:
-`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `_vec`, `_zero`, `_ident`, `_sym`, `_asym`, `_symR`, `_asymR`.
+`tensor` is not a typename, but is a term I will use interchangeably for the various tensor storage types.  These currently include: `vec`, `zero`, `ident`, `sym`, `asym`, `symR`, `asymR`.
 
 ### Vectors:
-`_vec<type, dim>` = vectors:
+`vec<type, dim>` = vectors:
 - rank-1
 - `.s` = `std::array<type>` = element `std::array` access.  Tempted to change it back to `type[] s` for ease of use as pointer access... but I do like the ease of iterator use with `std::array`... hmm...
 - for 1D through 4D: `.x .y .z .w`, `.s0 .s1 .s2 .s2` storage.
 - `.subset<size>(index), .subset<size,index>()` = return a vector reference to a subset of this vector.
 
 ### Matrices:
-`_mat<type, dim1, dim2>` = `_vec<_vec<type,dim2>,dim1>` = matrices:
+`mat<type, dim1, dim2>` = `vec<vec<type,dim2>,dim1>` = matrices:
 - rank-2
 - Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A\_{ij}$.
 	This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
@@ -149,7 +149,7 @@ Tensor/tensor operator result storage optimizations:
 - `mat` + `T` = `mat`
 
 ### Zero Vector:
-`_zero<type, dim>` = vectors of zeroes.  Requires only the inner type worth of storage.  Use nesting for arbitrary-rank, arbitrary-dimension zero tensors all for no extra storage.
+`zero<type, dim>` = vectors of zeroes.  Requires only the inner type worth of storage.  Use nesting for arbitrary-rank, arbitrary-dimension zero tensors all for no extra storage.
 - rank-1
 Always returns zero.  This is a shorthand for simpliciations like symmetrizing antisymmetric indexes or antisymmetrizing symmetric indexes.
 Currently the internal mechanics expect - and provide - tensors such that, if any internal storage is zero, then all will be zero.
@@ -158,11 +158,11 @@ Tensor/tensor operator result storage optimizations:
 - `zero` + `T` = `T`
 
 ### Identity Matrix:
-`_ident<type, dim>` = identity matrix.
+`ident<type, dim>` = identity matrix.
 - rank-2
-This will only take up a single value of storage.  Specifying the internal storage type is still required, which enables `_ident` to be used in conjunction with outer products to produce optimized-storage tensors,
-i.e. $a\_{ij} \otimes \delta\_{kl}$ = `outer( _mat<float,3,3>(...), _ident<float,3>(1) )` will produce a rank-4 tensor $c\_{ijkl} = a\_{ij} \cdot \delta\_{kl}$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
-Notice that `_ident` is rank-2, i.e. represents 2 indexes.  Sorry, just regular Kronecker delta here, not generalized Kronecker delta.  Besides, that's antisymmetric anyways, so for its use check out `_asymR`.
+This will only take up a single value of storage.  Specifying the internal storage type is still required, which enables `ident` to be used in conjunction with outer products to produce optimized-storage tensors,
+i.e. $a\_{ij} \otimes \delta\_{kl}$ = `outer( mat<float,3,3>(...), ident<float,3>(1) )` will produce a rank-4 tensor $c\_{ijkl} = a\_{ij} \cdot \delta\_{kl}$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
+Notice that `ident` is rank-2, i.e. represents 2 indexes.  Sorry, just regular Kronecker delta here, not generalized Kronecker delta.  Besides, that's antisymmetric anyways, so for its use check out `asymR`.
 
 Tensor/tensor operator result storage optimizations:
 - `ident` + `zero` = `ident`
@@ -172,7 +172,7 @@ Tensor/tensor operator result storage optimizations:
 - `ident` + `matrix` = `matrix`
 
 ### Symmetric Matrices:
-`_sym<type, dim>` = symmetric matrices:
+`sym<type, dim>` = symmetric matrices:
 - rank-2
 - `.x_x .x_y .x_z .y_y .y_z .z_z .x_w .y_w .z_w .w_w` storage, `.y_x .z_x, .z_y` union'd access.
 
@@ -184,7 +184,7 @@ Tensor/tensor operator result storage optimizations:
 - `sym` + `matrix` = `matrix`
 
 ### Antisymmetric Matrices:
-`_asym<type, dim>` = antisymmetric matrices:
+`asym<type, dim>` = antisymmetric matrices:
 - rank-2
 - `.x_x() ... .w_w()` access methods.
 No access fields, sorry. I had the option of making half named access via fields (maybe the upper trianglular ones) and the other half methods, but decided for consistency's sake to just use methods everywhere.
@@ -198,16 +198,16 @@ Tensor/tensor operator result storage optimizations:
 - `asym` + `matrix` = `matrix`
 
 ### Totally-symmetric tensors:
-`_symR<type, dim, rank>` = totally-symmetric tensor.
+`symR<type, dim, rank>` = totally-symmetric tensor.
 - rank-N
 The size of a totally-symmetric tensor storage is
 the number of unique permutations of a symmetric tensor of dimension `d` and rank `r`,
 which is $ \begin{pmatrix} d + r - 1 \\ r \end{pmatrix} $
 
-Tensor/tensor operator result storage works the same as `_sym`:
+Tensor/tensor operator result storage works the same as `sym`:
 
 ### Totally-antisymmetric tensors:
-`_asymR<type, dim, rank>` = totally-antisymmetric tensor.
+`asymR<type, dim, rank>` = totally-antisymmetric tensor.
 - rank-N
 The size of a totally-antisymmetric tensor storage is
 the number of unique permutations of an antisymmetric tensor of dimension `d` and rank `r`,
@@ -215,7 +215,7 @@ which is $\left( \begin{matrix} d \\ r \end{matrix} \right)$.
 This means the Levi-Civita permutation tensor takes up exactly 1 float.
 Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
 
-Tensor/tensor operator result storage works the same as `_asym`:
+Tensor/tensor operator result storage works the same as `asym`:
 
 ### Familiar Types
 
@@ -235,15 +235,15 @@ Sorry GLSL, Cg wins this round:
 - `floatNsR<dim, rank>` = totally-symmetric tensor of arbitrary dimension and rank.
 - `floatNaR<dim, rank>` = totally-antisymmetric tensor of arbitrary dimension and rank.
 - ... same with `bool, char, uchar, short, ushort, int, uint, float, double, ldouble, size, intptr, uintptr`.
-- `_vec2<T>, _vec3<T>, _vec4<T>` = templated fixed-size vectors.
-- `_mat2x2<T>, _mat2x3<T>, _mat2x4<T>, _mat3x2<T>, _mat3x3<T>, _mat3x4<T>, _mat4x2<T>, _mat4x3<T>, _mat4x4<T>` = templated fixed-size matrices.
-- `_sym2<T>, _sym3<T>, _sym4<T>` = templated fixed-size symmetric matrices.
-- `_asym2<T>, _asym3<T>, _asym4<T>` = templated fixed-size antisymmetric matrices.
+- `vec2<T>, vec3<T>, vec4<T>` = templated fixed-size vectors.
+- `mat2x2<T>, mat2x3<T>, mat2x4<T>, mat3x2<T>, mat3x3<T>, mat3x4<T>, mat4x2<T>, mat4x3<T>, mat4x4<T>` = templated fixed-size matrices.
+- `sym2<T>, sym3<T>, sym4<T>` = templated fixed-size symmetric matrices.
+- `asym2<T>, asym3<T>, asym4<T>` = templated fixed-size antisymmetric matrices.
 
 ### Tensor creation:
-- `_tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `_vec< ... , dim>`.
-- `_tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
-- `_tensorx<type, description...>` = construct a tensor using the following arguments to describe its indexes storage optimization:
+- `tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `vec< ... , dim>`.
+- `tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
+- `tensorx<type, description...>` = construct a tensor using the following arguments to describe its indexes storage optimization:
 - - any number = an index of this dimension.
 - - `-'z', dim` = use a rank-1 zero-tensor of dimension `dim`.
 - - `-'i', dim` = use a rank-2 identity-tensor of dimension `dim`.
@@ -251,8 +251,8 @@ Sorry GLSL, Cg wins this round:
 - - `-'a', dim` = use a rank-2 antisymmetric-tensor of dimension `dim`.
 - - `-'S', dim, rank` = use a rank-`rank` totally-symmetric-tensor of dimension `dim`.
 - - `-'A', dim, rank` = use a rank-`rank` totally-antisymmetric-tensor of dimension `dim`.
-	Ex: `_tensorx<float, -'i', 3, -'A', 4, 4>` produces $T\_{ijklm} = t \cdot \delta\_{ij} \cdot \epsilon\_{klm}$.
-- `_tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
+	Ex: `tensorx<float, -'i', 3, -'A', 4, 4>` produces $T\_{ijklm} = t \cdot \delta\_{ij} \cdot \epsilon\_{klm}$.
+- `tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
 	`I1 I2` etc are one of the following storage types:
 - - `storage_vec<dim>` for a single index of dimension `dim`,
 - - `storage_zero<dim>` for rank-one zero valued indexes of dimension `dim`.  (If any are `storage_zero` then all should be `storage_zero`, but I left it to be specified per-index so that it could have varying dimensions per-index.),
@@ -261,25 +261,25 @@ Sorry GLSL, Cg wins this round:
 - - `storage_asym<dim>` for two antisymmetric indexes of dimension `dim`,
 - - `storage_symR<dim, rank>` for `rank` symmetric indexes of dimension `dim`,
 - - `storage_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
-	Ex: `_tensori<float, storage_vec<3>, storage_sym<4>, storage_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
+	Ex: `tensori<float, storage_vec<3>, storage_sym<4>, storage_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
 
-- `tensorScalarTuple<Scalar, StorageTuple>` = same as `_tensori` except the storage arguments are passed in a tuple.
-- `tensorScalarSeq<Scalar, integer_sequence>` = same as `_tensor` except the dimensions are passed as a sequence.
+- `tensorScalarTuple<Scalar, StorageTuple>` = same as `tensori` except the storage arguments are passed in a tuple.
+- `tensorScalarSeq<Scalar, integer_sequence>` = same as `tensor` except the dimensions are passed as a sequence.
 
 ### Tensor Operators
 - `operator += -= /=` = In-place per-element operations.
 - `operator == !=` = Tensor comparison.  So long as the rank and dimensions match then this should evaluate successfully.
 - `operator + - /` = Scalar/tensor, tensor/scalar, per-element tensor/tensor operations.
 	Notice that `+ - /` run the risk of modifying the internal storage.
-	If you add subtract or divide `_ident, _asym, _asymR` by a scalar, the type becomes promoted to `_sym, _mat, _tensorr`.
+	If you add subtract or divide `ident, asym, asymR` by a scalar, the type becomes promoted to `sym, mat, tensorr`.
 	Division is only on this list courtesy of divide-by-zero, otherwise division would've been safe for maintaining storage.
 - `operator *`
 	- Scalar/tensor, tensor/scalar for per-element multiplication.
 	- Tensor/tensor multiplication is an outer then a contraction of the adjacent indexes.  Therefore:
-		- `_vec * _vec` multiplication is a dot product.
-		- `_vec * _mat` as row-multplication.
-		- `_mat * _vec` as column-multiplication
-		- `_mat * _mat` as matrix-multiplication.
+		- `vec * vec` multiplication is a dot product.
+		- `vec * mat` as row-multplication.
+		- `mat * vec` as column-multiplication
+		- `mat * mat` as matrix-multiplication.
 
 ### Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.
@@ -293,7 +293,7 @@ Sorry GLSL, Cg wins this round:
 
 ### Overloaded Subscript / Array Access
 Array access, be it by `()`, `[]`, by integer sequence or by int-vectors, is equivalent to accessing the respective elements of the tensor.
-- `(int i1, ...)` = dereference based on a list of ints.  In the case of `_tensori` or `_tensorr`, i.e. `_vec<_vec<_vec<...>>>` storage, this means $a\_{ij}$ in math = `a.s[i].s[j]` in code.
+- `(int i1, ...)` = dereference based on a list of ints.  In the case of `tensori` or `tensorr`, i.e. `vec<vec<vec<...>>>` storage, this means $a\_{ij}$ in math = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
 	
@@ -315,7 +315,7 @@ auto c = b[j];			//reads a[i][j] and stores a float value in c
 ```
 
 An accessor is an object used for intermediate access to a tensor when it is not fully indexed.  For example, if you construct an object `auto a = float3s3()` to be a rank-2 symmetric 3x3 matrix,
-and you decided to read only a single index: `a[i]`, the result will be an Accessor object which merely wraps the owner.  From here the Accessor can be indexed a second time: `a[i][j]` to return a reference to the `_sym`'s variable.
+and you decided to read only a single index: `a[i]`, the result will be an Accessor object which merely wraps the owner.  From here the Accessor can be indexed a second time: `a[i][j]` to return a reference to the `sym`'s variable.
 
 These Accessor objects can be treated like tensors for almost all intents and purposes.
 They can be passed into other tensor math operations, tensor constructors (and by virtue of this, casting).
@@ -341,7 +341,7 @@ Of course with structure-binding comes implementations of `std::tuple_size`, `st
 Iterations acts over all scalars of the tensor:
 ```c++
 // read-iterators:
-auto t = _tensorx<float, 3, -'s', 4>; // construct a 3x4x4 tensor with 2nd two indexes symmetric.
+auto t = tensorx<float, 3, -'s', 4>; // construct a 3x4x4 tensor with 2nd two indexes symmetric.
 // loop over all indexes for reading, including symmetric indexes (where duplicates are not stored separately)
 for (auto t_ijk : t) {
 	doSomething(t_ijk);	//do something with the t_ijk's element of t
@@ -362,7 +362,7 @@ for (auto i = w.begin(); i != w.end(); ++i) {
 ```
 
 ### Swizzling
-Swizzling is only available for expanded storage, i.e. `_vec` and compositions of `_vec` (like `_mat`), i.e. it is not available for `_sym` and `_asym`.
+Swizzling is only available for expanded storage, i.e. `vec` and compositions of `vec` (like `mat`), i.e. it is not available for `sym` and `asym`.
 Swizzling will return a vector-of-references:
 - 2D: `.xx() .xy() ... .wz() .ww()`
 - 3D: `.xxx() ... .www()`
@@ -439,13 +439,13 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 - `cross(a,b)` = 3D vector cross product.
 	- rank-1 dim-3 x rank-1 dim-3 -> rank-1 dim-3:
 	$$cross(a,b)\_i := \epsilon\_{i j k} b^j c^k$$
-- `outer(a,b), outerProduct(a,b)` = Tensor outer product.  The outer of a `_vec` and a `_vec` make a `_mat` (i.e. a `_vec`-of-`_vec`).
-	The outer of a vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a `_sym` and a `_sym` produces a `_sym`-of-`_sym`s.
+- `outer(a,b), outerProduct(a,b)` = Tensor outer product.  The outer of a `vec` and a `vec` make a `mat` (i.e. a `vec`-of-`vec`).
+	The outer of a vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a `sym` and a `sym` produces a `sym`-of-`sym`s.
 	- rank-M x rank-N -> rank-(M+N):
 	$$outer(a,b)\_{IJ} := a\_I b\_J$$
 - `transpose<from=0,to=1>(a)` = Transpose indexes `from` and `to`.
-	This will preserve storage optimizations, so transposing 0,1 of a `_sym`-of-`_vec` will produce a `_sym`-of-`_vec`,
-	but transposing 0,2 or 1,2 of a `_sym`-of-`_vec` will produce a `_vec`-of-`_vec`-of-`_vec`.
+	This will preserve storage optimizations, so transposing 0,1 of a `sym`-of-`vec` will produce a `sym`-of-`vec`,
+	but transposing 0,2 or 1,2 of a `sym`-of-`vec` will produce a `vec`-of-`vec`-of-`vec`.
 	- rank-M -> rank-M, M >= 2
 	$$transpose(a)\_{{i\_1}...{i\_p}...{i\_q}...{i\_n}} = a\_{{i\_1}...{i\_q}...{i\_p}...{i\_n}}$$
 - `contract<m=0,n=1>(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to a matrix trace.
@@ -463,7 +463,7 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	$$wedge(a,b)\_I = (a \wedge b)\_I = Alt (a \otimes b)\_I = a\_{[i\_1 ... i\_p} b\_{i\_{p+1} ... i\_{p+q}]}$$
 - `hodgeDual(a), dual(a)` = The Hodge-Dual of rank-k tensor 'a'.
 	This only operates on 'square' tensors.
-	If you really want to produce the dual of a scalar, just use `_asymR<>(s)`.
+	If you really want to produce the dual of a scalar, just use `asymR<>(s)`.
 	Also it does not apply metrics.
 	It will assume your input tensor is in $\sharp$ valence, and produce a tensor in $\flat$ valence.
 	It also will assume a unit weight of the Levi-Civita permutation tensor, so if you happen to prefer your L.C. tensors to have weight $\sqrt{|g|}$ then you will have to multiply by this yourself.
@@ -473,8 +473,8 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	- rank-N -> rank-(N+1), N>=1:
 	$$diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
 - `determinant(m)` = Matrix determinant.
-		For 2D this is equivalent to `_asymR<T,2,2>(1) * m.x * m.y`.
-		For 3D this is equal to `dot(cross(m.x, m.y), m.z)`, i.e. `_asymR<T,3,3>(1) * m.x * m.y * m.z`.
+		For 2D this is equivalent to `asymR<T,2,2>(1) * m.x * m.y`.
+		For 3D this is equal to `dot(cross(m.x, m.y), m.z)`, i.e. `asymR<T,3,3>(1) * m.x * m.y * m.z`.
 	- rank-2 -> rank-0:
 	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
 - `inverse(m)` = Matrix inverse, for rank-2 tensors.
@@ -485,14 +485,14 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 
 Each of these will return a 4x4 matrix of its respective scalar type.
 
-- `translate<T>(_vec<T,3> t)` = returns a translation matrix.
+- `translate<T>(vec<T,3> t)` = returns a translation matrix.
 	Based on `glTranslate`.
-- `scale<T>(_vec<T,3> s)` = returns a scale matrix.
+- `scale<T>(vec<T,3> s)` = returns a scale matrix.
 	Based on `glScale`.
-- `rotate<T>(T angle, _vec<T,3> axis)` = returns a rotation matrix.
+- `rotate<T>(T angle, vec<T,3> axis)` = returns a rotation matrix.
 	Based on `glRotate`.
 	`angle` is in radians, another break from OpenGL.
-- `lookAt<T>(_vec<T,3> eye, _vec<T,3> center, _vec<T,3> up)` = returns a view matrix at `eye` looking at `center` with the up direction `up`.
+- `lookAt<T>(vec<T,3> eye, vec<T,3> center, vec<T,3> up)` = returns a view matrix at `eye` looking at `center` with the up direction `up`.
 	Based on `gluLookAt`.
 - `frustum<T>(T left, T right, T bottom, T top, T near, T far)` = returns a frustum perspective matrix.
 	Based on `glFrustum`.
@@ -525,8 +525,8 @@ Each of these will return a 4x4 matrix of its respective scalar type.
 - `::count<i>` = Get the storage size of the i'th nested class.  i is from 0 to numNestings-1.
 - `::localCount` = Get the storage size of the current class, equal to `count<0>`.
 - `::totalCount` = The product of all counts of all nestings.  This times `sizeof(Scalar)` will equal the sizeof `This` tensor.
-- `::LocalStorage` = The associated storage type used for building this tensor's nesting with `_tensori`.
-- `::StorageTuple` = A tuple of all nestings' `LocalStorage`, such that `_tuplei<Scalar, ` ... then all types of `StorageTuple` ... `>` will produce This.  Equivalently, `tensorScalarTuple<Scalar, StorageTuple>` will produce `This`.
+- `::LocalStorage` = The associated storage type used for building this tensor's nesting with `tensori`.
+- `::StorageTuple` = A tuple of all nestings' `LocalStorage`, such that `tensori<Scalar, ` (then all types of `StorageTuple`) ... `>` will produce This.  Equivalently, `tensorScalarTuple<Scalar, StorageTuple>` will produce `This`.
 - `::NestedPtrTuple` = Tuple of pointers to the `Nested<i>`'th classes, where the 0'th is `This`, i.e., the current class, and the `numNestings`'th is the `Scalar`.  I had to use pointers because this is a member type, so it cannot contain itself.
 - `::NestedPtrTensorTuple` = Same as above but without the last `Scalar` element, such that all its types are tensor types.
 - `::Nested<i>` = Get the i'th nested type from our tensor type, where i is from 0 to numNestings-1.
@@ -536,7 +536,7 @@ Each of these will return a 4x4 matrix of its respective scalar type.
 - `::InnerPtrTuple` = Tuple mapping the i'th tuple element to the i'th index associated nested Inner type. Tuple size is `rank`+1 (the +1 is for Scalar at the end).
 - `::InnerPtrTemplateTuple` = Same as above but without Scalar at the end.  Useful for tuple operations.
 - `::InnerForIndex<i>` = Get the type associated with the i'th index, where i is from 0 to rank.  Equivalent to getting the i'th element from `InnerPtrTuple`.
-	Equivalent to `::Nested<numNestingsToIndex<i>>`  `_vec`'s 0 will point to itself, `_sym`'s and `_asym`'s 0 and 1 will point to themselves, all others drill down.
+	Equivalent to `::Nested<numNestingsToIndex<i>>`  `vec`'s 0 will point to itself, `sym`'s and `asym`'s 0 and 1 will point to themselves, all others drill down.
 - `::ReplaceInner<T>` = Replaces this tensor's Inner with a new type, T.
 - `::ReplaceNested<i,T>` = Replace the i'th nesting of this tensor with the type 'T', where i is from 0 to numNestings-1.
 - `::ReplaceScalar<T>` = Create a type of this nesting of tensor templates, except with the scalar-most type replaced by T.
@@ -546,51 +546,51 @@ Each of these will return a 4x4 matrix of its respective scalar type.
 - `::ExpandLocalStorage<i>` = Produce a tuple of storage types representing our type with the i'th local index undone from storage optimizations, where i is from 0 to `localRank-1`.  Un-expanded indexes storage is still preserved.
 - `::ExpandIthIndexStorage<i>` = Produce a tuple of storage types but with its i'th index expanded, where i is from 0 to `rank-1`.
 - `::ExpandIthIndex<i>` = Produce a tensor type with the storage at the i'th index replaced with expanded storage.
-	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
-	So a `_sym`'s ExpandIthIndex<0> or <1> would produce a `_vec`-of-`_vec`, a `_sym`-of-`_vec`'s ExpandIthIndex<2> would return the same type, and a `_vec`-of-`_sym`'s ExpandIthIndex<0> would return the same type.
+	Expanded storage being a `vec`-of-`vec`-of...-`vec`'s with nesting equal to the desired tensor rank.
+	So a `sym`'s ExpandIthIndex<0> or <1> would produce a `vec`-of-`vec`, a `sym`-of-`vec`'s ExpandIthIndex<2> would return the same type, and a `vec`-of-`sym`'s ExpandIthIndex<0> would return the same type.
 - `::ExpandIndex<i1, i2, ...>` = Expand the all indexes listed.
 - `::ExpandIndexSeq<std::integer_sequence<int, i1...>>` = Expands the indexes in the `integer_sequence<int, ...>`.
 - `::ExpandAllIndexes<>` = Produce a type with all storage replaced with expanded storage.
-	Expanded storage being a `_vec`-of-`_vec`-of...-`_vec`'s with nesting equal to the desired tensor rank.
-	Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `_tensori<Scalar, dim1, ..., dimN>`.
+	Expanded storage being a `vec`-of-`vec`-of...-`vec`'s with nesting equal to the desired tensor rank.
+	Equivalent to `T::ExpandIthIndex<0>::...::ExpandIthIndex<T::rank-1>`.  Also equivalent to an equivalent tensor with no storage optimizations, i.e. `tensori<Scalar, dim1, ..., dimN>`.
 - `::RemoveIthNestedStorage<i>` = Produce a tuple of storage types but with the i'th element removed.
 - `::RemoveIthNesting<i>` = Produce a tensor but with the i'th nesting removed.
 - `::RemoveIthIndexStorage<i>` = Produce a tuple of storage types but with the i'th index expanded and i'th index storage removed.
-- `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into `_vec`s.  Then removes it.
+- `::RemoveIthIndex<i>` = Removes the i'th index.  First expands the storage at that index, so that any rank-2's will turn into `vec`s.  Then removes it.
 - `::RemoveIndex<i1, i2, ...>` = Removes all the indexes, `i1` ..., from the tensor.
 - `ReplaceWithZero<T>` = Returns a type with matching rank and dimensions, but all nestings are zeroes.  The result is fully-expanded so the nesting count matches the rank.
 
 ### Template Helpers
 - `is_tensor_v<T>` = is it any tensor storage type?
-- `is_vec_v<T>` = is it a `_vec<T,N>`?
-- `is_zero_v<T>` = is it a `_zero<T,N>`?
-- `is_ident_v<T>` = is it a `_ident<T,N>`?
-- `is_sym_v<T>` = is it a `_sym<T,N>`?
-- `is_asym_v<T>` = is it a `_asym<T,N>`?
-- `is_symR_v<T>` = is it a `_symR<T,N>`?
-- `is_asymR_v<T>` = is it a `_asymR<T,N>`?
-- `is_quat_v<T>` = is it a `_quat<T>`?
+- `is_vec_v<T>` = is it a `vec<T,N>`?
+- `is_zero_v<T>` = is it a `zero<T,N>`?
+- `is_ident_v<T>` = is it a `ident<T,N>`?
+- `is_sym_v<T>` = is it a `sym<T,N>`?
+- `is_asym_v<T>` = is it a `asym<T,N>`?
+- `is_symR_v<T>` = is it a `symR<T,N>`?
+- `is_asymR_v<T>` = is it a `asymR<T,N>`?
+- `is_quat_v<T>` = is it a `quat<T>`?
 
 ## Quaternions:
-`_quat` is the odd class out, where it does have a few of the tensor operations, but it is stuck at 4D.  Maybe I will implement Cayley-Dickson constructs later for higher dimension.
-- `_quat<type>` = Quaternion.  Subclass of `_vec4<type>`.  This means they have the familiar fields `.x .y .z` for imaginary components and `.w` for real component.
+`quat` is the odd class out, where it does have a few of the tensor operations, but it is stuck at 4D.  Maybe I will implement Cayley-Dickson constructs later for higher dimension.
+- `quat<type>` = Quaternion.  Subclass of `vec4<type>`.  This means they have the familiar fields `.x .y .z` for imaginary components and `.w` for real component.
 - `quati, quatf, quatd` = integer, float, and double precision quaternions.
 
 Quaternion Members and Methods:
 - `::vec3` = the equivalent vec3 type which this quaternion is capable of rotating.
-- `_quat operator*(_quat, _quat)` = multiplication between quaternions is defined as quaternion multiplication.
-- `_quat static _quat::mul(_quat, _quat)` = helper function for quaternion multiplication.
-- `_quat operator*=(_quat)` = in-place quaternion multiplication.
-- `_quat .conjugate()` = returns the conjugate.  For unit quaternions this is the same as the inverse.
-- `_quat .inverse()` = returns the inverse, i.e. the conjugate divided by the length-squared.
-- `_quat .fromAngleAxis()` = Same as an quaternion exponential.  Takes a quaternion with the real/w component equal to the number of radians to rotate and x y z set to the axis to rotate along. Returns a quaternion which would produce that rotation.
-- `_quat .toAngleAxis()` = Same as a quaternion logarithm.  Converts a quaternion from rotation space to angle-axis space.
-- `static Scalar _quat::angleAxisEpsilon` = set this epsilon for when the from-angle-axis function should consider a rotation too small (would-be axis of zero) and avoid performing a normalization on the axis that would otherwise produce NaNs.
+- `quat operator*(quat, quat)` = multiplication between quaternions is defined as quaternion multiplication.
+- `quat static quat::mul(quat, quat)` = helper function for quaternion multiplication.
+- `quat operator*=(quat)` = in-place quaternion multiplication.
+- `quat .conjugate()` = returns the conjugate.  For unit quaternions this is the same as the inverse.
+- `quat .inverse()` = returns the inverse, i.e. the conjugate divided by the length-squared.
+- `quat .fromAngleAxis()` = Same as an quaternion exponential.  Takes a quaternion with the real/w component equal to the number of radians to rotate and x y z set to the axis to rotate along. Returns a quaternion which would produce that rotation.
+- `quat .toAngleAxis()` = Same as a quaternion logarithm.  Converts a quaternion from rotation space to angle-axis space.
+- `static Scalar quat::angleAxisEpsilon` = set this epsilon for when the from-angle-axis function should consider a rotation too small (would-be axis of zero) and avoid performing a normalization on the axis that would otherwise produce NaNs.
 - `vec3 .rotate(vec3)` = rotate the vector by `this` quaternion.
 - `vec3 .xAxis()` = return the x-axis of `this` quaternion's orientation.
 - `vec3 .yAxis()` = return the y-axis of `this` quaternion's orientation.
 - `vec3 .zAxis()` = return the z-axis of `this` quaternion's orientation.
-- `_quat normalize(_quat)` = returns a normalized version of this quaternion.
+- `quat normalize(quat)` = returns a normalized version of this quaternion.
 
 ## Dependencies:
 This project depends on my "[Common](https://github.com/thenumbernine/Common)" project, for Exception, template metaprograms, etc.
@@ -614,9 +614,9 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 - Does the index-notation summation preserve non-summed index memory-optimization structures?  I don't think it does.
 - shorthand those longwinded names like "inverse"=>"inv", "determinant"=>"det", "trace"=>"tr", "transpose"=>...? T? tr?  what? "normalize"=>"unit"
 
-- Add LeviCivita to the API using `constexpr _asymR`.
-- Add KroneckerDelta to the API using `constexpr _ident`.
-- Add GeneralizedKroneckerDelta using `constexpr _asymR` $\otimes$ `_asymR`.
+- Add LeviCivita to the API using `constexpr asymR`.
+- Add KroneckerDelta to the API using `constexpr ident`.
+- Add GeneralizedKroneckerDelta using `constexpr asymR` $\otimes$ `asymR`.
 
 - then use these for cross, determinant, inverse, wedge
 - once index notation is finished that might be most optimal for implementations.
@@ -640,7 +640,7 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 
 - ReplaceDim and ReplaceLocalDim that take a int pack and insert that many new dimensions into that index' location.
 
-- To make `_ident` true to name, maybe make `_ident` default initialize its value to 1? Not sure...
+- To make `ident` true to name, maybe make `ident` default initialize its value to 1? Not sure...
 
 - more tensor types:  maybe diagonalized rank-2 with N-DOF, where each diagonal element has a unique value.
 
@@ -651,10 +651,10 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 - might do some constexpr loop unrolling stuff maybe.
 - test case write tests should be writing different values and verifying
 
-- make `_symR::operator(int...)` use perfect-forwarding.
-- make `_asymR::operator(int...)` be primary and `::operator(_vec<int,N>)` be secondary.
+- make `symR::operator(int...)` use perfect-forwarding.
+- make `asymR::operator(int...)` be primary and `::operator(vec<int,N>)` be secondary.
 
-- eventually merge `_sym` and `_asym` with `_symR` and `_asymR` ... but don't til enough sorts/loops are compile-time.
+- eventually merge `sym` and `asym` with `symR` and `asymR` ... but don't til enough sorts/loops are compile-time.
 
 - wedge(a,b) should accept non-tensors, or at least the scalar of whichever is the tensor
 - outer(a,b) too?  both turn into scalar muls.
@@ -671,8 +671,8 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 - C++23 operator[] can be variadic.
 	so once C++23 comes around, I'm getting rid of all Accessors and only allowing exact references into tensors using [] or ().
 	in fact, why don't I just do that now?
-	that would spare me the need for `_sym`'s operator[int]
-	but don't forget `_asym` still needs to return an AntiSymRef , whether we allow off-storage indexing or not.
+	that would spare me the need for `sym`'s operator[int]
+	but don't forget `asym` still needs to return an AntiSymRef , whether we allow off-storage indexing or not.
 	so meh i might as well keep it around?
 
 - C++23 has derived-this return-types, so no more need to crtp everything (RangeIterator and its classes in RangeObj, ReadIterator, WriteIterator)

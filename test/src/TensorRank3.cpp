@@ -56,27 +56,27 @@ namespace StaticTest1 {
 	static_assert((std::tuple_size_v<float3x3::StorageTuple>) == float3x3::numNestings);
 	static_assert(std::is_same_v<tensorScalarTuple<float3x3::Scalar, float3x3::StorageTuple>, float3x3>);
 
-	static_assert(is_same_v<_tensori<float, storage_vec<3>, storage_vec<3>>, float3x3>);
-	static_assert(is_same_v<_tensori<float3, storage_vec<3>>, float3x3>);
-	static_assert(is_same_v<_tensori<float3x3>, float3x3>);
+	static_assert(is_same_v<tensori<float, storage_vec<3>, storage_vec<3>>, float3x3>);
+	static_assert(is_same_v<tensori<float3, storage_vec<3>>, float3x3>);
+	static_assert(is_same_v<tensori<float3x3>, float3x3>);
 
-	static_assert(is_same_v<_tensorr<int,3,1>, _tensor<int,3>>);
-	static_assert(is_same_v<_tensorr<int,3,2>, _tensor<int,3,3>>);
-	static_assert(is_same_v<_tensorr<int,3,3>, _tensor<int,3,3,3>>);
-	static_assert(is_same_v<_tensorr<int,3,4>, _tensor<int,3,3,3,3>>);
+	static_assert(is_same_v<tensorr<int,3,1>, tensor<int,3>>);
+	static_assert(is_same_v<tensorr<int,3,2>, tensor<int,3,3>>);
+	static_assert(is_same_v<tensorr<int,3,3>, tensor<int,3,3,3>>);
+	static_assert(is_same_v<tensorr<int,3,4>, tensor<int,3,3,3,3>>);
 	
-	static_assert(_vec<int,3>::template numNestingsToIndex<0> == 0);
-	static_assert(_tensor<int,3,3>::template numNestingsToIndex<0> == 0);
-	static_assert(_tensor<int,3,3>::template numNestingsToIndex<1> == 1);
-	static_assert(_tensor<int,3,3,3>::template numNestingsToIndex<0> == 0);
-	static_assert(_tensor<int,3,3,3>::template numNestingsToIndex<1> == 1);
-	static_assert(_tensor<int,3,3,3>::template numNestingsToIndex<2> == 2);
-	static_assert(_sym<int,3>::template numNestingsToIndex<0> == 0);
-	static_assert(_sym<int,3>::template numNestingsToIndex<1> == 0);
-	static_assert(_tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::template numNestingsToIndex<0> == 0);
-	static_assert(_tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::template numNestingsToIndex<1> == 1);
-	static_assert(_tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::template numNestingsToIndex<2> == 1);
-	static_assert(_tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::template numNestingsToIndex<3> == 2);
+	static_assert(vec<int,3>::template numNestingsToIndex<0> == 0);
+	static_assert(tensor<int,3,3>::template numNestingsToIndex<0> == 0);
+	static_assert(tensor<int,3,3>::template numNestingsToIndex<1> == 1);
+	static_assert(tensor<int,3,3,3>::template numNestingsToIndex<0> == 0);
+	static_assert(tensor<int,3,3,3>::template numNestingsToIndex<1> == 1);
+	static_assert(tensor<int,3,3,3>::template numNestingsToIndex<2> == 2);
+	static_assert(sym<int,3>::template numNestingsToIndex<0> == 0);
+	static_assert(sym<int,3>::template numNestingsToIndex<1> == 0);
+	static_assert(tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::template numNestingsToIndex<0> == 0);
+	static_assert(tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::template numNestingsToIndex<1> == 1);
+	static_assert(tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::template numNestingsToIndex<2> == 1);
+	static_assert(tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::template numNestingsToIndex<3> == 2);
 
 	static_assert(is_same_v<
 		float3a3a3::StorageTuple,
@@ -95,71 +95,71 @@ namespace StaticTest1 {
 		std::tuple<storage_asym<3>, storage_vec<3>>
 	>);
 
-	static_assert(is_same_v<_vec<int,3>::ExpandIthIndex<0>, _tensor<int,3>>);
-	static_assert(is_same_v<_tensor<int,3,3>::ExpandIthIndex<0>, _tensorr<int,3,2>>);
-	static_assert(is_same_v<_tensor<int,3,3>::ExpandIthIndex<1>, _tensorr<int,3,2>>);
-	static_assert(is_same_v<_sym<int,3>::ExpandIthIndex<0>, _tensorr<int,3,2>>);
-	static_assert(is_same_v<_sym<int,3>::ExpandIthIndex<1>, _tensorr<int,3,2>>);
-	static_assert(is_same_v<_asym<int,3>::ExpandIthIndex<0>, _tensorr<int,3,2>>);
-	static_assert(is_same_v<_asym<int,3>::ExpandIthIndex<1>, _tensorr<int,3,2>>);
-	static_assert(is_same_v<_tensor<int,3,3,3>::ExpandIthIndex<0>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensor<int,3,3,3>::ExpandIthIndex<1>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensor<int,3,3,3>::ExpandIthIndex<2>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<0>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<1>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<2>, _tensori<int,storage_sym<3>,storage_vec<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<0>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<1>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<2>, _tensori<int,storage_asym<3>,storage_vec<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<0>, _tensori<int,storage_vec<3>,storage_sym<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<1>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<2>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<0>, _tensori<int,storage_vec<3>,storage_asym<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<1>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<2>, _tensorr<int,3,3>>);
-	static_assert(is_same_v<_tensor<int,3,3,3,3>::ExpandIthIndex<0>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensor<int,3,3,3,3>::ExpandIthIndex<1>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensor<int,3,3,3,3>::ExpandIthIndex<2>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensor<int,3,3,3,3>::ExpandIthIndex<3>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<0>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<1>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<2>, _tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<3>, _tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<0>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<1>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<2>, _tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<3>, _tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<0>, _tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>> >);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<1>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<2>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<3>, _tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>> >);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<0>, _tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>> >);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<1>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<2>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<3>, _tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>> >);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<0>, _tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<1>, _tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<2>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<3>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<0>, _tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<1>, _tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<2>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<3>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_sym<3>>::ExpandIthIndex<0>, _tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_sym<3>>::ExpandIthIndex<1>, _tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_sym<3>>::ExpandIthIndex<2>, _tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_sym<3>,storage_sym<3>>::ExpandIthIndex<3>, _tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIthIndex<0>, _tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIthIndex<1>, _tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIthIndex<2>, _tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIthIndex<3>, _tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>>);
+	static_assert(is_same_v<vec<int,3>::ExpandIthIndex<0>, tensor<int,3>>);
+	static_assert(is_same_v<tensor<int,3,3>::ExpandIthIndex<0>, tensorr<int,3,2>>);
+	static_assert(is_same_v<tensor<int,3,3>::ExpandIthIndex<1>, tensorr<int,3,2>>);
+	static_assert(is_same_v<sym<int,3>::ExpandIthIndex<0>, tensorr<int,3,2>>);
+	static_assert(is_same_v<sym<int,3>::ExpandIthIndex<1>, tensorr<int,3,2>>);
+	static_assert(is_same_v<asym<int,3>::ExpandIthIndex<0>, tensorr<int,3,2>>);
+	static_assert(is_same_v<asym<int,3>::ExpandIthIndex<1>, tensorr<int,3,2>>);
+	static_assert(is_same_v<tensor<int,3,3,3>::ExpandIthIndex<0>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensor<int,3,3,3>::ExpandIthIndex<1>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensor<int,3,3,3>::ExpandIthIndex<2>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<0>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<1>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<2>, tensori<int,storage_sym<3>,storage_vec<3>>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<0>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<1>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<2>, tensori<int,storage_asym<3>,storage_vec<3>>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<0>, tensori<int,storage_vec<3>,storage_sym<3>>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<1>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<2>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<0>, tensori<int,storage_vec<3>,storage_asym<3>>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<1>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<2>, tensorr<int,3,3>>);
+	static_assert(is_same_v<tensor<int,3,3,3,3>::ExpandIthIndex<0>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensor<int,3,3,3,3>::ExpandIthIndex<1>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensor<int,3,3,3,3>::ExpandIthIndex<2>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensor<int,3,3,3,3>::ExpandIthIndex<3>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<0>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<1>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<2>, tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<3>, tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<0>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<1>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<2>, tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>::ExpandIthIndex<3>, tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<0>, tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>> >);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<1>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<2>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>>::ExpandIthIndex<3>, tensori<int,storage_vec<3>,storage_sym<3>,storage_vec<3>> >);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<0>, tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>> >);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<1>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<2>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>>::ExpandIthIndex<3>, tensori<int,storage_vec<3>,storage_asym<3>,storage_vec<3>> >);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<0>, tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<1>, tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<2>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>::ExpandIthIndex<3>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<0>, tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<1>, tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<2>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>::ExpandIthIndex<3>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_sym<3>>::ExpandIthIndex<0>, tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_sym<3>>::ExpandIthIndex<1>, tensori<int,storage_vec<3>,storage_vec<3>,storage_sym<3>>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_sym<3>>::ExpandIthIndex<2>, tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>>);
+	static_assert(is_same_v<tensori<int,storage_sym<3>,storage_sym<3>>::ExpandIthIndex<3>, tensori<int,storage_sym<3>,storage_vec<3>,storage_vec<3>>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIthIndex<0>, tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIthIndex<1>, tensori<int,storage_vec<3>,storage_vec<3>,storage_asym<3>>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIthIndex<2>, tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIthIndex<3>, tensori<int,storage_asym<3>,storage_vec<3>,storage_vec<3>>>);
 	
-	static_assert(is_same_v<_vec<int,3>::ExpandAllIndexes<>, _vec<int,3>>);
-	static_assert(is_same_v<_tensor<int,3,3>::ExpandAllIndexes<>, _tensor<int,3,3>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_asym<3>>::ExpandAllIndexes<>, _tensorr<int,3,4>>);
+	static_assert(is_same_v<vec<int,3>::ExpandAllIndexes<>, vec<int,3>>);
+	static_assert(is_same_v<tensor<int,3,3>::ExpandAllIndexes<>, tensor<int,3,3>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_asym<3>>::ExpandAllIndexes<>, tensorr<int,3,4>>);
 	
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIndex<0,1,2,3>, _tensorr<int,3,4>>);
-	static_assert(is_same_v<_tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIndexSeq<integer_sequence<int,0,1,2,3>>, _tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIndex<0,1,2,3>, tensorr<int,3,4>>);
+	static_assert(is_same_v<tensori<int,storage_asym<3>,storage_asym<3>>::ExpandIndexSeq<integer_sequence<int,0,1,2,3>>, tensorr<int,3,4>>);
 
 	static_assert(is_same_v<int3::Nested<0>, int3>);
 	static_assert(is_same_v<int3::Nested<1>, int>);
@@ -171,16 +171,16 @@ namespace StaticTest1 {
 	static_assert(is_same_v<int3x3::Nested<1>, int3>);
 	static_assert(is_same_v<int3x3::Nested<2>, int>);
 
-	//only do the RemoveIthNesting on non-opt storage (vec's, _tensor etc, NOT sym, asym)
+	//only do the RemoveIthNesting on non-opt storage (vec's, tensor etc, NOT sym, asym)
 	static_assert(is_same_v<float3::RemoveIthNesting<0>, float>);
 	static_assert(is_same_v<float3x3::RemoveIthNesting<0>, float3>);
 	static_assert(is_same_v<float3x3::RemoveIthNesting<1>, float3>);
 	
 	static_assert(is_same_v<float3s3::RemoveIthNesting<0>, float>);
 	static_assert(is_same_v<float3a3::RemoveIthNesting<0>, float>);
-	static_assert(is_same_v<_tensor<int,2,3,4>::RemoveIthNesting<0>, _tensor<int,3,4>>);
-	static_assert(is_same_v<_tensor<int,2,3,4>::RemoveIthNesting<1>, _tensor<int,2,4>>);
-	static_assert(is_same_v<_tensor<int,2,3,4>::RemoveIthNesting<2>, _tensor<int,2,3>>);
+	static_assert(is_same_v<tensor<int,2,3,4>::RemoveIthNesting<0>, tensor<int,3,4>>);
+	static_assert(is_same_v<tensor<int,2,3,4>::RemoveIthNesting<1>, tensor<int,2,4>>);
+	static_assert(is_same_v<tensor<int,2,3,4>::RemoveIthNesting<2>, tensor<int,2,3>>);
 
 	static_assert(is_same_v<float3::RemoveIthIndex<0>, float>);
 	
@@ -192,23 +192,23 @@ namespace StaticTest1 {
 	static_assert(is_same_v<float3a3::RemoveIndex<0>, float3>);
 	static_assert(is_same_v<float3a3::RemoveIndex<1>, float3>);
 	
-	static_assert(is_same_v<_tensor<int,2,3,4>::RemoveIndex<0>, _tensor<int,3,4>>);
-	static_assert(is_same_v<_tensor<int,2,3,4>::RemoveIndex<1>, _tensor<int,2,4>>);
-	static_assert(is_same_v<_tensor<int,2,3,4>::RemoveIndex<2>, _tensor<int,2,3>>);
+	static_assert(is_same_v<tensor<int,2,3,4>::RemoveIndex<0>, tensor<int,3,4>>);
+	static_assert(is_same_v<tensor<int,2,3,4>::RemoveIndex<1>, tensor<int,2,4>>);
+	static_assert(is_same_v<tensor<int,2,3,4>::RemoveIndex<2>, tensor<int,2,3>>);
 
 	// verify RemoveIndex<> is order indepenent
 	//[a,b,c,d] remove 0 => [a,c,d] => remove 3 => compiler error
 	//[a,b,c,d] remove 3 => [a,b,c] => remove 0 => [b,c]
 	static_assert(
 		is_same_v<
-			_tensor<int,2,3,4,5>::RemoveIndex<3,0>,
-			_tensor<int,3,4>
+			tensor<int,2,3,4,5>::RemoveIndex<3,0>,
+			tensor<int,3,4>
 		>
 	);
 	static_assert(
 		is_same_v<
-			_tensor<int,2,3,4,5>::RemoveIndex<0,3>,
-			_tensor<int,3,4>
+			tensor<int,2,3,4,5>::RemoveIndex<0,3>,
+			tensor<int,3,4>
 		>
 	);
 
@@ -222,23 +222,23 @@ namespace StaticTest1 {
 	);
 
 	namespace Test3 {
-		using float3x3x3 = _tensorr<float, 3, 3>;
-		using float3s3x3 = _tensori<float, storage_sym<3>, storage_vec<3>>;
-		using float3a3x3 = _tensori<float, storage_asym<3>, storage_vec<3>>;
-		using float3x3s3 = _tensori<float, storage_vec<3>, storage_sym<3>>;
-		using float3x3a3 = _tensori<float, storage_vec<3>, storage_asym<3>>;
+		using float3x3x3 = tensorr<float, 3, 3>;
+		using float3s3x3 = tensori<float, storage_sym<3>, storage_vec<3>>;
+		using float3a3x3 = tensori<float, storage_asym<3>, storage_vec<3>>;
+		using float3x3s3 = tensori<float, storage_vec<3>, storage_sym<3>>;
+		using float3x3a3 = tensori<float, storage_vec<3>, storage_asym<3>>;
 		
-		using float3x3x3x3 = _tensorr<float, 3, 4>;
-		using float3s3x3x3 = _tensori<float, storage_sym<3>, storage_vec<3>, storage_vec<3>>;
-		using float3a3x3x3 = _tensori<float, storage_asym<3>, storage_vec<3>, storage_vec<3>>;
-		using float3x3s3x3 = _tensori<float, storage_vec<3>, storage_sym<3>, storage_vec<3>>;
-		using float3x3a3x3 = _tensori<float, storage_vec<3>, storage_asym<3>, storage_vec<3>>;
-		using float3x3x3s3 = _tensori<float, storage_vec<3>, storage_vec<3>, storage_sym<3>>;
-		using float3x3x3a3 = _tensori<float, storage_vec<3>, storage_vec<3>, storage_asym<3>>;
-		using float3s3x3s3 = _tensori<float, storage_sym<3>, storage_sym<3>>;
-		using float3a3x3s3 = _tensori<float, storage_asym<3>, storage_sym<3>>;
-		using float3s3x3a3 = _tensori<float, storage_sym<3>, storage_asym<3>>;
-		using float3a3x3a3 = _tensori<float, storage_asym<3>, storage_asym<3>>;
+		using float3x3x3x3 = tensorr<float, 3, 4>;
+		using float3s3x3x3 = tensori<float, storage_sym<3>, storage_vec<3>, storage_vec<3>>;
+		using float3a3x3x3 = tensori<float, storage_asym<3>, storage_vec<3>, storage_vec<3>>;
+		using float3x3s3x3 = tensori<float, storage_vec<3>, storage_sym<3>, storage_vec<3>>;
+		using float3x3a3x3 = tensori<float, storage_vec<3>, storage_asym<3>, storage_vec<3>>;
+		using float3x3x3s3 = tensori<float, storage_vec<3>, storage_vec<3>, storage_sym<3>>;
+		using float3x3x3a3 = tensori<float, storage_vec<3>, storage_vec<3>, storage_asym<3>>;
+		using float3s3x3s3 = tensori<float, storage_sym<3>, storage_sym<3>>;
+		using float3a3x3s3 = tensori<float, storage_asym<3>, storage_sym<3>>;
+		using float3s3x3a3 = tensori<float, storage_sym<3>, storage_asym<3>>;
+		using float3a3x3a3 = tensori<float, storage_asym<3>, storage_asym<3>>;
 
 		static_assert(is_same_v<float3::InnerForIndex<0>, float3>);
 		static_assert(is_same_v<float3::InnerForIndex<1>, float>);
@@ -389,28 +389,28 @@ namespace StaticTest1 {
 	static_assert(is_same_v<decltype(transpose(float3a3())),float3a3>);
 	// test swapping dimensions correctly
 	namespace transposeTest1 {
-		using T = _tensor<int, 2,3,4,5>;
-		static_assert(is_same_v<decltype(transpose<0,0>(T())), _tensor<int,2,3,4,5>>);
-		static_assert(is_same_v<decltype(transpose<1,1>(T())), _tensor<int,2,3,4,5>>);
-		static_assert(is_same_v<decltype(transpose<2,2>(T())), _tensor<int,2,3,4,5>>);
-		static_assert(is_same_v<decltype(transpose<3,3>(T())), _tensor<int,2,3,4,5>>);
-		static_assert(is_same_v<decltype(transpose<0,1>(T())), _tensor<int,3,2,4,5>>);
-		static_assert(is_same_v<decltype(transpose<0,2>(T())), _tensor<int,4,3,2,5>>);
-		static_assert(is_same_v<decltype(transpose<0,3>(T())), _tensor<int,5,3,4,2>>);
-		static_assert(is_same_v<decltype(transpose<1,2>(T())), _tensor<int,2,4,3,5>>);
-		static_assert(is_same_v<decltype(transpose<1,3>(T())), _tensor<int,2,5,4,3>>);
-		static_assert(is_same_v<decltype(transpose<2,3>(T())), _tensor<int,2,3,5,4>>);
-		static_assert(is_same_v<decltype(transpose<1,0>(T())), _tensor<int,3,2,4,5>>);
-		static_assert(is_same_v<decltype(transpose<2,0>(T())), _tensor<int,4,3,2,5>>);
-		static_assert(is_same_v<decltype(transpose<3,0>(T())), _tensor<int,5,3,4,2>>);
-		static_assert(is_same_v<decltype(transpose<2,1>(T())), _tensor<int,2,4,3,5>>);
-		static_assert(is_same_v<decltype(transpose<3,1>(T())), _tensor<int,2,5,4,3>>);
-		static_assert(is_same_v<decltype(transpose<3,2>(T())), _tensor<int,2,3,5,4>>);
+		using T = tensor<int, 2,3,4,5>;
+		static_assert(is_same_v<decltype(transpose<0,0>(T())), tensor<int,2,3,4,5>>);
+		static_assert(is_same_v<decltype(transpose<1,1>(T())), tensor<int,2,3,4,5>>);
+		static_assert(is_same_v<decltype(transpose<2,2>(T())), tensor<int,2,3,4,5>>);
+		static_assert(is_same_v<decltype(transpose<3,3>(T())), tensor<int,2,3,4,5>>);
+		static_assert(is_same_v<decltype(transpose<0,1>(T())), tensor<int,3,2,4,5>>);
+		static_assert(is_same_v<decltype(transpose<0,2>(T())), tensor<int,4,3,2,5>>);
+		static_assert(is_same_v<decltype(transpose<0,3>(T())), tensor<int,5,3,4,2>>);
+		static_assert(is_same_v<decltype(transpose<1,2>(T())), tensor<int,2,4,3,5>>);
+		static_assert(is_same_v<decltype(transpose<1,3>(T())), tensor<int,2,5,4,3>>);
+		static_assert(is_same_v<decltype(transpose<2,3>(T())), tensor<int,2,3,5,4>>);
+		static_assert(is_same_v<decltype(transpose<1,0>(T())), tensor<int,3,2,4,5>>);
+		static_assert(is_same_v<decltype(transpose<2,0>(T())), tensor<int,4,3,2,5>>);
+		static_assert(is_same_v<decltype(transpose<3,0>(T())), tensor<int,5,3,4,2>>);
+		static_assert(is_same_v<decltype(transpose<2,1>(T())), tensor<int,2,4,3,5>>);
+		static_assert(is_same_v<decltype(transpose<3,1>(T())), tensor<int,2,5,4,3>>);
+		static_assert(is_same_v<decltype(transpose<3,2>(T())), tensor<int,2,3,5,4>>);
 	}
 	// test preserving storage
 	namespace transposeTest2 {
-		using T = _tensori<int, storage_sym<3>, storage_vec<3>>;
-		using R = _tensorr<int, 3,3>;
+		using T = tensori<int, storage_sym<3>, storage_vec<3>>;
+		using R = tensorr<int, 3,3>;
 		static_assert(is_same_v<decltype(transpose<0,0>(T())), T>);
 		static_assert(is_same_v<decltype(transpose<1,1>(T())), T>);
 		static_assert(is_same_v<decltype(transpose<2,2>(T())), T>);
@@ -422,22 +422,22 @@ namespace StaticTest1 {
 		static_assert(is_same_v<decltype(transpose<2,1>(T())), R>);
 	}
 	namespace transposeTest4 {
-		using T = _tensori<int, storage_sym<3>, storage_sym<4>>;
+		using T = tensori<int, storage_sym<3>, storage_sym<4>>;
 		static_assert(is_same_v<decltype(transpose<0,0>(T())), T>);
 		static_assert(is_same_v<decltype(transpose<1,1>(T())), T>);
 		static_assert(is_same_v<decltype(transpose<2,2>(T())), T>);
 		static_assert(is_same_v<decltype(transpose<3,3>(T())), T>);
 		static_assert(is_same_v<decltype(transpose<0,1>(T())), T>);
-		static_assert(is_same_v<decltype(transpose<0,2>(T())), _tensor<int,4,3,3,4>>);
-		static_assert(is_same_v<decltype(transpose<0,3>(T())), _tensor<int,4,3,4,3>>);
-		static_assert(is_same_v<decltype(transpose<1,2>(T())), _tensor<int,3,4,3,4>>);
-		static_assert(is_same_v<decltype(transpose<1,3>(T())), _tensor<int,3,4,4,3>>);
+		static_assert(is_same_v<decltype(transpose<0,2>(T())), tensor<int,4,3,3,4>>);
+		static_assert(is_same_v<decltype(transpose<0,3>(T())), tensor<int,4,3,4,3>>);
+		static_assert(is_same_v<decltype(transpose<1,2>(T())), tensor<int,3,4,3,4>>);
+		static_assert(is_same_v<decltype(transpose<1,3>(T())), tensor<int,3,4,4,3>>);
 		static_assert(is_same_v<decltype(transpose<2,3>(T())), T>);
 		static_assert(is_same_v<decltype(transpose<1,0>(T())), T>);
-		static_assert(is_same_v<decltype(transpose<2,0>(T())), _tensor<int,4,3,3,4>>);
-		static_assert(is_same_v<decltype(transpose<3,0>(T())), _tensor<int,4,3,4,3>>);
-		static_assert(is_same_v<decltype(transpose<2,1>(T())), _tensor<int,3,4,3,4>>);
-		static_assert(is_same_v<decltype(transpose<3,1>(T())), _tensor<int,3,4,4,3>>);
+		static_assert(is_same_v<decltype(transpose<2,0>(T())), tensor<int,4,3,3,4>>);
+		static_assert(is_same_v<decltype(transpose<3,0>(T())), tensor<int,4,3,4,3>>);
+		static_assert(is_same_v<decltype(transpose<2,1>(T())), tensor<int,3,4,3,4>>);
+		static_assert(is_same_v<decltype(transpose<3,1>(T())), tensor<int,3,4,4,3>>);
 		static_assert(is_same_v<decltype(transpose<3,2>(T())), T>);
 	}
 }
@@ -458,15 +458,15 @@ namespace Test3 {
 	using namespace std;
 
 	using S = float;
-	using S3 = _vec<S,3>;
-	using S3x3 = _vec<S3,3>;
-	using S3s3 = _sym<S,3>;
-	using S3a3 = _asym<S,3>;
-	using S3x3x3 = _vec<S3x3,3>;
-	using S3x3s3 = _vec<S3s3,3>;
-	using S3x3a3 = _vec<S3a3,3>;
-	using S3s3x3 = _sym<S3,3>;
-	using S3a3x3 = _asym<S3,3>;
+	using S3 = vec<S,3>;
+	using S3x3 = vec<S3,3>;
+	using S3s3 = sym<S,3>;
+	using S3a3 = asym<S,3>;
+	using S3x3x3 = vec<S3x3,3>;
+	using S3x3s3 = vec<S3s3,3>;
+	using S3x3a3 = vec<S3a3,3>;
+	using S3s3x3 = sym<S3,3>;
+	using S3a3x3 = asym<S3,3>;
 
 	static_assert(!is_tensor_v<S>);
 	static_assert(is_tensor_v<S3>);
@@ -504,13 +504,13 @@ namespace Test3 {
 		
 		// rank-1
 	
-	//_tensor<S, storage_vec<3>>
+	//tensor<S, storage_vec<3>>
 	static_assert(is_same_v<decltype(S3()(0)), S&>);
 	static_assert(is_same_v<decltype(S3()[0]), S&>);
 
 		//rank-2
 	
-	//_tensor<S, storage_vec<3>, storage_vec<3>>
+	//tensor<S, storage_vec<3>, storage_vec<3>>
 	static_assert(is_same_v<decltype(S3x3()(0)), S3&>);
 	static_assert(is_same_v<decltype(S3x3()[0]), S3&>);
 	static_assert(is_same_v<decltype(S3x3()(0)(0)), S&>);
@@ -519,7 +519,7 @@ namespace Test3 {
 	static_assert(is_same_v<decltype(S3x3()(0)[0]), S&>);
 	static_assert(is_same_v<decltype(S3x3()[0][0]), S&>);
 
-	//_tensor<S, storage_sym<3>>
+	//tensor<S, storage_sym<3>>
 	static_assert(is_same_v<decltype(S3s3()(0)), S3s3::Accessor<S3s3>>);
 	static_assert(is_same_v<decltype(S3s3()[0]), S3s3::Accessor<S3s3>>);
 	static_assert(is_same_v<decltype(S3s3()(0,0)), S&>);
@@ -528,7 +528,7 @@ namespace Test3 {
 	static_assert(is_same_v<decltype(S3s3()(0)[0]), S&>);
 	static_assert(is_same_v<decltype(S3s3()[0][0]), S&>);
 
-	//_tensor<S, storage_asym<3>>
+	//tensor<S, storage_asym<3>>
 	static_assert(is_same_v<decltype(S3a3()(0)), S3a3::Accessor<S3a3>>);
 	static_assert(is_same_v<decltype(S3a3()[0]), S3a3::Accessor<S3a3>>);
 	static_assert(is_same_v<decltype(S3a3()(0,0)), AntiSymRef<S>>);
@@ -539,7 +539,7 @@ namespace Test3 {
 
 		//rank-3
 	
-	//_tensor<S, storage_vec<3>, storage_vec<3>, storage_vec<3>>
+	//tensor<S, storage_vec<3>, storage_vec<3>, storage_vec<3>>
 	static_assert(is_same_v<decltype(S3x3x3()(0)), S3x3&>);
 	static_assert(is_same_v<decltype(S3x3x3()[0]), S3x3&>);
 	static_assert(is_same_v<decltype(S3x3x3()(0)(0)), S3&>);
@@ -561,7 +561,7 @@ namespace Test3 {
 	static_assert(is_same_v<decltype(S3x3x3()(0)[0][0]), S&>);
 	static_assert(is_same_v<decltype(S3x3x3()[0][0][0]), S&>);
 
-	//_tensor<S, storage_vec<3>, storage_sym<3>>
+	//tensor<S, storage_vec<3>, storage_sym<3>>
 	static_assert(is_same_v<decltype(S3x3s3()(0)), S3s3&>);
 	static_assert(is_same_v<decltype(S3x3s3()[0]), S3s3&>);
 	static_assert(is_same_v<decltype(S3x3s3()(0)(0)), S3s3::Accessor<S3s3>>);
@@ -588,30 +588,30 @@ namespace Test3 {
 // TODO these are static_assert's
 namespace StaticTest2 {
 	using Real = double;
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<3>>::rank)== 1);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<3>>::dim<0>)== 3);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<3>>::rank)== 1);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<3>>::dim<0>)== 3);
 
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<4>>::rank)== 1);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<4>>::dim<0>)== 4);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<4>>::rank)== 1);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<4>>::dim<0>)== 4);
 
-	static_assert((Tensor::_tensori<Real, Tensor::storage_sym<3>>::rank)== 2);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_sym<3>>::dim<0>)== 3);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_sym<3>>::dim<1>)== 3);
+	static_assert((Tensor::tensori<Real, Tensor::storage_sym<3>>::rank)== 2);
+	static_assert((Tensor::tensori<Real, Tensor::storage_sym<3>>::dim<0>)== 3);
+	static_assert((Tensor::tensori<Real, Tensor::storage_sym<3>>::dim<1>)== 3);
 
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<5>, Tensor::storage_vec<6>>::rank)== 2);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<5>, Tensor::storage_vec<6>>::dim<0>)== 5);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<5>, Tensor::storage_vec<6>>::dim<1>)== 6);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<5>, Tensor::storage_vec<6>>::rank)== 2);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<5>, Tensor::storage_vec<6>>::dim<0>)== 5);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<5>, Tensor::storage_vec<6>>::dim<1>)== 6);
 
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<4>, Tensor::storage_sym<3>>::rank)== 3);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<4>, Tensor::storage_sym<3>>::dim<0>)== 4);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<4>, Tensor::storage_sym<3>>::dim<1>)== 3);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_vec<4>, Tensor::storage_sym<3>>::dim<2>)== 3);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<4>, Tensor::storage_sym<3>>::rank)== 3);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<4>, Tensor::storage_sym<3>>::dim<0>)== 4);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<4>, Tensor::storage_sym<3>>::dim<1>)== 3);
+	static_assert((Tensor::tensori<Real, Tensor::storage_vec<4>, Tensor::storage_sym<3>>::dim<2>)== 3);
 
-	static_assert((Tensor::_tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<3>>::rank)== 4);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<3>>::dim<0>)== 2);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<3>>::dim<1>)== 2);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<3>>::dim<2>)== 3);
-	static_assert((Tensor::_tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<3>>::dim<3>)== 3);
+	static_assert((Tensor::tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<3>>::rank)== 4);
+	static_assert((Tensor::tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<3>>::dim<0>)== 2);
+	static_assert((Tensor::tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<3>>::dim<1>)== 2);
+	static_assert((Tensor::tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<3>>::dim<2>)== 3);
+	static_assert((Tensor::tensori<Real, Tensor::storage_asym<2>, Tensor::storage_asym<3>>::dim<3>)== 3);
 }
 
 // verify that the outer of a vector and a sym is just that
@@ -655,7 +655,7 @@ namespace InteriorTest {
 	using A = float3x3;
 	using B = float3x3;
 	using R = typename A::template ReplaceScalar<B>;
-	static_assert(is_same_v<_tensorr<float,3,4>, decltype(outer<A,B>(A(),B()))>);
+	static_assert(is_same_v<tensorr<float,3,4>, decltype(outer<A,B>(A(),B()))>);
 	using R1 = typename A
 		::template ReplaceScalar<B>
 		::template RemoveIndex<A::rank-1, A::rank>;
@@ -699,7 +699,7 @@ void test_TensorRank3() {
 
 	// rank-3 tensor: vector-vector-vector
 	{
-		using T = Tensor::_tensor<float, 2, 4, 5>;
+		using T = Tensor::tensor<float, 2, 4, 5>;
 		T t;
 		static_assert(t.rank == 3);
 		static_assert(t.dim<0> == 2);
@@ -721,7 +721,7 @@ void test_TensorRank3() {
 	// vector-of-symmetric
 	{
 		//this is a T_ijk = T_ikj, i spans 3 dims, j and k span 2 dims
-		using T2s2x3 = Tensor::_tensori<float, Tensor::storage_vec<2>, Tensor::storage_sym<3>>;
+		using T2s2x3 = Tensor::tensori<float, Tensor::storage_vec<2>, Tensor::storage_sym<3>>;
 		
 		// list ctor
 		T2s2x3 a = {
@@ -754,7 +754,7 @@ void test_TensorRank3() {
 
 	//vector-of-symmetric
 	{
-		using T3x3s3 = Tensor::_tensori<float, Tensor::storage_vec<3>, Tensor::storage_sym<3>>;
+		using T3x3s3 = Tensor::tensori<float, Tensor::storage_vec<3>, Tensor::storage_sym<3>>;
 		auto f = [](int i, int j, int k) -> float { return 4*i - j*j - k*k; };
 		auto t = T3x3s3(f);
 		verifyAccessRank3<decltype(t)>(t, f);
@@ -764,7 +764,7 @@ void test_TensorRank3() {
 #if 0
 	//vector-of-antisymmetric
 	{
-		using T3x3a3 = Tensor::_tensori<float, Tensor::storage_vec<3>, Tensor::storage_asym<3>>;
+		using T3x3a3 = Tensor::tensori<float, Tensor::storage_vec<3>, Tensor::storage_asym<3>>;
 		auto f = [](int i, int j, int k) -> float { return sign(k-j)*(j+k+4*i); };
 		auto t = T3x3a3(f);
 		verifyAccessRank3<decltype(t) const>(t, f);
@@ -774,7 +774,7 @@ void test_TensorRank3() {
 	
 	// symmetric-of-vector
 	{
-		using T3s3x3 = Tensor::_tensori<float, Tensor::storage_sym<3>, Tensor::storage_vec<3>>;
+		using T3s3x3 = Tensor::tensori<float, Tensor::storage_sym<3>, Tensor::storage_vec<3>>;
 		auto f = [](int i, int j, int k) -> float { return 4*k - i*i - j*j; };
 		auto t = T3s3x3(f);
 		verifyAccessRank3<decltype(t)>(t, f);
@@ -784,7 +784,7 @@ void test_TensorRank3() {
 #if 0	// TODO
 	// antisymmetric-of-vector
 	{
-		using T3a3x3 = Tensor::_tensori<float, Tensor::storage_asym<3>, Tensor::storage_vec<3>>;
+		using T3a3x3 = Tensor::tensori<float, Tensor::storage_asym<3>, Tensor::storage_vec<3>>;
 		auto f = [](int i, int j, int k) -> float { return 4*k - i*i + j*j; };
 		auto t = T3a3x3(f);
 		verifyAccessRank3<decltype(t)>(t, f);

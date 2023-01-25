@@ -76,7 +76,7 @@ void test_Identity() {
 	}
 	
 	// TODO should this be ident? or maybe TensorRank4?  or maybe a separate test for correct operator results?
-	using float3z3 = Tensor::_tensori<float, Tensor::storage_zero<3>, Tensor::storage_zero<3>>;
+	using float3z3 = Tensor::tensori<float, Tensor::storage_zero<3>, Tensor::storage_zero<3>>;
 
 	// zero + zero = zero
 	{
@@ -122,28 +122,28 @@ void test_Identity() {
 	// ident-ident + ident-ident = ident-ident
 	{
 		using namespace Tensor;
-		auto a = _tensori<float, storage_ident<3>, storage_ident<3>>();
-		auto b = _tensori<float, storage_ident<3>, storage_ident<3>>();
+		auto a = tensori<float, storage_ident<3>, storage_ident<3>>();
+		auto b = tensori<float, storage_ident<3>, storage_ident<3>>();
 		auto c = a + b;
-		static_assert(std::is_same_v<decltype(c), _tensori<float, storage_ident<3>, storage_ident<3>>>);
+		static_assert(std::is_same_v<decltype(c), tensori<float, storage_ident<3>, storage_ident<3>>>);
 	}
 	
 	// ident-ident + ident-sym = ident-sym
 	{
 		using namespace Tensor;
-		auto a = _tensori<float, storage_ident<3>, storage_ident<3>>();
-		auto b = _tensori<float, storage_ident<3>, storage_sym<3>>();
+		auto a = tensori<float, storage_ident<3>, storage_ident<3>>();
+		auto b = tensori<float, storage_ident<3>, storage_sym<3>>();
 		auto c = a + b;
-		static_assert(std::is_same_v<decltype(c), _tensori<float, storage_ident<3>, storage_sym<3>>>);
+		static_assert(std::is_same_v<decltype(c), tensori<float, storage_ident<3>, storage_sym<3>>>);
 	}
 	
 	// ident-ident + ident-asym = ident-mat
 	{
 		using namespace Tensor;
-		auto a = _tensori<float, storage_ident<3>, storage_ident<3>>();
-		auto b = _tensori<float, storage_ident<3>, storage_asym<3>>();
+		auto a = tensori<float, storage_ident<3>, storage_ident<3>>();
+		auto b = tensori<float, storage_ident<3>, storage_asym<3>>();
 		auto c = a + b;
-		static_assert(std::is_same_v<decltype(c), _tensori<float, storage_ident<3>, storage_vec<3>, storage_vec<3>>>);
+		static_assert(std::is_same_v<decltype(c), tensori<float, storage_ident<3>, storage_vec<3>, storage_vec<3>>>);
 	}
 
 	{

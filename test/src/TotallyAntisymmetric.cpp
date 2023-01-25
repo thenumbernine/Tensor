@@ -4,7 +4,7 @@ void test_TotallyAntisymmetric() {
 	using float3a3a3 = Tensor::float3a3a3;
 	static_assert(sizeof(float3a3a3) == sizeof(float));
 	
-	using float3x3x3 = Tensor::_tensorr<float, 3, 3>;
+	using float3x3x3 = Tensor::tensorr<float, 3, 3>;
 	
 	{
 		auto L = float3a3a3();
@@ -161,7 +161,7 @@ void test_TotallyAntisymmetric() {
 		STATIC_ASSERT_EQ(sizeof(gkd2_4), sizeof(float));
 		auto gkd2_4_index = (L2(i,j) * L2(k,l)).assign(i,j,k,l);
 		TEST_EQ(
-			(Tensor::_tensorr<float,2,4>(gkd2_4)),
+			(Tensor::tensorr<float,2,4>(gkd2_4)),
 			gkd2_4_index
 		);
 		auto gkd2_2 = gkd2_4.trace<0,2>();
@@ -179,13 +179,13 @@ void test_TotallyAntisymmetric() {
 		Tensor::Index<'n'> n;
 		auto L3 = float3a3a3(1);	// Levi-Civita tensor
 		STATIC_ASSERT_EQ(sizeof(L3), sizeof(float));
-		ECHO((Tensor::_tensorr<float,3,3>)L3);	// looks correct
+		ECHO((Tensor::tensorr<float,3,3>)L3);	// looks correct
 		// ε^ijk ε_lmn = δ^[ijk]_[lmn] = 6! δ^[i_l δ^j_m δ^k]_n
 		// this is zero:
 		auto gkd3_6 = L3.outer(L3);
 		auto gkd3_6_expand_then_outer = L3.expand().outer(L3.expand());
 		STATIC_ASSERT_EQ(sizeof(gkd3_6), sizeof(float));
-		ECHO((Tensor::_tensorr<float,3,6>)gkd3_6);
+		ECHO((Tensor::tensorr<float,3,6>)gkd3_6);
 		// this is correct:
 		auto gkd3_6_index = (L3(i,j,k) * L3(l,m,n)).assign(i,j,k,l,m,n);
 		//works
@@ -195,12 +195,12 @@ void test_TotallyAntisymmetric() {
 		);
 		//works... 
 		TEST_EQ(
-			(Tensor::_tensorr<float, 3, 6>(gkd3_6)),
+			(Tensor::tensorr<float, 3, 6>(gkd3_6)),
 			gkd3_6_index
 		);
 		// ε^ijk ε_lmk = δ^ijk_lmk = δ^ij_lm
 		auto gkd3_4 = gkd3_6.trace<0, 3>();
-		static_assert(std::is_same_v<decltype(gkd3_4), Tensor::_tensorx<float, -'a', 3, -'a', 3>>);
+		static_assert(std::is_same_v<decltype(gkd3_4), Tensor::tensorx<float, -'a', 3, -'a', 3>>);
 		STATIC_ASSERT_EQ(sizeof(gkd3_4), 3 * 3 * sizeof(float));
 		// ε^ijk ε_ljk = δ^ijk_ljk = 2 δ^i_l
 		auto gkd3_2 = gkd3_4.trace<0,2>();

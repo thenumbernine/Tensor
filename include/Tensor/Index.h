@@ -378,7 +378,7 @@ struct IndexAccess {
 	// based on InputTensorType as well:
 	using Scalar = typename InputTensorType::Scalar;
 
-	// TODO if instead of picking out dims then rebuilding _tensor with them,
+	// TODO if instead of picking out dims then rebuilding tensor with them,
 	//  if instead you remove dims one-by-one from the source type (and add a transpose-type template for preserving symmetry and antisymmetric)
 	//  then maybe this could be optimized
 	using OutputTensorType = tensorScalarSeq<Scalar, dimseq>;
@@ -387,7 +387,7 @@ struct IndexAccess {
 	static constexpr int rank = Details::rank;
 	
 	// TODO "intOutputN" vs "intInputN = InputTensorType::intN"
-	using intN = _vec<int, rank>;
+	using intN = vec<int, rank>;
 
 
 	// if it's + - etc then lazy-eval
@@ -597,7 +597,7 @@ struct TensorTensorExpr##name {\
 	static constexpr auto rank = A::rank;\
 	using AssignIndexTuple = typename A::AssignIndexTuple;\
 	using dimseq = typename A::dimseq;\
-	using intN = _vec<int,rank>;\
+	using intN = vec<int,rank>;\
 	using Scalar = decltype(typename A::Scalar() op typename B::Scalar());\
 	TENSOR_EXPR_ADD_ASSIGNR()\
 	\
@@ -656,7 +656,7 @@ struct TensorMulExpr {
 	using Scalar = decltype(typename A::Scalar() * typename B::Scalar());
 	using OutputTensorType = tensorScalarSeq<Scalar, dimseq>;
 	static constexpr int rank = Details::rank;
-	using intN = _vec<int, rank>;
+	using intN = vec<int, rank>;
 	
 	TENSOR_EXPR_ADD_ASSIGNR()
 
@@ -718,7 +718,7 @@ struct TensorScalarExpr {
 	static constexpr auto rank = T::rank;
 	using AssignIndexTuple = typename T::AssignIndexTuple;
 	using dimseq = typename T::dimseq;
-	using intN = _vec<int,rank>;
+	using intN = vec<int,rank>;
 	using Scalar = typename T::Scalar; // TODO which Scalar to use?
 	TENSOR_EXPR_ADD_ASSIGNR()
 
@@ -743,7 +743,7 @@ struct ScalarTensorExpr {
 	static constexpr auto rank = T::rank;
 	using AssignIndexTuple = typename T::AssignIndexTuple;
 	using dimseq = typename T::dimseq;
-	using intN = _vec<int, rank>;
+	using intN = vec<int, rank>;
 	using Scalar = typename T::Scalar; // TODO which Scalar to use?
 	TENSOR_EXPR_ADD_ASSIGNR()
 	
@@ -785,7 +785,7 @@ struct UnaryTensorExpr {
 	static constexpr auto rank = T::rank;
 	using AssignIndexTuple = typename T::AssignIndexTuple;
 	using dimseq = typename T::dimseq;
-	using intN = _vec<int, rank>;
+	using intN = vec<int, rank>;
 	using Scalar = typename T::Scalar;
 	TENSOR_EXPR_ADD_ASSIGNR()
 	

@@ -5,76 +5,76 @@
 #include <cmath>
 
 // TODO any vec& member return types, like operator+=, will have to be overloaded
-//  and it looks like I can't crtp the operator+= members due to _vec having unions?
+//  and it looks like I can't crtp the operator+= members due to vec having unions?
 
 namespace Tensor {
 
 template<typename Inner_>
-struct _quat;
+struct quat;
 
 template<typename T> struct is_quat : public std::false_type {};
-template<typename T> struct is_quat<_quat<T>> : public std::true_type {};
+template<typename T> struct is_quat<quat<T>> : public std::true_type {};
 template<typename T> constexpr bool is_quat_v = is_quat<T>::value;
 
 template<typename T>
-_quat<T> operator*(_quat<T> a, _quat<T> b);
+quat<T> operator*(quat<T> a, quat<T> b);
 
 template<typename Inner_>
-struct _quat : public _vec4<Inner_> {
-	using Super = _vec4<Inner_>;
+struct quat : public vec4<Inner_> {
+	using Super = vec4<Inner_>;
 	// TODO disable the is_tensor_v flag for quaternion so tensor-mul doesn't try indexing into it, so that a matrix-of-quats times a matrix-of-quats produces a matrix-of-quats (and not a rank-5 object)
-	//TENSOR_THIS(_quat)
-	using This = _quat;
+	//TENSOR_THIS(quat)
+	using This = quat;
 	//static constexpr bool isTensorFlag = true;
 	static constexpr bool isTensorFlag = false;
 	static constexpr bool dontUseFieldsOStream = true;
 	
 	TENSOR_SET_INNER_LOCALDIM_LOCALRANK(Inner_, 4, 1)
-	TENSOR_TEMPLATE_T(_quat)
-	TENSOR_HEADER_VECTOR_SPECIFIC() // defines localCount=localDim, matching for _vec and _quat
+	TENSOR_TEMPLATE_T(quat)
+	TENSOR_HEADER_VECTOR_SPECIFIC() // defines localCount=localDim, matching for vec and quat
 	TENSOR_HEADER()
 	
-	using vec3 = _vec3<Inner>;
+	using vec3 = ::Tensor::vec3<Inner>;
 
 // ok here's a dilemma ... 
 // default ident quat would be useful for rotations
 // but for sums-of-quats, and consistency of equating quats with reals, it is useful to default this to zero
-//	constexpr _quat() : Super(0,0,0,1) {}
-	constexpr _quat() : Super(0,0,0,0) {}
+//	constexpr quat() : Super(0,0,0,1) {}
+	constexpr quat() : Super(0,0,0,0) {}
 	
 	// mathematically, a real is equivalent to a quaternion with only the real component defined ...
-	constexpr _quat(Inner const & w) : Super(0,0,0,w) {}
+	constexpr quat(Inner const & w) : Super(0,0,0,w) {}
 	
-	constexpr _quat(Inner const & x, Inner const & y, Inner const & z, Inner const & w) : Super(x,y,z,w) {}
+	constexpr quat(Inner const & x, Inner const & y, Inner const & z, Inner const & w) : Super(x,y,z,w) {}
 
 	//TENSOR_ADD_OPS parts:
 	// ok I don't just want any tensor constructor ...
-	//TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(_quat)
+	//TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(quat)
 	// for 3-component vectors I want to initialize s[0] to 0 and fill the rest
 	// for 4-component vectors I want to copy all across
 	template<typename T>
 	requires (is_tensor_v<T> && T::rank == 1 && T::template dim<0> == 3)
-	_quat(T const & t) : Super(t(0), t(1), t(2), 0) {}
+	quat(T const & t) : Super(t(0), t(1), t(2), 0) {}
 	template<typename T>
 	requires ((is_tensor_v<T> && T::rank == 1 && T::template dim<0> == 4) || (is_quat_v<T>))
-	_quat(T const & t) : Super(t(0), t(1), t(2), t(3)) {}
+	quat(T const & t) : Super(t(0), t(1), t(2), t(3)) {}
 
-	TENSOR_ADD_LAMBDA_CTOR(_quat)
+	TENSOR_ADD_LAMBDA_CTOR(quat)
 	TENSOR_ADD_ITERATOR()
 	
 	//conjugate 
 	// same as inverse if the quat is unit length
-	_quat conjugate() const {
-		return _quat(-this->x, -this->y, -this->z, this->w);
+	quat conjugate() const {
+		return quat(-this->x, -this->y, -this->z, this->w);
 	}
 
 	//inverse
-	_quat inverse() const {
+	quat inverse() const {
 		return conjugate() / this->lenSq();
 	}
 
 	//angle-axis, where angle is in radians
-	_quat fromAngleAxis() const {
+	quat fromAngleAxis() const {
 		Inner const c = cos(this->w / 2);
 		Inner const n = sqrt(this->x * this->x + this->y * this->y + this->z * this->z);
 		Inner const sn = sin(this->w / 2) / n;
@@ -83,15 +83,15 @@ struct _quat : public _vec4<Inner_> {
 
 	static Inner angleAxisEpsilon;
 
-	_quat toAngleAxis() const {
+	quat toAngleAxis() const {
 		Inner const cosHalfAngle = clamp(this->w, (Inner)-1, (Inner)1);
 		Inner const halfAngle = acos(cosHalfAngle);
 		Inner const scale = sin(halfAngle);
-		if (std::abs(scale) <= angleAxisEpsilon) return _quat(0,0,1,0);
+		if (std::abs(scale) <= angleAxisEpsilon) return quat(0,0,1,0);
 		return {this->x / scale, this->y / scale, this->z / scale, 2 * halfAngle};
 	}
 
-	static _quat mul(_quat const &q, _quat const &r) {
+	static quat mul(quat const &q, quat const &r) {
 		Inner const a = (q.w + q.x) * (r.w + r.x);
 		Inner const b = (q.z - q.y) * (r.y - r.z);
 		Inner const c = (q.x - q.w) * (r.y + r.z);
@@ -110,7 +110,7 @@ struct _quat : public _vec4<Inner_> {
 	}
 
 	vec3 rotate(vec3 const & v) const {
-		return (*this * _quat(v) * conjugate()).template subset<3>();
+		return (*this * quat(v) * conjugate()).template subset<3>();
 	}
 
 	vec3 xAxis() const {
@@ -137,47 +137,47 @@ struct _quat : public _vec4<Inner_> {
 		};
 	}
 
-	_quat & operator*=(_quat const & o) {
+	quat & operator*=(quat const & o) {
 		*this = *this * o;
 		return *this;
 	}
 	
-	_quat operator-() const {
-		return _quat(Super::operator-());
+	quat operator-() const {
+		return quat(Super::operator-());
 	}
 };
 
 template<typename T>
-T _quat<T>::angleAxisEpsilon = (T)1e-4;
+T quat<T>::angleAxisEpsilon = (T)1e-4;
 
 // TODO more math operators, correctly implementing quaternion math (ex: scalar mul, quat inv)
 template<typename T>
-_quat<T> operator*(_quat<T> a, _quat<T> b) {
-	return _quat<T>::mul(a,b);
+quat<T> operator*(quat<T> a, quat<T> b) {
+	return quat<T>::mul(a,b);
 }
 
 //Q operator*(Q const & a, Q const & b) { return Q(operator*((Q::Super)a,(Q::Super)b)); }
-template<typename A, typename B> decltype(auto) operator+(_quat<A> const & a, _quat<B> const & b) { using S = decltype(A() + B()); return _quat<S>(typename _quat<A>::Super(a) + typename _quat<B>::Super(b)); }
-template<typename A, typename B> decltype(auto) operator-(_quat<A> const & a, _quat<B> const & b) { using S = decltype(A() - B()); return _quat<S>(typename _quat<A>::Super(a) - typename _quat<B>::Super(b)); }
-template<typename A, typename B> decltype(auto) operator/(_quat<A> const & a, _quat<B> const & b) { using S = decltype(A() / B()); return _quat<S>(typename _quat<A>::Super(a) / typename _quat<B>::Super(b)); }
-template<typename A, typename B> decltype(auto) operator+(_quat<A> const & a, B const & b) { using S = decltype(A() + B()); return _quat<S>(typename _quat<A>::Super(a) + b); }
-template<typename A, typename B> decltype(auto) operator-(_quat<A> const & a, B const & b) { using S = decltype(A() - B()); return _quat<S>(typename _quat<A>::Super(a) - b); }
-template<typename A, typename B> decltype(auto) operator*(_quat<A> const & a, B const & b) { using S = decltype(A() * B()); return _quat<S>(typename _quat<A>::Super(a) * b); }
-template<typename A, typename B> decltype(auto) operator/(_quat<A> const & a, B const & b) { using S = decltype(A() / B()); return _quat<S>(typename _quat<A>::Super(a) / b); }
-template<typename A, typename B> decltype(auto) operator+(A const & a, _quat<B> const & b) { using S = decltype(A() + B()); return _quat<S>(a + typename _quat<B>::Super(b)); }
-template<typename A, typename B> decltype(auto) operator-(A const & a, _quat<B> const & b) { using S = decltype(A() - B()); return _quat<S>(a - typename _quat<B>::Super(b)); }
-template<typename A, typename B> decltype(auto) operator*(A const & a, _quat<B> const & b) { using S = decltype(A() * B()); return _quat<S>(a * typename _quat<B>::Super(b)); }
-template<typename A, typename B> decltype(auto) operator/(A const & a, _quat<B> const & b) { using S = decltype(A() / B()); return _quat<S>(a / typename _quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator+(quat<A> const & a, quat<B> const & b) { using S = decltype(A() + B()); return quat<S>(typename quat<A>::Super(a) + typename quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator-(quat<A> const & a, quat<B> const & b) { using S = decltype(A() - B()); return quat<S>(typename quat<A>::Super(a) - typename quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator/(quat<A> const & a, quat<B> const & b) { using S = decltype(A() / B()); return quat<S>(typename quat<A>::Super(a) / typename quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator+(quat<A> const & a, B const & b) { using S = decltype(A() + B()); return quat<S>(typename quat<A>::Super(a) + b); }
+template<typename A, typename B> decltype(auto) operator-(quat<A> const & a, B const & b) { using S = decltype(A() - B()); return quat<S>(typename quat<A>::Super(a) - b); }
+template<typename A, typename B> decltype(auto) operator*(quat<A> const & a, B const & b) { using S = decltype(A() * B()); return quat<S>(typename quat<A>::Super(a) * b); }
+template<typename A, typename B> decltype(auto) operator/(quat<A> const & a, B const & b) { using S = decltype(A() / B()); return quat<S>(typename quat<A>::Super(a) / b); }
+template<typename A, typename B> decltype(auto) operator+(A const & a, quat<B> const & b) { using S = decltype(A() + B()); return quat<S>(a + typename quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator-(A const & a, quat<B> const & b) { using S = decltype(A() - B()); return quat<S>(a - typename quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator*(A const & a, quat<B> const & b) { using S = decltype(A() * B()); return quat<S>(a * typename quat<B>::Super(b)); }
+template<typename A, typename B> decltype(auto) operator/(A const & a, quat<B> const & b) { using S = decltype(A() / B()); return quat<S>(a / typename quat<B>::Super(b)); }
 
 template<typename T>
-_quat<T> normalize(_quat<T> const & q) {
+quat<T> normalize(quat<T> const & q) {
 	T len = q.length();
-	if (len <= _quat<T>::angleAxisEpsilon) return _quat<T>();
-	return (_quat<T>)(q / len);
+	if (len <= quat<T>::angleAxisEpsilon) return quat<T>();
+	return (quat<T>)(q / len);
 }
 
 template<typename T>
-std::ostream & operator<<(std::ostream & o, _quat<T> const & q) {
+std::ostream & operator<<(std::ostream & o, quat<T> const & q) {
 	char const * seporig = "";
 	char const * sep = seporig;
 	for (int i = 0; i < 4; ++i) {
@@ -201,8 +201,8 @@ std::ostream & operator<<(std::ostream & o, _quat<T> const & q) {
 
 
 
-using quati = _quat<int>;	// I don't judge
-using quatf = _quat<float>;
-using quatd = _quat<double>;
+using quati = quat<int>;	// I don't judge
+using quatf = quat<float>;
+using quatd = quat<double>;
 
 }

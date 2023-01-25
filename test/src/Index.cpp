@@ -170,7 +170,7 @@ void test_Index() {
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
 		Tensor::Index<'k'> k;
-		Tensor::_tensor<double, 3, 3, 3> s;
+		Tensor::tensor<double, 3, 3, 3> s;
 		s(0,1,0) = 1;
 		ECHO(s);
 		s(i,j,k) = s(j,k,i);	//s(0,0,1) = s(0,1,0)
@@ -232,14 +232,14 @@ void test_Index() {
 #if 0	// ASSERT_FAILURE  compile fail because a(j,i) rank doesn't match assign(i,j,k) rank 
 		{
 			Tensor::float3x3 a;
-			Tensor::_tensor<float,3,3,3> d;
+			Tensor::tensor<float,3,3,3> d;
 			d = a(j,i).assign(i,j,k);
 		}
 #endif	
 #if 0	// ASSERT_FAILURE  compile fail because assign(i,j) rank doesn't match d(i,j,k) rank 
 		{
 			Tensor::float3x3 a;
-			Tensor::_tensor<float,3,3,3> d;
+			Tensor::tensor<float,3,3,3> d;
 			d = a(j,i).assign(i,j);
 		}
 #endif	
@@ -345,16 +345,16 @@ void test_Index() {
 		// make sure inter-index permutations work
 		// since right now tensor+tensor operator just uses the lhs
 		{
-			Tensor::_tensor<float,2,3,4> a;
+			Tensor::tensor<float,2,3,4> a;
 
-/* d_ijk = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(i,j,k)), Tensor::_tensor<float,2,3,4>>);
-/* d_ikj = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(i,k,j)), Tensor::_tensor<float,2,4,3>>);
-/* d_jik = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(j,i,k)), Tensor::_tensor<float,3,2,4>>);
-/* d_jki = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(j,k,i)), Tensor::_tensor<float,3,4,2>>);
-/* d_kij = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(k,i,j)), Tensor::_tensor<float,4,2,3>>);
-/* d_kji = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(k,j,i)), Tensor::_tensor<float,4,3,2>>);
+/* d_ijk = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(i,j,k)), Tensor::tensor<float,2,3,4>>);
+/* d_ikj = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(i,k,j)), Tensor::tensor<float,2,4,3>>);
+/* d_jik = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(j,i,k)), Tensor::tensor<float,3,2,4>>);
+/* d_jki = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(j,k,i)), Tensor::tensor<float,3,4,2>>);
+/* d_kij = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(k,i,j)), Tensor::tensor<float,4,2,3>>);
+/* d_kji = a_ijk */static_assert(std::is_same_v<decltype(a(i,j,k).assign(k,j,i)), Tensor::tensor<float,4,3,2>>);
 
-			Tensor::_tensor<float,4,2,3> b;
+			Tensor::tensor<float,4,2,3> b;
 			// d_ijk = a_ijk + b_kij
 			// so d's dims are a's dims ...
 			//  and works only if 
@@ -362,14 +362,14 @@ void test_Index() {
 			//   b's 2nd dim matches a's 1st dim
 			//   b's 3nd dim matches a's 2st dim
 			auto ab1 = (a(i,j,k) + b(k,i,j)).assign(i,j,k);
-			static_assert(std::is_same_v<decltype(ab1), Tensor::_tensor<float,2,3,4>>);
+			static_assert(std::is_same_v<decltype(ab1), Tensor::tensor<float,2,3,4>>);
 			
 			auto ab2 = (a(i,j,k) + b(k,i,j)).assign(k,i,j);
-			static_assert(std::is_same_v<decltype(ab2), Tensor::_tensor<float,4,2,3>>);
+			static_assert(std::is_same_v<decltype(ab2), Tensor::tensor<float,4,2,3>>);
 
-			Tensor::_tensor<float,4,3,2> c;
+			Tensor::tensor<float,4,3,2> c;
 			auto abc = (a(i,j,k) + b(k,i,j) + c(k,j,i)).assign(j,i,k);
-			static_assert(std::is_same_v<decltype(abc), Tensor::_tensor<float,3,2,4>>);
+			static_assert(std::is_same_v<decltype(abc), Tensor::tensor<float,3,2,4>>);
 		}
 	}
 	{
@@ -400,14 +400,14 @@ void test_Index() {
 	{
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
-		auto a = Tensor::_tensorr<float, 3, 3>();
+		auto a = Tensor::tensorr<float, 3, 3>();
 		auto b = a(i,i,j).assignR<Tensor::float3>(j);
 		static_assert(std::is_same_v<decltype(b), Tensor::float3>);
 	}
 	{
 		Tensor::Index<'i'> i;
 		Tensor::Index<'j'> j;
-		auto a = Tensor::_tensorr<float, 3, 3>();
+		auto a = Tensor::tensorr<float, 3, 3>();
 		auto b = a(i,i,j).assign(j);
 		static_assert(std::is_same_v<decltype(b), Tensor::float3>);
 	}
@@ -438,7 +438,7 @@ void test_Index() {
 		Tensor::Index<'j'> j;
 		Tensor::Index<'k'> k;
 		Tensor::float3s3 a;
-		Tensor::_tensorx<float, 3, -'s', 3> b;
+		Tensor::tensorx<float, 3, -'s', 3> b;
 		auto d = (a(i,j) * b(j,k,k)).assignI();
 		static_assert(std::is_same_v<decltype(d), Tensor::float3>);
 	}
@@ -515,13 +515,13 @@ void test_Index() {
 #if 0	// assign, naive storage
 			return ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2).assign(i,j,k);
 #elif 1	// assign with specific storage
-			return ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2).template assignR<_tensorx<double, 4, -'s', 4>>(i,j,k);
+			return ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2).template assignR<tensorx<double, 4, -'s', 4>>(i,j,k);
 #elif 0	// assign to an already-defined variable
-			auto connl = _tensorx<double, 4, -'s', 4>();
+			auto connl = tensorx<double, 4, -'s', 4>();
 			connl(i,j,k) = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2);
 			return connl;
 #elif 0
-			auto connl = _tensorx<double, 4, 4, 4>();
+			auto connl = tensorx<double, 4, 4, 4>();
 			connl(i,j,k) = ((dg(k,i,j) + dg(j,i,k) - dg(i,j,k)) / 2);
 			return connl;
 #elif 0	// assign using the inferred free indexes
