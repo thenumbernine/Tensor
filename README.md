@@ -563,7 +563,7 @@ Quaternion Members and Methods:
 - `_quat normalize(_quat)` = returns a normalized version of this quaternion.
 
 ## Dependencies:
-This project depends on the "Common" project, for Exception, template metaprograms, etc.
+This project depends on my "[Common](https://github.com/thenumbernine/Common)" project, for Exception, template metaprograms, etc.
 
 ## Literature Reference
 
