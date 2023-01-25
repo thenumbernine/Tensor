@@ -565,7 +565,7 @@ Quaternion Members and Methods:
 ## Dependencies:
 This project depends on my "[Common](https://github.com/thenumbernine/Common)" project, for Exception, template metaprograms, etc.
 
-## Literature Reference
+## Literature Reference:
 
 Any code lifted from a stackexchange or anywhere else will have an accompanying comment of where it came from.
 
@@ -575,7 +575,8 @@ Likewise these notes' math references can be found here: [https://thenumbernine.
 
 Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.net/Presentations/FTensor.pdf](https://wlandry.net/Presentations/FTensor.pdf).
 
-TODO:
+## TODO:
+
 - make a permuteIndexes() function, have this "ExpandIndex<>" on all its passed indexes, then have it run across the permute indexes.
 	- mind you that for transposes then you can respect symmetry and you don't need to expand those indexes.
 	- make transpose a specialization of permuteIndexes()
