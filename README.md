@@ -251,7 +251,7 @@ Sorry GLSL, Cg wins this round:
 - - `-'a', dim` = use a rank-2 antisymmetric-tensor of dimension `dim`.
 - - `-'S', dim, rank` = use a rank-`rank` totally-symmetric-tensor of dimension `dim`.
 - - `-'A', dim, rank` = use a rank-`rank` totally-antisymmetric-tensor of dimension `dim`.
-	Ex: `tensorx<float, -'i', 3, -'A', 4, 4>` produces $T\_{ijklm} = t \cdot \delta\_{ij} \cdot \epsilon\_{klm}$.
+	Ex: `tensorx<float, -'i', 3, -'A', 4, 4>` produces $T\_{ijklmn} = t \cdot \delta\_{ij} \cdot \epsilon\_{klmn}$.
 - `tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
 	`I1 I2` etc are one of the following storage types:
 - - `storage_vec<dim>` for a single index of dimension `dim`,
