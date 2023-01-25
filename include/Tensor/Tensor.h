@@ -6,3 +6,4 @@
 
 #include "Tensor/Vector.h"	
 #include "Tensor/Quat.h"	
+#include "Tensor/Matrix.h"

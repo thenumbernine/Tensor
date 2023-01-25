@@ -475,6 +475,29 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	- rank-2 -> rank-2:
 	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
 
+### Familiar OpenGL Functions
+
+Each of these will return a 4x4 matrix of its respective scalar type.
+
+- `translate<T>(_vec<T,3> t)` = returns a translation matrix.
+	Based on `glTranslate`.
+- `scale<T>(_vec<T,3> s)` = returns a scale matrix.
+	Based on `glScale`.
+- `rotate<T>(T angle, _vec<T,3> axis)` = returns a rotation matrix.
+	Based on `glRotate`.
+	`angle` is in radians, another break from OpenGL.
+- `lookAt<T>(_vec<T,3> eye, _vec<T,3> center, _vec<T,3> up)` = returns a view matrix at `eye` looking at `center` with the up direction `up`.
+	Based on `gluLookAt`.
+- `frustum<T>(T left, T right, T bottom, T top, T near, T far)` = returns a frustum perspective matrix.
+	Based on `glFrustum`.
+- `perspective<T>(T fovY, T aspectRatio, T near, T far)` = returns a frustum perspective with the specified field-of-view and aspect-ratio.
+	Based on `gluPerspective`.
+	`fovY` is in radians.
+- `ortho<T>(T left, T right, T bottom, T top, T near, T far)` = returns an ortho perspective matrix.
+	Based on `glOrtho`.
+- `ortho2D<T>(T left, T right, T bottom, T top)` = returns an ortho perspective matrix with default unit Z range.
+	Based on `gluOrtho2D`.
+
 ### Support Functions
 - `expand()` = convert the tensor to its expanded storage.  The type will be the same as `::ExpandAllIndexes<>`.
 
