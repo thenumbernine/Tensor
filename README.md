@@ -20,6 +20,7 @@ Luckily the default tensor `*` operator is a outer+contraction, aka matrix-multi
 This version has added a lot of C++20 tricks.
 So I guess overall this library is midway between a mathematician's and a programmer's and a physicist's implementation.
 
+- All headers and templates.  No source files to be compiled.  Don't get anxious over seeing those custom build scripts, this library is strictly headers, you can just copy and paste the files wherever you want.
 - Familiar vector and types and functions for 2D 3D 4D, with support for arbitrary-dimension, arbitrary-rank.
 - Lots of compile time and template driven stuff.
 - C++20
