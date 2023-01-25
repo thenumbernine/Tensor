@@ -459,9 +459,15 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	$$makeSym(a)\_I = a\_{(i\_1 ... i\_ n)} $$
 - `makeAsym(a)` = Create an antisymmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.  If the input is a tensor with any symmetric indexes then the result will be a zero-tensor.
 	$$makeAsym(a)\_I = a\_{[i\_1 ... i\_ n]} $$
-- `wedge(a,b)` = The wedge product of tensors 'a' and 'b'.
+- `wedge(a,b)` = The wedge product of tensors 'a' and 'b'.  Notice that this antisymmetrizes the input tensors.
 	$$wedge(a,b)\_I = (a \wedge b)\_I = Alt (a \otimes b)\_I = a\_{[i\_1 ... i\_p} b\_{i\_{p+1} ... i\_{p+q}]}$$
-- `hodgeDual(a), dual(a)` = The Hodge-Dual of rank-k tensor 'a'.  This only operates on 'square' tensors.  If you really want to produce the dual of a scalar, just use `_asymR<>(s)`.  Also it does not apply metrics.  It will assume your input tensor is in $\sharp$ valence, and produce a tensor in $\flat$ valence.  It also will assume a unit weight of the Levi-Civita permutation tensor, so if you happen to prefer your L.C. tensors to have weight $\sqrt{|g|}$ then you will have to multiply by this yourself. 
+- `hodgeDual(a), dual(a)` = The Hodge-Dual of rank-k tensor 'a'.
+	This only operates on 'square' tensors.
+	If you really want to produce the dual of a scalar, just use `_asymR<>(s)`.
+	Also it does not apply metrics.
+	It will assume your input tensor is in $\sharp$ valence, and produce a tensor in $\flat$ valence.
+	It also will assume a unit weight of the Levi-Civita permutation tensor, so if you happen to prefer your L.C. tensors to have weight $\sqrt{|g|}$ then you will have to multiply by this yourself.
+	Notice that this antisymmetrizes the input tensor.
 	$$hodgeDual(a)\_I = (\star a)_I = \frac{1}{k!} a^J \epsilon\_{JI}$$
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
 	- rank-N -> rank-(N+1), N>=1:
