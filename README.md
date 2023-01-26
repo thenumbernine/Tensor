@@ -644,7 +644,7 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 - more tensor types:  maybe diagonalized rank-2 with N-DOF, where each diagonal element has a unique value.
 
 - any way to optimize symmetries between non-neighboring dimensions?
-	- like $t\_{ijkl} = a\_{ij} b\_{kl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
+	- like $t\_{ijkl} = a\_{ik} b\_{jl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
  
 - somehow for differing-typed tensors get operator== constexpr
 - might do some constexpr loop unrolling stuff maybe.
