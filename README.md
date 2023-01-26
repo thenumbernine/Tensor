@@ -633,7 +633,7 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 - should I even keep separate member functions for .dot() etc?
 - `__complex__` support.  Especially in norms.
 
-- InnerForIndex doesn't really get the inner, it gets the index, where index = corresponds with This, so call it something like "TypeForIndex"
+- InnerForIndex doesn't really get the inner, it gets the index, where index = 0 corresponds with This, so call it something like "TypeForIndex"
 - call 'Nested' something else like 'Next', and 'numNestings' to 'numNext' ... since 'nested-class' is a term that could be mistaken with member-classes.
 - or call 'Inner" "Next" or something?
 
