@@ -640,6 +640,8 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 - ReplaceDim and ReplaceLocalDim that take a int pack and insert that many new dimensions into that index' location.
 
 - To make `ident` true to name, maybe make `ident` default initialize its value to 1? Not sure...
+	Maybe the best here would be rename `ident` to something like `kronecher` or `uniformDiagonal` or something, then make `ident` the name of a variable/function/subclass that returns this with a default initialized value of `1`.
+	Same with `zero` and 0?  Or is `zero` detection by type too useful?
 
 - more tensor types:  maybe diagonalized rank-2 with N-DOF, where each diagonal element has a unique value.
 
@@ -677,3 +679,10 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 - C++23 has derived-this return-types, so no more need to crtp everything (RangeIterator and its classes in RangeObj, ReadIterator, WriteIterator)
 
 - Note to self (and anyone else listening), while GitHub MarkDown handles `_`'s correctly within `` ` ``'s , it fails within MathJax `$`'s and `$$`'s which means you have to escape all your `_`'s within your MathJax as `\_`.
+
+- valence-check wrapper? `Tensor::valence<TensorType, 'u', 'u', 'd', 'd'>`, then `static_assert` that the `TensorType` rank matches the # of valence symbols.  
+	- Make it just a thin wrapper of all other tensor operations, except with added `static_assert` checking during index summation.
+	- maybe extra symbol for multi-basis? `valence<T, '1u', '1d', '2u', '2d'>`?
+
+- `tensorWedge<int p,int q>(a,b)` function which outers the p-most of a and q-most of b, while antisymmetrizing the last rank(a)-p of a and rank(b)-q of b.
+	https://en.wikipedia.org/wiki/Vector-valued_differential_form#Wedge_product.
