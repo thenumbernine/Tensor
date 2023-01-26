@@ -477,7 +477,7 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 		For 3D this is equal to `dot(cross(m.x, m.y), m.z)`, i.e. `asymR<T,3,3>(1) * m.x * m.y * m.z`.
 	- rank-2 -> rank-0:
 	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
-- `inverse(m)` = Matrix inverse, for rank-2 tensors.
+- `inverse(m[, det])` = Matrix inverse, for rank-2 tensors.  If `det` is not provided then it is calculated as `determinant(m)`.
 	- rank-2 -> rank-2:
 	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
 
