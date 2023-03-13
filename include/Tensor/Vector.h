@@ -3002,26 +3002,18 @@ struct tuple_element<i, T> {
 namespace Tensor {
 
 template<std::size_t i, typename T>
-auto&& TensorGetHelper(T && t) {
+decltype(auto) TensorGetHelper(T && t) {
 	static_assert(i < T::localDim, "index out of bounds for Tensor");
 	return std::forward<T>(t)[i];
 }
 
 template<std::size_t Index, typename T>
 requires Tensor::is_tensor_v<T>
-auto&& get(T& p) { return TensorGetHelper<Index, T>(p); }
+decltype(auto) get(T & p) { return TensorGetHelper<Index, T>(p); }
 
 template<std::size_t Index, typename T>
 requires Tensor::is_tensor_v<T>
-auto&& get(T const& p) { return TensorGetHelper<Index, T>(p); }
-
-template<std::size_t Index, typename T>
-requires Tensor::is_tensor_v<T>
-auto&& get(T&& p) { return TensorGetHelper<Index, T>(std::move(p)); }
-
-template<std::size_t Index, typename T>
-requires Tensor::is_tensor_v<T>
-auto&& get(T const&& p) { return TensorGetHelper<Index, T>(move(p)); }
+decltype(auto) get(T && p) { return TensorGetHelper<Index, T>(std::move(p)); }
 
 }
 
