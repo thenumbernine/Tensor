@@ -13,6 +13,16 @@
 
 namespace Tensor {
 
+template<int rank>
+inline intN<rank> stepForSize(intN<rank> const size) {
+	intN<rank> step;
+	step[0] = 1;
+	for (int i = 1; i < rank; ++i) {
+		step[i] = step[i-1] * size[i-1];
+	}
+	return step;
+}
+
 //rank is templated, but dim is not as it varies per-rank
 //so this is dynamically-sized tensor
 template<typename Type_, int rank_>
@@ -30,36 +40,50 @@ struct Grid {
 	//step[0] = 1, step[1] = size[0], step[j] = product(i=1,j-1) size[i]
 	intN step;
 
-	Grid(intN const & size_ = intN(), Type* v_ = {})
+	Grid() {
+		// TODO but in my ptr ctor I say v cannot be null ... ?
+	}
+	
+	Grid(intN const & size_)
 	:	size(size_),
-		v(v_)
+		v(new Type[size.product()]()),
+		own(true),
+		step(stepForSize(size_))
+	{}
+
+	// shallow copy by default ... when passed a pointer ...
+	// ... is this a bad idea?
+	Grid(intN const & size_, Type * v_)
+	:	size(size_),
+		v(v_),
+		own(false),
+		step(stepForSize(size_))
 	{
-		if (!v) {
-			v = new Type[size.product()]();
-			own = true;
-		}
-		step(0) = 1;
-		for (int i = 1; i < rank; ++i) {
-			step(i) = step(i-1) * size(i-1);
-		}
+		if (!v) throw Common::Exception() << "v cannot be null.  use the (intN) constructor.";
 	}
 
 	Grid(intN const & size_, std::function<Type(intN)> f)
-	:	size(size_)
+	:	size(size_),
+		v(new Type[size_.product()]()),
+		own(true),
+		step(stepForSize(size_))
 	{
-		v = new Type[size.product()]();
-		own = true;
-		
-		step(0) = 1;
-		for (int i = 1; i < rank; ++i) {
-			step(i) = step(i-1) * size(i-1);
-		}
-	
 		for (auto i : range()) {
 			(*this)(i) = f(i);
 		}
 	}
 
+	// deep copy
+	Grid(Grid const & src) 
+	:	size(src.size),
+		v(new Type[src.size.product()]()),
+		own(true),
+		step(stepForSize(src.size))
+	{
+		for (auto i : range()) {
+			(*this)(i) = src(i);
+		}
+	}
 
 	~Grid() {
 		if (own) {
