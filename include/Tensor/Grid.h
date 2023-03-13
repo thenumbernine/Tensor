@@ -35,7 +35,7 @@ struct Grid {
 		v(v_)
 	{
 		if (!v) {
-			v = new Type[size.volume()]();
+			v = new Type[size.product()]();
 			own = true;
 		}
 		step(0) = 1;
@@ -47,7 +47,7 @@ struct Grid {
 	Grid(intN const & size_, std::function<Type(intN)> f)
 	:	size(size_)
 	{
-		v = new Type[size.volume()]();
+		v = new Type[size.product()]();
 		own = true;
 		
 		step(0) = 1;
@@ -117,7 +117,7 @@ struct Grid {
 		}
 #endif
 		int flat_deref = deref.dot(step);
-		assert(flat_deref >= 0 && flat_deref < size.volume());
+		assert(flat_deref >= 0 && flat_deref < size.product());
 		return v[flat_deref];
 	}
 	Type const &getValue(intN const &deref) const { 
@@ -129,16 +129,16 @@ struct Grid {
 		}
 #endif
 		int flat_deref = deref.dot(step);
-		assert(flat_deref >= 0 && flat_deref < size.volume());
+		assert(flat_deref >= 0 && flat_deref < size.product());
 		return v[flat_deref];
 	}
 
 	using iterator = Type*;
 	using const_iterator = Type const*;
 	Type *begin() { return v; }
-	Type *end() { return v + size.volume(); }
+	Type *end() { return v + size.product(); }
 	Type const *begin() const { return v; }
-	Type const *end() const { return v + size.volume(); }
+	Type const *end() const { return v + size.product(); }
 
 	RangeObj<rank> range() const {
 		return RangeObj<rank>(intN(), size);
@@ -161,7 +161,7 @@ struct Grid {
 		Type* oldV = v;
 		
 		size = newSize;
-		v = new Type[newSize.volume()];
+		v = new Type[newSize.product()];
 		step(0) = 1;
 		for (int i = 1; i < rank; ++i) {
 			step(i) = step(i-1) * size(i-1);
@@ -187,7 +187,7 @@ struct Grid {
 
 		Type* srcv = src.v;
 		Type* dstv = v;
-		for (int i = size.volume()-1; i >= 0; --i) {
+		for (int i = size.product()-1; i >= 0; --i) {
 			*(dstv++) = *(srcv++);
 		}
 		return *this;

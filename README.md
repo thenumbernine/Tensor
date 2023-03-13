@@ -484,7 +484,9 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
 
 ### Support Functions
-- `expand()` = convert the tensor to its expanded storage.  The type will be the same as `::ExpandAllIndexes<>`.
+- `.expand()` = convert the tensor to its expanded storage.  The type will be the same as `::ExpandAllIndexes<>`.
+
+- `.sum(), .product()` = sum or product all elements.  Currently this only operators on stored elements, not on *all* elements, so you will have to `.expand()` first if you want to, say, sum all antisymmetric matrix elements.
 
 ### Tensor properties:
 - `::This` = The current type.  Maybe not useful outside the class definition, but pretty useful within it when defining inner classes.

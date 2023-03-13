@@ -1325,13 +1325,20 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 		return *(vec<Inner,subdim>*)(&s[offset]);\
 	}
 
-// vector.volume() == the volume of a size reprensted by the vector
-// assumes Inner operator* exists
-// TODO name this 'product' since 'volume' is ambiguous cuz it could alos mean product-of-dims
-#define TENSOR_ADD_VOLUME()\
-	Inner volume() const {\
+// vector.product() == the product of all components = the volume of a size reprensted by the vector
+// TODO this only sums storage, not all expanded indexes.
+//  I'm only using it internally for vectors .product to get the volume of a size vector
+// assumes Inner operator* and operator+ exists
+#define TENSOR_ADD_COMBINE_OPS()\
+	Inner product() const {\
 		return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> Inner {\
 			return ((s[k]) * ... * (s[localCount-1]));\
+		}(std::make_index_sequence<localCount-1>{});\
+	}\
+\
+	Inner sum() const {\
+		return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> Inner {\
+			return ((s[k]) + ... + (s[localCount-1]));\
 		}(std::make_index_sequence<localCount-1>{});\
 	}
 
@@ -1371,7 +1378,7 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	TENSOR_ADD_RANK1_CALL_INDEX_AUX() /* operator(int, int...), operator[] */\
 	TENSOR_ADD_INT_VEC_CALL_INDEX() /* operator(intN) */\
 	TENSOR_ADD_SUBSET_ACCESS()\
-	TENSOR_ADD_VOLUME()\
+	TENSOR_ADD_COMBINE_OPS()\
 	TENSOR_VECTOR_ADD_SUM_RESULT()
 
 // default
