@@ -603,16 +603,16 @@ Scalar = NestedPtrTuple's last
 		return !operator==(b);\
 	}
 
-#define TENSOR_ADD_UNM()\
-	constexpr This operator-() const {\
+#define TENSOR_ADD_UNARY(op)\
+	constexpr This operator op() const {\
 		This result;\
 			/* sequences */\
 		/*return [&]<size_t ... k>(std::index_sequence<k...>) constexpr -> This {\
-			return ((result.s[k] = -s[k]), ..., result);\
+			return ((result.s[k] = op s[k]), ..., result);\
 		}(std::make_index_sequence<localCount>{});*/\
 			/* for-loops */\
 		for (int k = 0; k < localCount; ++k) {\
-			result.s[k] = -s[k];\
+			result.s[k] = op s[k];\
 		}\
 		return result;\
 	}
@@ -1240,11 +1240,24 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	TENSOR_ADD_VECTOR_OP_EQ(-=)\
 	TENSOR_ADD_VECTOR_OP_EQ(*=)\
 	TENSOR_ADD_VECTOR_OP_EQ(/=)\
+	TENSOR_ADD_VECTOR_OP_EQ(<<=)\
+	TENSOR_ADD_VECTOR_OP_EQ(>>=)\
+	TENSOR_ADD_VECTOR_OP_EQ(&=)\
+	TENSOR_ADD_VECTOR_OP_EQ(|=)\
+	TENSOR_ADD_VECTOR_OP_EQ(^=)\
+	TENSOR_ADD_VECTOR_OP_EQ(%=)\
 	TENSOR_ADD_SCALAR_OP_EQ(+=)\
 	TENSOR_ADD_SCALAR_OP_EQ(-=)\
 	TENSOR_ADD_SCALAR_OP_EQ(*=)\
 	TENSOR_ADD_SCALAR_OP_EQ(/=)\
-	TENSOR_ADD_UNM()\
+	TENSOR_ADD_SCALAR_OP_EQ(<<=)\
+	TENSOR_ADD_SCALAR_OP_EQ(>>=)\
+	TENSOR_ADD_SCALAR_OP_EQ(&=)\
+	TENSOR_ADD_SCALAR_OP_EQ(|=)\
+	TENSOR_ADD_SCALAR_OP_EQ(^=)\
+	TENSOR_ADD_SCALAR_OP_EQ(%=)\
+	TENSOR_ADD_UNARY(-)\
+	TENSOR_ADD_UNARY(~)\
 	TENSOR_ADD_CMP_OP()\
 	TENSOR_ADD_MATH_MEMBER_FUNCS()\
 	TENSOR_ADD_INDEX_NOTATION_CALL()
@@ -2857,6 +2870,33 @@ TENSOR_TENSOR_OP(+)
 TENSOR_TENSOR_OP(-)
 TENSOR_TENSOR_OP(/)
 
+
+// integral operators
+
+// TODO should I is_integral<ScalarType> on these:
+// regardless the compiler will error on that case for me
+
+TENSOR_TENSOR_OP(<<)
+TENSOR_TENSOR_OP(>>)
+TENSOR_TENSOR_OP(&)
+TENSOR_TENSOR_OP(|)
+TENSOR_TENSOR_OP(^)
+TENSOR_TENSOR_OP(%)
+// I'm too lazy to decide, SUM_OP or MUL_OP ?
+TENSOR_SCALAR_MUL_OP(<<)
+TENSOR_SCALAR_MUL_OP(>>)
+TENSOR_SCALAR_MUL_OP(&)
+TENSOR_SCALAR_MUL_OP(|)
+TENSOR_SCALAR_MUL_OP(^)
+TENSOR_SCALAR_MUL_OP(%)
+//TENSOR_UNARY_OP(~)
+// should I add these?  or should I add a boolean cast?  and would the two interfere? 
+//TENSOR_UNARY_OP(!)
+//TENSOR_TENSOR_OP(&&)
+//TENSOR_TENSOR_OP(||)
+//TENSOR_TERNARY_OP(?:) ... ?
+
+
 // specific typed vectors
 
 #define TENSOR_ADD_VECTOR_NICKCNAME_TYPE_DIM(nick, ctype, dim1)\
@@ -3002,18 +3042,18 @@ struct tuple_element<i, T> {
 namespace Tensor {
 
 template<std::size_t i, typename T>
-decltype(auto) TensorGetHelper(T && t) {
+requires Tensor::is_tensor_v<T>
+decltype(auto) get(T & p) {
 	static_assert(i < T::localDim, "index out of bounds for Tensor");
-	return std::forward<T>(t)[i];
+	return p[i];
 }
 
-template<std::size_t Index, typename T>
+template<std::size_t i, typename T>
 requires Tensor::is_tensor_v<T>
-decltype(auto) get(T & p) { return TensorGetHelper<Index, T>(p); }
-
-template<std::size_t Index, typename T>
-requires Tensor::is_tensor_v<T>
-decltype(auto) get(T && p) { return TensorGetHelper<Index, T>(std::move(p)); }
+decltype(auto) get(T && p) {
+	static_assert(i < T::localDim, "index out of bounds for Tensor");
+	return std::forward<T>(p)[i];
+}
 
 }
 

@@ -280,6 +280,8 @@ Sorry GLSL, Cg wins this round:
 		- `vec * mat` as row-multplication.
 		- `mat * vec` as column-multiplication
 		- `mat * mat` as matrix-multiplication.
+- `operator << >> & | ^ %` perform per-element, tensor/scalar, scalar/tensor operations on integral types.
+- `operator - ~` unary operators.
 
 ### Constructors:
 - `()` = initialize elements to {}, aka 0 for numeric types.
@@ -665,7 +667,9 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 
 - `operator[]` that takes a single intN?  or is that just redundant at this point?
 
-- More tensor operators?  For integral Scalar types?  `<< >> & | ^ ~ && || ! % ?:`.  For tensors and index-notation.
+- Use requires to enforce integral types on integral operators.
+
+- More tensor operators?  For integral Scalar types?  `~ && || ! ?:`.  For tensors and index-notation.
 
 - assign dimension size and offset to Index
 
@@ -686,3 +690,5 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 
 - `tensorWedge<int p,int q>(a,b)` function which outers the p-most of a and q-most of b, while antisymmetrizing the last rank(a)-p of a and rank(b)-q of b.
 	https://en.wikipedia.org/wiki/Vector-valued_differential_form#Wedge_product.
+
+- I think my structure binding doesn't work for const rhs's.  MAKE TESTS FOR THIS.  follow https://en.cppreference.com/w/cpp/language/structured_binding .
