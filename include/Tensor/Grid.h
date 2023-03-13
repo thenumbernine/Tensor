@@ -30,10 +30,9 @@ struct Grid {
 	//step[0] = 1, step[1] = size[0], step[j] = product(i=1,j-1) size[i]
 	intN step;
 
-	Grid(intN const &size_ = intN(), Type* v_ = {})
+	Grid(intN const & size_ = intN(), Type* v_ = {})
 	:	size(size_),
-		v(v_),
-		own(false)
+		v(v_)
 	{
 		if (!v) {
 			v = new Type[size.volume()]();
@@ -44,6 +43,23 @@ struct Grid {
 			step(i) = step(i-1) * size(i-1);
 		}
 	}
+
+	Grid(intN const & size_, std::function<Type(intN)> f)
+	:	size(size_)
+	{
+		v = new Type[size.volume()]();
+		own = true;
+		
+		step(0) = 1;
+		for (int i = 1; i < rank; ++i) {
+			step(i) = step(i-1) * size(i-1);
+		}
+	
+		for (auto i : range()) {
+			(*this)(i) = f(i);
+		}
+	}
+
 
 	~Grid() {
 		if (own) {
