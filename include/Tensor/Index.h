@@ -564,12 +564,15 @@ DONE minus
 DONE negate
 DONE multiplies (except tensor/tensor)
 DONE divides
-TODO (should the rest be integral types?)
-modulus
-bit_and
-bit_or
-bit_not
-bit_xor
+
+half-baked done, needs better integral testing or something idk:
+DONE modulus
+DONE bit_and
+DONE bit_or
+DONE bit_not
+DONE bit_xor
+
+TODO boolean conditionals? 
 equal_to
 not_equal_to
 greater
@@ -630,6 +633,14 @@ TENSOR_TENSOR_EXPR_OP(Add,+)
 TENSOR_TENSOR_EXPR_OP(Sub,-)
 TENSOR_TENSOR_EXPR_OP(Div,/)
 
+// integral
+// I'm leaving them out for now because operator<< pipes ...
+//TENSOR_TENSOR_EXPR_OP(ShiftLeft,<<)
+//TENSOR_TENSOR_EXPR_OP(ShiftRight,>>)
+TENSOR_TENSOR_EXPR_OP(BitAnd,&)
+TENSOR_TENSOR_EXPR_OP(BitOr,|)
+TENSOR_TENSOR_EXPR_OP(BitXor,^)
+TENSOR_TENSOR_EXPR_OP(Modulus,%)
 
 // tensor * tensor
 // this is going to cache a temp result since otherwise there risks deferred expressions to expand too many ops
@@ -775,6 +786,18 @@ TENSOR_SCALAR_EXPR_OP(-, std::minus)
 TENSOR_SCALAR_EXPR_OP(*, std::multiplies)
 TENSOR_SCALAR_EXPR_OP(/, std::divides)
 
+// integral ...
+// why are these missing from https://en.cppreference.com/w/cpp/utility/functional ?
+// I'm leaving them out for now because operator<< pipes ...
+//template<typename T> struct shiftleft { T operator()(T const & lhs, T const & rhs) const { return lhs << rhs; } };
+//template<typename T> struct shiftright { T operator()(T const & lhs, T const & rhs) const { return lhs >> rhs; } };
+//TENSOR_SCALAR_EXPR_OP(<<, shiftleft)
+//TENSOR_SCALAR_EXPR_OP(>>, shiftright)
+TENSOR_SCALAR_EXPR_OP(&, std::bit_and)
+TENSOR_SCALAR_EXPR_OP(|, std::bit_or)
+TENSOR_SCALAR_EXPR_OP(^, std::bit_xor)
+TENSOR_SCALAR_EXPR_OP(%, std::modulus)
+
 // unary
 
 template<typename T, template<typename> typename op>
@@ -798,10 +821,15 @@ struct UnaryTensorExpr {
 		return op<Scalar>()(t.template read<DstIndexTuple, DstDimSeq>(i));
 	}
 };
-template<typename T>
-requires is_IndexExpr_v<T>
-decltype(auto) operator-(T const & t) {
-	return UnaryTensorExpr<T, std::negate>(t);
+
+#define TENSOR_UNARY_EXPR_OP(op, optype)\
+template<typename T>\
+requires is_IndexExpr_v<T>\
+decltype(auto) operator op(T const & t) {\
+	return UnaryTensorExpr<T, optype>(t);\
 }
+
+TENSOR_UNARY_EXPR_OP(-, std::negate)
+TENSOR_UNARY_EXPR_OP(~, std::bit_not)
 
 }

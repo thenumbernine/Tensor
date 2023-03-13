@@ -280,7 +280,7 @@ Sorry GLSL, Cg wins this round:
 		- `vec * mat` as row-multplication.
 		- `mat * vec` as column-multiplication
 		- `mat * mat` as matrix-multiplication.
-- `operator << >> & | ^ %` perform per-element, tensor/scalar, scalar/tensor operations on integral types.
+- `operator & | ^ %` perform per-element, tensor/scalar, scalar/tensor operations on integral types.
 - `operator - ~` unary operators.
 
 ### Constructors:
@@ -669,7 +669,9 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 
 - Use requires to enforce integral types on integral operators.
 
-- More tensor operators?  For integral Scalar types?  `~ && || ! ?:`.  For tensors and index-notation.
+- operator << and >> ... have to be unraveled from the pipe ostream operator (special exceptions to exclude those in the require() or something? otherwise the compiler gets confused which << it is using...)
+
+- Bitwise tensor operators?  `~ && || ! ?:`.
 
 - assign dimension size and offset to Index
 

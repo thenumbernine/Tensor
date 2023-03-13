@@ -1240,8 +1240,8 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	TENSOR_ADD_VECTOR_OP_EQ(-=)\
 	TENSOR_ADD_VECTOR_OP_EQ(*=)\
 	TENSOR_ADD_VECTOR_OP_EQ(/=)\
-	TENSOR_ADD_VECTOR_OP_EQ(<<=)\
-	TENSOR_ADD_VECTOR_OP_EQ(>>=)\
+	/*TENSOR_ADD_VECTOR_OP_EQ(<<=)*/\
+	/*TENSOR_ADD_VECTOR_OP_EQ(>>=)*/\
 	TENSOR_ADD_VECTOR_OP_EQ(&=)\
 	TENSOR_ADD_VECTOR_OP_EQ(|=)\
 	TENSOR_ADD_VECTOR_OP_EQ(^=)\
@@ -1250,8 +1250,8 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	TENSOR_ADD_SCALAR_OP_EQ(-=)\
 	TENSOR_ADD_SCALAR_OP_EQ(*=)\
 	TENSOR_ADD_SCALAR_OP_EQ(/=)\
-	TENSOR_ADD_SCALAR_OP_EQ(<<=)\
-	TENSOR_ADD_SCALAR_OP_EQ(>>=)\
+	/*TENSOR_ADD_SCALAR_OP_EQ(<<=)*/\
+	/*TENSOR_ADD_SCALAR_OP_EQ(>>=)*/\
 	TENSOR_ADD_SCALAR_OP_EQ(&=)\
 	TENSOR_ADD_SCALAR_OP_EQ(|=)\
 	TENSOR_ADD_SCALAR_OP_EQ(^=)\
@@ -2876,15 +2876,15 @@ TENSOR_TENSOR_OP(/)
 // TODO should I is_integral<ScalarType> on these:
 // regardless the compiler will error on that case for me
 
-TENSOR_TENSOR_OP(<<)
-TENSOR_TENSOR_OP(>>)
+//TENSOR_TENSOR_OP(<<)
+//TENSOR_TENSOR_OP(>>)
 TENSOR_TENSOR_OP(&)
 TENSOR_TENSOR_OP(|)
 TENSOR_TENSOR_OP(^)
 TENSOR_TENSOR_OP(%)
 // I'm too lazy to decide, SUM_OP or MUL_OP ?
-TENSOR_SCALAR_MUL_OP(<<)
-TENSOR_SCALAR_MUL_OP(>>)
+//TENSOR_SCALAR_MUL_OP(<<)
+//TENSOR_SCALAR_MUL_OP(>>)
 TENSOR_SCALAR_MUL_OP(&)
 TENSOR_SCALAR_MUL_OP(|)
 TENSOR_SCALAR_MUL_OP(^)
