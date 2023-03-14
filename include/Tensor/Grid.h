@@ -35,7 +35,7 @@ struct Grid {
 	intN size;
 	Type * v = {};
 	bool own = {};	//or just use a shared_ptr to v?
-	
+
 	//cached for quick access by dot with index vector
 	//step[0] = 1, step[1] = size[0], step[j] = product(i=1,j-1) size[i]
 	intN step;
@@ -43,7 +43,28 @@ struct Grid {
 	Grid() {
 		// TODO but in my ptr ctor I say v cannot be null ... ?
 	}
-	
+
+	// deep copy
+	Grid(Grid const & src)
+	:	size(src.size),
+		v(new Type[src.size.product()]()),
+		own(true),
+		step(stepForSize(src.size))
+	{
+		for (auto i : range()) {
+			(*this)(i) = src(i);
+		}
+	}
+
+	Grid(Grid && src)
+	:	size(src.size),
+		v(src.v),
+		own(true),
+		step(stepForSize(src.size))
+	{
+		src.own = false;	// don't free
+	}
+
 	Grid(intN const & size_)
 	:	size(size_),
 		v(new Type[size.product()]()),
@@ -70,18 +91,6 @@ struct Grid {
 	{
 		for (auto i : range()) {
 			(*this)(i) = f(i);
-		}
-	}
-
-	// deep copy
-	Grid(Grid const & src) 
-	:	size(src.size),
-		v(new Type[src.size.product()]()),
-		own(true),
-		step(stepForSize(src.size))
-	{
-		for (auto i : range()) {
-			(*this)(i) = src(i);
 		}
 	}
 
@@ -132,7 +141,7 @@ struct Grid {
 	Type const &operator()(intN const &deref) const { return getValue(deref); }
 
 	//but other folks (currently only our initialization of our indexes) will want the whole value
-	Type &getValue(intN const &deref) { 
+	Type &getValue(intN const &deref) {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
@@ -144,7 +153,7 @@ struct Grid {
 		assert(flat_deref >= 0 && flat_deref < size.product());
 		return v[flat_deref];
 	}
-	Type const &getValue(intN const &deref) const { 
+	Type const &getValue(intN const &deref) const {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
@@ -168,8 +177,8 @@ struct Grid {
 		return RangeObj<rank>(intN(), size);
 	}
 
-	//dereference by vararg ints 
-	
+	//dereference by vararg ints
+
 	template<typename... Rest>
 	void resize(int first, Rest... rest) {
 		resize(BuildDeref<0, int, Rest...>::exec(first, rest...));
@@ -179,11 +188,11 @@ struct Grid {
 
 	void resize(intN const& newSize) {
 		if (size == newSize) return;
-		
+
 		intN oldSize = size;
 		intN oldStep = step;
 		Type* oldV = v;
-		
+
 		size = newSize;
 		v = new Type[newSize.product()];
 		step(0) = 1;
@@ -196,7 +205,7 @@ struct Grid {
 			minSize(i) = size(i) < oldSize(i) ? size(i) : oldSize(i);
 		}
 
-		RangeObj<rank> range(intN(), minSize);		
+		RangeObj<rank> range(intN(), minSize);
 		for (typename RangeObj<rank>::iterator iter = range.begin(); iter != range.end(); ++iter) {
 			intN index = *iter;
 			int oldOffset = oldStep.dot(index);
@@ -206,7 +215,7 @@ struct Grid {
 		delete[] oldV;
 	}
 
-	Grid& operator=(Grid& src) {
+	Grid & operator=(Grid const & src) {
 		resize(src.size);
 
 		Type* srcv = src.v;
@@ -214,6 +223,17 @@ struct Grid {
 		for (int i = size.product()-1; i >= 0; --i) {
 			*(dstv++) = *(srcv++);
 		}
+		return *this;
+	}
+
+	Grid & operator=(Grid && src) {
+		if (own) {
+			delete[] v;
+		}
+		v = src.v;
+		own = src.own;
+		size = src.size;
+		step = src.step;
 		return *this;
 	}
 };
