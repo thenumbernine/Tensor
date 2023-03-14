@@ -125,23 +125,23 @@ struct Grid {
 	};
 
 	template<typename... Rest>
-	Type &operator()(int first, Rest... rest) {
+	Type & operator()(int first, Rest... rest) {
 		return getValue(BuildDeref<0, int, Rest...>::exec(first, rest...));
 	}
 
 	template<typename... Rest>
-	Type const &operator()(int first, Rest... rest) const {
+	Type const & operator()(int first, Rest... rest) const {
 		return getValue(BuildDeref<0, int, Rest...>::exec(first, rest...));
 	}
 
 	//dereference by a vector of ints
 
 	//typical access will be only for the Type's sake
-	Type &operator()(intN const &deref) { return getValue(deref); }
-	Type const &operator()(intN const &deref) const { return getValue(deref); }
+	Type & operator()(intN const & deref) { return getValue(deref); }
+	Type const & operator()(intN const & deref) const { return getValue(deref); }
 
 	//but other folks (currently only our initialization of our indexes) will want the whole value
-	Type &getValue(intN const &deref) {
+	Type & getValue(intN const & deref) {
 #ifdef DEBUG
 		for (int i = 0; i < rank; ++i) {
 			if (deref(i) < 0 || deref(i) >= size(i)) {
@@ -235,6 +235,13 @@ struct Grid {
 		size = src.size;
 		step = src.step;
 		return *this;
+	}
+
+	template<typename Return>
+	decltype(auto) map(std::function<Return(Type)> f) const {
+		return Grid<Return, rank>(size, [&](intN i) -> Return {
+			return f((*this)(i));
+		});
 	}
 };
 
