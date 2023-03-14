@@ -62,6 +62,7 @@ struct Grid {
 		own(true),
 		step(stepForSize(src.size))
 	{
+		src.v = nullptr;
 		src.own = false;	// don't free
 	}
 
@@ -234,6 +235,8 @@ struct Grid {
 		own = src.own;
 		size = src.size;
 		step = src.step;
+		src.v = nullptr;
+		src.own = false;
 		return *this;
 	}
 
