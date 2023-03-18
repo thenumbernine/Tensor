@@ -454,4 +454,57 @@ static_assert(sizeof(Tensor::float3a3a3) == sizeof(float));
 		float3 b = a;
 		TEST_EQ(b, float3(1,2,0));
 	}
+	
+	//tie semantics / structure binding
+	// https://en.cppreference.com/w/cpp/language/structured_binding
+	{
+		using namespace Tensor;
+		float3 a = {1,2,3};
+		{
+/*
+using this single declration for all types works for const and & ... but gives bad values:
+
+template<std::size_t i, typename T>
+requires Tensor::is_tensor_v<std::decay_t<T>>
+decltype(auto) get(T p) {
+	static_assert(i < T::localDim, "index out of bounds for Tensor");
+	return p[i];
+}
+
+terminate called after throwing an instance of 'Common::Exception'
+  what():  src/Vector.cpp:465: ax == 1 :: 7.00649e-45 == 1 FAILED!
+
+*/
+			auto [ax,ay,az] = a;
+			TEST_EQ(ax, 1);
+			TEST_EQ(ay, 2);
+			TEST_EQ(az, 3);
+		}
+		{
+			auto & [ax,ay,az] = a;
+			TEST_EQ(ax, 1);
+			TEST_EQ(ay, 2);
+			TEST_EQ(az, 3);
+		}
+		{
+			auto && [ax,ay,az] = a;
+			TEST_EQ(ax, 1);
+			TEST_EQ(ay, 2);
+			TEST_EQ(az, 3);
+		}
+#if 0	
+		{
+			auto const [ax,ay,az] = a;
+			TEST_EQ(ax, 1);
+			TEST_EQ(ay, 2);
+			TEST_EQ(az, 3);
+		}
+		{
+			auto const & [ax,ay,az] = a;
+			TEST_EQ(ax, 1);
+			TEST_EQ(ay, 2);
+			TEST_EQ(az, 3);
+		}
+#endif	
+	}
 }

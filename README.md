@@ -693,4 +693,4 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 - `tensorWedge<int p,int q>(a,b)` function which outers the p-most of a and q-most of b, while antisymmetrizing the last rank(a)-p of a and rank(b)-q of b.
 	https://en.wikipedia.org/wiki/Vector-valued_differential_form#Wedge_product.
 
-- I think my structure binding doesn't work for const rhs's.  MAKE TESTS FOR THIS.  follow https://en.cppreference.com/w/cpp/language/structured_binding .
+- structure binding doesn't work for const lhs's.  I can get them to compile with const lhs, but the result then comes out wrong.
