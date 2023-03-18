@@ -502,6 +502,7 @@ void test_Index() {
 		static_assert(is_same_v<decltype(g), double4s4>);
 		ECHO(g(0,0));
 		ECHO(g);
+		ECHO(g(i,j));	// does << work?
 		auto gux = [&](auto x) { return gx(x).inverse(); };
 		auto gu = gux(x);
 		static_assert(is_same_v<decltype(gu), double4s4>);

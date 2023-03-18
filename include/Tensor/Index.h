@@ -635,8 +635,8 @@ TENSOR_TENSOR_EXPR_OP(Div,/)
 
 // integral
 // I'm leaving them out for now because operator<< pipes ...
-//TENSOR_TENSOR_EXPR_OP(ShiftLeft,<<)
-//TENSOR_TENSOR_EXPR_OP(ShiftRight,>>)
+TENSOR_TENSOR_EXPR_OP(ShiftLeft,<<)
+TENSOR_TENSOR_EXPR_OP(ShiftRight,>>)
 TENSOR_TENSOR_EXPR_OP(BitAnd,&)
 TENSOR_TENSOR_EXPR_OP(BitOr,|)
 TENSOR_TENSOR_EXPR_OP(BitXor,^)
@@ -787,12 +787,11 @@ TENSOR_SCALAR_EXPR_OP(*, std::multiplies)
 TENSOR_SCALAR_EXPR_OP(/, std::divides)
 
 // integral ...
-// why are these missing from https://en.cppreference.com/w/cpp/utility/functional ?
-// I'm leaving them out for now because operator<< pipes ...
-//template<typename T> struct shiftleft { T operator()(T const & lhs, T const & rhs) const { return lhs << rhs; } };
-//template<typename T> struct shiftright { T operator()(T const & lhs, T const & rhs) const { return lhs >> rhs; } };
-//TENSOR_SCALAR_EXPR_OP(<<, shiftleft)
-//TENSOR_SCALAR_EXPR_OP(>>, shiftright)
+// why are << and >> missing from https://en.cppreference.com/w/cpp/utility/functional ?
+template<typename T> struct shiftleft { T operator()(T const & lhs, T const & rhs) const { return lhs << rhs; } };
+template<typename T> struct shiftright { T operator()(T const & lhs, T const & rhs) const { return lhs >> rhs; } };
+TENSOR_SCALAR_EXPR_OP(<<, shiftleft)
+TENSOR_SCALAR_EXPR_OP(>>, shiftright)
 TENSOR_SCALAR_EXPR_OP(&, std::bit_and)
 TENSOR_SCALAR_EXPR_OP(|, std::bit_or)
 TENSOR_SCALAR_EXPR_OP(^, std::bit_xor)

@@ -671,8 +671,6 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 
 - Use requires to enforce integral types on integral operators.
 
-- For index-notation, operator << and >> have to be unraveled from the pipe ostream operator (special exceptions to exclude those in the require() or something? otherwise the compiler gets confused which << it is using...)
-
 - Boolean tensor operators?  `&& || ! ?:`.
 
 - assign dimension size and offset to Index
