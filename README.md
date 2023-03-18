@@ -28,7 +28,7 @@ So I guess overall this library is midway between a mathematician's and a progra
 - Compressed storage for identity, symmetric, and antisymmetric tensor indexes.  For example, a 3x3 symmetric matrix takes 6 floats.  A 3x3 antisymmetric matrix takes 3 floats.  The 2x2, 3x3x3, 4x4x4x4 etc rank-N dim-N Levi-Civita permutation tensors take up 1 float.
 
 
-## Examples
+## Examples:
 
 Example of Einstein index summation notation / Ricci calculus. $a\_{ij} := \frac{1}{2} (a\_{ij} + a\_{ji}), c\_i := {b\_{ij}}^j, d\_i := a\_{ij} {b^{jk}}\_k$
 ```c++
@@ -197,7 +197,7 @@ Tensor/tensor operator result storage optimizations:
 - `asym` + `asym` = `asym`
 - `asym` + `matrix` = `matrix`
 
-### Totally-symmetric tensors:
+### Totally-Symmetric Tensors:
 `symR<type, dim, rank>` = totally-symmetric tensor.
 - rank-N
 The size of a totally-symmetric tensor storage is
@@ -206,7 +206,7 @@ which is $ \begin{pmatrix} d + r - 1 \\ r \end{pmatrix} $
 
 Tensor/tensor operator result storage works the same as `sym`:
 
-### Totally-antisymmetric tensors:
+### Totally-Antisymmetric Tensors:
 `asymR<type, dim, rank>` = totally-antisymmetric tensor.
 - rank-N
 The size of a totally-antisymmetric tensor storage is
@@ -217,7 +217,7 @@ Feel free to initialize this as the value 1 for Cartesian geometry or the value 
 
 Tensor/tensor operator result storage works the same as `asym`:
 
-### Familiar Types
+### Familiar Types:
 
 Sorry GLSL, Cg wins this round:
 - `floatN<N>` = N-dimensional float vector.
@@ -240,7 +240,7 @@ Sorry GLSL, Cg wins this round:
 - `sym2<T>, sym3<T>, sym4<T>` = templated fixed-size symmetric matrices.
 - `asym2<T>, asym3<T>, asym4<T>` = templated fixed-size antisymmetric matrices.
 
-### Tensor creation:
+### Tensor Creation:
 - `tensor<type, dim1, ..., dimN>` = construct a rank-N tensor, equivalent to nested `vec< ... , dim>`.
 - `tensorr<type, dim, rank>` = construct a tensor of rank-`rank` with all dimensions `dim`.
 - `tensorx<type, description...>` = construct a tensor using the following arguments to describe its indexes storage optimization:
@@ -266,7 +266,7 @@ Sorry GLSL, Cg wins this round:
 - `tensorScalarTuple<Scalar, StorageTuple>` = same as `tensori` except the storage arguments are passed in a tuple.
 - `tensorScalarSeq<Scalar, integer_sequence>` = same as `tensor` except the dimensions are passed as a sequence.
 
-### Tensor Operators
+### Tensor Operators:
 - `operator += -= /=` = In-place per-element operations.
 - `operator == !=` = Tensor comparison.  So long as the rank and dimensions match then this should evaluate successfully.
 - `operator + - /` = Scalar/tensor, tensor/scalar, per-element tensor/tensor operations.
@@ -280,7 +280,7 @@ Sorry GLSL, Cg wins this round:
 		- `vec * mat` as row-multplication.
 		- `mat * vec` as column-multiplication
 		- `mat * mat` as matrix-multiplication.
-- `operator & | ^ %` perform per-element, tensor/scalar, scalar/tensor operations on integral types.
+- `operator << >> & | ^ %` perform per-element, tensor/scalar, scalar/tensor operations on integral types.
 - `operator - ~` unary operators.
 
 ### Constructors:
@@ -293,7 +293,7 @@ Sorry GLSL, Cg wins this round:
 - `(function<Scalar(intN i)>)` = initialize with a lambda, same as above except the index is stored as an int-vector in `i`.
 - `(tensor t)` = initialize from another tensor.  Truncate dimensions.  Uninitialized elements are set to {}.
 
-### Overloaded Subscript / Array Access
+### Overloaded Subscript / Array Access:
 Array access, be it by `()`, `[]`, by integer sequence or by int-vectors, is equivalent to accessing the respective elements of the tensor.
 - `(int i1, ...)` = dereference based on a list of ints.  In the case of `tensori` or `tensorr`, i.e. `vec<vec<vec<...>>>` storage, this means $a\_{ij}$ in math = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
@@ -335,7 +335,7 @@ auto [r,theta,phi] = x;
 
 Of course with structure-binding comes implementations of `std::tuple_size`, `std::tuple_element`, and `Tensor::get` working with tensors.
 
-### Iterating
+### Iterating:
 - `.begin() / .end() / .cbegin() / .cend()` = read-iterators, for iterating over indexes (including duplicate elements in symmetric matrices).
 - `.write().begin(), ...` = write-iterators, for iterating over the stored elements (excluding duplicates for symmetric indexes).
 - read-iterators have `.index` as the int-vector of the index into the tensor.
@@ -363,7 +363,7 @@ for (auto i = w.begin(); i != w.end(); ++i) {
 }
 ```
 
-### Swizzling
+### Swizzling:
 Swizzling is only available for expanded storage, i.e. `vec` and compositions of `vec` (like `mat`), i.e. it is not available for `sym` and `asym`.
 Swizzling will return a vector-of-references:
 - 2D: `.xx() .xy() ... .wz() .ww()`
@@ -380,7 +380,7 @@ auto bref = x.yzx();
 float3 b = x.yzx();
 ```
 
-### Index Notation
+### Index Notation:
 - `Index<char>` = create an index iterator object.  Yeah I did see FTensor/LTensor doing this and thought it was a good idea.
 	I haven't read enough of the paper on FTensor / copied enough that I am sure my implementation's performance is suffering compared to it.
 
@@ -417,7 +417,7 @@ auto b = ((a(i,j) - a(j,i)) / 2.f).assignI();
 Maybe I will merge assign, assignR, assignI into a single ugly abomination which is just the call operator,
 such that if you pass it a specific template arg (can you do that?) it uses it as a return type, otherwise it infers from the indexes you pass it, otherwise if no indexes then it just uses the current index form of the expression as-is.
 
-### Mathematics Functions
+### Mathematics Functions:
 Functions are described using [Ricci Calculus](https://en.wikipedia.org/wiki/Ricci_calculus), though no meaning is assigned to upper or lower valence of tensor objects.  As stated earlier, you are responsible for all metric applications.
 Functions are provided as `Tensor::` namespace or as member-functions where `this` is automatically padded into the first argument.
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
@@ -483,12 +483,12 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	- rank-2 -> rank-2:
 	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
 
-### Support Functions
+### Support Functions:
 - `.expand()` = convert the tensor to its expanded storage.  The type will be the same as `::ExpandAllIndexes<>`.
 
 - `.sum(), .product()` = sum or product all elements.  Currently this only operators on stored elements, not on *all* elements, so you will have to `.expand()` first if you want to, say, sum all antisymmetric matrix elements.
 
-### Tensor properties:
+### Tensor Properties:
 - `::This` = The current type.  Maybe not useful outside the class definition, but pretty useful within it when defining inner classes.
 - `::Scalar` = Get the scalar type used for this tensor.
 		Mind you, wrt the tensor library, 'Scalar' refers to the nested-most Inner class that is not a tensor.
@@ -541,7 +541,7 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 - `::RemoveIndex<i1, i2, ...>` = Removes all the indexes, `i1` ..., from the tensor.
 - `ReplaceWithZero<T>` = Returns a type with matching rank and dimensions, but all nestings are zeroes.  The result is fully-expanded so the nesting count matches the rank.
 
-### Template Helpers
+### Template Helpers:
 - `is_tensor_v<T>` = is it any tensor storage type?
 - `is_vec_v<T>` = is it a `vec<T,N>`?
 - `is_zero_v<T>` = is it a `zero<T,N>`?
@@ -573,7 +573,7 @@ Quaternion Members and Methods:
 - `vec3 .zAxis()` = return the z-axis of `this` quaternion's orientation.
 - `quat normalize(quat)` = returns a normalized version of this quaternion.
 
-### Familiar OpenGL Functions
+### Familiar OpenGL Functions:
 Each of these will return a 4x4 matrix of its respective scalar type.
 
 - `translate<T>(vec<T,3> t)` = returns a translation matrix.
@@ -671,9 +671,9 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 
 - Use requires to enforce integral types on integral operators.
 
-- operator << and >> ... have to be unraveled from the pipe ostream operator (special exceptions to exclude those in the require() or something? otherwise the compiler gets confused which << it is using...)
+- For index-notation, operator << and >> have to be unraveled from the pipe ostream operator (special exceptions to exclude those in the require() or something? otherwise the compiler gets confused which << it is using...)
 
-- Bitwise tensor operators?  `~ && || ! ?:`.
+- Boolean tensor operators?  `&& || ! ?:`.
 
 - assign dimension size and offset to Index
 

@@ -1240,8 +1240,8 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	TENSOR_ADD_VECTOR_OP_EQ(-=)\
 	TENSOR_ADD_VECTOR_OP_EQ(*=)\
 	TENSOR_ADD_VECTOR_OP_EQ(/=)\
-	/*TENSOR_ADD_VECTOR_OP_EQ(<<=)*/\
-	/*TENSOR_ADD_VECTOR_OP_EQ(>>=)*/\
+	TENSOR_ADD_VECTOR_OP_EQ(<<=)\
+	TENSOR_ADD_VECTOR_OP_EQ(>>=)\
 	TENSOR_ADD_VECTOR_OP_EQ(&=)\
 	TENSOR_ADD_VECTOR_OP_EQ(|=)\
 	TENSOR_ADD_VECTOR_OP_EQ(^=)\
@@ -1250,8 +1250,8 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	TENSOR_ADD_SCALAR_OP_EQ(-=)\
 	TENSOR_ADD_SCALAR_OP_EQ(*=)\
 	TENSOR_ADD_SCALAR_OP_EQ(/=)\
-	/*TENSOR_ADD_SCALAR_OP_EQ(<<=)*/\
-	/*TENSOR_ADD_SCALAR_OP_EQ(>>=)*/\
+	TENSOR_ADD_SCALAR_OP_EQ(<<=)\
+	TENSOR_ADD_SCALAR_OP_EQ(>>=)\
 	TENSOR_ADD_SCALAR_OP_EQ(&=)\
 	TENSOR_ADD_SCALAR_OP_EQ(|=)\
 	TENSOR_ADD_SCALAR_OP_EQ(^=)\
@@ -2842,6 +2842,40 @@ decltype(auto) operator /(A const & a, B const & b) {
 	});
 }
 
+// this is distinct because it needs the require ! ostream
+#define TENSOR_SCALAR_SHIFT_OP(op)\
+template<typename A, typename B>\
+requires (\
+	is_tensor_v<A> &&\
+	!is_tensor_v<B> &&\
+	!std::is_base_of_v<std::ios_base, std::decay_t<B>>\
+)\
+decltype(auto) operator op(A const & a, B const & b) {\
+	using AS = typename A::Scalar;\
+	using RS = decltype(AS() op B());\
+	using R = typename A::template ReplaceScalar<RS>;\
+	return R([&](auto... is) -> RS {\
+		return a(is...) op b;\
+	});\
+}\
+\
+template<typename A, typename B>\
+requires (\
+	!is_tensor_v<A> &&\
+	!std::is_base_of_v<std::ios_base, std::decay_t<A>> &&\
+	is_tensor_v<B>\
+)\
+decltype(auto) operator op(A const & a, B const & b) {\
+	using BS = typename B::Scalar;\
+	using RS = decltype(A() op BS());\
+	using R = typename B::template ReplaceScalar<RS>;\
+	return R([&](auto... is) -> RS {\
+		return a op b(is...);\
+	});\
+}
+
+
+
 //  tensor/tensor op
 
 #define TENSOR_TENSOR_OP(op)\
@@ -2883,15 +2917,15 @@ TENSOR_TENSOR_OP(/)
 // TODO should I is_integral<ScalarType> on these:
 // regardless the compiler will error on that case for me
 
-//TENSOR_TENSOR_OP(<<)
-//TENSOR_TENSOR_OP(>>)
+TENSOR_TENSOR_OP(<<)
+TENSOR_TENSOR_OP(>>)
 TENSOR_TENSOR_OP(&)
 TENSOR_TENSOR_OP(|)
 TENSOR_TENSOR_OP(^)
 TENSOR_TENSOR_OP(%)
 // I'm too lazy to decide, SUM_OP or MUL_OP ?
-//TENSOR_SCALAR_MUL_OP(<<)
-//TENSOR_SCALAR_MUL_OP(>>)
+TENSOR_SCALAR_SHIFT_OP(<<)
+TENSOR_SCALAR_SHIFT_OP(>>)
 TENSOR_SCALAR_MUL_OP(&)
 TENSOR_SCALAR_MUL_OP(|)
 TENSOR_SCALAR_MUL_OP(^)
