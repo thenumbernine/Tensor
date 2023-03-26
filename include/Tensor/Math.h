@@ -87,7 +87,9 @@ T normalize(T const & v) {
 template<typename A, typename B>
 requires IsBinaryTensorR3xR3Op<A,B>
 auto cross(A const & a, B const & b) {
-	return A(
+	using RS = decltype(typename A::Scalar() * typename B::Scalar());
+	using R = typename A::template ReplaceScalar<RS>;
+	return R(
 		a[1] * b[2] - a[2] * b[1],
 		a[2] * b[0] - a[0] * b[2],
 		a[0] * b[1] - a[1] * b[0]);
@@ -98,7 +100,8 @@ auto cross(A const & a, B const & b) {
 template<typename A, typename B>
 requires IsBinaryTensorOp<A,B>
 auto outer(A const & a, B const & b) {
-	using AB = typename A::template ReplaceScalar<B>;
+	using RS = decltype(typename A::Scalar() * typename B::Scalar());
+	using AB = typename A::template ReplaceScalar<typename B::template ReplaceScalar<RS>>;
 	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
 	return AB([&](typename AB::intN i) -> typename A::Scalar {
 		static_assert(decltype(i)::template dim<0> == A::rank + B::rank);
