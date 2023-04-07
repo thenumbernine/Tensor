@@ -484,9 +484,9 @@ auto hodgeDual(A const & a) {
 	using S = typename A::Scalar;
 	if constexpr (dim == 1 && rank == 1) {	// very special case:
 		return a[0];
-	} /*else if constexpr (rank == 2) {	// TODO this condition isn't needed if you merge asym with asymR
+	} else if constexpr (dim == 2) {	// TODO this condition isn't needed if you merge asym with asymR
 		return interior<rank>(a, asym<S, dim>(1)) / (S)constexpr_factorial(rank);
-	} */else {
+	} else {
 		return interior<rank>(a, asymR<S, dim, dim>(1)) / (S)constexpr_factorial(rank);
 	}
 }
