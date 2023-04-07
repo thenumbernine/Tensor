@@ -22,7 +22,7 @@ quat<T> operator*(quat<T> a, quat<T> b);
 template<typename Inner_>
 struct quat : public vec4<Inner_> {
 	using Super = vec4<Inner_>;
-	// TODO disable the is_tensor_v flag for quaternion so tensor-mul doesn't try indexing into it, so that a matrix-of-quats times a matrix-of-quats produces a matrix-of-quats (and not a rank-5 object)
+	// disable the is_tensor_v flag for quaternion so tensor-mul doesn't try indexing into it, so that a matrix-of-quats times a matrix-of-quats produces a matrix-of-quats (and not a rank-5 object)
 	//TENSOR_THIS(quat)
 	using This = quat;
 	//static constexpr bool isTensorFlag = true;

@@ -38,8 +38,6 @@ auto hadamard(T&&... args) {
 }
 
 // dot product.  To generalize this I'll consider it to be the Frobenius norm, since * will already be contraction
-// TODO get rid of member functions  ...
-// .... or have the member functions call into these.
 // 	c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
 template<typename A, typename B>
 requires IsBinaryTensorOp<A,B>
@@ -103,7 +101,7 @@ auto outer(A const & a, B const & b) {
 	using RS = decltype(typename A::Scalar() * typename B::Scalar());
 	using AB = typename A::template ReplaceScalar<typename B::template ReplaceScalar<RS>>;
 	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
-	return AB([&](typename AB::intN i) -> typename A::Scalar {
+	return AB([&](typename AB::intN i) -> RS {
 		static_assert(decltype(i)::template dim<0> == A::rank + B::rank);
 		return a(i.template subset<A::rank, 0>()) * b(i.template subset<B::rank, A::rank>());
 	});
@@ -475,7 +473,12 @@ auto hodgeDual(A const & a) {
 	static constexpr int dim = A::template dim<0>;
 	static_assert(rank <= dim);
 	using S = typename A::Scalar;
-	return interior<rank>(a, asymR<S, dim, dim>(1)) / (S)constexpr_factorial(rank);
+	// TODO this condition isn't needed if you merge asym with asymR
+	if constexpr (rank == 2) {
+		return interior<rank>(a, asym<S, dim>(1)) / (S)constexpr_factorial(rank);
+	} else {
+		return interior<rank>(a, asymR<S, dim, dim>(1)) / (S)constexpr_factorial(rank);
+	}
 }
 
 //name

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Tensor/Vector.h.h"
+
 namespace Tensor {
 
 //forward-declare, body is below all tensor classes.
