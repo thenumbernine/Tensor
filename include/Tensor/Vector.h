@@ -622,11 +622,15 @@ Scalar = NestedPtrTuple's last
 #define TENSOR_ADD_VECTOR_CALL_INDEX_PRIMARY()\
 \
 	/* a(i) := a_i */\
-	constexpr decltype(auto) operator()(int i) {\
+	template<typename Int>\
+	requires std::is_integral_v<Int>\
+	constexpr decltype(auto) operator()(Int i) {\
 		TENSOR_INSERT_BOUNDS_CHECK(i);\
 		return s[i];\
 	}\
-	constexpr decltype(auto) operator()(int i) const {\
+	template<typename Int>\
+	requires std::is_integral_v<Int>\
+	constexpr decltype(auto) operator()(Int i) const {\
 		TENSOR_INSERT_BOUNDS_CHECK(i);\
 		return s[i];\
 	}
@@ -645,21 +649,23 @@ Scalar = NestedPtrTuple's last
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	/* operator(int, int...) calls through operator(int) */\
-	template<typename... Ints>\
-	requires Common::is_all_v<int, Ints...>\
-	constexpr decltype(auto) operator()(int i, Ints... k) { return (*this)(i)(k...); }\
-	template<typename... Ints>\
-	requires Common::is_all_v<int, Ints...>\
-	constexpr decltype(auto) operator()(int i, Ints... k) const { return (*this)(i)(k...); }
+	template<typename Int, typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
+	constexpr decltype(auto) operator()(Int i, Ints... k) { return (*this)(i)(k...); }\
+	template<typename Int, typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
+	constexpr decltype(auto) operator()(Int i, Ints... k) const { return (*this)(i)(k...); }
 
 // operator(vec<int,...>) forwards to operator(int...)
 #define TENSOR_ADD_INT_VEC_CALL_INDEX()\
 	/* a(intN(i,...)) */\
 	/* operator(vec<int,N>) calls through operator(int...) */\
-	template<int N>\
-	constexpr decltype(auto) operator()(vec<int,N> const & i) { return std::apply(*this, i.s); }\
-	template<int N>\
-	constexpr decltype(auto) operator()(vec<int,N> const & i) const { return std::apply(*this, i.s); }
+	template<typename Int, int N>\
+	requires std::is_integral_v<Int>\
+	constexpr decltype(auto) operator()(vec<Int, N> const & i) { return std::apply(*this, i.s); }\
+	template<typename Int, int N>\
+	requires std::is_integral_v<Int>\
+	constexpr decltype(auto) operator()(vec<Int, N> const & i) const { return std::apply(*this, i.s); }
 
 #define TENSOR_ADD_SCALAR_CTOR(classname)\
 	/* would be nice to have this constructor for non-tensors, non-lambdas*/\
@@ -1653,10 +1659,16 @@ struct vec<Inner_,4> {
 	}
 
 #define TENSOR_ADD_ZERO_CALL_INDEX_PRIMARY()\
-	constexpr decltype(auto) operator()(int i) {\
+\
+	template<typename Int>\
+	requires std::is_integral_v<Int>\
+	constexpr decltype(auto) operator()(Int i) {\
 		return AntiSymRef<Inner>();\
 	}\
-	constexpr decltype(auto) operator()(int i) const {\
+\
+	template<typename Int>\
+	requires std::is_integral_v<Int>\
+	constexpr decltype(auto) operator()(Int i) const {\
 		return AntiSymRef<Inner>();\
 	}
 
@@ -1700,15 +1712,23 @@ inline constexpr int symIndex(int i, int j) {
 #define TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
 \
 	/* a(i1,i2,...) := a_i1_i2_... */\
-	template<typename... Ints> requires Common::is_all_v<int, Ints...>\
-	constexpr decltype(auto) operator()(int i, int j, Ints... is) { return (*this)(i,j)(is...); }\
-	template<typename... Ints> requires Common::is_all_v<int, Ints...>\
-	constexpr decltype(auto) operator()(int i, int j, Ints... is) const { return (*this)(i,j)(is...); }\
+	template<typename Int1, typename Int2, typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int1> && std::is_integral_v<Int2>))\
+	constexpr decltype(auto) operator()(Int1 i, Int2 j, Ints... is) { return (*this)(i,j)(is...); }\
+\
+	template<typename Int1, typename Int2, typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int1> && std::is_integral_v<Int2>))\
+	constexpr decltype(auto) operator()(Int1 i, Int2 j, Ints... is) const { return (*this)(i,j)(is...); }\
 \
 	/* a(i) := a_i */\
 	/* this is incomplete so it returns the Accessor */\
-	constexpr decltype(auto) operator()(int i) { return Accessor<This>(*this, i); }\
-	constexpr decltype(auto) operator()(int i) const { return Accessor<This const>(*this, i); }\
+	template<typename Int>\
+	requires std::is_integral_v<Int>\
+	constexpr decltype(auto) operator()(Int i) { return Accessor<This>(*this, i); }\
+\
+	template<typename Int>\
+	requires std::is_integral_v<Int>\
+	constexpr decltype(auto) operator()(Int i) const { return Accessor<This const>(*this, i); }\
 \
 	TENSOR_ADD_BRACKET_FWD_TO_CALL()\
 	TENSOR_ADD_INT_VEC_CALL_INDEX()
@@ -1751,11 +1771,16 @@ This is used by sym , while asym uses something different since it uses the Anti
 	/* the type should always be Inner (const) & */\
 	/* symmetric has to define 1-arg operator() */\
 	/* that means I can't use the default so i have to make a 2-arg recursive case */\
-	constexpr decltype(auto) operator()(int i, int j) {\
+	template<typename Int1, typename Int2>\
+	requires (std::is_integral_v<Int1> && std::is_integral_v<Int2>)\
+	constexpr decltype(auto) operator()(Int1 i, Int2 j) {\
 		TENSOR_INSERT_BOUNDS_CHECK(getLocalWriteForReadIndex(i,j));\
 		return s[getLocalWriteForReadIndex(i,j)];\
 	}\
-	constexpr decltype(auto) operator()(int i, int j) const {\
+\
+	template<typename Int1, typename Int2>\
+	requires (std::is_integral_v<Int1> && std::is_integral_v<Int2>)\
+	constexpr decltype(auto) operator()(Int1 i, Int2 j) const {\
 		TENSOR_INSERT_BOUNDS_CHECK(getLocalWriteForReadIndex(i,j));\
 		return s[getLocalWriteForReadIndex(i,j)];\
 	}
@@ -1811,8 +1836,13 @@ struct Rank2Accessor {
 	Rank2Accessor(AccessorOwnerConst & owner_, int i_) : owner(owner_), i(i_) {}
 
 	/* these should call into sym(int,int) which is always Inner (const) & */
-	constexpr decltype(auto) operator()(int j) { return owner(i,j); }
-	constexpr decltype(auto) operator()(int j) const { return owner(i,j); }
+	template<typename Int>
+	requires (std::is_integral_v<Int>)
+	constexpr decltype(auto) operator()(Int j) { return owner(i,j); }
+
+	template<typename Int>
+	requires (std::is_integral_v<Int>)
+	constexpr decltype(auto) operator()(Int j) const { return owner(i,j); }
 
 	/* this provides the rest of the () [] operators that will be driven by operator(int) */
 	TENSOR_ADD_RANK1_CALL_INDEX_AUX()
@@ -2000,11 +2030,17 @@ struct sym<Inner_, 4> {
 	TENSOR_HEADER()
 
 #define TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
-	constexpr decltype(auto) operator()(int i, int j) {\
+\
+	template<typename Int1, typename Int2>\
+	requires (std::is_integral_v<Int1> && std::is_integral_v<Int2>)\
+	constexpr decltype(auto) operator()(Int1 i, Int2 j) {\
 		if (i != j) return AntiSymRef<Inner>();\
 		return AntiSymRef<Inner>(std::ref(s[0]), Sign::POSITIVE);\
 	}\
-	constexpr decltype(auto) operator()(int i, int j) const {\
+\
+	template<typename Int1, typename Int2>\
+	requires (std::is_integral_v<Int1> && std::is_integral_v<Int2>)\
+	constexpr decltype(auto) operator()(Int1 i, Int2 j) const {\
 		if (i != j) return AntiSymRef<Inner const>();\
 		return AntiSymRef<Inner const>(std::ref(s[0]), Sign::POSITIVE);\
 	}
@@ -2097,10 +2133,16 @@ struct ident {
 		TENSOR_INSERT_BOUNDS_CHECK(symIndex(i,j-1));\
 		return AntiSymRef<InnerConst>(std::ref(this_.s[symIndex(i,j-1)]), Sign::POSITIVE);\
 	}\
-	constexpr decltype(auto) operator()(int i, int j) {\
+\
+	template<typename Int1, typename Int2>\
+	requires (std::is_integral_v<Int1> && std::is_integral_v<Int2>)\
+	constexpr decltype(auto) operator()(Int1 i, Int2 j) {\
 		return callImpl<This>(*this, i, j);\
 	}\
-	constexpr decltype(auto) operator()(int i, int j) const {\
+\
+	template<typename Int1, typename Int2>\
+	requires (std::is_integral_v<Int1> && std::is_integral_v<Int2>)\
+	constexpr decltype(auto) operator()(Int1 i, Int2 j) const {\
 		return callImpl<This const>(*this, i, j);\
 	}
 
