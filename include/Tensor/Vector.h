@@ -2489,12 +2489,12 @@ struct RankNAccessor {
 	template<typename Int, typename... Ints>
 	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))
 	constexpr decltype(auto) operator()(Int i, Ints... is) {
-		return (*this)(vec<Int,sizeof...(Ints)+1>(i, is...));
+		return (*this)(vec<Int,sizeof...(Ints)+1>{i, is...});
 	}
 	template<typename Int, typename... Ints>
 	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))
 	constexpr decltype(auto) operator()(Int i, Ints... is) const {
-		return (*this)(vec<Int,sizeof...(Ints)+1>(i, is...));
+		return (*this)(vec<Int,sizeof...(Ints)+1>{i, is...});
 	}
 
 	TENSOR_ADD_BRACKET_FWD_TO_CALL()
@@ -2727,12 +2727,12 @@ from my symmath/tensor/LeviCivita.lua
 	template<typename Int, typename... Ints>\
 	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
 	constexpr decltype(auto) operator()(Int i, Ints... is) {\
-		return (*this)(vec<Int,sizeof...(Ints)+1>(i, is...));\
+		return (*this)(vec<Int,sizeof...(Ints)+1>{i, is...});\
 	}\
 	template<typename Int, typename... Ints>\
 	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
 	constexpr decltype(auto) operator()(Int i, Ints... is) const {\
-		return (*this)(vec<Int,sizeof...(Ints)+1>(i, is...));\
+		return (*this)(vec<Int,sizeof...(Ints)+1>{i, is...});\
 	}\
 \
 	TENSOR_ADD_BRACKET_FWD_TO_CALL()
