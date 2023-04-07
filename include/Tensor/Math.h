@@ -96,15 +96,18 @@ auto cross(A const & a, B const & b) {
 // outer product of tensors c_i1_..ip_j1_..jq = a_i1..ip * b_j1..jq
 // for vectors: c_ij := a_i * b_j
 template<typename A, typename B>
-requires IsBinaryTensorOp<A,B>
 auto outer(A const & a, B const & b) {
-	using RS = decltype(typename A::Scalar() * typename B::Scalar());
-	using AB = typename A::template ReplaceScalar<typename B::template ReplaceScalar<RS>>;
-	//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
-	return AB([&](typename AB::intN i) -> RS {
-		static_assert(decltype(i)::template dim<0> == A::rank + B::rank);
-		return a(i.template subset<A::rank, 0>()) * b(i.template subset<B::rank, A::rank>());
-	});
+	if constexpr (is_tensor_v<A> && is_tensor_v<B>) {
+		using RS = decltype(typename A::Scalar() * typename B::Scalar());
+		using AB = typename A::template ReplaceScalar<typename B::template ReplaceScalar<RS>>;
+		//another way to implement would be a per-elem .map(), and just return the new elems as a(i) * b
+		return AB([&](typename AB::intN i) -> RS {
+			static_assert(decltype(i)::template dim<0> == A::rank + B::rank);
+			return a(i.template subset<A::rank, 0>()) * b(i.template subset<B::rank, A::rank>());
+		});
+	} else {
+		return a * b;
+	}
 }
 
 // GLSL naming compat
@@ -458,10 +461,16 @@ auto makeAsym(T const & t) {
 // wedge product
 
 template<typename A, typename B>
-requires IsBinaryTensorOp<A,B>
 auto wedge(A const & a, B const & b) {
-	auto aob = outer(a,b);
-	return makeAsym(aob) * nChooseR(A::rank + B::rank, A::rank);
+	if constexpr (is_tensor_v<A> && is_tensor_v<B>) {
+		return makeAsym(outer(a,b)) * nChooseR(A::rank + B::rank, A::rank);
+	} else if constexpr (is_tensor_v<A>) {
+		return makeAsym(a) * b;
+	} else if constexpr (is_tensor_v<B>) {
+		return a * makeAsym(b);
+	} else {
+		return a * b;
+	}
 }
 
 // Hodge dual
@@ -473,11 +482,11 @@ auto hodgeDual(A const & a) {
 	static constexpr int dim = A::template dim<0>;
 	static_assert(rank <= dim);
 	using S = typename A::Scalar;
-	if constexpr (dim == 1 && rank == 1) {	// very special case:
+	/*if constexpr (dim == 1 && rank == 1) {	// very special case:
 		return a[0];
 	} else if constexpr (rank == 2) {	// TODO this condition isn't needed if you merge asym with asymR
 		return interior<rank>(a, asym<S, dim>(1)) / (S)constexpr_factorial(rank);
-	} else {
+	} else*/ {
 		return interior<rank>(a, asymR<S, dim, dim>(1)) / (S)constexpr_factorial(rank);
 	}
 }

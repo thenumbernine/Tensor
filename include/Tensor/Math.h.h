@@ -42,7 +42,6 @@ requires IsBinaryTensorR3xR3Op<A, B>
 auto cross(A const & a, B const & b);
 
 template<typename A, typename B>
-requires IsBinaryTensorOp<A, B>
 auto outer(A const & a, B const & b);
 
 template<typename... T>
@@ -87,7 +86,6 @@ requires IsSquareTensor<T>
 auto makeAsym(T const & t);
 
 template<typename A, typename B>
-requires IsBinaryTensorOp<A, B>
 auto wedge(A const & a, B const & b);
 
 template<typename T>

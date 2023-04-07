@@ -1075,26 +1075,21 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return Tensor::cross(std::move(*this), std::forward<B>(b));\
 	}\
 \
-	template<typename B>\
-	requires IsBinaryTensorOp<This, B>\
-	auto outer(B const & b) const {\
+	auto outer(auto const & b) const {\
 		return Tensor::outer(*this, b);\
 	}\
 	template<typename B>\
-	requires IsBinaryTensorOp<This, B>\
 	auto outer(B && b) && {\
 		return Tensor::outer(std::move(*this), std::forward<B>(b));\
 	}\
 \
 	template<typename B>\
-	requires is_tensor_v<std::decay_t<B>>\
 	auto outerProduct(B const & o) const {\
 		return Tensor::outerProduct(*this, o);\
 	}\
 	template<typename B>\
-	requires is_tensor_v<std::decay_t<B>>\
 	auto outerProduct(B && o) && {\
-		return Tensor::outerProduct(*this, o);\
+		return Tensor::outerProduct(std::move(*this), std::forward<B>(o));\
 	}\
 \
 	template<int m=0, int n=1>\
@@ -1146,13 +1141,10 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return Tensor::makeAsym(*this);\
 	}\
 \
-	template<typename B>\
-	requires (is_tensor_v<B>)\
-	auto wedge(B const & b) const {\
+	auto wedge(auto const & b) const {\
 		return Tensor::wedge(*this, b);\
 	}\
 	template<typename B>\
-	requires (is_tensor_v<B>)\
 	auto wedge(B && b) && {\
 		return Tensor::wedge(std::move(*this), std::forward<B>(b));\
 	}\

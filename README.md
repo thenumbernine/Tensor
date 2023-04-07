@@ -661,9 +661,7 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 
 - eventually merge `sym` and `asym` with `symR` and `asymR` ... but don't til enough sorts/loops are compile-time.
 
-- wedge(a,b) should accept non-tensors, or at least the scalar of whichever is the tensor
-- outer(a,b) too?  both turn into scalar muls.
-- dual(a) too?  but it would require a default rank==k to turn a scalar into k-form of.
+- dual(a) could accept scalars...  but it would still need to be provided a default rank==k to turn a scalar into k-form of.
 
 - make innerForIndexSeq which is a sequence mapping index to nesting #
 
