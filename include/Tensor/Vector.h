@@ -652,6 +652,7 @@ Scalar = NestedPtrTuple's last
 	template<typename Int, typename... Ints>\
 	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
 	constexpr decltype(auto) operator()(Int i, Ints... k) { return (*this)(i)(k...); }\
+\
 	template<typename Int, typename... Ints>\
 	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
 	constexpr decltype(auto) operator()(Int i, Ints... k) const { return (*this)(i)(k...); }
@@ -663,6 +664,7 @@ Scalar = NestedPtrTuple's last
 	template<typename Int, int N>\
 	requires std::is_integral_v<Int>\
 	constexpr decltype(auto) operator()(vec<Int, N> const & i) { return std::apply(*this, i.s); }\
+\
 	template<typename Int, int N>\
 	requires std::is_integral_v<Int>\
 	constexpr decltype(auto) operator()(vec<Int, N> const & i) const { return std::apply(*this, i.s); }
@@ -708,7 +710,7 @@ Scalar = NestedPtrTuple's last
 	}\
 \
 	template<typename T, T... I>\
-	constexpr classname(std::integer_sequence<T, I...>) : classname(I...) {}
+	constexpr classname(std::integer_sequence<T, I...>) : classname{I...} {}
 
 
 // lambda ctor
@@ -2361,14 +2363,16 @@ so for r=2 we get (d+1)! / (2! (d-1)!) = d * (d + 1) / 2
 // TODO forwarding of args
 #define TENSOR_ADD_TOTALLY_SYMMETRIC_CALL_INDEX()\
 \
-	template<typename ThisConst, typename TupleSoFar, typename... Ints> requires Common::is_all_v<int, Ints...>\
-	static constexpr decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, int arg, Ints... is) {\
+	template<typename ThisConst, typename TupleSoFar, typename Int, typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
+	static constexpr decltype(auto) callGtLocalRankImplFwd(ThisConst & t, TupleSoFar sofar, Int arg, Ints... is) {\
 		return callGtLocalRankImpl<ThisConst>(\
 			t,\
 			std::tuple_cat( sofar, std::make_tuple(arg)),\
 			is...);\
 	}\
-	template<typename ThisConst, typename TupleSoFar, typename... Ints> requires Common::is_all_v<int, Ints...>\
+	template<typename ThisConst, typename TupleSoFar, typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (true))\
 	static constexpr decltype(auto) callGtLocalRankImpl(ThisConst & t, TupleSoFar sofar, Ints... is) {\
 		if constexpr (std::tuple_size_v<TupleSoFar> == localRank) {\
 			return t.s[getLocalWriteForReadIndex(std::make_from_tuple<intNLocal>(sofar))](is...);\
@@ -2378,7 +2382,8 @@ so for r=2 we get (d+1)! / (2! (d-1)!) = d * (d + 1) / 2
 	};\
 \
 	/* TODO any better way to write two functions at once with differing const-ness? */\
-	template<typename ThisConst, typename... Ints> requires Common::is_all_v<int, Ints...>\
+	template<typename ThisConst, typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (true))\
 	static constexpr decltype(auto) callImpl(ThisConst & this_, Ints... is) {\
 		constexpr int N = sizeof...(Ints);\
 		if constexpr (N == localRank) {\
@@ -2390,11 +2395,13 @@ so for r=2 we get (d+1)! / (2! (d-1)!) = d * (d + 1) / 2
 		}\
 	}\
 \
-	template<typename... Ints> requires Common::is_all_v<int, Ints...>\
+	template<typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (true))\
 	constexpr decltype(auto) operator()(Ints... is) {\
 		return callImpl<This>(*this, is...);\
 	}\
-	template<typename... Ints> requires Common::is_all_v<int, Ints...>\
+	template<typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (true))\
 	constexpr decltype(auto) operator()(Ints... is) const {\
 		return callImpl<This const>(*this, is...);\
 	}\
@@ -2442,11 +2449,12 @@ struct RankNAccessor {
 	/* if subRank + sizeof...(Ints) > ownerLocalRank then call-through into owner's inner */
 	/* if subRank + sizeof...(Ints) == ownerLocalRank then just call owner */
 	/* if subRank + sizeof...(Ints) < ownerLocalRank then produce another Accessor */
-	template<int N, typename ThisConst>
-	constexpr decltype(auto) callImpl(ThisConst & this_, vec<int,N> const & i2) {
+	template<typename Int, int N, typename ThisConst>
+	requires (std::is_integral_v<Int>)
+	constexpr decltype(auto) callImpl(ThisConst & this_, vec<Int,N> const & i2) {
 		if constexpr (subRank + N < ownerLocalRank) {
 			/* returns Accessor */
-			vec<int,subRank+N> fulli;
+			vec<Int,subRank+N> fulli;
 			fulli.template subset<subRank,0>() = i;
 			fulli.template subset<N,subRank>() = i2;
 			return RankNAccessor<AccessorOwnerConst, subRank+N>(owner, fulli);
@@ -2461,29 +2469,32 @@ struct RankNAccessor {
 			ownerIntN firstI;
 			firstI.template subset<subRank,0>() = i;
 			firstI.template subset<ownerLocalRank-subRank,subRank>() = i2.template subset<ownerLocalRank-subRank, 0>();
-			vec<int, N - (ownerLocalRank - subRank)> restI = i2.template subset<N - (ownerLocalRank-subRank), ownerLocalRank-subRank>();
+			vec<Int, N - (ownerLocalRank - subRank)> restI = i2.template subset<N - (ownerLocalRank-subRank), ownerLocalRank-subRank>();
 			return this_.owner(firstI)(restI);
 		}
 	}
 	// TODO can't I just get rid of the non-const version?  no need to fwd?  nope.  need both.
-	template<int N>
-	constexpr decltype(auto) operator()(vec<int,N> const & i2) {
-		return callImpl<N, This>(*this, i2);
+	template<typename Int, int N>
+	requires (std::is_integral_v<Int>)
+	constexpr decltype(auto) operator()(vec<Int,N> const & i2) {
+		return callImpl<Int, N, This>(*this, i2);
 	}
-	template<int N>
-	constexpr decltype(auto) operator()(vec<int,N> const & i2) const {
-		return callImpl<N, This const>(*this, i2);
+	template<typename Int, int N>
+	requires (std::is_integral_v<Int>)
+	constexpr decltype(auto) operator()(vec<Int,N> const & i2) const {
+		return callImpl<Int, N, This const>(*this, i2);
 	}
 
-	template<typename... Ints>
-	requires Common::is_all_v<int, Ints...>
-	constexpr decltype(auto) operator()(Ints... is) {
-		return (*this)(vec<int,sizeof...(Ints)>(is...));
+	//TODO which type should I use for the vec?  1st of the pack?
+	template<typename Int, typename... Ints>
+	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))
+	constexpr decltype(auto) operator()(Int i, Ints... is) {
+		return (*this)(vec<Int,sizeof...(Ints)+1>(i, is...));
 	}
-	template<typename... Ints>
-	requires Common::is_all_v<int, Ints...>
-	constexpr decltype(auto) operator()(Ints... is) const {
-		return (*this)(vec<int,sizeof...(Ints)>(is...));
+	template<typename Int, typename... Ints>
+	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))
+	constexpr decltype(auto) operator()(Int i, Ints... is) const {
+		return (*this)(vec<Int,sizeof...(Ints)+1>(i, is...));
 	}
 
 	TENSOR_ADD_BRACKET_FWD_TO_CALL()
@@ -2678,8 +2689,9 @@ from my symmath/tensor/LeviCivita.lua
 	/* This way the Accessor doesn't need to remember the AntiSymRef::how state. */\
 	/* and that lets us reuse the Accessor for both sym and asym. */\
 	/* So equivalently, here we don't want to bubble-sort indexes until our index size is >= our localRank */\
-	template<typename ThisConst, int N>\
-	static constexpr decltype(auto) callVecImpl(ThisConst & this_, vec<int,N> i) {\
+	template<typename Int, typename ThisConst, int N>\
+	requires (std::is_integral_v<Int>)\
+	static constexpr decltype(auto) callVecImpl(ThisConst & this_, vec<Int,N> i) {\
 		if constexpr (N < localRank) {\
 			return Accessor<ThisConst, N>(this_, i);\
 		} else if constexpr (N == localRank) {\
@@ -2701,24 +2713,26 @@ from my symmath/tensor/LeviCivita.lua
 			return result;\
 		}\
 	}\
-	template<int N>\
-	constexpr decltype(auto) operator()(vec<int,N> i) {\
-		return callVecImpl<This>(*this, i);\
+	template<typename Int, int N>\
+	requires (std::is_integral_v<Int>)\
+	constexpr decltype(auto) operator()(vec<Int,N> i) {\
+		return callVecImpl<Int, This>(*this, i);\
 	}\
-	template<int N>\
-	constexpr decltype(auto) operator()(vec<int,N> i) const {\
-		return callVecImpl<This const>(*this, i);\
+	template<typename Int, int N>\
+	requires (std::is_integral_v<Int>)\
+	constexpr decltype(auto) operator()(vec<Int,N> i) const {\
+		return callVecImpl<Int, This const>(*this, i);\
 	}\
 \
-	template<typename... Ints>\
-	requires Common::is_all_v<int, Ints...>\
-	constexpr decltype(auto) operator()(Ints... is) {\
-		return (*this)(vec<int,sizeof...(Ints)>(is...));\
+	template<typename Int, typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
+	constexpr decltype(auto) operator()(Int i, Ints... is) {\
+		return (*this)(vec<Int,sizeof...(Ints)+1>(i, is...));\
 	}\
-	template<typename... Ints>\
-	requires Common::is_all_v<int, Ints...>\
-	constexpr decltype(auto) operator()(Ints... is) const {\
-		return (*this)(vec<int,sizeof...(Ints)>(is...));\
+	template<typename Int, typename... Ints>\
+	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
+	constexpr decltype(auto) operator()(Int i, Ints... is) const {\
+		return (*this)(vec<Int,sizeof...(Ints)+1>(i, is...));\
 	}\
 \
 	TENSOR_ADD_BRACKET_FWD_TO_CALL()

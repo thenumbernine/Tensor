@@ -304,7 +304,7 @@ auto interior(A const & a, B const & b) {
 	using S = typename A::Scalar;
 	if constexpr (A::rank == num && B::rank == num) {
 		// rank-0 i.e. scalar result case
-		static_assert(A::dims() == B::dims());	//thanks to the 3rd requires condition
+		static_assert(std::is_same_v<typename A::dimseq, typename B::dimseq>);	//thanks to the 3rd requires condition
 		return dot(a,b);
 	} else {
 		using R = typename A
