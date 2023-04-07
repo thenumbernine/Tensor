@@ -692,3 +692,5 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 	https://en.wikipedia.org/wiki/Vector-valued_differential_form#Wedge_product.
 
 - structure binding doesn't work for const lhs's.  I can get them to compile with const lhs, but the result then comes out wrong.
+
+- make operator[] work with integral types and not just int.
