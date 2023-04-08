@@ -96,10 +96,13 @@ auto hodgeDual(T const & a);
 template<typename... T>
 auto dual(T&&... args);
 
+//wedge all rows of a m x n matrix
+template<int i = 0>
+auto wedgeAll(auto const & v);
+
 template<typename A, typename B>
 requires IsBinaryTensorOpWithMatchingNeighborDims<A, B>
 auto operator*(A const & a, B const & b);
-
 
 //funny, 'if constexpr' causes this to lose constexpr-ness, but ternary is ok.
 constexpr int constexpr_isqrt_r(int inc, int limit) {
@@ -130,6 +133,5 @@ constexpr int nChooseR(int n, int k) {
     }
     return result;
 }
-
 
 }

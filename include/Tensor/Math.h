@@ -498,6 +498,16 @@ auto dual(T&&... args) {
 	return hodgeDual(std::forward<T>(args)...);
 }
 
+//wedge all rows of a m x n matrix
+template<int i>
+auto wedgeAll(auto const & v) {
+	if constexpr (i < std::decay_t<decltype(v)>::template dim<0>-1) {
+		return v[i].wedge(wedgeAll<i+1>(v));
+	} else {
+		return v[i];
+	}
+}
+
 // operator* is contract(outer(a,b)) ... aka interior1(a,b)
 // TODO maybe generalize further with the # of indexes to contract:
 // c_i1...i{p}_j1_..._j{q} = Σ_k1...k{r} a_i1_..._i{p}_k1_...k{r} * b_k1_..._k{r}_j1_..._j{q}

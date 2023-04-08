@@ -1167,6 +1167,10 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return Tensor::dual(*this);\
 	}\
 \
+	auto wedgeAll() const {\
+		return Tensor::wedgeAll(*this);\
+	}\
+\
 	template<typename B>\
 	requires(\
 		IsBinaryTensorOpWithMatchingNeighborDims<This, B>\
