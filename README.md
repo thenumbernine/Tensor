@@ -471,8 +471,8 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	It also will assume a unit weight of the Levi-Civita permutation tensor, so if you happen to prefer your L.C. tensors to have weight $\sqrt{|g|}$ then you will have to multiply by this yourself.
 	Notice that this antisymmetrizes the input tensor.
 	$$hodgeDual(a)\_I = (\star a)_I = \frac{1}{k!} a^J \epsilon\_{JI}$$
-- `wedgeAll(a)` = Wedge all row forms of a k-form.
-	$$wedgeAll(a\_{i J}) = a\_{1 J} dx^J \wedge ... \wedge a\_{k J} dx^J$$
+- `wedgeAll(a)` = Wedge all row forms of a k-form.  Assumes the first index is the index of forms to wedge.
+	$$wedgeAll(a\_{i J} dx^J) = a\_{1 J} dx^J \wedge ... \wedge a\_{k J} dx^J$$
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
 	- rank-N -> rank-(N+1), N>=1:
 	$$diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$

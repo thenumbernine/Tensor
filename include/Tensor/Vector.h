@@ -624,13 +624,13 @@ Scalar = NestedPtrTuple's last
 	/* a(i) := a_i */\
 	template<typename Int>\
 	requires std::is_integral_v<Int>\
-	constexpr decltype(auto) operator()(Int i) {\
+	constexpr decltype(auto) operator()(Int const i) {\
 		TENSOR_INSERT_BOUNDS_CHECK(i);\
 		return s[i];\
 	}\
 	template<typename Int>\
 	requires std::is_integral_v<Int>\
-	constexpr decltype(auto) operator()(Int i) const {\
+	constexpr decltype(auto) operator()(Int const i) const {\
 		TENSOR_INSERT_BOUNDS_CHECK(i);\
 		return s[i];\
 	}
@@ -638,8 +638,8 @@ Scalar = NestedPtrTuple's last
 #define TENSOR_ADD_BRACKET_FWD_TO_CALL()\
 	/* a[i] := a_i */\
 	/* operator[int] calls through operator(int) */\
-	constexpr decltype(auto) operator[](int i) { return (*this)(i); }\
-	constexpr decltype(auto) operator[](int i) const { return (*this)(i); }
+	constexpr decltype(auto) operator[](int const i) { return (*this)(i); }\
+	constexpr decltype(auto) operator[](int const i) const { return (*this)(i); }
 
 //operator[int] forwards to operator(int)
 //operator(int...) forwards to operator(int)(int...)
@@ -651,11 +651,15 @@ Scalar = NestedPtrTuple's last
 	/* operator(int, int...) calls through operator(int) */\
 	template<typename Int, typename... Ints>\
 	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
-	constexpr decltype(auto) operator()(Int i, Ints... k) { return (*this)(i)(k...); }\
+	constexpr decltype(auto) operator()(Int const i, Ints const ... is) {\
+		return (*this)(i)(is...);\
+	}\
 \
 	template<typename Int, typename... Ints>\
 	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
-	constexpr decltype(auto) operator()(Int i, Ints... k) const { return (*this)(i)(k...); }
+	constexpr decltype(auto) operator()(Int const i, Ints const ... is) const {\
+		return (*this)(i)(is...);\
+	}
 
 // operator(vec<int,...>) forwards to operator(int...)
 #define TENSOR_ADD_INT_VEC_CALL_INDEX()\
@@ -1288,7 +1292,8 @@ which means duplicating some of the functionality of IndexAccess sorting out sum
 	TENSOR_TEMPLATE_T_I(classname)\
 	TENSOR_HEADER_VECTOR_SPECIFIC()\
 	TENSOR_EXPAND_TEMPLATE_TENSORR()\
-	TENSOR_HEADER()
+	TENSOR_HEADER()\
+	static constexpr std::string tensorxStr() { return std::to_string(localDim); }
 
 #define TENSOR_VECTOR_LOCAL_READ_FOR_WRITE_INDEX()\
 	/* accepts int into .s[] storage, returns intN<localRank> of how to index it using operator() */\
@@ -1691,7 +1696,8 @@ struct vec<Inner_,4> {
 	TENSOR_ADD_ZERO_CALL_INDEX_PRIMARY() /* operator(int) */\
 	TENSOR_ADD_RANK1_CALL_INDEX_AUX() /* operator(int, int...), operator[] */\
 	TENSOR_ADD_INT_VEC_CALL_INDEX() /* operator(intN) */\
-	TENSOR_ZERO_ADD_SUM_RESULT()
+	TENSOR_ZERO_ADD_SUM_RESULT()\
+	static constexpr std::string tensorxStr() { return "z " + std::to_string(localDim); }
 
 template<typename Inner_, int localDim_>
 requires (localDim_ > 0)
@@ -1907,7 +1913,8 @@ so the accessors need nested call indexing too
 	TENSOR_ADD_OPS(classname)\
 	TENSOR_ADD_SYMMETRIC_MATRIX_CALL_INDEX()\
 	TENSOR_ADD_RANK2_CALL_INDEX_AUX()\
-	TENSOR_SYMMETRIC_MATRIX_ADD_SUM_RESULT()
+	TENSOR_SYMMETRIC_MATRIX_ADD_SUM_RESULT()\
+	static constexpr std::string tensorxStr() { return "s " + std::to_string(localDim); }
 
 template<typename Inner_, int localDim_>
 requires (localDim_ > 0)
@@ -2033,7 +2040,8 @@ struct sym<Inner_, 4> {
 	TENSOR_TEMPLATE_T_I(classname)\
 	TENSOR_HEADER_IDENTITY_MATRIX_SPECIFIC()\
 	TENSOR_EXPAND_TEMPLATE_TENSORR()\
-	TENSOR_HEADER()
+	TENSOR_HEADER()\
+	static constexpr std::string tensorxStr() { return "i " + std::to_string(localDim); }
 
 #define TENSOR_ADD_IDENTITY_MATRIX_CALL_INDEX()\
 \
@@ -2124,7 +2132,8 @@ struct ident {
 	TENSOR_TEMPLATE_T_I(classname)\
 	TENSOR_HEADER_ANTISYMMETRIC_MATRIX_SPECIFIC()\
 	TENSOR_EXPAND_TEMPLATE_TENSORR()\
-	TENSOR_HEADER()
+	TENSOR_HEADER()\
+	static constexpr std::string tensorxStr() { return "a " + std::to_string(localDim); }
 
 // make sure this (and the using) is set before the specific-named accessors
 #define TENSOR_ADD_ANTISYMMETRIC_MATRIX_CALL_INDEX()\
@@ -2319,7 +2328,8 @@ so for r=2 we get (d+1)! / (2! (d-1)!) = d * (d + 1) / 2
 	TENSOR_TEMPLATE_T_I_I(classname)\
 	TENSOR_HEADER_TOTALLY_SYMMETRIC_SPECIFIC()\
 	TENSOR_EXPAND_TEMPLATE_TOTALLY_SYMMETRIC()\
-	TENSOR_HEADER()
+	TENSOR_HEADER()\
+	static constexpr std::string tensorxStr() { return "S " + std::to_string(localDim) + " " + std::to_string(localRank); }
 
 // using 'upper-triangular' i.e. i<=j<=k<=...
 // right now i'm counting into this.  is there a faster way?
@@ -2609,7 +2619,8 @@ Sign antisymSortAndCountFlips(vec<int,N> & i) {
 	TENSOR_TEMPLATE_T_I_I(classname)\
 	TENSOR_HEADER_TOTALLY_ANTISYMMETRIC_SPECIFIC()\
 	TENSOR_EXPAND_TEMPLATE_TOTALLY_ANTISYMMETRIC()\
-	TENSOR_HEADER()
+	TENSOR_HEADER()\
+	static constexpr std::string tensorxStr() { return "A " + std::to_string(localDim) + " " + std::to_string(localRank); }
 
 // using 'upper-triangular' i.e. i<=j<=k<=...
 // right now i'm counting into this.  is there a faster way?

@@ -37,7 +37,8 @@ auto hadamard(T&&... args) {
 	return elemMul(std::forward<T>(args)...);
 }
 
-// dot product.  To generalize this I'll consider it to be the Frobenius norm, since * will already be contraction
+// dot product.
+// To generalize this I'll consider it to be the Frobenius norm, since * will already be contraction.
 // 	c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
 template<typename A, typename B>
 requires IsBinaryTensorOp<A,B>
