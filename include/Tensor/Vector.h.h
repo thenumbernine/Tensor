@@ -10,9 +10,7 @@ namespace Tensor {
 template<typename A, typename B>
 concept IsBinaryTensorOp =
 	is_tensor_v<A>
-	&& is_tensor_v<B>
-//	&& std::is_same_v<typename A::Scalar, typename B::Scalar>	// TODO meh?
-;
+	&& is_tensor_v<B>;
 
 template<typename T>
 concept IsSquareTensor =
