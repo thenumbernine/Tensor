@@ -672,7 +672,7 @@ Scalar = NestedPtrTuple's last
 		/*return std::apply(*this, i.s);*/\
 			/* fold */\
 		return [&]<auto...j>(std::index_sequence<j...>) -> decltype(auto) {\
-			return (*this)(i(j)...);\
+			return (*this)(i.s[j]...);\
 		}(std::make_index_sequence<N>{});\
 	}\
 \
@@ -683,7 +683,7 @@ Scalar = NestedPtrTuple's last
 		/*return std::apply(*this, i.s);*/\
 			/* fold */\
 		return [&]<auto...j>(std::index_sequence<j...>) -> decltype(auto) {\
-			return (*this)(i(j)...);\
+			return (*this)(i.s[j]...);\
 		}(std::make_index_sequence<N>{});\
 	}
 
@@ -695,13 +695,14 @@ Scalar = NestedPtrTuple's last
 	/*requires (!is_tensor_v<T> && !std::is_invocable_v<T>)*/\
 	/* so instead ... */\
 	constexpr classname(Scalar const & x) {\
+		/* hmm, for some reason using Inner{x} instead of Inner(x) is giving segfaults ... */\
 			/* sequences */\
 		[&]<size_t...k>(std::index_sequence<k...>) constexpr {\
-			((s[k] = x), ...);\
+			((s[k] = Inner(x)), ...);\
 		}(std::make_index_sequence<localCount>{});\
 			/* for-loops */\
 		/*for (int k = 0; k < localCount; ++k) {\
-			s[k] = x;\
+			s[k] = Inner(x);\
 		}*/\
 	}
 
@@ -783,6 +784,17 @@ Scalar = NestedPtrTuple's last
 
 // TODO vararg ctor
 #define TENSOR_ADD_ARG_CTOR(classname)\
+\
+	/* vec1 */\
+	constexpr classname(Inner const & x)\
+	requires (\
+		localCount >= 1 &&\
+			/* works */\
+		!std::is_same_v<Scalar, Inner>\
+			/* should be equivalent ... but getting errors at the scalar ctor */\
+		/*rank > 1*/\
+	)\
+	: s({x}) {}\
 \
 	/* vec2 */\
 	constexpr classname(\

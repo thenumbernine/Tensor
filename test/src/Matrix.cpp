@@ -34,7 +34,52 @@ namespace Test {
 
 void test_Matrix() {	
 	// matrix
-	
+
+	{	// 1x1
+		using float1x1 = Tensor::tensor<float,1,1>;
+		//list ctor
+		auto x = float1x1{{3}};
+		TEST_EQ(x(0,0), 3);
+		using float1 = Tensor::tensor<float, 1>;
+		auto x1 = float1(2);
+		// lambdas work
+		{
+			auto x2 = float1x1([&](int, int) -> float { return x1(0); });
+			TEST_EQ(x2(0,0), 2);
+		}
+		{
+			auto x2 = float1x1([&](Tensor::int2) -> float { return x1(0); });
+			TEST_EQ(x2(0,0), 2);
+		}
+#if 0
+		{	// failing to compile
+			auto x2 = float1x1(x1);
+			TEST_EQ(x2(0,0), 2);
+		}
+		{	// failing to compile
+			auto x2 = float1x1{x1};
+			TEST_EQ(x2(0,0), 2);
+		}
+#endif
+	}
+
+	{	//1x2
+#if 0	//failing to compile
+		// in fact, all list ctors of dim=(1,1,1.., N), for N != 1 are failing to compile
+		using float1x2 = Tensor::tensor<float,1,2>;
+		//list ctor
+		auto x = float1x2{{1,2}};
+		TEST_EQ(x, float1x2(Tensor::float2(1,2)));
+#endif
+	}
+
+	{	//2x1
+		using float2x1 = Tensor::tensor<float,2,1>;
+		auto x = float2x1{{1},{2}};
+		TEST_EQ(x(0,0), 1);
+		TEST_EQ(x(1,0), 2);
+	}
+
 	//bracket ctor
 	Tensor::float3x3 m = {
 		{1,2,3},
