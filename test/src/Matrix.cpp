@@ -40,7 +40,7 @@ void test_Matrix() {
 		//list ctor
 		auto x = float1x1{{3}};
 		TEST_EQ(x(0,0), 3);
-		using float1 = Tensor::tensor<float, 1>;
+		using float1 = Tensor::floatN<1>;
 		auto x1 = float1(2);
 		// lambdas work
 		{
@@ -64,29 +64,74 @@ void test_Matrix() {
 	}
 
 	{	//1x2
-#if 0	//failing to compile
 		// in fact, all list ctors of dim=(1,1,1.., N), for N != 1 are failing to compile
-		using float1x2 = Tensor::tensor<float,1,2>;
+		using namespace Tensor;
+		using float1x2 = tensor<float,1,2>;
+
+		auto a = float2(1,2);
+		auto x = float1x2{a};	//working now
+		ECHO(x);
+
+#if 0	//failing
+		ECHO(float1x2(a));
+		ECHO(float1x2(float2(1,2)));
 		//list ctor
-		auto x = float1x2{{1,2}};
-		TEST_EQ(x, float1x2(Tensor::float2(1,2)));
+		//auto x = float1x2(a);
+		//auto x = float1x2{{1,2}};
+		//auto x = float1x2({1,2});
+		auto x = float1x2(float2(1,2));
+		ECHO(x);
 #endif
 	}
 
 	{	//2x1
-		using float2x1 = Tensor::tensor<float,2,1>;
-		auto x = float2x1{{1},{2}};
-		TEST_EQ(x(0,0), 1);
-		TEST_EQ(x(1,0), 2);
+		using namespace Tensor;
+		using float1 = floatN<1>;
+		using float2x1 = tensor<float,2,1>;
+		
+		ECHO(float2x1(float1(1),float1(2)));
+		
+		ECHO(float2x1({1},{2}));
+		
+		ECHO((float2x1{{1},{2}}));
+		
+		auto a1 = float1(1);
+		auto a2 = float1(2);
+		ECHO(float2x1(a1,a2));
+		ECHO((float2x1{a1,a2}));
+		
+		auto a = float2x1{{1},{2}};
+		TEST_EQ(a(0,0), 1);
+		TEST_EQ(a(1,0), 2);
+		
+		auto b = float2x1({1},{2});
+		TEST_EQ(a,b);
+		
+		auto c = float2x1(float1(1), float1(2));
+		TEST_EQ(a,c);
 	}
 
 	{	//2x2 ctors
 		using namespace Tensor;
-		auto a = tensor<float,2,2>{{1,2},{3,4}};
+		
+		ECHO(float2x2(float2(1,2),float2(3,4)));
+		
+		ECHO(float2x2({1,2},{3,4}));
+		
+		ECHO((float2x2{{1,2},{3,4}}));
+
+		auto a1 = float2(1,2);
+		auto a2 = float2(3,4);
+		ECHO(float2x2(a1,a2));
+		ECHO((float2x2{a1,a2}));
+		
+		auto a = float2x2{{1,2},{3,4}};
 		ECHO(a);
-		auto b = tensor<float,2,2>({1,2},{3,4});
+		
+		auto b = float2x2({1,2},{3,4});
 		ECHO(b);
-		auto c = tensor<float,2,2>(float2(1,2),float2(3,4));
+		
+		auto c = float2x2(float2(1,2),float2(3,4));
 		ECHO(c);
 	}
 

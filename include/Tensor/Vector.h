@@ -704,6 +704,17 @@ Scalar = NestedPtrTuple's last
 		/*for (int k = 0; k < localCount; ++k) {\
 			s[k] = Inner(x);\
 		}*/\
+	}\
+	constexpr classname(Scalar && x) {\
+		/* hmm, for some reason using Inner{x} instead of Inner(x) is giving segfaults ... */\
+			/* sequences */\
+		[&]<size_t...k>(std::index_sequence<k...>) constexpr {\
+			((s[k] = Inner(x)), ...);\
+		}(std::make_index_sequence<localCount>{});\
+			/* for-loops */\
+		/*for (int k = 0; k < localCount; ++k) {\
+			s[k] = Inner(x);\
+		}*/\
 	}
 
 // vector cast operator
@@ -773,11 +784,14 @@ Scalar = NestedPtrTuple's last
 		}\
 	}
 
-#if 0
+#if 1
 #define TENSOR_ADD_ARG_CTOR(classname)\
 \
 	/* single-inner (not single-scalar , not lambda, not matching-rank tensor */\
 	constexpr classname(Inner const & x)\
+	requires (!std::is_same_v<Inner, Scalar>)\
+	: s{x} {}\
+	constexpr classname(Inner && x)\
 	requires (!std::is_same_v<Inner, Scalar>)\
 	: s{x} {}\
 \
@@ -785,12 +799,21 @@ Scalar = NestedPtrTuple's last
 	/* works as long as you give up ctor({init0...}, ...) */\
 	/*  and replace it all with ctor{{init0...}, ...} */\
 	template<typename ... Inners>\
-	requires (sizeof...(Inners) > 1)\
+	requires (\
+		sizeof...(Inners) > 1 &&\
+		(std::is_convertible_v<Inners, Inner> && ... && (true))\
+	)\
 	constexpr classname(Inners const & ... xs)\
-		: s({((Inner)xs)...}) {\
-	}
-#else
-#define TENSOR_ADD_ARG_CTOR(classname)\
+		: s({Inner(xs)...}) {\
+	}\
+	template<typename ... Inners>\
+	requires (\
+		sizeof...(Inners) > 1 &&\
+		(std::is_convertible_v<Inners, Inner> && ... && (true))\
+	)\
+	constexpr classname(Inners && ... xs)\
+		: s({Inner(xs)...}) {\
+	}\
 \
 	/* vec1 */\
 	constexpr classname(Inner const & x)\
