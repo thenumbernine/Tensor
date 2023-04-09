@@ -766,12 +766,7 @@ Scalar = NestedPtrTuple's last
 	}
 
 #define TENSOR_ADD_LIST_CTOR(classname)\
-	constexpr classname(std::initializer_list<Inner> l)\
-	/* only do list constructor for non-specialized types */\
-	/*(cuz they already accept lists via matching with their ctor args) */\
-	/* a better requires would check for these ctors existence */\
-	requires (localDim > 4)\
-	{\
+	constexpr classname(std::initializer_list<Inner> l) {\
 		auto src = l.begin();\
 		for (int i = 0; i < localCount && src != l.end(); ++i, ++src) {\
 			s[i] = *src;\
