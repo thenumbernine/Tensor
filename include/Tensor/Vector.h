@@ -773,12 +773,8 @@ Scalar = NestedPtrTuple's last
 	requires (localDim > 4)\
 	{\
 		auto src = l.begin();\
-		auto dst = this->begin();\
-		for (; src != l.end() && dst != this->end(); ++src, ++dst) {\
-			*dst = *src;\
-		}\
-		for (; dst != this->end(); ++dst) {\
-			*dst = {};\
+		for (int i = 0; i < localCount && src != l.end(); ++i, ++src) {\
+			s[i] = *src;\
 		}\
 	}
 
