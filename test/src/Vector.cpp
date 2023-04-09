@@ -160,6 +160,18 @@ void test_Vector() {
 	//vector
 
 	{
+		// 1D lists and args work
+		Tensor::tensor<float, 1> f = {2};
+		TEST_EQ(f, (Tensor::tensor<float, 1>(2)));
+	}
+
+	{
+		// 2D lists and args work
+		Tensor::float2 f = {1,2};
+		TEST_EQ(f, Tensor::float2(1,2));
+	}
+
+	{
 		// default ctor
 		Tensor::float3 f;
 		for (int i = 0; i < f.dim<0>; ++i) {
@@ -170,17 +182,17 @@ void test_Vector() {
 	{
 		// parenthesis ctor
 		Tensor::float3 f(4,5,7);
-		
+
 		// initializer list ctor
 		Tensor::float3 g = {7,1,2};
-		
+
 		//.dims
 		static_assert(f.rank == 1);
 		static_assert(f.dims() == 3);
 		static_assert(f.dim<0> == 3);
 		static_assert(f.numNestings == 1);
 		static_assert(f.count<0> == 3);
-	
+
 		//test .x .y .z
 		TEST_EQ(f.x, 4);
 		TEST_EQ(f.y, 5);
@@ -197,7 +209,7 @@ void test_Vector() {
 		TEST_EQ(f(0), 4);
 		TEST_EQ(f(1), 5);
 		TEST_EQ(f(2), 7);
-		
+
 		//test [] indexing
 		TEST_EQ(f[0], 4);
 		TEST_EQ(f[1], 5);
@@ -231,7 +243,7 @@ void test_Vector() {
 			TEST_EQ(*i, 5); i++;
 			TEST_EQ(*i, 7); i++;
 			TEST_EQ(i, f.end());
-		
+
 			for (auto & i : f) {
 				std::cout << "f iter = " << i << std::endl;
 			}
@@ -241,7 +253,7 @@ void test_Vector() {
 			// TODO verify cbegin/cend
 			// TODO support for rbegin/rend const/not const and crbegin/crend
 		}
-	
+
 		// operators
 		// vector/scalar operations
 		TEST_EQ(f+1.f, Tensor::float3(5,6,8));
@@ -283,7 +295,7 @@ void test_Vector() {
 		// dot product
 		TEST_EQ(dot(f,g), 47)
 		TEST_EQ(f.dot(g), 47)
-		
+
 		// length-squared
 		TEST_EQ(f.lenSq(), 90);
 		TEST_EQ(lenSq(f), 90);
@@ -291,7 +303,7 @@ void test_Vector() {
 		// length
 		TEST_EQ_EPS(f.length(), sqrt(90), 1e-6);
 		TEST_EQ_EPS(length(f), sqrt(90), 1e-6);
-		
+
 		// cros product
 		TEST_EQ(cross(f,g), Tensor::float3(3, 41, -31))
 
@@ -313,7 +325,7 @@ void test_Vector() {
 		));
 
 		// TODO vector subset access
-	
+
 		// swizzle
 		// TODO need an operator== between T and reference_wrapper<T> ...
 		// or casting ctor?
@@ -326,7 +338,7 @@ void test_Vector() {
 			auto x = Tensor::float3(1,2,3);
 			x = x.yzx();
 			TEST_EQ(x, Tensor::float3(2,3,1));
-// ERROR: no matching constructor for initialization of 'std::reference_wrapper<float>' 
+// ERROR: no matching constructor for initialization of 'std::reference_wrapper<float>'
 //			x.yzx() = Tensor::float3(7,8,9);
 //			TEST_EQ(x, Tensor::float3(9,7,8));
 		}
@@ -336,7 +348,7 @@ static_assert(sizeof(Tensor::float3a3a3) == sizeof(float));
 		/* more tests ...
 		float2 float4
 		int2 int3 int4
-		
+
 		default-template vectors of dif sizes (5 maybe? ... )
 			assert that no .x exists to verify
 		*/
@@ -355,7 +367,7 @@ static_assert(sizeof(Tensor::float3a3a3) == sizeof(float));
 		TEST_EQ(j[2], 7);
 		TEST_EQ(j[3], 8);
 		TEST_EQ(j[4], 9);
-	
+
 		// iterator copy
 		Tensor::float3 f2;
 		std::copy(f2.begin(), f2.end(), f.begin()); // crashing ...
@@ -397,7 +409,7 @@ static_assert(sizeof(Tensor::float3a3a3) == sizeof(float));
 
 		// operators
 		operatorScalarTest(f);
-	
+
 		// contract
 
 		TEST_EQ((Tensor::contract<0,0>(Tensor::float3(1,2,3))), 6);
@@ -408,7 +420,7 @@ static_assert(sizeof(Tensor::float3a3a3) == sizeof(float));
 		{
 			//arg ctor works
 			Tensor::float3 a(1,2,3);
-			
+
 			//bracket ctor works
 			Tensor::float3 b = {4,5,6};
 
@@ -418,10 +430,10 @@ static_assert(sizeof(Tensor::float3a3a3) == sizeof(float));
 
 			//make sure GenericArray functionality works
 			TEST_EQ(Tensor::float3(1), Tensor::float3(1,1,1));
-			
+
 			// new lib doesn't support this ... but should it?
 			//TEST_EQ(Tensor::float3(1,2), Tensor::float3(1,2,0));
-			
+
 			TEST_EQ(b + a, Tensor::float3(5,7,9));
 			TEST_EQ(b - a, Tensor::float3(3,3,3));
 			TEST_EQ(b * a, 32);
@@ -454,7 +466,7 @@ static_assert(sizeof(Tensor::float3a3a3) == sizeof(float));
 		float3 b = a;
 		TEST_EQ(b, float3(1,2,0));
 	}
-	
+
 	//tie semantics / structure binding
 	// https://en.cppreference.com/w/cpp/language/structured_binding
 	{
@@ -492,7 +504,7 @@ terminate called after throwing an instance of 'Common::Exception'
 			TEST_EQ(ay, 2);
 			TEST_EQ(az, 3);
 		}
-#if 0	
+#if 0
 		{
 			auto const [ax,ay,az] = a;
 			TEST_EQ(ax, 1);
@@ -505,6 +517,6 @@ terminate called after throwing an instance of 'Common::Exception'
 			TEST_EQ(ay, 2);
 			TEST_EQ(az, 3);
 		}
-#endif	
+#endif
 	}
 }

@@ -544,7 +544,7 @@ Scalar = NestedPtrTuple's last
 	};
 	template<int deferRank = rank>\
 	using ReplaceStorageWithZero = typename ExpandAllStorage<deferRank>::template ReplaceWithZeroImpl<deferRank>::type;
-	
+
 	template<int deferRank = rank>\
 	struct ReplaceWithZeroImpl {\
 		static constexpr auto value() {\
@@ -650,13 +650,13 @@ Scalar = NestedPtrTuple's last
 	/* a(i1,i2,...) := a_i1_i2_... */\
 	/* operator(int, int...) calls through operator(int) */\
 	template<typename Int, typename... Ints>\
-	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
+	requires (rank > 1 && ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>)))\
 	constexpr decltype(auto) operator()(Int const i, Ints const ... is) {\
 		return (*this)(i)(is...);\
 	}\
 \
 	template<typename Int, typename... Ints>\
-	requires ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>))\
+	requires (rank > 1 && ((std::is_integral_v<Ints>) && ... && (std::is_integral_v<Int>)))\
 	constexpr decltype(auto) operator()(Int const i, Ints const ... is) const {\
 		return (*this)(i)(is...);\
 	}
@@ -667,11 +667,25 @@ Scalar = NestedPtrTuple's last
 	/* operator(vec<int,N>) calls through operator(int...) */\
 	template<typename Int, int N>\
 	requires std::is_integral_v<Int>\
-	constexpr decltype(auto) operator()(vec<Int, N> const & i) { return std::apply(*this, i.s); }\
+	constexpr decltype(auto) operator()(vec<Int, N> const & i) {\
+			/* apply */\
+		/*return std::apply(*this, i.s);*/\
+			/* fold */\
+		return [&]<auto...j>(std::index_sequence<j...>) -> decltype(auto) {\
+			return (*this)(i(j)...);\
+		}(std::make_index_sequence<N>{});\
+	}\
 \
 	template<typename Int, int N>\
 	requires std::is_integral_v<Int>\
-	constexpr decltype(auto) operator()(vec<Int, N> const & i) const { return std::apply(*this, i.s); }
+	constexpr decltype(auto) operator()(vec<Int, N> const & i) const {\
+			/* apply */\
+		/*return std::apply(*this, i.s);*/\
+			/* fold */\
+		return [&]<auto...j>(std::index_sequence<j...>) -> decltype(auto) {\
+			return (*this)(i(j)...);\
+		}(std::make_index_sequence<N>{});\
+	}
 
 #define TENSOR_ADD_SCALAR_CTOR(classname)\
 	/* would be nice to have this constructor for non-tensors, non-lambdas*/\
@@ -682,13 +696,13 @@ Scalar = NestedPtrTuple's last
 	/* so instead ... */\
 	constexpr classname(Scalar const & x) {\
 			/* sequences */\
-		/*[&]<size_t ... k>(std::index_sequence<k...>) constexpr {\
-			return ((s[k] = x), ..., *this);\
-		}(std::make_index_sequence<localCount>{});*/\
+		[&]<size_t...k>(std::index_sequence<k...>) constexpr {\
+			((s[k] = x), ...);\
+		}(std::make_index_sequence<localCount>{});\
 			/* for-loops */\
-		for (int k = 0; k < localCount; ++k) {\
+		/*for (int k = 0; k < localCount; ++k) {\
 			s[k] = x;\
-		}\
+		}*/\
 	}
 
 // vector cast operator
@@ -1437,7 +1451,7 @@ struct vec<Inner_,2> {
 	TENSOR_VEC2_ADD_SWIZZLE2_i(x)\
 	TENSOR_VEC2_ADD_SWIZZLE2_i(y)
 	TENSOR3_VEC2_ADD_SWIZZLE2()
-	
+
 	// 3-component swizzles
 #define TENSOR_VEC2_ADD_SWIZZLE3_ijk(i, j, k)\
 	auto i ## j ## k() { return vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
@@ -1510,7 +1524,7 @@ struct vec<Inner_,3> {
 	TENSOR_VEC3_ADD_SWIZZLE2_i(y)\
 	TENSOR_VEC3_ADD_SWIZZLE2_i(z)
 	TENSOR3_VEC3_ADD_SWIZZLE2()
-	
+
 	// 3-component swizzles
 #define TENSOR_VEC3_ADD_SWIZZLE3_ijk(i, j, k)\
 	auto i ## j ## k() { return vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
@@ -1594,7 +1608,7 @@ struct vec<Inner_,4> {
 	TENSOR_VEC4_ADD_SWIZZLE2_i(z)\
 	TENSOR_VEC4_ADD_SWIZZLE2_i(w)
 	TENSOR3_VEC4_ADD_SWIZZLE2()
-	
+
 	// 3-component swizzles
 #define TENSOR_VEC4_ADD_SWIZZLE3_ijk(i, j, k)\
 	auto i ## j ## k() { return vec<std::reference_wrapper<Inner>, 3>(i, j, k); }\
@@ -2235,14 +2249,14 @@ struct asym {
 	// so if I just make everything methods then there is some consistancy.
 	AntiSymRef<Inner		> x_x() 		requires (localDim > 0) { return (*this)(0,0); }
 	AntiSymRef<Inner const	> x_x() const 	requires (localDim > 0) { return (*this)(0,0); }
-	
+
 	AntiSymRef<Inner		> x_y() 		requires (localDim > 1) { return (*this)(0,1); }
 	AntiSymRef<Inner const	> x_y() const 	requires (localDim > 1) { return (*this)(0,1); }
 	AntiSymRef<Inner		> y_x() 		requires (localDim > 1) { return (*this)(1,0); }
 	AntiSymRef<Inner const	> y_x() const 	requires (localDim > 1) { return (*this)(1,0); }
 	AntiSymRef<Inner		> y_y() 		requires (localDim > 1) { return (*this)(1,1); }
 	AntiSymRef<Inner const	> y_y() const 	requires (localDim > 1) { return (*this)(1,1); }
-	
+
 	AntiSymRef<Inner		> x_z() 		requires (localDim > 2) { return (*this)(0,2); }
 	AntiSymRef<Inner const	> x_z() const 	requires (localDim > 2) { return (*this)(0,2); }
 	AntiSymRef<Inner		> z_x() 		requires (localDim > 2) { return (*this)(2,0); }
@@ -2253,7 +2267,7 @@ struct asym {
 	AntiSymRef<Inner const	> z_y() const 	requires (localDim > 2) { return (*this)(2,1); }
 	AntiSymRef<Inner		> z_z() 		requires (localDim > 2) { return (*this)(2,2); }
 	AntiSymRef<Inner const	> z_z() const 	requires (localDim > 2) { return (*this)(2,2); }
-	
+
 	AntiSymRef<Inner		> x_w() 		requires (localDim > 3) { return (*this)(0,3); }
 	AntiSymRef<Inner const	> x_w() const 	requires (localDim > 3) { return (*this)(0,3); }
 	AntiSymRef<Inner		> w_x() 		requires (localDim > 3) { return (*this)(3,0); }
@@ -2994,7 +3008,7 @@ TENSOR_SCALAR_MUL_OP(|)
 TENSOR_SCALAR_MUL_OP(^)
 TENSOR_SCALAR_MUL_OP(%)
 //TENSOR_UNARY_OP(~)
-// should I add these?  or should I add a boolean cast?  and would the two interfere? 
+// should I add these?  or should I add a boolean cast?  and would the two interfere?
 //TENSOR_UNARY_OP(!)
 //TENSOR_TENSOR_OP(&&)
 //TENSOR_TENSOR_OP(||)
