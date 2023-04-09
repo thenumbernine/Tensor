@@ -69,17 +69,22 @@ void test_Matrix() {
 		using float1x2 = tensor<float,1,2>;
 
 		auto a = float2(1,2);
-		auto x = float1x2{a};	//working now
+		auto x = float1x2{a};
 		ECHO(x);
+		TEST_EQ(x, float1x2{a});
 
-#if 0	//failing
-		ECHO(float1x2(a));
-		ECHO(float1x2(float2(1,2)));
+		auto y = float1x2{{1,2}};
+		TEST_EQ(x,y);
+		TEST_EQ(x, (float1x2{{1,2}}));
+#if 0
+		auto y = float1x2({1,2});
+		TEST_EQ(x,y);		// errors ... initializes y to {{1,1}}
+		
+		ECHO(float1x2(a));	//failing
+		ECHO(float1x2(float2(1,2)));	//failing
+		auto x = float1x2(float2(1,2));	//failing
 		//list ctor
-		//auto x = float1x2(a);
-		//auto x = float1x2{{1,2}};
-		//auto x = float1x2({1,2});
-		auto x = float1x2(float2(1,2));
+		//auto x = float1x2(a);	//failing
 		ECHO(x);
 #endif
 	}
