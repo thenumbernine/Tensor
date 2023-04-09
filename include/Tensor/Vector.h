@@ -773,15 +773,23 @@ Scalar = NestedPtrTuple's last
 		}\
 	}
 
-#if 0	//vararg ctor
+#if 0
+#define TENSOR_ADD_ARG_CTOR(classname)\
+\
+	/* single-inner (not single-scalar , not lambda, not matching-rank tensor */\
+	constexpr classname(Inner const & x)\
+	requires (!std::is_same_v<Inner, Scalar>)\
+	: s{x} {}\
+\
+	/* vararg ctor */\
+	/* works as long as you give up ctor({init0...}, ...) */\
+	/*  and replace it all with ctor{{init0...}, ...} */\
 	template<typename ... Inners>\
-	requires (sizeof...(Inners) > 1 && Common::is_all_base_of_v<Inner, std::decay_t<Inners>...>)\
-	constexpr classname(Inners ... xs)\
-		: s({xs...}) {\
+	requires (sizeof...(Inners) > 1)\
+	constexpr classname(Inners const & ... xs)\
+		: s({((Inner)xs)...}) {\
 	}
-#endif
-
-// TODO vararg ctor
+#else
 #define TENSOR_ADD_ARG_CTOR(classname)\
 \
 	/* vec1 */\
@@ -844,6 +852,7 @@ Scalar = NestedPtrTuple's last
 		Inner const & s9_)\
 	requires (localCount >= 10)\
 	: s({s0_, s1_, s2_, s3_, s4_, s5_, s6_, s7_, s8_, s9_}) {}
+#endif
 
 #define TENSOR_ADD_CTORS(classname)\
 	TENSOR_ADD_SCALAR_CTOR(classname)\

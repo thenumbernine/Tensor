@@ -80,6 +80,16 @@ void test_Matrix() {
 		TEST_EQ(x(1,0), 2);
 	}
 
+	{	//2x2 ctors
+		using namespace Tensor;
+		auto a = tensor<float,2,2>{{1,2},{3,4}};
+		ECHO(a);
+		auto b = tensor<float,2,2>({1,2},{3,4});
+		ECHO(b);
+		auto c = tensor<float,2,2>(float2(1,2),float2(3,4));
+		ECHO(c);
+	}
+
 	//bracket ctor
 	Tensor::float3x3 m = {
 		{1,2,3},
