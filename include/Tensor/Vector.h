@@ -782,6 +782,14 @@ Scalar = NestedPtrTuple's last
 		}\
 	}
 
+#if 0	//vararg ctor
+	template<typename ... Inners>\
+	requires (sizeof...(Inners) > 1 && Common::is_all_base_of_v<Inner, std::decay_t<Inners>...>)\
+	constexpr classname(Inners ... xs)\
+		: s({xs...}) {\
+	}
+#endif
+
 // TODO vararg ctor
 #define TENSOR_ADD_ARG_CTOR(classname)\
 \
