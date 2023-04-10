@@ -51,13 +51,13 @@ void test_Matrix() {
 			auto x2 = float1x1([&](Tensor::int2) -> float { return x1(0); });
 			TEST_EQ(x2(0,0), 2);
 		}
-#if 0
-		{	// failing to compile
-			auto x2 = float1x1(x1);
+		{
+			auto x2 = float1x1{x1};
 			TEST_EQ(x2(0,0), 2);
 		}
-		{	// failing to compile
-			auto x2 = float1x1{x1};
+#if 0
+		{	// failing to compile - ambiguous constructor
+			auto x2 = float1x1(x1);
 			TEST_EQ(x2(0,0), 2);
 		}
 #endif
@@ -68,24 +68,43 @@ void test_Matrix() {
 		using namespace Tensor;
 		using float1x2 = tensor<float,1,2>;
 
-		auto a = float2(1,2);
-		auto x = float1x2{a};
-		ECHO(x);
-		TEST_EQ(x, float1x2{a});
-
-		auto y = float1x2{{1,2}};
-		TEST_EQ(x,y);
-		TEST_EQ(x, (float1x2{{1,2}}));
+		auto x1 = float2(3,4);
+		auto x = float1x2{x1};
+		{
+			ECHO(x);
+			TEST_EQ(x, float1x2{x1});
+		}
+		{
+			auto y = float1x2{{3,4}};
+			TEST_EQ(x,y);
+			TEST_EQ(x, (float1x2{{3,4}}));
+		}
 #if 0
-		auto y = float1x2({1,2});
-		TEST_EQ(x,y);		// errors ... initializes y to {{1,1}}
-		
-		ECHO(float1x2(a));	//failing
-		ECHO(float1x2(float2(1,2)));	//failing
-		auto x = float1x2(float2(1,2));	//failing
-		//list ctor
-		//auto x = float1x2(a);	//failing
-		ECHO(x);
+		{
+			auto y = float1x2({3,4});
+			TEST_EQ(x,y);		// errors ... initializes y to {{3,3}}
+		}
+#endif
+#if 0
+		TEST_EQ(x,(float1x2({3,4})));		// errors ... initializes y to {{3,3}}
+#endif
+#if 0
+		TEST_EQ(x,(float1x2{3,4}));		// should fail to compile?  it doesn't - and does scalar ctor
+#endif
+#if 0
+		{
+			auto y = float1x2(x1);	// won't compile
+			ECHO(y);
+		}
+#endif
+#if 0
+		ECHO(float1x2(x1));	// won't compile - ambiguous conversion
+#endif
+#if 0
+		ECHO(float1x2(float2(3,4)));	// won't compile - ambiguous conversion
+#endif
+#if 0
+		auto y = float1x2(float2(3,4));	// won't compile - ambiguous conversion
 #endif
 	}
 
@@ -204,6 +223,7 @@ void test_Matrix() {
 	// do they initialize to full scalars like vecs do?
 	// do they initialize to ident times scalar like math do?
 	TEST_EQ(Tensor::float3x3(3), (Tensor::float3x3{{3,3,3},{3,3,3},{3,3,3}}));
+	TEST_EQ(Tensor::float3x3(3), (Tensor::float3x3({3,3,3},{3,3,3},{3,3,3})));
 
 	// lambda constructor
 	// row-major, sequential in memory:

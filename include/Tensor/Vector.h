@@ -706,7 +706,6 @@ Scalar = NestedPtrTuple's last
 		}*/\
 	}\
 	constexpr classname(Scalar && x) {\
-		/* hmm, for some reason using Inner{x} instead of Inner(x) is giving segfaults ... */\
 			/* sequences */\
 		[&]<size_t...k>(std::index_sequence<k...>) constexpr {\
 			((s[k] = Inner(x)), ...);\
@@ -723,7 +722,11 @@ Scalar = NestedPtrTuple's last
 #define TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname)\
 	template<typename U>\
 	/* do I want to force matching bounds or bounds-check each read? */\
-	requires (is_tensor_v<U> && rank == U::rank)\
+	requires (\
+		is_tensor_v<U> &&\
+		rank == U::rank/* &&\
+		std::is_convertible_v<std::decay_t<Scalar>, std::decay_t<typename U::Scalar>>*/\
+	)\
 	constexpr classname(U const & t) {\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
@@ -738,15 +741,31 @@ Scalar = NestedPtrTuple's last
 			}\
 		}\
 	}\
+	template<typename U>\
+	requires (\
+		is_tensor_v<U> &&\
+		rank == U::rank/* &&\
+		std::is_convertible_v<std::decay_t<Scalar>, std::decay_t<typename U::Scalar>>*/\
+	)\
+	constexpr classname(U && t) {\
+		auto w = write();\
+		for (auto i = w.begin(); i != w.end(); ++i) {\
+			if (U::validIndex(i.readIndex)) {\
+				*i = std::apply(t, i.readIndex.s);\
+			} else {\
+				*i = Scalar();\
+			}\
+		}\
+	}\
 \
 	template<typename T, T... I>\
-	constexpr classname(std::integer_sequence<T, I...>) : classname{I...} {}
+	explicit constexpr classname(std::integer_sequence<T, I...>) : classname{I...} {}
 
 
 // lambda ctor
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
 	/* use vec<int, rank> as our lambda index: */\
-	constexpr classname(std::function<Scalar(intN)> f) {\
+	explicit constexpr classname(std::function<Scalar(intN)> f) {\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
 			*i = f(i.readIndex);\
@@ -758,7 +777,7 @@ Scalar = NestedPtrTuple's last
 	/* mind you in C++ I can't just say the signature is FunctionFromLambda<Lambda>::FuncType ... */\
 	/* no ... I have to accept all and then requires that part */\
 	template<typename Lambda>\
-	constexpr classname(Lambda lambda)\
+	explicit constexpr classname(Lambda lambda)\
 	requires (\
 		std::is_same_v<\
 			Common::FunctionFromLambda<Lambda>,\
@@ -784,17 +803,7 @@ Scalar = NestedPtrTuple's last
 		}\
 	}
 
-#if 1
-#define TENSOR_ADD_ARG_CTOR(classname)\
-\
-	/* single-inner (not single-scalar , not lambda, not matching-rank tensor */\
-	constexpr classname(Inner const & x)\
-	requires (!std::is_same_v<Inner, Scalar>)\
-	: s{x} {}\
-	constexpr classname(Inner && x)\
-	requires (!std::is_same_v<Inner, Scalar>)\
-	: s{x} {}\
-\
+#define TENSOR_ADD_VARARG_CTOR(classname)\
 	/* vararg ctor */\
 	/* works as long as you give up ctor({init0...}, ...) */\
 	/*  and replace it all with ctor{{init0...}, ...} */\
@@ -803,7 +812,7 @@ Scalar = NestedPtrTuple's last
 		sizeof...(Inners) > 1 &&\
 		(std::is_convertible_v<Inners, Inner> && ... && (true))\
 	)\
-	constexpr classname(Inners const & ... xs)\
+	explicit constexpr classname(Inners const & ... xs)\
 		: s({Inner(xs)...}) {\
 	}\
 	template<typename ... Inners>\
@@ -811,47 +820,83 @@ Scalar = NestedPtrTuple's last
 		sizeof...(Inners) > 1 &&\
 		(std::is_convertible_v<Inners, Inner> && ... && (true))\
 	)\
-	constexpr classname(Inners && ... xs)\
+	explicit constexpr classname(Inners && ... xs)\
 		: s({Inner(xs)...}) {\
-	}\
+	}
+
+#if 1
+#define TENSOR_ADD_ARG_CTOR(classname)\
+\
+	/* single-inner (not single-scalar , not lambda, not matching-rank tensor */\
+	explicit constexpr classname(Inner const & x)\
+	requires (!std::is_same_v<Inner, Scalar>)\
+	: s{x} {}\
+	explicit constexpr classname(Inner && x)\
+	requires (!std::is_same_v<Inner, Scalar>)\
+	: s{x} {}\
+\
+	TENSOR_ADD_VARARG_CTOR(classname)\
 \
 	/* vec1 */\
-	constexpr classname(Inner const & x)\
+	explicit constexpr classname(Inner const & x)\
 	requires (\
 		localCount >= 1 &&\
 			/* works */\
 		!std::is_same_v<Scalar, Inner>\
 			/* should be equivalent ... but getting errors at the scalar ctor */\
 		/*rank > 1*/\
-	)\
-	: s({x}) {}\
+	) : s({x}) {}\
+	explicit constexpr classname(Inner && x)\
+	requires (\
+		localCount >= 1 &&\
+		!std::is_same_v<Scalar, Inner>\
+		/*rank > 1*/\
+	) : s({x}) {}\
 \
 	/* vec2 */\
-	constexpr classname(\
+	explicit constexpr classname(\
 		Inner const & s0_,\
 		Inner const & s1_)\
 	requires (localCount >= 2)\
 	: s({s0_, s1_}) {}\
+	explicit constexpr classname(\
+		Inner && s0_,\
+		Inner && s1_)\
+	requires (localCount >= 2)\
+	: s({s0_, s1_}) {}\
 \
 	/* vec3, sym2, asym3 */\
-	constexpr classname(\
+	explicit constexpr classname(\
 		Inner const & s0_,\
 		Inner const & s1_,\
 		Inner const & s2_)\
 	requires (localCount >= 3)\
 	: s({s0_, s1_, s2_}) {}\
+	explicit constexpr classname(\
+		Inner && s0_,\
+		Inner && s1_,\
+		Inner && s2_)\
+	requires (localCount >= 3)\
+	: s({s0_, s1_, s2_}) {}\
 \
 	/* vec4, quat */\
-	constexpr classname(\
+	explicit constexpr classname(\
 		Inner const & s0_,\
 		Inner const & s1_,\
 		Inner const & s2_,\
 		Inner const & s3_)\
 	requires (localCount >= 4)\
 	: s({s0_, s1_, s2_, s3_}) {}\
+	explicit constexpr classname(\
+		Inner && s0_,\
+		Inner && s1_,\
+		Inner && s2_,\
+		Inner && s3_)\
+	requires (localCount >= 4)\
+	: s({s0_, s1_, s2_, s3_}) {}\
 \
 	/* sym3, asym4 */\
-	constexpr classname(\
+	explicit constexpr classname(\
 		Inner const & s0_,\
 		Inner const & s1_,\
 		Inner const & s2_,\
@@ -860,9 +905,18 @@ Scalar = NestedPtrTuple's last
 		Inner const & s5_)\
 	requires (localCount >= 6)\
 	: s({s0_, s1_, s2_, s3_, s4_, s5_}) {}\
+	explicit constexpr classname(\
+		Inner && s0_,\
+		Inner && s1_,\
+		Inner && s2_,\
+		Inner && s3_,\
+		Inner && s4_,\
+		Inner && s5_)\
+	requires (localCount >= 6)\
+	: s({s0_, s1_, s2_, s3_, s4_, s5_}) {}\
 \
 	/* sym4 */\
-	constexpr classname(\
+	explicit constexpr classname(\
 		Inner const & s0_,\
 		Inner const & s1_,\
 		Inner const & s2_,\
@@ -873,6 +927,19 @@ Scalar = NestedPtrTuple's last
 		Inner const & s7_,\
 		Inner const & s8_,\
 		Inner const & s9_)\
+	requires (localCount >= 10)\
+	: s({s0_, s1_, s2_, s3_, s4_, s5_, s6_, s7_, s8_, s9_}) {}\
+	explicit constexpr classname(\
+		Inner && s0_,\
+		Inner && s1_,\
+		Inner && s2_,\
+		Inner && s3_,\
+		Inner && s4_,\
+		Inner && s5_,\
+		Inner && s6_,\
+		Inner && s7_,\
+		Inner && s8_,\
+		Inner && s9_)\
 	requires (localCount >= 10)\
 	: s({s0_, s1_, s2_, s3_, s4_, s5_, s6_, s7_, s8_, s9_}) {}
 #endif
