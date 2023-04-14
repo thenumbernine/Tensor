@@ -15,4 +15,5 @@ int main() {
 	test_Derivative();
 	test_Math();
 	test_Quat();
+	test_Valence();
 }

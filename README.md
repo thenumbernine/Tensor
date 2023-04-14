@@ -597,6 +597,24 @@ Each of these will return a 4x4 matrix of its respective scalar type.
 - `ortho2D<T>(T left, T right, T bottom, T top)` = returns an ortho perspective matrix with default unit Z range.
 	Based on `gluOrtho2D`.
 
+### Valence Wrappers
+For those who want to maintain proper index-notation contravariance/covariance, we do have a valence wrapper template.
+`valence<T, valences...>(t)` = valence wrapper of tensor of type T.
+- `valences...` = parameter pack of characters of 'u' or 'd' for up (contravariant) vs down (covariant) valences.  Actually whatever character you use currently doesn't matter -- all the check does is verify that multiplied valences differ, but not how they differ.
+
+For those who don't want to redeclare the tensor type a second time when constructing the valence wrapper:
+`make_valence<valences...>(t)` = construct a valence wrapper around tensor `t` and deduce its type.
+
+Ex:
+```c++
+auto a = make_valence<'u', 'd'>(tensor<float,2,2>{{0,-1},{1,0}});	// a^i_j
+auto g = make_valence<'d', 'd'>(tensor<float,2,2>{{-1,0},{1,0}});	// g_ij
+a * g;	//this will produce a static_assert error: a^i_k * g_kj is invalid
+g * a;	//this is fine: g_ik * a^k_j is fine
+```
+
+Valence objects can dereference the wrapped tensor using `operator*` and `operator->`.
+
 ## Dependencies:
 This project depends on my "[Common](https://github.com/thenumbernine/Common)" project, for Exception, template metaprograms, etc.
 
@@ -686,8 +704,10 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 
 - Note to self (and anyone else listening), while GitHub MarkDown handles `_`'s correctly within `` ` ``'s , it fails within MathJax `$`'s and `$$`'s which means you have to escape all your `_`'s within your MathJax as `\_`.
 
-- valence-check wrapper? `Tensor::valence<TensorType, 'u', 'u', 'd', 'd'>`, then `static_assert` that the `TensorType` rank matches the # of valence symbols.
-	- Make it just a thin wrapper of all other tensor operations, except with added `static_assert` checking during index summation.
+- valence-check wrapper:
+	- op= and op works, compile-time checked
+	- member aren't implemented yet.
+	- index-notation isn't implemented yet
 	- maybe extra symbol for multi-basis? `valence<T, '1u', '1d', '2u', '2d'>`?
 
 - `tensorWedge<int p,int q>(a,b)` function which outers the p-most of a and q-most of b, while antisymmetrizing the last rank(a)-p of a and rank(b)-q of b.
