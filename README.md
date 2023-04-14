@@ -44,7 +44,7 @@ auto c = b(i,j,j).assignI();
 auto d = (a(i,j) * b(j,k,k)).assignI();
 ```
 
-Example of using a totally-antisymmetric tensor for implementing the cross-product. $(a \times b)\_i := \epsilon\_{ijk} a^j b^k$ 
+Example of using a totally-antisymmetric tensor for implementing the cross-product. $(a \times b)\_i := \epsilon\_{ijk} a^j b^k$
 ```c++
 float3 cross(float3 a, float3 b) {
 	// Create the Levi-Civita totally-antisymmetric permutation tensor for dim 3 rank 3 ... using up a single float of memory:
@@ -298,7 +298,7 @@ Array access, be it by `()`, `[]`, by integer sequence or by int-vectors, is equ
 - `(int i1, ...)` = dereference based on a list of ints.  In the case of `tensori` or `tensorr`, i.e. `vec<vec<vec<...>>>` storage, this means $a\_{ij}$ in math = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
-	
+
 In the case of optimized storage it can potentially differ with accessing the raw data directly, and for this reason reading the `.s[i]` field will not always produce the same value as reading the `[i]` field.
 In the case of `zero, ident, asym` there are fields that provide wrapper objects which are either represent zero or the negative of another value within the tensor storage.
 ```c++
@@ -653,7 +653,7 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 
 - any way to optimize symmetries between non-neighboring dimensions?
 	- like $t\_{ijkl} = a\_{ik} b\_{jl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
- 
+
 - somehow for differing-typed tensors get operator== constexpr
 - might do some constexpr loop unrolling stuff maybe.
 - test case write tests should be writing different values and verifying
@@ -686,7 +686,7 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 
 - Note to self (and anyone else listening), while GitHub MarkDown handles `_`'s correctly within `` ` ``'s , it fails within MathJax `$`'s and `$$`'s which means you have to escape all your `_`'s within your MathJax as `\_`.
 
-- valence-check wrapper? `Tensor::valence<TensorType, 'u', 'u', 'd', 'd'>`, then `static_assert` that the `TensorType` rank matches the # of valence symbols.  
+- valence-check wrapper? `Tensor::valence<TensorType, 'u', 'u', 'd', 'd'>`, then `static_assert` that the `TensorType` rank matches the # of valence symbols.
 	- Make it just a thin wrapper of all other tensor operations, except with added `static_assert` checking during index summation.
 	- maybe extra symbol for multi-basis? `valence<T, '1u', '1d', '2u', '2d'>`?
 

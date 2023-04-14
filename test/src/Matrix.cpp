@@ -32,7 +32,7 @@ namespace Test {
 	STATIC_ASSERT_EQ((seq_get_v<1, float3x3::dimseq>), 3);
 }
 
-void test_Matrix() {	
+void test_Matrix() {
 	// matrix
 
 	{	// 1x1
@@ -112,49 +112,49 @@ void test_Matrix() {
 		using namespace Tensor;
 		using float1 = floatN<1>;
 		using float2x1 = tensor<float,2,1>;
-		
+
 		ECHO(float2x1(float1(1),float1(2)));
-		
+
 		ECHO(float2x1({1},{2}));
-		
+
 		ECHO((float2x1{{1},{2}}));
-		
+
 		auto a1 = float1(1);
 		auto a2 = float1(2);
 		ECHO(float2x1(a1,a2));
 		ECHO((float2x1{a1,a2}));
-		
+
 		auto a = float2x1{{1},{2}};
 		TEST_EQ(a(0,0), 1);
 		TEST_EQ(a(1,0), 2);
-		
+
 		auto b = float2x1({1},{2});
 		TEST_EQ(a,b);
-		
+
 		auto c = float2x1(float1(1), float1(2));
 		TEST_EQ(a,c);
 	}
 
 	{	//2x2 ctors
 		using namespace Tensor;
-		
+
 		ECHO(float2x2(float2(1,2),float2(3,4)));
-		
+
 		ECHO(float2x2({1,2},{3,4}));
-		
+
 		ECHO((float2x2{{1,2},{3,4}}));
 
 		auto a1 = float2(1,2);
 		auto a2 = float2(3,4);
 		ECHO(float2x2(a1,a2));
 		ECHO((float2x2{a1,a2}));
-		
+
 		auto a = float2x2{{1,2},{3,4}};
 		ECHO(a);
-		
+
 		auto b = float2x2({1,2},{3,4});
 		ECHO(b);
-		
+
 		auto c = float2x2(float2(1,2),float2(3,4));
 		ECHO(c);
 	}
@@ -165,7 +165,7 @@ void test_Matrix() {
 		{4,5,6},
 		{7,8,9},
 	};
-	
+
 	//dims and rank.  really these are static_assert's, except dims, but it could be, but I'd have to constexpr some things ...
 	STATIC_ASSERT_EQ(m.rank, 2);
 	STATIC_ASSERT_EQ((m.dim<0>), 3);
@@ -196,7 +196,7 @@ void test_Matrix() {
 	TEST_EQ(m.s2.s0, 7);
 	TEST_EQ(m.s2.s1, 8);
 	TEST_EQ(m.s2.s2, 9);
-	
+
 	// indexing - various [] and (int...) and (intN)
 	auto f = [](int i, int j) -> float { return 1 + j + 3 * i; };
 	verifyAccessRank2<decltype(m)>(m, f);
@@ -231,7 +231,7 @@ void test_Matrix() {
 	// col-major, sequential in memory:
 	//  why I don't do col-major? because then it's transposed of C construction, and that means m[i][j] == m.s[j].s[i] so your indexes are transposed the storage indexes
 	//TEST_EQ(m, Tensor::float3x3([](Tensor::int2 i) -> float { return 1 + i(0) + 3 * i(1); }));
-	
+
 	// TODO casting ctor
 
 	// read iterator

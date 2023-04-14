@@ -666,24 +666,43 @@ Scalar = NestedPtrTuple's last
 	/* a(intN(i,...)) */\
 	/* operator(vec<int,N>) calls through operator(int...) */\
 	template<typename Int, int N>\
-	requires std::is_integral_v<Int>\
+	requires (std::is_integral_v<Int> && N <= rank)\
 	constexpr decltype(auto) operator()(vec<Int, N> const & i) {\
 			/* apply */\
 		/*return std::apply(*this, i.s);*/\
 			/* fold */\
 		return [&]<auto...j>(std::index_sequence<j...>) -> decltype(auto) {\
-			return (*this)(i.s[j]...);\
+			return (*this)(i(j)...);\
 		}(std::make_index_sequence<N>{});\
 	}\
-\
 	template<typename Int, int N>\
-	requires std::is_integral_v<Int>\
+	requires (std::is_integral_v<Int> && N <= rank)\
 	constexpr decltype(auto) operator()(vec<Int, N> const & i) const {\
 			/* apply */\
 		/*return std::apply(*this, i.s);*/\
 			/* fold */\
 		return [&]<auto...j>(std::index_sequence<j...>) -> decltype(auto) {\
-			return (*this)(i.s[j]...);\
+			return (*this)(i(j)...);\
+		}(std::make_index_sequence<N>{});\
+	}\
+	template<typename Int, int N>\
+	requires (std::is_integral_v<Int> && N <= rank)\
+	constexpr decltype(auto) operator()(vec<Int, N> && i) {\
+			/* apply */\
+		/*return std::apply(*this, i.s);*/\
+			/* fold */\
+		return [&]<auto...j>(std::index_sequence<j...>) -> decltype(auto) {\
+			return (*this)(i(j)...);\
+		}(std::make_index_sequence<N>{});\
+	}\
+	template<typename Int, int N>\
+	requires (std::is_integral_v<Int> && N <= rank)\
+	constexpr decltype(auto) operator()(vec<Int, N> && i) const {\
+			/* apply */\
+		/*return std::apply(*this, i.s);*/\
+			/* fold */\
+		return [&]<auto...j>(std::index_sequence<j...>) -> decltype(auto) {\
+			return (*this)(i(j)...);\
 		}(std::make_index_sequence<N>{});\
 	}
 
@@ -694,7 +713,7 @@ Scalar = NestedPtrTuple's last
 	/*constexpr classname(T const & x)*/\
 	/*requires (!is_tensor_v<T> && !std::is_invocable_v<T>)*/\
 	/* so instead ... */\
-	constexpr classname(Scalar const & x) {\
+	/*explicit */constexpr classname(Scalar const & x) {\
 		/* hmm, for some reason using Inner{x} instead of Inner(x) is giving segfaults ... */\
 			/* sequences */\
 		[&]<size_t...k>(std::index_sequence<k...>) constexpr {\
@@ -705,7 +724,7 @@ Scalar = NestedPtrTuple's last
 			s[k] = Inner(x);\
 		}*/\
 	}\
-	constexpr classname(Scalar && x) {\
+	/*explicit */constexpr classname(Scalar && x) {\
 			/* sequences */\
 		[&]<size_t...k>(std::index_sequence<k...>) constexpr {\
 			((s[k] = Inner(x)), ...);\
@@ -716,17 +735,32 @@ Scalar = NestedPtrTuple's last
 		}*/\
 	}
 
+template<typename T> struct decay_unwrap_reference : public std::decay<std::unwrap_reference_t<T>> {};
+template<typename T> using decay_unwrap_reference_t = typename decay_unwrap_reference<T>::type;
+
+template<typename T> struct decay_unwrap_ref_decay : public std::decay<std::unwrap_ref_decay_t<T>> {};
+template<typename T> using decay_unwrap_ref_decay_t = typename decay_unwrap_ref_decay<T>::type;
+
 // vector cast operator
 // TODO not sure how to write this to generalize into sym and others (or if I should try to?)
 // explicit 'this->s' so subclasses can use this macro (like quat)
 #define TENSOR_ADD_CTOR_FOR_GENERIC_TENSORS(classname)\
+\
+	template<typename T, T... I>\
+	/*explicit*/ constexpr classname(std::integer_sequence<T, I...>) : classname{I...} {}\
+\
 	template<typename U>\
 	/* do I want to force matching bounds or bounds-check each read? */\
 	requires (\
 		is_tensor_v<U> &&\
-		rank == U::rank/* &&\
-		std::is_convertible_v<std::decay_t<Scalar>, std::decay_t<typename U::Scalar>>*/\
+			/* require dimensions to match */\
+		/*std::is_same_v<dimseq, typename U::dimseq>*/\
+			/* require rank to match */\
+		rank == U::rank\
+			/* require scalars to be convertible */\
+		/*std::is_convertible_v<decay_unwrap_ref_decay_t<Scalar>, decay_unwrap_ref_decay_t<typename U::Scalar>>*/\
 	)\
+	/*explicit*//* "no known conversion" for assigning vec<T>'s from vec<reference_wrapper<T>>'s */\
 	constexpr classname(U const & t) {\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
@@ -744,9 +778,14 @@ Scalar = NestedPtrTuple's last
 	template<typename U>\
 	requires (\
 		is_tensor_v<U> &&\
-		rank == U::rank/* &&\
-		std::is_convertible_v<std::decay_t<Scalar>, std::decay_t<typename U::Scalar>>*/\
+			/* require dimensions to match */\
+		/*std::is_same_v<dimseq, typename U::dimseq>*/\
+			/* require rank to match */\
+		rank == U::rank\
+			/* require scalars to be convertible */\
+		/*std::is_convertible_v<decay_unwrap_ref_decay_t<Scalar>, decay_unwrap_ref_decay_t<typename U::Scalar>>*/\
 	)\
+	/*explicit*//* "no known conversion" */\
 	constexpr classname(U && t) {\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
@@ -756,16 +795,13 @@ Scalar = NestedPtrTuple's last
 				*i = Scalar();\
 			}\
 		}\
-	}\
-\
-	template<typename T, T... I>\
-	explicit constexpr classname(std::integer_sequence<T, I...>) : classname{I...} {}
+	}
 
 
 // lambda ctor
 #define TENSOR_ADD_LAMBDA_CTOR(classname)\
 	/* use vec<int, rank> as our lambda index: */\
-	explicit constexpr classname(std::function<Scalar(intN)> f) {\
+	/*explicit*/ constexpr classname(std::function<Scalar(intN)> f) {\
 		auto w = write();\
 		for (auto i = w.begin(); i != w.end(); ++i) {\
 			*i = f(i.readIndex);\
@@ -777,7 +813,7 @@ Scalar = NestedPtrTuple's last
 	/* mind you in C++ I can't just say the signature is FunctionFromLambda<Lambda>::FuncType ... */\
 	/* no ... I have to accept all and then requires that part */\
 	template<typename Lambda>\
-	explicit constexpr classname(Lambda lambda)\
+	/*explicit*/ constexpr classname(Lambda lambda)\
 	requires (\
 		std::is_same_v<\
 			Common::FunctionFromLambda<Lambda>,\
@@ -812,7 +848,7 @@ Scalar = NestedPtrTuple's last
 		sizeof...(Inners) > 1 &&\
 		(std::is_convertible_v<Inners, Inner> && ... && (true))\
 	)\
-	explicit constexpr classname(Inners const & ... xs)\
+	/*explicit*/ constexpr classname(Inners const & ... xs)\
 		: s({Inner(xs)...}) {\
 	}\
 	template<typename ... Inners>\
@@ -820,7 +856,7 @@ Scalar = NestedPtrTuple's last
 		sizeof...(Inners) > 1 &&\
 		(std::is_convertible_v<Inners, Inner> && ... && (true))\
 	)\
-	explicit constexpr classname(Inners && ... xs)\
+	/*explicit*/ constexpr classname(Inners && ... xs)\
 		: s({Inner(xs)...}) {\
 	}
 
@@ -828,17 +864,17 @@ Scalar = NestedPtrTuple's last
 #define TENSOR_ADD_ARG_CTOR(classname)\
 \
 	/* single-inner (not single-scalar , not lambda, not matching-rank tensor */\
-	explicit constexpr classname(Inner const & x)\
+	/*explicit*/ constexpr classname(Inner const & x)\
 	requires (!std::is_same_v<Inner, Scalar>)\
 	: s{x} {}\
-	explicit constexpr classname(Inner && x)\
+	/*explicit*/ constexpr classname(Inner && x)\
 	requires (!std::is_same_v<Inner, Scalar>)\
 	: s{x} {}\
 \
 	TENSOR_ADD_VARARG_CTOR(classname)\
 \
 	/* vec1 */\
-	explicit constexpr classname(Inner const & x)\
+	/*explicit*/ constexpr classname(Inner const & x)\
 	requires (\
 		localCount >= 1 &&\
 			/* works */\
@@ -846,7 +882,7 @@ Scalar = NestedPtrTuple's last
 			/* should be equivalent ... but getting errors at the scalar ctor */\
 		/*rank > 1*/\
 	) : s({x}) {}\
-	explicit constexpr classname(Inner && x)\
+	/*explicit*/ constexpr classname(Inner && x)\
 	requires (\
 		localCount >= 1 &&\
 		!std::is_same_v<Scalar, Inner>\
@@ -854,25 +890,25 @@ Scalar = NestedPtrTuple's last
 	) : s({x}) {}\
 \
 	/* vec2 */\
-	explicit constexpr classname(\
+	/*explicit*/ constexpr classname(\
 		Inner const & s0_,\
 		Inner const & s1_)\
 	requires (localCount >= 2)\
 	: s({s0_, s1_}) {}\
-	explicit constexpr classname(\
+	/*explicit*/ constexpr classname(\
 		Inner && s0_,\
 		Inner && s1_)\
 	requires (localCount >= 2)\
 	: s({s0_, s1_}) {}\
 \
 	/* vec3, sym2, asym3 */\
-	explicit constexpr classname(\
+	/*explicit*/ constexpr classname(\
 		Inner const & s0_,\
 		Inner const & s1_,\
 		Inner const & s2_)\
 	requires (localCount >= 3)\
 	: s({s0_, s1_, s2_}) {}\
-	explicit constexpr classname(\
+	/*explicit*/ constexpr classname(\
 		Inner && s0_,\
 		Inner && s1_,\
 		Inner && s2_)\
@@ -880,14 +916,14 @@ Scalar = NestedPtrTuple's last
 	: s({s0_, s1_, s2_}) {}\
 \
 	/* vec4, quat */\
-	explicit constexpr classname(\
+	/*explicit*/ constexpr classname(\
 		Inner const & s0_,\
 		Inner const & s1_,\
 		Inner const & s2_,\
 		Inner const & s3_)\
 	requires (localCount >= 4)\
 	: s({s0_, s1_, s2_, s3_}) {}\
-	explicit constexpr classname(\
+	/*explicit*/ constexpr classname(\
 		Inner && s0_,\
 		Inner && s1_,\
 		Inner && s2_,\
@@ -896,7 +932,7 @@ Scalar = NestedPtrTuple's last
 	: s({s0_, s1_, s2_, s3_}) {}\
 \
 	/* sym3, asym4 */\
-	explicit constexpr classname(\
+	/*explicit*/ constexpr classname(\
 		Inner const & s0_,\
 		Inner const & s1_,\
 		Inner const & s2_,\
@@ -905,7 +941,7 @@ Scalar = NestedPtrTuple's last
 		Inner const & s5_)\
 	requires (localCount >= 6)\
 	: s({s0_, s1_, s2_, s3_, s4_, s5_}) {}\
-	explicit constexpr classname(\
+	/*explicit*/ constexpr classname(\
 		Inner && s0_,\
 		Inner && s1_,\
 		Inner && s2_,\
@@ -916,7 +952,7 @@ Scalar = NestedPtrTuple's last
 	: s({s0_, s1_, s2_, s3_, s4_, s5_}) {}\
 \
 	/* sym4 */\
-	explicit constexpr classname(\
+	/*explicit*/ constexpr classname(\
 		Inner const & s0_,\
 		Inner const & s1_,\
 		Inner const & s2_,\
@@ -929,7 +965,7 @@ Scalar = NestedPtrTuple's last
 		Inner const & s9_)\
 	requires (localCount >= 10)\
 	: s({s0_, s1_, s2_, s3_, s4_, s5_, s6_, s7_, s8_, s9_}) {}\
-	explicit constexpr classname(\
+	/*explicit*/ constexpr classname(\
 		Inner && s0_,\
 		Inner && s1_,\
 		Inner && s2_,\
@@ -1969,7 +2005,15 @@ struct Rank2Accessor {
 	AccessorOwnerConst & owner;
 	int i;
 
-	Rank2Accessor(AccessorOwnerConst & owner_, int i_) : owner(owner_), i(i_) {}
+	template<typename Int>
+	requires std::is_integral_v<Int>
+	Rank2Accessor(AccessorOwnerConst & owner_, Int i_)
+	: owner(owner_), i(i_) {}
+
+	template<typename Int>
+	requires std::is_integral_v<Int>
+	Rank2Accessor(AccessorOwnerConst & owner_, vec<Int,1> i_)
+	: owner(owner_), i(i_(0)) {}
 
 	/* these should call into sym(int,int) which is always Inner (const) & */
 	template<typename Int>
@@ -2524,10 +2568,10 @@ so for r=2 we get (d+1)! / (2! (d-1)!) = d * (d + 1) / 2
 	requires ((std::is_integral_v<Ints>) && ... && (true))\
 	static constexpr decltype(auto) callImpl(ThisConst & this_, Ints... is) {\
 		constexpr int N = sizeof...(Ints);\
-		if constexpr (N == localRank) {\
+		if constexpr (N < localRank) {\
+			return Accessor<ThisConst, N>(this_, vec<int,N>(is...));\
+		} else if constexpr (N == localRank) {\
 			return this_.s[getLocalWriteForReadIndex(intNLocal(is...))];\
-		} else if constexpr (N < localRank) {\
-			return Accessor<ThisConst, N>(this_, intNLocal(is...));\
 		} else if constexpr (N > localRank) {\
 			return callGtLocalRankImpl<ThisConst, std::tuple<>, Ints...>(this_, std::make_tuple(), is...);\
 		}\
@@ -2580,14 +2624,16 @@ struct RankNAccessor {
 	AccessorOwnerConst & owner;
 	vec<int,subRank> i;
 
-	RankNAccessor(AccessorOwnerConst & owner_, vec<int,subRank> i_)
+	template<typename Int>
+	requires std::is_integral_v<Int>
+	RankNAccessor(AccessorOwnerConst & owner_, vec<Int,subRank> i_)
 	: owner(owner_), i(i_) {}
 
 	/* until I can think of how to split off parameter-packs at a specific length, I'll just do this in vec<int> first like below */
 	/* if subRank + sizeof...(Ints) > ownerLocalRank then call-through into owner's inner */
 	/* if subRank + sizeof...(Ints) == ownerLocalRank then just call owner */
 	/* if subRank + sizeof...(Ints) < ownerLocalRank then produce another Accessor */
-	template<typename Int, int N, typename ThisConst>
+	template<typename ThisConst, int N, typename Int>
 	requires (std::is_integral_v<Int>)
 	constexpr decltype(auto) callImpl(ThisConst & this_, vec<Int,N> const & i2) {
 		if constexpr (subRank + N < ownerLocalRank) {
@@ -2615,12 +2661,12 @@ struct RankNAccessor {
 	template<typename Int, int N>
 	requires (std::is_integral_v<Int>)
 	constexpr decltype(auto) operator()(vec<Int,N> const & i2) {
-		return callImpl<Int, N, This>(*this, i2);
+		return callImpl<This, N, Int>(*this, i2);
 	}
 	template<typename Int, int N>
 	requires (std::is_integral_v<Int>)
 	constexpr decltype(auto) operator()(vec<Int,N> const & i2) const {
-		return callImpl<Int, N, This const>(*this, i2);
+		return callImpl<This const, N, Int>(*this, i2);
 	}
 
 	//TODO which type should I use for the vec?  1st of the pack?
@@ -2669,7 +2715,7 @@ struct RankNAccessor {
 		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<typename O>\
-	requires (is_tensor_v<O> && dims() == O::dims())\
+	requires (is_tensor_v<O> && std::is_same_v<dimseq, typename O::dimseq>)\
 	using TensorSumResult = typename TensorSumResultImpl<O>::type;
 
 #define TENSOR_TOTALLY_SYMMETRIC_CLASS_OPS()\
@@ -2899,7 +2945,7 @@ from my symmath/tensor/LeviCivita.lua
 		using type = typename std::remove_pointer_t<decltype(value())>;\
 	};\
 	template<typename O>\
-	requires (is_tensor_v<O> && dims() == O::dims())\
+	requires (is_tensor_v<O> && std::is_same_v<dimseq, typename O::dimseq>)\
 	using TensorSumResult = typename TensorSumResultImpl<O>::type;
 
 #define TENSOR_TOTALLY_ANTISYMMETRIC_CLASS_OPS()\
@@ -3073,7 +3119,7 @@ template<typename A, typename B>\
 /*requires IsBinaryTensorDiffTypeButMatchingDims<A,B>*/\
 requires (\
 	IsBinaryTensorOp<A,B>\
-	&& A::dims() == B::dims()\
+	&& std::is_same_v<typename A::dimseq, typename B::dimseq>\
 	&& !std::is_same_v<A, B> /* because that is caught next, until I get this to preserve storage opts...*/\
 )\
 decltype(auto) operator op(A const & a, B const & b) {\
