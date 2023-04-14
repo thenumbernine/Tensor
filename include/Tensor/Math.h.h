@@ -17,8 +17,11 @@ template<typename... T>
 auto hadamard(T&&... args);
 
 template<typename A, typename B>
-requires IsBinaryTensorOp<A, B>
-typename A::Scalar inner(A const & a, B const & b);
+requires (
+	!is_tensor_v<A> || !is_tensor_v<B> ||	// ... or two scalars
+	IsBinaryTensorOp<A,B> 					// ... with matching rank
+)
+auto inner(A const & a, B const & b);
 
 template<typename... T>
 auto dot(T&&... args);

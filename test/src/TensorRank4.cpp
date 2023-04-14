@@ -164,7 +164,7 @@ void test_TensorRank4() {
 							TEST_EQ(r(i,j)(l,k), -e);
 							TEST_EQ(r(j,i)(k,l), -e);
 							TEST_EQ(r(j,i)(l,k), e);
-							
+
 							TEST_EQ(r(i,j,k,l), e);
 							TEST_EQ(r(i,j,l,k), -e);
 							TEST_EQ(r(j,i,k,l), -e);
@@ -190,10 +190,10 @@ void test_TensorRank4() {
 	{
 		using Real = double;
 		using Vector = Tensor::tensor<Real,3>;
-		
+
 		Vector v = {1,2,3};
 		TEST_EQ(v, Tensor::double3(1,2,3));
-		
+
 		using Metric = Tensor::tensori<Real,Tensor::storage_sym<3>>;
 		Metric g;
 		for (int i = 0; i < 3; ++i) {
@@ -288,11 +288,11 @@ void test_TensorRank4() {
 			TEST_EQ(t, I(4));
 		}
 #if 0 // TODO vector * ident3x3
-		{	
+		{
 			auto x = float3{1,2,3} * ident<float,3>(1.);
 			ECHO(x);
 		}
-#endif	
+#endif
 	}
 
 	// can you vector non-numeric types?
@@ -338,7 +338,7 @@ void test_TensorRank4() {
 			auto aouterb = Tensor::tensorr<int,2,3>{{{42, 63}, {42, -42}}, {{-12, -18}, {-12, 12}}};
 			TEST_EQ(outer(a,b), aouterb);
 			ECHO((Tensor::contract<0,0>(aouterb)));
-			
+
 			static_assert(std::is_same_v<Tensor::tensorr<int,2,3>::RemoveIndex<0>, Tensor::int2x2>);
 			static_assert(std::is_same_v<Tensor::tensorr<int,2,3>::RemoveIndex<1>, Tensor::int2x2>);
 			static_assert(std::is_same_v<Tensor::tensorr<int,2,3>::RemoveIndex<2>, Tensor::int2x2>);
@@ -346,7 +346,7 @@ void test_TensorRank4() {
 			static_assert(std::is_same_v<Tensor::int2x2::RemoveIndex<1>, Tensor::int2>);
 			static_assert(std::is_same_v<Tensor::tensorr<int,2,3>::RemoveIndex<0,1>, Tensor::int2>);
 			ECHO((Tensor::contract<0,1>(aouterb)));
-			
+
 			ECHO((Tensor::contract<0,2>(aouterb)));
 			ECHO((Tensor::contract<1,0>(aouterb)));
 			ECHO((Tensor::contract<1,1>(aouterb)));
@@ -356,7 +356,7 @@ void test_TensorRank4() {
 			ECHO((Tensor::contract<2,2>(aouterb)));
 			auto atimesb = Tensor::int2{30, 75};
 			TEST_EQ(a * b, atimesb);
-			
+
 			TEST_EQ( (Tensor::int2{-3, 6}
 				* Tensor::int2x3{
 					{-5, 0, -3},
@@ -417,9 +417,9 @@ void test_TensorRank4() {
 				TEST_EQ(m2(i,j), m(i,j) * m(i,j));
 			}
 		}
-		
+
 		//determinant
-		
+
 		TEST_EQ(determinant(m), 0);
 
 		// transpose
@@ -433,7 +433,7 @@ void test_TensorRank4() {
 			{2,5,8},
 			{3,6,9}
 		)));
-	
+
 		TEST_EQ(Tensor::trace(Tensor::float3x3(
 			{1,2,3},
 			{4,5,6},
@@ -540,5 +540,97 @@ void test_TensorRank4() {
 			{-123, -258, -393},
 			{39, -96, -231}}}}
 		));
+	}
+
+	{
+		using real = double;
+
+		// turns out rank 1x1x...xN ctors doesn't' work ... unless it's 1x1x ... x1
+	#if 0
+		// TODO why isn't this working?
+		using real2 = Tensor::tensor<real, 2>;
+		auto i = real2{1,3};
+		auto j = real2{2,4};
+		using real1x2 = Tensor::tensor<real, 1, 2>;
+	#if 1	// works
+		auto ii = real1x2{i};
+		auto jj = real1x2{j};
+	#endif
+	#if 0	// fails
+		auto ii = real1x2(i);	// doesn't work
+		auto jj = real1x2(j);
+	#endif
+		TEST_EQ(Tensor::inner(ii, jj), 14);
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 1, 3>{{1,3,2}}, Tensor::tensor<real, 1, 3>{{2,4,3}}), 20);
+	#endif
+
+
+
+		// rank-1 vectors
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 1>{3}, Tensor::tensor<real, 1>{4}), 12);
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 2>{1,3}, Tensor::tensor<real, 2>{2,4}), 14);
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 3>{1,3,2}, Tensor::tensor<real, 3>{2,4,3}), 20);
+
+		// rank-2 dense vectors
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 1, 1>{{3}}, Tensor::tensor<real, 1, 1>{{5}}), 15);
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 2, 1>{{1},{3}}, Tensor::tensor<real, 2, 1>{{2},{4}}), 14);
+
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 2, 2>{{1, 2},{3, 4}}, Tensor::tensor<real, 2, 2>{{4, 3},{2, 1}}), 20);
+
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 3, 1>{{1},{3},{2}}, Tensor::tensor<real, 3, 1>{{2},{4},{3}}), 20);
+
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 3, 2>{{1,2},{3,4},{2,5}}, Tensor::tensor<real, 3, 2>{{2,1},{4,2},{3,3}}), 45);
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 3, 3>{{1,2,3},{4,5,6},{7,8,9}}, Tensor::tensor<real, 3, 3>{{9,8,7},{6,5,4},{3,2,1}}), 165);
+
+
+		// rank-3 dense
+
+		// rank-2 ident
+
+		TEST_EQ(Tensor::inner(Tensor::ident<real, 3>(2), Tensor::ident<real, 3>(3)), 18);
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 3, 3>{{2,0,0},{0,2,0},{0,0,2}}, Tensor::ident<real, 3>(3)), 18);
+		TEST_EQ(Tensor::inner(Tensor::tensor<real, 3, 3>{{2,0,0},{0,2,0},{0,0,2}}, Tensor::tensor<real, 3, 3>{{3,0,0},{0,3,0},{0,0,3}}), 18);
+
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real, -'z', 3, 3>(), Tensor::ident<real, 3>(3)), 0);
+
+		// rank-2 sym*sym
+		// rank-2 sym*asym
+		TEST_EQ(Tensor::inner(Tensor::sym<real,3>(2), Tensor::asym<real, 3>(3)), 0);
+		TEST_EQ(Tensor::inner(Tensor::asym<real,3>(2), Tensor::sym<real, 3>(3)), 0);
+		// rank-2 asym*sym
+		// rank-2 asym*asym
+
+		// rank-3 same
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real,-'s',3,3>(2), Tensor::tensorx<real,-'a',3,3>(3)), 0);
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real,-'a',3,3>(2), Tensor::tensorx<real,-'s',3,3>(3)), 0);
+
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real,-'S',3,3>(2), Tensor::tensorx<real,-'a',3,3>(3)), 0);
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real,-'S',3,3>(2), Tensor::tensorx<real,-'A',3,3>(3)), 0);
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real,-'A',3,3>(2), Tensor::tensorx<real,-'s',3,3>(3)), 0);
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real,-'A',3,3>(2), Tensor::tensorx<real,-'S',3,3>(3)), 0);
+
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real,3,-'s',3>(2), Tensor::tensorx<real,3,-'a',3>(3)), 0);
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real,3,-'a',3>(2), Tensor::tensorx<real,3,-'s',3>(3)), 0);
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real,-'S',3,3>(2), Tensor::tensorx<real,3,-'a',3>(3)), 0);
+		TEST_EQ(Tensor::inner(Tensor::tensorx<real,-'A',3,3>(2), Tensor::tensorx<real,3,-'s',3>(3)), 0);
+
+		TEST_BOOL((Tensor::hasMatchingSymAndAsymIndexes<Tensor::tensorx<real,-'s',3,3>, Tensor::tensorx<real,-'a',3,3>>));
+		TEST_BOOL((Tensor::hasMatchingSymAndAsymIndexes<Tensor::tensorx<real,-'a',3,3>, Tensor::tensorx<real,-'s',3,3>>));
+
+		TEST_BOOL((Tensor::hasMatchingSymAndAsymIndexes<Tensor::tensorx<real,-'S',3,3>, Tensor::tensorx<real,-'a',3,3>>));
+		TEST_BOOL((Tensor::hasMatchingSymAndAsymIndexes<Tensor::tensorx<real,-'S',3,3>, Tensor::tensorx<real,-'A',3,3>>));
+		TEST_BOOL((Tensor::hasMatchingSymAndAsymIndexes<Tensor::tensorx<real,-'A',3,3>, Tensor::tensorx<real,-'s',3,3>>));
+		TEST_BOOL((Tensor::hasMatchingSymAndAsymIndexes<Tensor::tensorx<real,-'A',3,3>, Tensor::tensorx<real,-'S',3,3>>));
+
+		TEST_BOOL((Tensor::hasMatchingSymAndAsymIndexes<Tensor::tensorx<real,3,-'s',3>, Tensor::tensorx<real,3,-'a',3>>));
+		TEST_BOOL((Tensor::hasMatchingSymAndAsymIndexes<Tensor::tensorx<real,3,-'a',3>, Tensor::tensorx<real,3,-'s',3>>));
+		TEST_BOOL((Tensor::hasMatchingSymAndAsymIndexes<Tensor::tensorx<real,-'S',3,3>, Tensor::tensorx<real,3,-'a',3>>));
+		TEST_BOOL((Tensor::hasMatchingSymAndAsymIndexes<Tensor::tensorx<real,-'A',3,3>, Tensor::tensorx<real,3,-'s',3>>));
+
+		// rank-4 same
+
+		// rank-4 ident outer rank-2
+
+
 	}
 }

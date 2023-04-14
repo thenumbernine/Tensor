@@ -5,42 +5,6 @@
 
 namespace Tensor {
 
-// concepts
-
-template<typename A, typename B>
-concept IsBinaryTensorOp =
-	is_tensor_v<A>
-	&& is_tensor_v<B>;
-
-template<typename T>
-concept IsSquareTensor =
-	is_tensor_v<T>
-	&& T::isSquare;
-
-template<typename A, typename B>
-concept IsBinaryTensorOpWithMatchingNeighborDims =
-	IsBinaryTensorOp<A,B>
-	&& A::template dim<A::rank-1> == B::template dim<0>;
-
-template<typename A, typename B>
-concept IsBinaryTensorR3xR3Op =
-	IsBinaryTensorOp<A,B>
-	// can't use vec<int,1> because it hasn't been declared yet
-	//&& A::dims == vec<int,1>(3)
-	//&& B::dims == vec<int,1>(3);
-	&& A::rank == 1 && A::template dim<0> == 3
-	&& B::rank == 1 && B::template dim<0> == 3;
-
-template<typename A, typename B>
-concept IsBinaryTensorDiffTypeButMatchingDims =
-	IsBinaryTensorOp<A,B>
-	&& !std::is_same_v<A,B>
-	&& A::dims() == B::dims(); // equal types means we use .operator== which is constexpr
-
-template<int num, typename A, typename B>
-concept IsInteriorOp =
-	IsBinaryTensorOp<A,B> && num > 0 && num <= A::rank && num <= B::rank;
-// TODO also assert the last 'num' dims of A match the first 'num' dims of B
 
 //forward-declare everything
 
@@ -101,6 +65,80 @@ template<typename T> constexpr bool is_symR_v = is_symR<T>::value;
 template<typename T> struct is_asymR : public std::false_type {};
 template<typename T, int d, int r> struct is_asymR<asymR<T,d,r>> : public std::true_type {};
 template<typename T> constexpr bool is_asymR_v = is_asymR<T>::value;
+
+
+
+// concepts
+
+template<typename A, typename B>
+concept IsBinaryTensorOp =
+	is_tensor_v<A>
+	&& is_tensor_v<B>;
+
+template<typename T>
+concept IsSquareTensor =
+	is_tensor_v<T>
+	&& T::isSquare;
+
+template<typename A, typename B>
+concept IsBinaryTensorOpWithMatchingNeighborDims =
+	IsBinaryTensorOp<A,B>
+	&& A::template dim<A::rank-1> == B::template dim<0>;
+
+template<typename A, typename B>
+concept IsBinaryTensorR3xR3Op =
+	IsBinaryTensorOp<A,B>
+	// can't use vec<int,1> because it hasn't been declared yet
+	//&& A::dims == vec<int,1>(3)
+	//&& B::dims == vec<int,1>(3);
+	&& A::rank == 1 && A::template dim<0> == 3
+	&& B::rank == 1 && B::template dim<0> == 3;
+
+template<typename A, typename B>
+concept IsBinaryTensorDiffTypeButMatchingDims =
+	IsBinaryTensorOp<A,B>
+	&& !std::is_same_v<A,B>
+	&& A::dims() == B::dims(); // equal types means we use .operator== which is constexpr
+
+template<int num, typename A, typename B>
+concept IsInteriorOp =
+	IsBinaryTensorOp<A,B> && num > 0 && num <= A::rank && num <= B::rank;
+// TODO also assert the last 'num' dims of A match the first 'num' dims of B
+
+template<typename A, typename B>
+concept hasMatchingSymAndAsymIndexes =
+	A::rank >= 2 &&
+	B::rank >= 2 &&
+	[]<auto ... i>(std::index_sequence<i...>) constexpr {
+		return ((
+			// and their indexes overlap at all ...
+			A::template numNestingsToIndex<i> == A::template numNestingsToIndex<i+1> &&
+			B::template numNestingsToIndex<i> == B::template numNestingsToIndex<i+1> &&
+			// if any nestings of A and B are asym(R) vs sym(R) or vice versa ...
+			(
+				(
+					(
+						is_asym_v<typename A::template InnerForIndex<i>> ||
+						is_asymR_v<typename A::template InnerForIndex<i>>
+					) && (
+						is_sym_v<typename B::template InnerForIndex<i>> ||
+						is_symR_v<typename B::template InnerForIndex<i>> ||
+						is_ident_v<typename B::template InnerForIndex<i>>
+					)
+				) || (
+					(
+						is_asym_v<typename B::template InnerForIndex<i>> ||
+						is_asymR_v<typename B::template InnerForIndex<i>>
+					) && (
+						is_sym_v<typename A::template InnerForIndex<i>> ||
+						is_symR_v<typename A::template InnerForIndex<i>> ||
+						is_ident_v<typename A::template InnerForIndex<i>>
+					)
+				)
+			)
+		) || ... || (false));
+	}(std::make_index_sequence<std::min(A::rank, B::rank)-1>{});
+
 
 //convention?  row-major to match math indexing, easy C inline ctor,  so A_ij = A[i][j]
 // ... but OpenGL getFloatv(GL_...MATRIX) uses column-major so uploads have to be transposed

@@ -41,14 +41,69 @@ auto hadamard(T&&... args) {
 // To generalize this I'll consider it to be the Frobenius norm, since * will already be contraction.
 // 	c := Σ_i1_i2_... a_i1_i2_... * b_i1_i2_...
 template<typename A, typename B>
-requires IsBinaryTensorOp<A,B>
-typename A::Scalar inner(A const & a, B const & b) {
-	auto i = a.begin();
-	auto sum = a(i.index) * b(i.index);
-	for (++i; i != a.end(); ++i) {
-		sum += a(i.index) * b(i.index);
+requires (
+	!is_tensor_v<A> || !is_tensor_v<B> ||	// ... or two scalars
+	IsBinaryTensorOp<A,B> 					// ... with matching rank
+)
+auto inner(A const & a, B const & b) {
+	if constexpr (!is_tensor_v<A> || !is_tensor_v<B>) {	// two scalars:
+		return a * b;
+	} else {
+		constexpr int rank = A::rank;
+		static_assert(rank == B::rank);
+		using AS = typename A::Scalar;
+		using BS = typename B::Scalar;
+		using RS = decltype(AS() * BS());
+		/*
+		vec
+		ident
+		zero
+		sym
+		asym
+		symR
+		asymR
+
+		how can I optimize this?
+		if A is sym and B is sym (or A is asym and B is asym) then we can double up the symmetric indexes (same with symR) ... but how many times?
+		*/
+		if constexpr (is_zero_v<A> || is_zero_v<B>) {
+		//if A or B is a zero then return zero.
+			return RS{};
+		} else if constexpr (is_ident_v<A> || is_ident_v<B>) {
+		//if A is an ident or B is an ident then return the trace of inners of a and b
+			RS sum = {};
+			for (int i = 0; i < a.localDim; ++i) {
+				sum += inner(a(i,i), b(i,i));
+			}
+			return sum;
+		} else if constexpr (
+			std::is_same_v<A, B>	// TODO test if matching up to scalar types
+			&& (is_asym_v<A> || is_asymR_v<A>)	// ... then ... we can short circuit ...
+			&& sizeof(A) == sizeof(typename A::Scalar)	// TODO how about optimizing for all cases?
+			// this would involve iterate/sum-of-products over all localCount storage
+			// with products weighted by some factor
+		) {
+			return inner(a.s[0], b.s[0]) * (RS)constexpr_factorial(A::localRank);
+		// if *any* neighboring indexes is of a sym(R) in A and asym(R) in B (or vice versa) then the result is zero (same with symR)
+		// i.e. a_i1_..._[ik_i{k+1}] b^i1^...^(ik^i{k+1}) = 0
+		// i.e. for rank-k, iterator i=0..k-2,
+		//		if the nesting-index in A of i == nesting-index of i+1
+		//	... and same with nesting-index in B of i == nesting-index of i+1
+		//	... and is_sym(R) of that nesting in A and is_asym(R) of that nesting in B (or vice versa)
+		//	... then return 0
+		} else if constexpr (hasMatchingSymAndAsymIndexes<A,B>) {
+			return RS{};
+		} else {
+		//otherwise old fashioned
+			//ok asymR inner asymR is going to iterate over its same component many times ...
+			auto i = a.begin();
+			auto sum = a(i.index) * b(i.index);
+			for (++i; i != a.end(); ++i) {
+				sum += a(i.index) * b(i.index);
+			}
+			return sum;
+		}
 	}
-	return sum;
 }
 
 // naming compat
@@ -253,7 +308,7 @@ auto contract(T const & t) {
 				auto j = [&]<int ... jk>(std::integer_sequence<int, jk...>) constexpr -> typename T::intN {
 					return typename T::intN{((jk == m || jk == n) ? 0 : i[jk - (m < jk) - (n < jk)])...};
 				}(std::make_integer_sequence<int, T::rank>{});
-				
+
 				// j[m] = j[n] = 0 ...
 				S sum = t(j);
 				for (int k = 1; k < T::template dim<m>; ++k) {
@@ -453,7 +508,7 @@ auto makeAsym(T const & t) {
 					return t((i[j[k]])...);
 				}(std::make_integer_sequence<int, T::rank>{});
 			}
-		
+
 		} while (std::next_permutation(j.s.begin(), j.s.end()));
 		return result / (S)constexpr_factorial(T::rank);
 	});
@@ -547,8 +602,8 @@ auto diagonal(T const & t) {
 		>;
 	using S = typename T::Scalar;
 	return R([&](typename R::intN i) {
-		return 
-			i[m] != i[m+1] 
+		return
+			i[m] != i[m+1]
 			? S()
 			: [&]<int ... j>(std::integer_sequence<int, j...>) constexpr -> S {
 				return t((j >= m ? i[j+1] : i[j])...);
