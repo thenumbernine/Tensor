@@ -35,6 +35,7 @@ struct quat : public vec4<Inner_> {
 	TENSOR_HEADER()
 	
 	using vec3 = ::Tensor::vec3<Inner>;
+	using mat3x3 = ::Tensor::mat3x3<Inner>;
 
 // ok here's a dilemma ... 
 // default ident quat would be useful for rotations
@@ -109,8 +110,13 @@ struct quat : public vec4<Inner_> {
 		};
 	}
 
+	// would like a shorthand name for this instead of 'template subset<3>' ...
+	// .vec and .vec3 are taken
+	vec3 & axis() { return Super::template subset<3>(); }
+	vec3 const & axis() const { return Super::template subset<3>(); }
+
 	vec3 rotate(vec3 const & v) const {
-		return (*this * quat(v) * conjugate()).template subset<3>();
+		return (*this * quat(v) * conjugate()).axis();
 	}
 
 	vec3 xAxis() const {
@@ -135,6 +141,10 @@ struct quat : public vec4<Inner_> {
 			2 * (this->y * this->z - this->w * this->x),
 			1 - 2 * (this->x * this->x + this->y * this->y)
 		};
+	}
+
+	mat3x3 toMatrix() const {
+		return mat3x3(xAxis(), yAxis(), zAxis()).transpose();
 	}
 
 	quat & operator*=(quat const & o) {

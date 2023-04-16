@@ -1,6 +1,9 @@
 #include "Test/Test.h"
 #include "Tensor/Valence.h"
 
+// static assert failure ... from creating the template argument
+// if there was a static_assert failure within the body of the type_identity dependent on the template parameter ... that's deferred ... 
+
 void test_Valence() {
 	using real = double;
 	using namespace Tensor;
@@ -60,4 +63,10 @@ void test_Valence() {
 	// a^ij
 	auto aU = a * gU;
 	TEST_EQ(aU, (make_valence<'u', 'u'>(tensor<real, 3, 3>{{-1,2,3},{-4,5,6},{-7,8,9}})));
+
+#if 0
+	//static assert failure - valence mismatch
+	auto bL = aL + aU;
+	ECHO(bL)
+#endif
 }
