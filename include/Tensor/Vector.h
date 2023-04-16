@@ -1185,32 +1185,26 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return Tensor::elemMul(std::move(*this), std::forward<This>(o));\
 	}\
 \
-	template<typename T>\
-	auto matrixCompMult(T const & o) const {\
+	auto matrixCompMult(This const & o) const {\
 		return Tensor::matrixCompMult(*this, o);\
 	}\
-	template<typename... T>\
-	auto matrixCompMult(T && ... o) && {\
-		return Tensor::matrixCompMult(std::move(*this), std::forward<T>(o)...);\
+	auto matrixCompMult(This && o) && {\
+		return Tensor::matrixCompMult(std::move(*this), std::forward<This>(o));\
 	}\
 \
-	template<typename T>\
-	auto hadamard(T const & o) const {\
+	auto hadamard(This const & o) const {\
 		return Tensor::hadamard(*this, o);\
 	}\
-	template<typename... T>\
-	auto hadamard(T && ... o) && {\
-		return Tensor::hadamard(std::move(*this), std::forward<T>(o)...);\
+	auto hadamard(This && o) && {\
+		return Tensor::hadamard(std::move(*this), std::forward<This>(o));\
 	}\
 \
 	template<typename B>\
-	requires is_tensor_v<std::decay_t<B>>\
-	Scalar inner(B const & o) const {\
+	auto inner(B const & o) const {\
 		return Tensor::inner(*this, o);\
 	}\
 	template<typename B>\
-	requires is_tensor_v<std::decay_t<B>>\
-	Scalar inner(B && o) && {\
+	auto inner(B && o) && {\
 		return Tensor::inner(std::move(*this), std::forward<B>(o));\
 	}\
 \

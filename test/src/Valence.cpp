@@ -22,13 +22,13 @@ void test_Valence() {
 	>{{1,2,3},{4,5,6},{7,8,9}};
 	*/
 	// constructor for valence as wrapper class of tensor:
-	auto a = make_valence<'u', 'd'>(
+	auto a = valence<'u', 'd'>(
 		tensor<real, 3, 3>{{1,2,3},{4,5,6},{7,8,9}}
 	);
 	ECHO(a);
 
 	// g_ij
-	auto g = make_valence<'d', 'd'>(
+	auto g = valence<'d', 'd'>(
 		tensor<real, 3, 3>{{-1,0,0},{0,1,0},{0,0,1}}
 	);
 	ECHO(g);
@@ -38,7 +38,7 @@ void test_Valence() {
 	//auto tmp = inverse((tensor<real,3,3>)g);
 	// so maybe I should just use a member, and use -> and * with it?
 	auto tmp = inverse(*g);
-	auto gU = make_valence<'u', 'u'>(
+	auto gU = valence<'u', 'u'>(
 		tensor<real, 3, 3>(
 			[&](int i, int j) -> real { return tmp(i,j); }
 		)
@@ -52,7 +52,7 @@ void test_Valence() {
 
 	// a_ij
 	auto aL = g * a;
-	auto aLcheck = (make_valence<'d', 'd'>(tensor<real, 3, 3>{{-1,-2,-3},{4,5,6},{7,8,9}}));
+	auto aLcheck = (valence<'d', 'd'>(tensor<real, 3, 3>{{-1,-2,-3},{4,5,6},{7,8,9}}));
 	TEST_EQ(aL, aLcheck);
 
 #if 0
@@ -62,7 +62,7 @@ void test_Valence() {
 
 	// a^ij
 	auto aU = a * gU;
-	TEST_EQ(aU, (make_valence<'u', 'u'>(tensor<real, 3, 3>{{-1,2,3},{-4,5,6},{-7,8,9}})));
+	TEST_EQ(aU, (valence<'u', 'u'>(tensor<real, 3, 3>{{-1,2,3},{-4,5,6},{-7,8,9}})));
 
 #if 0
 	//static assert failure - valence mismatch

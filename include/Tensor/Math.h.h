@@ -19,7 +19,10 @@ auto hadamard(T&&... args);
 template<typename A, typename B>
 requires (
 	!is_tensor_v<A> || !is_tensor_v<B> ||	// ... or two scalars
-	IsBinaryTensorOp<A,B> 					// ... with matching rank
+	(
+		IsBinaryTensorOp<A,B> && 					// ... with matching rank
+		std::is_same_v<typename A::dimseq, typename B::dimseq>
+	)
 )
 auto inner(A const & a, B const & b);
 
@@ -33,7 +36,7 @@ template<typename T> requires (is_tensor_v<T>)
 typename T::Scalar length(T const & v);
 
 template<typename A, typename B>
-requires IsBinaryTensorOp<A, B>
+requires (IsBinaryTensorOp<A,B> && std::is_same_v<typename A::dimseq, typename B::dimseq>)
 typename A::Scalar distance(A const & a, B const & b);
 
 template<typename T>
