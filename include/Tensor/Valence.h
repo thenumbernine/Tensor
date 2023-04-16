@@ -115,12 +115,12 @@ struct ValenceWrapper {
 	template<typename Int>
 	requires std::is_integral_v<Int>
 	constexpr decltype(auto) operator()(Int const i) {
-		return t(i);
+		return valenceSeq<Common::seq_pop_front_t<valseq>>(t(i));
 	}
 	template<typename Int>\
 	requires std::is_integral_v<Int>\
 	constexpr decltype(auto) operator()(Int const i) const {
-		return t(i);
+		return valenceSeq<Common::seq_pop_front_t<valseq>>(t(i));
 	}
 
 	//operator[](Int), operator()(Int...) fwd to operator()(Int)(...)
@@ -314,7 +314,7 @@ auto inner(A const & a, B const & b) {
 	static_assert(
 		[]<size_t...i>(std::index_sequence<i...>) constexpr -> bool {
 			return (
-				(Common::seq_get_v<i, typename A::varseq> != Common::seq_get_v<i, typename B::varseq>)
+				(Common::seq_get_v<i, typename A::valseq> != Common::seq_get_v<i, typename B::valseq>)
 				&& ... && (true)
 			);
 		}(std::make_index_sequence<A::rank>{}),
