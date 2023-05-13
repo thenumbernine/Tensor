@@ -487,14 +487,6 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	$$hodgeDual(a)\_I = (\star a)_I = \frac{1}{k!} a^J \epsilon\_{JI}$$
 - `wedgeAll(a)` = Wedge all row forms of a k-form.  Assumes the first index is the index of forms to wedge.
 	$$wedgeAll(a\_{i J} dx^J) = a\_{1 J} dx^J \wedge ... \wedge a\_{k J} dx^J$$
-- `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
-	- rank-N -> rank-(N+1), N>=1:
-	$$diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
-- `determinant(m)` = Matrix determinant.
-		For 2D this is equivalent to `asymR<T,2,2>(1) * m.x * m.y`.
-		For 3D this is equal to `dot(cross(m.x, m.y), m.z)`, i.e. `asymR<T,3,3>(1) * m.x * m.y * m.z`.
-	- rank-2 -> rank-0:
-	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
 - `innerExt(a, b)` = Exterior-algebra inner-product.  This will antisymmetrize its inputs first, then compute an exterior algebra inner product.  If the inputs are already antisymmetrized then it should be equivalent to the Frobenius product `inner(a,b)`.
 	$$innerExt(a,b) := \langle a, b \rangle = \star (a \wedge \star b)$$
 - `normExtSq(a)` = Exterior-algebra norm-squared of a, equal to the Gram-determinant.
@@ -505,6 +497,14 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	$$measure(a) := \sqrt{\langle a_1 \wedge ... \wedge a_n, a_1 \wedge ... \wedge a_n \rangle}$$
 - `measureSimplex(a)` = Calculate the measure of the simplex whose row vectors are stored in 'a'.  'a' must be rank-2 with dimension m x n.
 	$$measureSimplex(a) := \frac{1}{m!} \sqrt{\langle a_1 \wedge ... \wedge a_n, a_1 \wedge ... \wedge a_n \rangle}$$
+- `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
+	- rank-N -> rank-(N+1), N>=1:
+	$$diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
+- `determinant(m)` = Matrix determinant.
+		For 2D this is equivalent to `asymR<T,2,2>(1) * m.x * m.y`.
+		For 3D this is equal to `dot(cross(m.x, m.y), m.z)`, i.e. `asymR<T,3,3>(1) * m.x * m.y * m.z`.
+	- rank-2 -> rank-0:
+	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
 - `inverse(m[, det])` = Matrix inverse, for rank-2 tensors.  If `det` is not provided then it is calculated as `determinant(m)`.
 	- rank-2 -> rank-2:
 	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
