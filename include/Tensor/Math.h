@@ -122,10 +122,22 @@ typename T::Scalar lenSq(T const & v) {
 }
 
 template<typename T>
+requires is_tensor_v<T>
+typename T::Scalar normSq(T const & v) {
+	return lenSq(v);
+}
+
+template<typename T>
 requires (is_tensor_v<T>)
 typename T::Scalar length(T const & v) {
 	// TODO should I recast to Scalar, or just let it preserve double, or use sqrtf or what?
 	return (typename T::Scalar)sqrt(lenSq(v));
+}
+
+template<typename T>
+requires (is_tensor_v<T>)
+typename T::Scalar norm(T const & v) {
+	return length(v);
 }
 
 template<typename A, typename B>
@@ -612,6 +624,32 @@ auto diagonal(T const & t) {
 				return t((j >= m ? i[j+1] : i[j])...);
 			}(std::make_integer_sequence<int, T::rank>{});
 	});
+}
+
+template<typename A, typename B>
+requires (IsBinaryTensorOp<A,B> && std::is_same_v<typename A::dimseq, typename B::dimseq> && A::isSquare && B::isSquare)
+auto innerExt(A const & a, B const & b) {
+	return a.wedge(b.dual()).dual() * constexpr_factorial(A::rank);
+}
+
+template<typename T> requires (is_tensor_v<T>)
+typename T::Scalar normExtSq(T const & v) {
+	return innerExt(v,v);
+}
+
+template<typename T> requires (is_tensor_v<T>)
+typename T::Scalar normExt(T const & v) {
+	return (typename T::Scalar)sqrt(normExtSq(v));
+}
+
+template<typename T> requires (is_tensor_v<T> && T::rank == 2)
+typename T::Scalar measure(T const & v) {
+	return v.wedgeAll().normExt();
+}
+
+template<typename T> requires (is_tensor_v<T> && T::rank == 2)
+typename T::Scalar measureSimplex(T const & v) {
+	return measure(v) / (typename T::Scalar)constexpr_factorial(T::template dim<0>);
 }
 
 }

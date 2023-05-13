@@ -32,8 +32,14 @@ auto dot(T&&... args);
 template<typename T> requires is_tensor_v<T>
 typename T::Scalar lenSq(T const & v);
 
+template<typename T> requires is_tensor_v<T>
+typename T::Scalar normSq(T const & v);
+
 template<typename T> requires (is_tensor_v<T>)
 typename T::Scalar length(T const & v);
+
+template<typename T> requires (is_tensor_v<T>)
+typename T::Scalar norm(T const & v);
 
 template<typename A, typename B>
 requires (IsBinaryTensorOp<A,B> && std::is_same_v<typename A::dimseq, typename B::dimseq>)
@@ -105,6 +111,22 @@ auto dual(T&&... args);
 //wedge all rows of a m x n matrix
 template<int i = 0>
 auto wedgeAll(auto const & v);
+
+template<typename A, typename B>
+requires (IsBinaryTensorOp<A,B> && std::is_same_v<typename A::dimseq, typename B::dimseq> && A::isSquare && B::isSquare)
+auto innerExt(A const & a, B const & b);
+
+template<typename T> requires (is_tensor_v<T>)
+typename T::Scalar normExtSq(T const & v);
+
+template<typename T> requires (is_tensor_v<T>)
+typename T::Scalar normExt(T const & v);
+
+template<typename T> requires (is_tensor_v<T> && T::rank == 2)
+typename T::Scalar measure(T const & v);
+
+template<typename T> requires (is_tensor_v<T> && T::rank == 2)
+typename T::Scalar measureSimplex(T const & v);
 
 template<typename A, typename B>
 requires IsBinaryTensorOpWithMatchingNeighborDims<A, B>

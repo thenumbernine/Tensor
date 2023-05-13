@@ -1208,16 +1208,8 @@ Bit of a hack: MOst these are written in terms of 'This'
 		return Tensor::inner(std::move(*this), std::forward<B>(o));\
 	}\
 \
-	auto dot(This const & o) const {\
-		return Tensor::dot(*this, o);\
-	}\
-	auto dot(This && o) && {\
-		return Tensor::dot(std::move(*this), std::forward<This>(o));\
-	}\
-\
-	Scalar lenSq() const { return Tensor::lenSq(*this); }\
-\
-	Scalar length() const { return Tensor::length(*this); }\
+	auto dot(This const & o) const { return Tensor::dot(*this, o); }\
+	auto dot(This && o) && { return Tensor::dot(std::move(*this), std::forward<This>(o)); }\
 \
 	Scalar distance(This const & o) const {\
 		return Tensor::distance(*this, o);\
@@ -1328,6 +1320,21 @@ Bit of a hack: MOst these are written in terms of 'This'
 	auto wedgeAll() const {\
 		return Tensor::wedgeAll(*this);\
 	}\
+\
+	Scalar innerExt(This const & o) const { return Tensor::innerExt(*this, o); }\
+	Scalar innerExt(This && o) const { return Tensor::innerExt(*this, o); }\
+\
+	Scalar normExtSq() const { return Tensor::normExtSq(*this); }\
+	Scalar normExt() const { return Tensor::normExt(*this); }\
+\
+	Scalar lenSq() const { return Tensor::lenSq(*this); }\
+	Scalar normSq() const { return Tensor::normSq(*this); }\
+\
+	Scalar length() const { return Tensor::length(*this); }\
+	Scalar norm() const { return Tensor::norm(*this); }\
+\
+	Scalar measure() const { return Tensor::measure(*this); }\
+	Scalar measureSimplex() const { return Tensor::measureSimplex(*this); }\
 \
 	template<typename B>\
 	requires(\

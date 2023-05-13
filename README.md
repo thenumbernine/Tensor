@@ -86,12 +86,12 @@ float2x3 basis(float3 n) {
 }
 ```
 
-Example of using the Hodge dual to compute the Frobenius inner product of a and b.  In the case of rank &gt; 1 the value is the inner product of antisymmetrized a and b. $\langle a, b \rangle = \star (a \wedge \star b)$
+Example of using the Hodge dual to compute the exterior-algebra inner-product of a and b.  In the case of rank &gt; 1, a and b are antisymmetrized. $\langle a, b \rangle = \star (a \wedge \star b)$
 ```c++
-auto inner(auto const & a, auto const & b)
+template<typename A, typename B>
 //here 'isSquare' means all dimension sizes match
-requires (a.dims() == b.dims() && a.isSquare && b.isSquare)
-{
+requires (std::is_same_v<typename A::dimseq, typename B::dimseq> && A::isSquare && B::isSquare)
+auto innerExt(A const & a, B const & b) {
 	//totally-antisymmetric tensors are space-optimized,
 	//so the storage of bstar will always be <= the storage of b
 	auto bstar = b.dual();
@@ -126,6 +126,20 @@ auto KD = LC_lower.outer(LC_upper);
 KD is now a rank-`2*dim` tensor of dimension `dim`.
 Once again it is represented by just a single float.
 Take note of the order of your outer product and therefore the order of your result's indexes.  In this case the generalized-Kronecker-delta lower indexes are first.
+
+Example: Calculating a parallelotope/simplex measure (length, area, volume, etc) of any simplex in any dimension (i.e. lines in 1D 2D 3D 4D ..., triangles in 2D 3D 4D ..., tetrahedrons in 3D 4D ... etc).
+```c++
+// v holds the row-vectors of the parallelotope basis vectors.
+// v must be degree-2, but does not have to be square.
+// v should have its height m < width n
+// The dimension of the parallelotope will be m, the dimension which the points of the simplex exist within will be n.
+auto measure(auto const & v) {
+	return v.wedgeAll().normExt();
+}
+auto measureSimplex(auto const & v) {
+	return measure(v) / factorial(v.template dim<0>);
+}
+```
 
 ## API Reference:
 
@@ -423,10 +437,10 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
 	- rank-N x rank-N -> rank-0.
 	$$dot(a,b) := a^I \cdot b\_I$$
-- `lenSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
+- `lenSq(a), normSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
 	- rank-N -> rank-0
 	$$lenSq(a) := |a|^2 = a^I a\_I$$
-- `length(a)` = For vectors this is the length.  It is the sqrt of the self-dot.
+- `length(a), norm(a)` = For vectors this is the length.  It is the sqrt of the self-dot.
 	- rank-N -> rank-0
 	$$length(a) := |a| = \sqrt{a^I a\_I}$$
 - `distance(a,b)` = Length of the difference of two tensors.
@@ -481,6 +495,16 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 		For 3D this is equal to `dot(cross(m.x, m.y), m.z)`, i.e. `asymR<T,3,3>(1) * m.x * m.y * m.z`.
 	- rank-2 -> rank-0:
 	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
+- `innerExt(a, b)` = Exterior-algebra inner-product.  This will antisymmetrize its inputs first, then compute an exterior algebra inner product.  If the inputs are already antisymmetrized then it should be equivalent to the Frobenius product `inner(a,b)`.
+	$$innerExt(a,b) := \langle a, b \rangle = \star (a \wedge \star b)$$
+- `normExtSq(a)` = Exterior-algebra norm-squared of a, equal to the Gram-determinant.
+	$$normExtSq(a) := ||a||^2 = \langle a, a \rangle$$
+- `normExt(a)` = Exterior-algebra norm of a, equal to the parallelotope measure of the rows of a.
+	$$normExt(a) := \sqrt{\langle a, a \rangle}$$
+- `measure(a)` = Calculate the measure of the parallelotope whose row vectors are stored in 'a'.  'a' must be rank-2, but not necessarily square.
+	$$measure(a) := \sqrt{\langle a_1 \wedge ... \wedge a_n, a_1 \wedge ... \wedge a_n \rangle}$$
+- `measureSimplex(a)` = Calculate the measure of the simplex whose row vectors are stored in 'a'.  'a' must be rank-2 with dimension m x n.
+	$$measureSimplex(a) := \frac{1}{m!} \sqrt{\langle a_1 \wedge ... \wedge a_n, a_1 \wedge ... \wedge a_n \rangle}$$
 - `inverse(m[, det])` = Matrix inverse, for rank-2 tensors.  If `det` is not provided then it is calculated as `determinant(m)`.
 	- rank-2 -> rank-2:
 	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
@@ -716,3 +740,5 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 - structure binding doesn't work for const lhs's.  I can get them to compile with const lhs, but the result then comes out wrong.
 
 - make operator[] work with integral types and not just int.
+
+- make sure operatorX is defined by operatorX= whenever possible, and implement it as `return This(a) X= b;`
