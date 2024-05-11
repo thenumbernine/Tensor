@@ -76,7 +76,7 @@ typename M::Scalar determinant44(M const & a) {
 
 template<typename T>
 T determinant(mat<T,1,1> const & a) {
-	return a.x.x;
+	return a(0,0);
 }
 
 template<typename T>
@@ -169,7 +169,7 @@ typename T::Scalar determinant(T const & a) {
 
 template<typename T>
 mat<T,1,1> inverseImpl(mat<T,1,1> const & a, T const & det) {
-	return (T)1 / det;	// == 1 / a.x.x;
+	return (T)1 / det;	// == 1 / a(0,0);
 }
 
 template<typename T>
