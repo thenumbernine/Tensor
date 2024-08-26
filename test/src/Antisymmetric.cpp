@@ -35,7 +35,7 @@ void test_Antisymmetric() {
 	[-1  0  3]
 	[-2 -3  0]
 	*/
-	auto f = [](int i, int j) -> float { return sign(j-i)*(i+j); };
+	auto f = [](int i, int j) -> float { return float(sign(j-i)*(i+j)); };
 	auto t = Tensor::float3a3{
 		/*x_y=*/f(0,1),
 		/*x_z=*/f(0,2),
@@ -81,8 +81,8 @@ void test_Antisymmetric() {
 	TEST_EQ(a, t);
 
 	//verify ctor from lambda for int2
-	auto f2 = [](Tensor::int2 ij) -> float { return ij.x + ij.y; };
-	auto b = Tensor::float3a3(f2);
+	auto f2 = [](Tensor::int2 ij) -> float { return float(ij.x + ij.y); };
+	auto b = Tensor::float3a3(f2); //MS internal compiler error on this line
 	ECHO(b);
 	TEST_EQ(b, t);
 
@@ -95,7 +95,7 @@ void test_Antisymmetric() {
 	// verify antisymmetric writes work
 	for (int i = 0; i < t.dim<0>; ++i) {
 		for (int j = 0; j < t.dim<1>; ++j) {
-			float k = 1 + i + j;
+			float k = float(1 + i + j);
 			t(i,j) = k;
 			if (i != j) {
 				TEST_EQ(t(i,j), k);
