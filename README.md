@@ -109,7 +109,7 @@ auto LC = floatNaR<dim,dim>(1);
 // uses 1 whole float of storage.
 ```
 
-Example: Implementing the covariant valence Levi-Civita totally-antisymmetric tensor for an arbitrary metric $`g_{ij}: \epsilon_{i_1 ... i_n} = \sqrt{|det(g_{ij})|}, \epsilon^{i_1 ... i_n} = \frac{1}{\sqrt{|det(g_{ij})|}}`$
+Example: Implementing the covariant valence Levi-Civita totally-antisymmetric tensor for an arbitrary metric $`g_{ij}`$: $`\epsilon_{i_1 ... i_n} = \sqrt{|det(g_{ij})|}, \epsilon^{i_1 ... i_n} = \frac{1}{\sqrt{|det(g_{ij})|}}`$
 ```c++
 auto g = floatNsN<dim>( /* provide your metric here */ );
 auto detg = g.determinant();
