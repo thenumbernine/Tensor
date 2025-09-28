@@ -217,7 +217,7 @@ The size of a totally-symmetric tensor storage is
 the number of unique permutations of a symmetric tensor of dimension `d` and rank `r`,
 which is 
 ```math
-\begin{pmatrix}d+r-1\\r\end{pmatrix}
+\begin{pmatrix} d + r - 1 \\ r \ end{pmatrix}
 ```
 
 Tensor/tensor operator result storage works the same as `sym`:
@@ -229,7 +229,7 @@ The size of a totally-antisymmetric tensor storage is
 the number of unique permutations of an antisymmetric tensor of dimension `d` and rank `r`,
 which is 
 ```math
-\left(\begin{bmatrix}d\\r\end{bmatrix}\right)
+\begin{pmatrix} d \\ r \end{pmatrix}
 ```
 
 This means the Levi-Civita permutation tensor takes up exactly 1 float.
