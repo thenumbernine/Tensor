@@ -435,7 +435,7 @@ such that if you pass it a specific template arg (can you do that?) it uses it a
 Functions are described using [Ricci Calculus](https://en.wikipedia.org/wiki/Ricci_calculus), though no meaning is assigned to upper or lower valence of tensor objects.  As stated earlier, you are responsible for all metric applications.
 Functions are provided as `Tensor::` namespace or as member-functions where `this` is automatically padded into the first argument.
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
-	- rank-N x rank-N -> rank-0:
+	- $`V^{\otimes N} \times V^{\otimes N} \rightarrow \mathbb{R}`$:
 	$$dot(a,b) := a^I \cdot b\_I$$
 - `lenSq(a), normSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
 	- rank-N -> rank-0:
