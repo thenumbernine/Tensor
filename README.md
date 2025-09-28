@@ -215,7 +215,7 @@ Tensor/tensor operator result storage optimizations:
 - rank-N
 The size of a totally-symmetric tensor storage is
 the number of unique permutations of a symmetric tensor of dimension `d` and rank `r`,
-which is $\begin{pmatrix}d+r-1\\\r\end{pmatrix}$
+which is $$\begin{pmatrix}d+r-1\\\r\end{pmatrix}$$.
 
 Tensor/tensor operator result storage works the same as `sym`:
 
@@ -224,7 +224,7 @@ Tensor/tensor operator result storage works the same as `sym`:
 - rank-N
 The size of a totally-antisymmetric tensor storage is
 the number of unique permutations of an antisymmetric tensor of dimension `d` and rank `r`,
-which is $\left(\begin{bmatrix}d\\\r\end{bmatrix}\right)$.
+which is $$\left(\begin{bmatrix}d\\\r\end{bmatrix}\right)$$.
 This means the Levi-Civita permutation tensor takes up exactly 1 float.
 Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
 
