@@ -435,48 +435,48 @@ such that if you pass it a specific template arg (can you do that?) it uses it a
 Functions are described using [Ricci Calculus](https://en.wikipedia.org/wiki/Ricci_calculus), though no meaning is assigned to upper or lower valence of tensor objects.  As stated earlier, you are responsible for all metric applications.
 Functions are provided as `Tensor::` namespace or as member-functions where `this` is automatically padded into the first argument.
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
-	- $`V^{\otimes N} \times V^{\otimes N} \rightarrow \mathbb{R}`$:
-	$$dot(a,b) := a^I \cdot b\_I$$
+	- $`V^{\otimes N} \times V^{\otimes N} \rightarrow ℝ`$
+	- $`dot(a,b) := a^I \cdot b_I`$
 - `lenSq(a), normSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
-	- rank-N -> rank-0:
-	$$lenSq(a) := |a|^2 = a^I a\_I$$
+	- $`V^{\otimes N} \rightarrow ℝ`$
+	- $`lenSq(a) := |a|^2 = a^I a_I`$
 - `length(a), norm(a)` = For vectors this is the length.  It is the sqrt of the self-dot.
-	- rank-N -> rank-0:
-	$$length(a) := |a| = \sqrt{a^I a\_I}$$
+	- $`V^{\otimes N} \rightarrow ℝ`$
+	- $`length(a) := |a| = \sqrt{a^I a_I}`$
 - `distance(a,b)` = Length of the difference of two tensors.
-	- rank-N x rank-N -> rank-0:
-	$$distance(a,b) := |b - a|$$
+	- $`V^{\otimes N} \times V^{\otimes N} \rightarrow ℝ`$
+	- $`distance(a,b) := |b - a|`$
 - `normalize(a)` = For vectors this returns a unit.  It is a tensor divided by its sqrt-of-self-dot
-	- rank-N -> rank-N:
-	$$normalize(a) := a / |a|$$
+	- $`V^{\otimes N} \rightarrow V^{\otimes N}`$
+	- $`normalize(a) := a / |a|`$
 - `elemMul(a,b), matrixCompMult(a,b), hadamard(a,b)` = per-element multiplication aka Hadamard product.
-	- rank-N x rank-N -> rank-N:
-	$$elemMul(a,b)\_I := a\_I \cdot b\_I$$
+	- $`V^{\otimes N} \times V^{\otimes N} \rightarrow V^{\otimes N}`$
+	- $`elemMul(a,b)_I := a_I \cdot b_I`$
 - `cross(a,b)` = 3D vector cross product.
-	- rank-1 dim-3 x rank-1 dim-3 -> rank-1 dim-3:
-	$$cross(a,b)\_i := \epsilon\_{i j k} b^j c^k$$
+	- $`ℝ^3 \times ℝ^3 \rightarrow ℝ^3`$
+	- $`cross(a,b)_i := \epsilon_{i j k} b^j c^k`$
 - `outer(a,b), outerProduct(a,b)` = Tensor outer product.  The outer of a `vec` and a `vec` make a `mat` (i.e. a `vec`-of-`vec`).
 	The outer of a vector and a matrix make a rank-3.  Etc.  This also preserves storage optimizations, so an outer between a `sym` and a `sym` produces a `sym`-of-`sym`s.
-	- rank-M x rank-N -> rank-(M+N):
-	$$outer(a,b)\_{IJ} := a\_I b\_J$$
+	- $`V^{\otimes M} \times V^{\otimes N} \rightarrow V^{\otimes (M+N)}`$
+	- $`outer(a,b)_{IJ} := a_I b_J`$
 - `transpose<from=0,to=1>(a)` = Transpose indexes `from` and `to`.
 	This will preserve storage optimizations, so transposing 0,1 of a `sym`-of-`vec` will produce a `sym`-of-`vec`,
 	but transposing 0,2 or 1,2 of a `sym`-of-`vec` will produce a `vec`-of-`vec`-of-`vec`.
-	- rank-M -> rank-M, M >= 2:
-	$$transpose(a)\_{{i\_1}...{i\_p}...{i\_q}...{i\_n}} = a\_{{i\_1}...{i\_q}...{i\_p}...{i\_n}}$$
+	- $`V^{\otimes M} \rightarrow V^{\otimes M}; M \ge 2`$
+	- $`transpose(a)_{{i_1}...{i_p}...{i_q}...{i_n}} = a_{{i_1}...{i_q}...{i_p}...{i_n}}`$
 - `contract<m=0,n=1>(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to a matrix trace.
-	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes.). M >= 1:
-	$$contract(a) = \delta^{i\_m i\_n} a\_I$$
+	- $`V^{\otimes M} \rightarrow V^{\otimes (M-2)}`$ for different indexes, $`V^{\otimes M} \rightarrow V^{\otimes (M-1)}`$ for same indexes.. $M \ge 1$
+	- $`contract(a) = \delta^{i_m i_n} a_I`$
 - `contractN<i=0,n=1>(a)` = Tensor contraction of indexes i ... i+n-1 with indexes i+n ... i+2n-1:
-	$${contractN(a)^I}\_J = {a^{I K}}\_{K J}, |I| = i, |K| = n$$
+	- $`{contractN(a)^I}_J = {a^{I K}}_{K J}, |I| = i, |K| = n`$
 - `interior<n=1>(a,b)` = Interior product of neighboring n indexes.  I know a proper interior product would default n to `A::rank`.  Maybe later.  For n=1 this behaves the same a matrix-multiply.
-	$${interior(a,b)^I}\_J = a^{I K} b\_{K J}, |K| = n$$
+	- $`{interior(a,b)^I}_J = a^{I K} b_{K J}, |K| = n`$
 - `makeSym(a)` = Create a symmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.  If the input is a tensor with any antisymmetric indexes then the result will be a zero-tensor.
-	$$makeSym(a)\_I = a\_{(i\_1 ... i\_ n)} $$
+	- $`makeSym(a)_I = a_{(i_1 ... i_ n)}`$
 - `makeAsym(a)` = Create an antisymmetric version of tensor a.  Only works if t is square, i.e. all dimensions are matching.  If the input is a tensor with any symmetric indexes then the result will be a zero-tensor.
-	$$makeAsym(a)\_I = a\_{[i\_1 ... i\_ n]} $$
+	- $`makeAsym(a)_I = a_{[i_1 ... i_ n]}`$
 - `wedge(a,b)` = The wedge product of tensors 'a' and 'b'.  Notice that this antisymmetrizes the input tensors.
-	$$wedge(a,b)\_I = (a \wedge b)\_I = Alt (a \otimes b)\_I = a\_{[i\_1 ... i\_p} b\_{i\_{p+1} ... i\_{p+q}]}$$
+	- $`wedge(a,b)_I = (a \wedge b)_I = Alt (a \otimes b)_I = a_{[i_1 ... i_p} b_{i_{p+1} ... i_{p+q}]}`$
 - `hodgeDual(a), dual(a)` = The Hodge-Dual of rank-k tensor 'a'.
 	This only operates on 'square' tensors.
 	If you really want to produce the dual of a scalar, just use `asymR<>(s)`.
@@ -484,30 +484,30 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	It will assume your input tensor is in $\sharp$ valence, and produce a tensor in $\flat$ valence.
 	It also will assume a unit weight of the Levi-Civita permutation tensor, so if you happen to prefer your L.C. tensors to have weight $\sqrt{|g|}$ then you will have to multiply by this yourself.
 	Notice that this antisymmetrizes the input tensor.
-	$$hodgeDual(a)\_I = (\star a)_I = \frac{1}{k!} a^J \epsilon\_{JI}$$
+	- $`hodgeDual(a)_I = (\star a)_I = \frac{1}{k!} a^J \epsilon_{JI}`$
 - `wedgeAll(a)` = Wedge all row forms of a k-form.  Assumes the first index is the index of forms to wedge.
-	$$wedgeAll(a\_{i J} dx^J) = a\_{1 J} dx^J \wedge ... \wedge a\_{k J} dx^J$$
+	- $`wedgeAll(a_{i J} dx^J) = a_{1 J} dx^J \wedge ... \wedge a_{k J} dx^J`$
 - `innerExt(a, b)` = Exterior-algebra inner-product.  This will antisymmetrize its inputs first, then compute an exterior algebra inner product.  If the inputs are already antisymmetrized then it should be equivalent to the Frobenius product `inner(a,b)`.
-	$$innerExt(a,b) := \langle a, b \rangle = \star (a \wedge \star b)$$
+	- $`innerExt(a,b) := \langle a, b \rangle = \star (a \wedge \star b)`$
 - `normExtSq(a)` = Exterior-algebra norm-squared of a, equal to the Gram-determinant.
-	$$normExtSq(a) := ||a||^2 = \langle a, a \rangle$$
+	- $`normExtSq(a) := ||a||^2 = \langle a, a \rangle`$
 - `normExt(a)` = Exterior-algebra norm of a, equal to the parallelotope measure of the rows of a.
-	$$normExt(a) := \sqrt{\langle a, a \rangle}$$
+	- $`normExt(a) := \sqrt{\langle a, a \rangle}`$
 - `measure(a)` = Calculate the measure of the parallelotope whose row vectors are stored in 'a'.  'a' must be rank-2, but not necessarily square.
-	$$measure(a) := \sqrt{\langle a_1 \wedge ... \wedge a_n, a_1 \wedge ... \wedge a_n \rangle}$$
+	- $`measure(a) := \sqrt{\langle a_1 \wedge ... \wedge a_n, a_1 \wedge ... \wedge a_n \rangle}`$
 - `measureSimplex(a)` = Calculate the measure of the simplex whose row vectors are stored in 'a'.  'a' must be rank-2 with dimension m x n.
-	$$measureSimplex(a) := \frac{1}{m!} \sqrt{\langle a_1 \wedge ... \wedge a_n, a_1 \wedge ... \wedge a_n \rangle}$$
+	- $`measureSimplex(a) := \frac{1}{m!} \sqrt{\langle a_1 \wedge ... \wedge a_n, a_1 \wedge ... \wedge a_n \rangle}`$
 - `diagonal<m=0>(a)` = Matrix diagonal from vector.  For tensors it takes one index and turns it into two.
-	- rank-N -> rank-(N+1), N>=1:
-	$$diagonal(a)\_I = \delta\_{i\_m i\_{m+1}} a\_{i\_1 ... i\_m i\_{m+2} ... i\_n}$$
+	- $`V^{\otimes N} \rightarrow V^{\otimes (N+1)}; N \ge 1`$
+	- $`diagonal(a)_I = \delta_{i_m i_{m+1}} a_{i_1 ... i_m i_{m+2} ... i_n}`$
 - `determinant(m)` = Matrix determinant.
 		For 2D this is equivalent to `asymR<T,2,2>(1) * m.x * m.y`.
 		For 3D this is equal to `dot(cross(m.x, m.y), m.z)`, i.e. `asymR<T,3,3>(1) * m.x * m.y * m.z`.
-	- rank-2 -> rank-0:
-	$$determinant(a) := det(a) = \epsilon\_I {a^{i\_1}}\_1 {a^{i\_2}}\_2 {a^{i\_3}}\_3 ... {a^{i\_n}}\_n$$
+	- $`V^{\otimes 2} \rightarrow ℝ`$
+	- $`determinant(a) := det(a) = \epsilon_I {a^{i_1}}_1 {a^{i_2}}_2 {a^{i_3}}_3 ... {a^{i_n}}_n`$
 - `inverse(m[, det])` = Matrix inverse, for rank-2 tensors.  If `det` is not provided then it is calculated as `determinant(m)`.
-	- rank-2 -> rank-2:
-	$${inverse(a)^{i\_1}}\_{j\_1} := \frac{1}{(n-1)! det(a)} \delta^I\_J {a^{j\_2}}\_{i\_2} {a^{j\_3}}\_{i\_3} ... {a^{j\_n}}\_{i\_n}$$
+	- $`V^{\otimes 2} \rightarrow V^{\otimes 2}`$
+	- $`{inverse(a)^{i_1}}_{j_1} := \frac{1}{(n-1)! det(a)} \delta^I_J {a^{j_2}}_{i_2} {a^{j_3}}_{i_3} ... {a^{j_n}}_{i_n}`$
 
 ### Support Functions:
 - `.expand()` = convert the tensor to its expanded storage.  The type will be the same as `::ExpandAllIndexes<>`.
