@@ -118,7 +118,7 @@ auto LC_upper = LC_lower / detg;
 ```
 Mind you `LC_lower[0][0]...[0]` and `LC_lower[dim-1][dim-1]...[dim-1]` and every possible index access between are all valid C++ expressions.  But yeah, just 1 float of storage.
 
-Example: ... and using it to compute the generalized Kronecker delta tensor.  $\delta^{i\_1 ... i\_n}\_{j\_1 ... j\_n} = \epsilon\_{j\_1 ... j\_n} \epsilon^{i\_1 ... i\_n}$
+Example: ... and using it to compute the generalized Kronecker delta tensor.  $`\delta^{i_1 ... i_n}_{j_1 ... j_n} = \epsilon_{j_1 ... j_n} \epsilon^{i_1 ... i_n}`$
 ```c++
 auto KD = LC_lower.outer(LC_upper);
 ```
@@ -155,7 +155,7 @@ auto measureSimplex(auto const & v) {
 ### Matrices:
 `mat<type, dim1, dim2>` = `vec<vec<type,dim2>,dim1>` = matrices:
 - rank-2
-- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $A\_{ij}$.
+- Right now indexing is row-major, so matrices appear as they appear in C, and so that matrix indexing `A.i.j` matches math indexing $`A_{ij}`$.
 	This disagrees with GL compatability, so you'll have to upload your matrices to GL transposed.
 
 Tensor/tensor operator result storage optimizations:
@@ -174,7 +174,7 @@ Tensor/tensor operator result storage optimizations:
 `ident<type, dim>` = identity matrix.
 - rank-2
 This will only take up a single value of storage.  Specifying the internal storage type is still required, which enables `ident` to be used in conjunction with outer products to produce optimized-storage tensors,
-i.e. $a\_{ij} \otimes \delta\_{kl}$ = `outer( mat<float,3,3>(...), ident<float,3>(1) )` will produce a rank-4 tensor $c\_{ijkl} = a\_{ij} \cdot \delta\_{kl}$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
+i.e. $`a_{ij} \otimes \delta_{kl}`$ = `outer( mat<float,3,3>(...), ident<float,3>(1) )` will produce a rank-4 tensor $`c_{ijkl} = a_{ij} \cdot \delta_{kl}`$ which will only require 9 floats of storage, not 81 floats, as a naive outer product would require.
 Notice that `ident` is rank-2, i.e. represents 2 indexes.  Sorry, just regular Kronecker delta here, not generalized Kronecker delta.  Besides, that's antisymmetric anyways, so for its use check out `asymR`.
 
 Tensor/tensor operator result storage optimizations:
@@ -201,7 +201,7 @@ Tensor/tensor operator result storage optimizations:
 - rank-2
 - `.x_x() ... .w_w()` access methods.
 No access fields, sorry. I had the option of making half named access via fields (maybe the upper trianglular ones) and the other half methods, but decided for consistency's sake to just use methods everywhere.
-Don't forget that an antisymmetric matrix, i.e. a k-form, can be represented as $a\_{i\_1 ... i\_k} e^{[i\_1} \otimes ... \otimes e^{i\_k]} = \frac{1}{k!} a\_{i\_1 ... i\_k} e^{i\_1} \wedge ... \wedge e^{i\_k}$ - mind your scale factors.
+Don't forget that an antisymmetric matrix, i.e. a k-form, can be represented as $`a_{i_1 ... i_k} e^{[i_1} \otimes ... \otimes e^{i_k]} = \frac{1}{k!} a_{i_1 ... i_k} e^{i_1} \wedge ... \wedge e^{i_k}`$ - mind your scale factors.
 
 Tensor/tensor operator result storage optimizations:
 - `asym` + `zero` = `asym`
@@ -227,7 +227,7 @@ the number of unique permutations of an antisymmetric tensor of dimension `d` an
 which is $`\begin{pmatrix} d \\ r \end{pmatrix}`$.
 
 This means the Levi-Civita permutation tensor takes up exactly 1 float.
-Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
+Feel free to initialize this as the value 1 for Cartesian geometry or the value of $`\sqrt{det(g_{uv})}`$ for calculations in an arbitrary manifold.
 
 Tensor/tensor operator result storage works the same as `asym`:
 
@@ -265,7 +265,7 @@ Sorry GLSL, Cg wins this round:
 - - `-'a', dim` = use a rank-2 antisymmetric-tensor of dimension `dim`.
 - - `-'S', dim, rank` = use a rank-`rank` totally-symmetric-tensor of dimension `dim`.
 - - `-'A', dim, rank` = use a rank-`rank` totally-antisymmetric-tensor of dimension `dim`.
-	Ex: `tensorx<float, -'i', 3, -'A', 4, 4>` produces $T\_{ijklmn} = t \cdot \delta\_{ij} \cdot \epsilon\_{klmn}$.
+	Ex: `tensorx<float, -'i', 3, -'A', 4, 4>` produces $`T_{ijklmn} = t \cdot \delta_{ij} \cdot \epsilon_{klmn}`$.
 - `tensori<type, I1, I2, I3...>` = construct a tensor with specific indexes vector storage and specific sets of indexes symmetric or antisymmetric storage.
 	`I1 I2` etc are one of the following storage types:
 - - `storage_vec<dim>` for a single index of dimension `dim`,
@@ -275,7 +275,7 @@ Sorry GLSL, Cg wins this round:
 - - `storage_asym<dim>` for two antisymmetric indexes of dimension `dim`,
 - - `storage_symR<dim, rank>` for `rank` symmetric indexes of dimension `dim`,
 - - `storage_asymR<dim, rank>` for `rank` antisymmetric indexes of dimension `dim`.
-	Ex: `tensori<float, storage_vec<3>, storage_sym<4>, storage_asym<5>>` is the type of a tensor $a\_{ijklm}$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
+	Ex: `tensori<float, storage_vec<3>, storage_sym<4>, storage_asym<5>>` is the type of a tensor $`a_{ijklm}`$ where index i is dimension-3, indexes j and k are dimension 4 and symmetric, and indexes l and m are dimension 5 and antisymmetric.
 
 - `tensorScalarTuple<Scalar, StorageTuple>` = same as `tensori` except the storage arguments are passed in a tuple.
 - `tensorScalarSeq<Scalar, integer_sequence>` = same as `tensor` except the dimensions are passed as a sequence.
@@ -309,7 +309,7 @@ Sorry GLSL, Cg wins this round:
 
 ### Overloaded Subscript / Array Access:
 Array access, be it by `()`, `[]`, by integer sequence or by int-vectors, is equivalent to accessing the respective elements of the tensor.
-- `(int i1, ...)` = dereference based on a list of ints.  In the case of `tensori` or `tensorr`, i.e. `vec<vec<vec<...>>>` storage, this means $a\_{ij}$ in math = `a.s[i].s[j]` in code.
+- `(int i1, ...)` = dereference based on a list of ints.  In the case of `tensori` or `tensorr`, i.e. `vec<vec<vec<...>>>` storage, this means $`a_{ij}`$ in math = `a.s[i].s[j]` in code.
 - `(intN i)` = dereference based on a vector-of-ints. Same convention as above.
 - `[i1][i2][...]` = dereference based on a sequence of bracket indexes.  Same convention as above.
 
@@ -694,7 +694,7 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 - more tensor types:  maybe diagonalized rank-2 with N-DOF, where each diagonal element has a unique value.
 
 - any way to optimize symmetries between non-neighboring dimensions?
-	- like $t\_{ijkl} = a\_{ik} b\_{jl}$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
+	- like $`t_{ijkl} = a_{ik} b_{jl}`$ s.t. i and k are symmetric and j and l are symmetric, but they are not neighboring.
 
 - somehow for differing-typed tensors get operator== constexpr
 - might do some constexpr loop unrolling stuff maybe.
@@ -725,8 +725,6 @@ Also: Lundy, "Implementing a High Performance Tensor Library", [https://wlandry.
 	so meh i might as well keep it around?
 
 - C++23 has derived-this return-types, so no more need to crtp everything (RangeIterator and its classes in RangeObj, ReadIterator, WriteIterator)
-
-- Note to self (and anyone else listening), while GitHub MarkDown handles `_`'s correctly within `` ` ``'s , it fails within MathJax `$`'s and `$$`'s which means you have to escape all your `_`'s within your MathJax as `\_`.
 
 - valence-check wrapper:
 	- op= and op works, compile-time checked
