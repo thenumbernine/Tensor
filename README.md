@@ -435,13 +435,13 @@ such that if you pass it a specific template arg (can you do that?) it uses it a
 Functions are described using [Ricci Calculus](https://en.wikipedia.org/wiki/Ricci_calculus), though no meaning is assigned to upper or lower valence of tensor objects.  As stated earlier, you are responsible for all metric applications.
 Functions are provided as `Tensor::` namespace or as member-functions where `this` is automatically padded into the first argument.
 - `dot(a,b), inner(a,b)` = Frobenius inner.  Sum of all elements of a self-Hadamard-product.  Conjugation would matter if I had any complex support, but right now I don't.
-	- rank-N x rank-N -> rank-0.
+	- rank-N x rank-N -> rank-0:
 	$$dot(a,b) := a^I \cdot b\_I$$
 - `lenSq(a), normSq(a)` = For vectors this is the length-squared.  It is a self-dot, for vectors this is equal to the length squared, for tensors this is the Frobenius norm (... squared? Math literature mixes up the definition of "norm" between the sum-of-squares and its square-root.).
-	- rank-N -> rank-0
+	- rank-N -> rank-0:
 	$$lenSq(a) := |a|^2 = a^I a\_I$$
 - `length(a), norm(a)` = For vectors this is the length.  It is the sqrt of the self-dot.
-	- rank-N -> rank-0
+	- rank-N -> rank-0:
 	$$length(a) := |a| = \sqrt{a^I a\_I}$$
 - `distance(a,b)` = Length of the difference of two tensors.
 	- rank-N x rank-N -> rank-0:
@@ -462,12 +462,12 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 - `transpose<from=0,to=1>(a)` = Transpose indexes `from` and `to`.
 	This will preserve storage optimizations, so transposing 0,1 of a `sym`-of-`vec` will produce a `sym`-of-`vec`,
 	but transposing 0,2 or 1,2 of a `sym`-of-`vec` will produce a `vec`-of-`vec`-of-`vec`.
-	- rank-M -> rank-M, M >= 2
+	- rank-M -> rank-M, M >= 2:
 	$$transpose(a)\_{{i\_1}...{i\_p}...{i\_q}...{i\_n}} = a\_{{i\_1}...{i\_q}...{i\_p}...{i\_n}}$$
 - `contract<m=0,n=1>(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to a matrix trace.
-	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes.). M >= 1
+	- rank-M -> rank-M-2 (for different indexes.  rank-M-1 for same indexes.). M >= 1:
 	$$contract(a) = \delta^{i\_m i\_n} a\_I$$
-- `contractN<i=0,n=1>(a)` = Tensor contraction of indexes i ... i+n-1 with indexes i+n ... i+2n-1.
+- `contractN<i=0,n=1>(a)` = Tensor contraction of indexes i ... i+n-1 with indexes i+n ... i+2n-1:
 	$${contractN(a)^I}\_J = {a^{I K}}\_{K J}, |I| = i, |K| = n$$
 - `interior<n=1>(a,b)` = Interior product of neighboring n indexes.  I know a proper interior product would default n to `A::rank`.  Maybe later.  For n=1 this behaves the same a matrix-multiply.
 	$${interior(a,b)^I}\_J = a^{I K} b\_{K J}, |K| = n$$
