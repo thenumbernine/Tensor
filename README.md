@@ -218,7 +218,7 @@ the number of unique permutations of a symmetric tensor of dimension `d` and ran
 which is 
 ```math
 \begin{pmatrix}d+r-1\\r\end{pmatrix}
-```.
+```
 
 Tensor/tensor operator result storage works the same as `sym`:
 
@@ -230,7 +230,8 @@ the number of unique permutations of an antisymmetric tensor of dimension `d` an
 which is 
 ```math
 \left(\begin{bmatrix}d\\r\end{bmatrix}\right)
-```.
+```
+
 This means the Levi-Civita permutation tensor takes up exactly 1 float.
 Feel free to initialize this as the value 1 for Cartesian geometry or the value of $\sqrt{det(g\_{uv})}$ for calculations in an arbitrary manifold.
 
