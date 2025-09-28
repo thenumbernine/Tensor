@@ -43,7 +43,7 @@ auto c = b(i,j,j).assignI();
 auto d = (a(i,j) * b(j,k,k)).assignI();
 ```
 
-Example of using a totally-antisymmetric tensor for implementing the cross-product. $(a \times b)\_i := \epsilon\_{ijk} a^j b^k$
+Example of using a totally-antisymmetric tensor for implementing the cross-product. $`(a \times b)_i := \epsilon_{ijk} a^j b^k`$
 ```c++
 float3 cross(float3 a, float3 b) {
 	// Create the Levi-Civita totally-antisymmetric permutation tensor for dim 3 rank 3 ... using up a single float of memory:
