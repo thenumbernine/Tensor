@@ -465,9 +465,9 @@ Functions are provided as `Tensor::` namespace or as member-functions where `thi
 	- $`V^{\otimes M} \rightarrow V^{\otimes M}; M \ge 2`$
 	- $`transpose(a)_{{i_1}...{i_p}...{i_q}...{i_n}} = a_{{i_1}...{i_q}...{i_p}...{i_n}}`$
 - `contract<m=0,n=1>(a), trace(a)` = Tensor contraction / interior product of indexes 'm' and 'n'. For rank-2 tensors where m=0 and n=1, `contract(t)` is equivalent to a matrix trace.
-	- $`V^{\otimes M} \rightarrow V^{\otimes (M-2)}`$ for different indexes, $`V^{\otimes M} \rightarrow V^{\otimes (M-1)}`$ for same indexes.. $M \ge 1$
+	- $`V^{\otimes M} \rightarrow V^{\otimes (M-2)}`$ for different indexes, $`V^{\otimes M} \rightarrow V^{\otimes (M-1)}`$ for same indexes. $M \ge 1$
 	- $`contract(a) = \delta^{i_m i_n} a_I`$
-- `contractN<i=0,n=1>(a)` = Tensor contraction of indexes i ... i+n-1 with indexes i+n ... i+2n-1:
+- `contractN<i=0,n=1>(a)` = Tensor contraction of indexes $i ... i+n-1$ with indexes $i+n ... i+2n-1$:
 	- $`{contractN(a)^I}_J = {a^{I K}}_{K J}, |I| = i, |K| = n`$
 - `interior<n=1>(a,b)` = Interior product of neighboring n indexes.  I know a proper interior product would default n to `A::rank`.  Maybe later.  For n=1 this behaves the same a matrix-multiply.
 	- $`{interior(a,b)^I}_J = a^{I K} b_{K J}, |K| = n`$
