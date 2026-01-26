@@ -127,8 +127,8 @@ mat<real,4,4> perspective(
 	real near,
 	real far
 ) {
-	auto ymax = near * tan(fovY * (real).5);
-	auto xmax = aspectRatio * ymax;
+	real ymax = near * tan(fovY * (real).5);
+	real xmax = aspectRatio * ymax;
 	return frustum(-xmax, xmax, -ymax, ymax, near, far);
 }
 
