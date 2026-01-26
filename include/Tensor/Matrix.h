@@ -116,9 +116,9 @@ gluPerspective
 http://www.songho.ca/opengl/gl_transform.html
 https://www.khronos.org/opengl/wiki/GluPerspective_code
 TODO tempted to make an optimized storage class for this as well.
-It's *almost* a diagonal scale class (min(m,n) reals for m x n matrix) 
+It's *almost* a diagonal scale class (min(m,n) reals for m x n matrix)
 though this have to be specialized for perspective since it has that one off-diagonal element...
-I see this as the library slowly creeping into sparse-matrix storage. 
+I see this as the library slowly creeping into sparse-matrix storage.
 */
 template<typename real>
 mat<real,4,4> perspective(
